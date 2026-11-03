@@ -1,6 +1,6 @@
 import { apiClient } from './client';
 import type { ConDisponibilidad } from './afip';
-import { horaDeEvento } from './miDia';
+import { horaDeEvento, instanteDeEvento } from './miDia';
 
 /**
  * `GET /mi-dia/calendario?desde&hasta` (BL-J13, K-13, ADR-004) — la agenda de varios días. Web y mobile
@@ -9,7 +9,7 @@ import { horaDeEvento } from './miDia';
  * 🔴 **El rango lo arma el CLIENTE y nunca pasa de la ventana del backend** (≤ 14 días → 400 si no).
  * `rangoAgenda` clampa; un test fija que ningún `dias` lo saque de la ventana.
  *
- * `inicio`/`fin` siguen siendo `[ASSUMED_PENDING_VERIFY]` (Composio no verificado con Calendar
+ * `inicio`/`fin` siguen siendo `[ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente: canónica sin Calendar]` (Composio no verificado con Calendar
  * conectado): se transportan crudos y `franjaDeEvento` sólo muestra lo que reconoce.
  */
 export const DIAS_MAX_AGENDA = 14;
@@ -121,3 +121,26 @@ export function franjaDeEvento(ev: Pick<EventoAgenda, 'inicioCrudo' | 'finCrudo'
 /** Texto que «Nuevo evento» deja en el chat principal (`dejarPendiente`): el alta la hace el agente
  *  con `calendar_book` y confirm-gate HITL (ADR-004 §3), nunca un formulario que escriba en Calendar. */
 export const TEXTO_NUEVO_EVENTO = 'Quiero agendar un evento';
+
+/**
+ * SM-N34 — dónde cae la «línea del ahora» dentro de los eventos de HOY (vista mixta D9: línea de tiempo
+ * con línea del ahora para hoy; lista para Mañana y Esta semana). Devuelve el índice ANTES del cual se
+ * dibuja la línea: el del primer evento con hora que todavía no empezó; `eventos.length` si todos con hora
+ * ya empezaron. `null` si ningún evento tiene hora legible (todos «todo el día»/sin hora): sin ancla no se
+ * dibuja la línea (ausente ≠ inventada). Los de día completo no cuentan: no ocupan un lugar en la hora.
+ */
+export function posicionLineaAhora(
+  eventos: readonly Pick<EventoAgenda, 'inicioCrudo' | 'diaCompleto'>[],
+  ahora: Date,
+): number | null {
+  let hayHora = false;
+  for (let i = 0; i < eventos.length; i += 1) {
+    const ev = eventos[i]!;
+    if (ev.diaCompleto) continue;
+    const t = instanteDeEvento(ev.inicioCrudo);
+    if (t == null) continue;
+    hayHora = true;
+    if (t > ahora.getTime()) return i;
+  }
+  return hayHora ? eventos.length : null;
+}

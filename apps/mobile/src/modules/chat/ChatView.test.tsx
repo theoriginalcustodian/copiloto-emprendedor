@@ -1,3 +1,4 @@
+import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
@@ -18,10 +19,8 @@ jest.mock('../auth/useSession', () => ({
   useSession: () => ({ me: { cliente_id: 'cli-chatview-test', email: 'usuario@copiloto.test' } }),
 }));
 
-/** `leerPerfilNegocio` mockeado — `IndicadorModoCeremonia` la llama al montar (vía `useFocusEffect`,
- *  passthrough en `jest.setup.js`); sin mock intentaría un `fetch` real en cada test de este archivo,
- *  que no es lo que ninguno de ellos prueba. `no_disponible` deja el indicador en su default
- *  fail-closed ("Pedir confirmación"), invisible para las aserciones existentes. */
+/** `leerPerfilNegocio` mockeado por seguridad: el chat ya no monta el indicador de modo (SM-N26), pero
+ *  si algo del árbol la llamara intentaría un `fetch` real, que ningún test de este archivo prueba. */
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
   return {
@@ -640,89 +639,28 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
   });
 });
 
-describe('ChatView -- foto de ticket (Gastos Fase 2, OCR)', () => {
+describe('ChatView -- SM-N24: la cámara NO es del chat, es de Gastos', () => {
   beforeEach(() => {
     jest.mocked(api.sendChat).mockReset();
-    jest.mocked(api.sendFoto).mockReset();
     jest.mocked(api.getReply).mockReset();
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
-    mockRequestCameraPermissionsAsync.mockReset().mockResolvedValue({ granted: true });
-    mockLaunchCameraAsync.mockReset();
   });
 
-  /** Simula al usuario tocando el botón `texto` de la última llamada a `Alert.alert` -- mismo
-   *  helper que `useCapturaFoto.test.ts` (acá no se puede importar: depende del spy local). */
-  function tocarBoton(spy: jest.SpyInstance, texto: string) {
-    const llamada = spy.mock.calls.at(-1);
-    const botones = llamada?.[2] as { text: string; onPress?: () => void }[] | undefined;
-    botones?.find((b) => b.text === texto)?.onPress?.();
-  }
-
-  it('el botón de cámara existe y dispara el picker Cámara/Galería/Cancelar', async () => {
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+  it('el composer del chat no pinta el botón de cámara', async () => {
     await renderChatView();
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
 
-    await fireEvent.press(screen.getByTestId('chat-foto'));
-
-    expect(alertSpy).toHaveBeenCalledWith(
-      'Foto del ticket',
-      expect.any(String),
-      expect.arrayContaining([expect.objectContaining({ text: 'Cámara' })]),
-    );
-    alertSpy.mockRestore();
+    expect(screen.queryByTestId('chat-foto')).toBeNull();
   });
+});
 
-  it('Cámara -> sube la foto y agrega el mensaje optimista fijo en la lista', async () => {
-    mockLaunchCameraAsync.mockResolvedValue({
-      canceled: false,
-      assets: [{ uri: 'file:///cache/ticket.jpg', mimeType: 'image/jpeg' }],
-    });
-    jest.mocked(api.sendFoto).mockResolvedValue({ wf_id: 'wf-foto-1', accepted: true } as any);
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+describe('ChatView -- SM-N26: sin indicador «Pedir confirmación» en la cabecera', () => {
+  it('el chat no monta el indicador de modo (era una constante: nadie escribe el campo)', async () => {
     await renderChatView();
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
 
-    await fireEvent.press(screen.getByTestId('chat-foto'));
-    tocarBoton(alertSpy, 'Cámara');
-
-    await waitFor(() => expect(api.sendFoto).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText('📷 Foto del ticket enviada')).toBeTruthy();
-    // `cliente_id` viaja vacío, mismo criterio que `enviarAudio` -- ver el docstring de `useChat.ts`.
-    expect(api.sendFoto).toHaveBeenCalledWith(
-      expect.any(String),
-      { nombre: 'ticket.jpg', mime: 'image/jpeg', datos: 'file:///cache/ticket.jpg' },
-      '',
-    );
-    alertSpy.mockRestore();
-  });
-
-  it('permiso de cámara denegado: aviso legible, sin llamar a sendFoto', async () => {
-    mockRequestCameraPermissionsAsync.mockResolvedValue({ granted: false });
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
-    await renderChatView();
-    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
-
-    await fireEvent.press(screen.getByTestId('chat-foto'));
-    tocarBoton(alertSpy, 'Cámara');
-
-    await waitFor(() => expect(alertSpy.mock.calls.length).toBeGreaterThanOrEqual(2));
-    expect(alertSpy.mock.calls[1]?.[0]).toMatch(/cámara/i);
-    expect(api.sendFoto).not.toHaveBeenCalled();
-    alertSpy.mockRestore();
-  });
-
-  it('Cancelar en el picker no llama a sendFoto ni pide ningún permiso', async () => {
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
-    await renderChatView();
-    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
-
-    await fireEvent.press(screen.getByTestId('chat-foto'));
-    tocarBoton(alertSpy, 'Cancelar');
-
-    expect(mockRequestCameraPermissionsAsync).not.toHaveBeenCalled();
-    expect(api.sendFoto).not.toHaveBeenCalled();
-    alertSpy.mockRestore();
+    expect(screen.queryByTestId('indicador-modo-ceremonia')).toBeNull();
+    expect(screen.queryByText('Pedir confirmación')).toBeNull();
   });
 });
 
@@ -973,7 +911,63 @@ describe('ChatView -- sheet «conectá X»: debe pintar ENCIMA del composer y de
     await renderChatView();
     const orden = ordenDePintado();
     expect(orden).toContain('sheet-requiere-conexion-ancla');
-    expect(orden).toContain('dock-entrada');
-    expect(orden.indexOf('sheet-requiere-conexion-ancla')).toBeGreaterThan(orden.indexOf('dock-entrada'));
+    // SM-N25: el dock (y la lista) viven DENTRO de `chat-area`, hermano anterior al ancla del sheet.
+    expect(orden).toContain('chat-area');
+    expect(orden.indexOf('sheet-requiere-conexion-ancla')).toBeGreaterThan(orden.indexOf('chat-area'));
+  });
+});
+
+describe('ChatView -- SM-N25: el campo y el mic FLOTAN sobre la lista', () => {
+  it('DoD 5: scrim superior bajo el asa — overlay absoluto arriba que no captura toques y se desvanece a alfa 0', async () => {
+    await renderChatView();
+    const scrim = screen.getByTestId('chat-scrim-superior');
+    expect(StyleSheet.flatten(scrim.props.style)).toMatchObject({ position: 'absolute', top: 0, left: 0, right: 0 });
+    expect(scrim.props.pointerEvents).toBe('none');
+    const colores = scrim.props.colors as number[];
+    expect(colores[0] >>> 24).toBeGreaterThan(0);
+    expect(colores[1] >>> 24).toBe(0);
+  });
+
+  it('el dock es un overlay absoluto anclado abajo, y la lista NO es hermana en flujo (corre por debajo)', async () => {
+    await renderChatView();
+    const dock = screen.getByTestId('chat-dock-flotante');
+    const estilo = StyleSheet.flatten(dock.props.style);
+    expect(estilo).toMatchObject({ position: 'absolute', bottom: 0, left: 0, right: 0 });
+    // La lista vive en un contenedor que llena el área, no como hijo en flujo antes del dock.
+    const lista = screen.getByTestId('lista-mensajes');
+    let nodo = lista.parent;
+    let llenaArea = false;
+    while (nodo != null && nodo.props?.testID !== 'chat-area') {
+      const e = StyleSheet.flatten(nodo.props?.style);
+      if (e?.position === 'absolute' && e.top === 0 && e.bottom === 0) llenaArea = true;
+      nodo = nodo.parent;
+    }
+    expect(nodo?.props?.testID).toBe('chat-area');
+    expect(llenaArea).toBe(true);
+  });
+
+  it('la lista reserva al final el alto REAL medido del dock (el último mensaje se puede scrollear hasta quedar libre)', async () => {
+    await renderChatView();
+    fireEvent(screen.getByTestId('chat-dock-flotante'), 'layout', { nativeEvent: { layout: { height: 120, width: 390, x: 0, y: 0 } } });
+    await waitFor(() => {
+      // El `contentContainerStyle` baja a la `View` interna del scroll: se busca el nodo con ese padding.
+      const paddings: number[] = [];
+      const recorrer = (n: any): void => {
+        if (n == null || typeof n !== 'object') return;
+        const e = StyleSheet.flatten(n.props?.style) as { paddingBottom?: number } | undefined;
+        if (typeof e?.paddingBottom === 'number') paddings.push(e.paddingBottom);
+        for (const h of Array.isArray(n.children) ? n.children : []) recorrer(h);
+      };
+      recorrer(screen.getByTestId('lista-mensajes'));
+      expect(Math.max(...paddings, 0)).toBeGreaterThanOrEqual(120);
+    });
+  });
+
+  it('control negativo: el scrim del dock no captura toques ni es opaco arriba (el contenido se ve correr)', async () => {
+    await renderChatView();
+    const scrim = screen.getByTestId('chat-dock-scrim');
+    expect(scrim.props.pointerEvents).toBe('none');
+    // `colors` llega procesado a ARGB entero: el byte alto es el alfa.
+    expect(Number(scrim.props.colors[0]) >>> 24).toBe(0);
   });
 });

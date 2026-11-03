@@ -140,7 +140,7 @@
      Cambia el contenido, no la forma.</p>
   <div class="fila" id="g3"></div>
 
-  <h2>Ajustes y sus siete opciones</h2>
+  <h2>Ajustes y sus seis opciones</h2>
   <p>Gramática B: título grande suelto sobre el lienzo y filas agrupadas. Sin bloque de color,
      porque acá no hay ninguna cifra del negocio que mostrar.</p>
   <div class="fila" id="g4"></div>
@@ -171,7 +171,7 @@ const PANTALLAS = {
     ['splash', 'Splash', 'Primer ingreso y post-logout. 6,8 s que se pagan una vez.',
      '4 formas de familia circular nacen en el centro y crecen; la 4ª se contrae hacia EL LUGAR EXACTO DE LA O y se apaga ahí — el wordmark no aparece: llega. Terracota plena es excepción declarada: pieza display, no UI operativa.'],
     ['volver', 'Volver a entrar', 'El mismo reveal, con las puertas de quien ya tuvo cuenta.',
-     'no es otra pantalla: es el aterrizaje del splash con los labels del post-logout («Entrar» / «Entrar con otra cuenta»). Estaba escrito en §8 desde el 29/07 y nunca se había dibujado — y en mobile no existe: la app salta directo al formulario.'],
+     'no es otra pantalla: es el aterrizaje del splash con los labels del post-logout («Entrar» / «Entrar con otra cuenta»). Estaba escrito en §8 desde el 29/07 y nunca se había dibujado — y en mobile SÍ existe (`EntradaSesion`, medido en device 2026-11-02), pero sólo con logout voluntario (`cierreVoluntario`): una sesión caída sola va directo al formulario, y ahí se ve el aviso de «tu sesión se cerró» (decidido en SM-N30 DoD 4: pasar por el reveal rompería SM-K6). SIN altavoz en «se dice o-DO-bi»: el audio está DESCARTADO por el operador (2026-11-03); queda el texto.'],
     ['ingresar', 'Ingresar', 'Mail y contraseña. La pantalla que el sistema no tenía.',
      'el símbolo va CHICO y sin wordmark: la marca se presentó un segundo antes y repetirla entera gasta el permiso dos veces (es lo que se derogó el 29/07 con la placa de terracota plena). Una sola decisión con fill — Google en superficie, no con borde. No hay «olvidé mi contraseña» porque el backend no la tiene: el repo prohíbe dibujar lo que no existe.'],
     ['ingresar-error', 'No coinciden', 'El intento que falló, sin acusar a nadie.',
@@ -262,7 +262,7 @@ const PANTALLAS = {
      'el chip cuenta los que entraron solos. Si el usuario no sabe que la cartera se arma sola, ver nombres que no cargó se lee como error.'],
   ],
   g4: [
-    ['ajustes', 'Ajustes', 'Las siete opciones, en el orden del repo.',
+    ['ajustes', 'Ajustes', 'Las seis opciones de la beta, en el orden del repo.',
      'se entra por el avatar, única puerta (Decisión A). Sin bloque negro: acá no hay ninguna cifra del negocio.'],
     ['negocio', 'Mi negocio', 'Perfil comercial y cómo trabaja el copiloto.',
      'el estado que importa no es un número: es si te pide confirmación antes de ejecutar.'],

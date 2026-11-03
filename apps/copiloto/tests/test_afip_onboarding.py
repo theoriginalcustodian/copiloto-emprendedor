@@ -602,3 +602,42 @@ def test_K3_alta_interrumpida_declara_causa_servicio():
 
     r = asyncio.run(web.make_consultar_onboarding(_Cli())("t1", CUIT, "prod"))
     assert r["paso"] == "fallido" and r["causa"] == "servicio"
+
+
+# --- SM-N35 (defensa en profundidad; la causa raíz es de la UI): el 422 de pydantic sale como `[{codigo,campo,mensaje}]` ---
+
+_PERFIL_OK = {"cuit": CUIT, "razon_social": "Ana", "domicilio_comercial": "Calle 1", "condicion_iva": "monotributo",
+              "ingresos_brutos": "CM", "inicio_actividades": "2020-01-01", "punto_venta": 1}
+
+
+@pytest.mark.parametrize("fecha", ["", "01", "01012020", "2020-13-45"])
+def test_N35_fecha_incompleta_o_invalida_da_422_con_la_forma_que_el_cliente_parsea(cliente, fecha):
+    client, _ = cliente
+    r = client.post("/afip/perfil", json={**_PERFIL_OK, "inicio_actividades": fecha})
+    assert r.status_code == 422
+    detail = r.json()["detail"]
+    assert isinstance(detail, list) and len(detail) == 1
+    [f] = detail
+    # Las TRES claves que lee `faltantesDeDetail` (packages/core/src/api/afip.ts), todas string y no vacías:
+    assert set(f) == {"codigo", "campo", "mensaje"}
+    assert f["campo"] == "inicio_actividades" and f["codigo"].startswith("inicio_actividades_")
+    assert all(isinstance(v, str) and v.strip() for v in f.values())
+    assert "inicio de actividades" in f["mensaje"]
+
+
+def test_N35_control_negativo_el_default_de_pydantic_NO_trae_las_claves_del_cliente(cliente):
+    """El control que hace significativo al anterior: en otra ruta el 422 conserva la forma `{type,loc,msg}`
+    (sin `campo`), es decir, la que el cliente degradaba a strings vacíos. Si este test pasara a verde con
+    `campo`, el handler se habría vuelto global."""
+    client, _ = cliente
+    r = client.post("/afip/conectar", json={})
+    assert r.status_code == 422
+    assert all("campo" not in e and "type" in e for e in r.json()["detail"])
+
+
+def test_N35_campo_faltante_se_marca_faltante_y_el_perfil_valido_sigue_en_200(cliente):
+    client, _ = cliente
+    sin_fecha = {k: v for k, v in _PERFIL_OK.items() if k != "inicio_actividades"}
+    [f] = client.post("/afip/perfil", json=sin_fecha).json()["detail"]
+    assert (f["codigo"], f["campo"]) == ("inicio_actividades_faltante", "inicio_actividades")
+    assert client.post("/afip/perfil", json=_PERFIL_OK).status_code == 200

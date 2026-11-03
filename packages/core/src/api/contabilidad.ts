@@ -55,7 +55,7 @@ export interface ResumenGastosContabilidad {
 }
 
 /**
- * `[ASSUMED_PENDING_VERIFY]` — **sigue así, y no por falta de código: backend manda `tope: null`
+ * `[ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente: tope null hasta cargar la escala, SM-N36]` — **sigue así, y no por falta de código: backend manda `tope: null`
  * SIEMPRE hoy, a propósito.** Confirmado 2026-08-03 leyendo `contabilidad_web.py` (PR#211): sin
  * escala de monotributo vigente configurada, es deuda declarada de BACKEND ("un tope viejo mostrado
  * como vigente es peor que no mostrar ninguno"), condición de pago = cada publicación oficial de

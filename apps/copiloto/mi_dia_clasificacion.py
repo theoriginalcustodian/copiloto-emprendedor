@@ -28,6 +28,9 @@ _POR_REGLA: dict[str, tuple[str | None, str, str | None]] = {
     "gasto_del_mes_alto":                (None, SIN_PLAZO, None),
     # K-09: una conexión caída deja los números incompletos y los avisos mudos: es lo primero que se ve.
     "conexion_caida":                    (None, CRITICO, "Reconectar"),
+    # SM-N37: es del dominio ARCA pero NO es una emergencia ni tiene acción rastreable (no hay un gesto que
+    # «lo resuelva»): PRONTO, sin verbo -- igual que `gasto_del_mes_alto`, no inventa un destino del enum cerrado.
+    "monotributo_cerca_del_limite":      (ARCA, PRONTO, None),
 }
 # Tarjeta manual (`regla is None`): la anotó el emprendedor.
 _MANUAL = (TUYAS, SIN_PLAZO, "Borrar")

@@ -530,3 +530,9 @@ Dos entradas nuevas que sólo importan al tocar animaciones de `apps/mobile`. Se
 
 - [🧠 Trifecta cognitiva - SOTA con 2 lentes](trifecta-sota-lente-lateral-hack.md) - el 2º lente colapsa el problema.
 - [Pasada de device: 5 trampas](pasada-device-fe2-trampas-env-gate-y-registro.md) — API_BASE, #dígitos, sorted(), registro del cierre, harness.
+
+
+## Bajadas del indice el 2026-11-03 (techo de bytes)
+- [🚦📄 Un gate cuyo alcance depende del FORMATO DE SALIDA](un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate.md) - vivía tras el `return --json`.
+- [🧟 Un script que revierte AL FINAL deja el mutante](un-script-que-muta-produccion-y-revierte-al-final-deja-el-mutante.md) - `finally` + backup en disco.
+- [🗂️🕳️ Una sesión en WORKTREE es invisible al monitor](una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd.md) - el buzón manda.

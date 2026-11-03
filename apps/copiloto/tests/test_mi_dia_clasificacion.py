@@ -16,6 +16,7 @@ TABLA = {
     det.REGLA_TRABAJO_SIN_INGRESO:     (None, "pronto", "¿Te lo pagaron?"),
     det.REGLA_GASTO_MES_ALTO:          (None, "sin_plazo", None),
     det.REGLA_CONEXION_CAIDA:          (None, "critico", "Reconectar"),
+    det.REGLA_MONOTRIBUTO_CERCA_DEL_LIMITE: ("arca", "pronto", None),
 }
 
 
@@ -24,7 +25,7 @@ def _t(regla):
     return r["categoria"], r["criticidad"], r["verbo"]
 
 
-def test_las_8_reglas_del_detector_dan_exactamente_la_tabla_acordada():
+def test_las_9_reglas_del_detector_dan_exactamente_la_tabla_acordada():
     for regla, esperado in TABLA.items():
         assert _t(regla) == esperado, regla
 

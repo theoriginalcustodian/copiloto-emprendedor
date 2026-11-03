@@ -48,6 +48,44 @@ def _is_non_retryable_http_error(e: urllib.error.HTTPError) -> bool:
     return False
 
 
+def _params_modelo(model: str, max_tokens: int) -> dict:
+    """Parámetros que dependen de la familia del modelo. `gpt-6*` (Luna) rechaza `max_tokens` y pide
+    `max_completion_tokens`; además se fija `reasoning_effort="none"` (medido en el spike de Luna: con tools
+    cualquier otro valor gasta tokens de razonamiento sin mejorar la elección de la tool). El resto de los
+    modelos, igual que siempre."""
+    if model.startswith("gpt-6"):
+        return {"max_completion_tokens": max_tokens, "reasoning_effort": "none"}
+    return {"max_tokens": max_tokens}
+
+
+def kwargs_sdk(model: str, *, max_tokens: int | None = None, temperature: float | None = None) -> dict:
+    """Kwargs de `client.chat.completions.create` (SDK de OpenAI) para `model`: la familia gpt-6 no acepta
+    `temperature` ni `max_tokens` (usa `max_completion_tokens` + `reasoning_effort=none`); las anteriores
+    reciben exactamente lo que recibían. Para los call-sites con SDK (auditor, forjador), que no pasan por
+    `LlmProvider`."""
+    out: dict = {}
+    if model.startswith("gpt-6"):
+        if max_tokens is not None:
+            out["max_completion_tokens"] = max_tokens
+        out["extra_body"] = {"reasoning_effort": "none"}
+        return out
+    if temperature is not None:
+        out["temperature"] = temperature
+    if max_tokens is not None:
+        out["max_tokens"] = max_tokens
+    return out
+
+
+def _aplicar_modelo(payload: dict, model: str, max_tokens: int) -> dict:
+    """Fija `model` y sus parámetros de límite en `payload`, descartando los de otra familia. Se usa también
+    al pasar al failover, que puede ser de otra familia que el primario."""
+    for k in ("max_tokens", "max_completion_tokens", "reasoning_effort"):
+        payload.pop(k, None)
+    payload["model"] = model
+    payload.update(_params_modelo(model, max_tokens))
+    return payload
+
+
 class LlmProvider:
     """Cliente LLM con failover operativo. `complete()` es la unica superficie que el motor usa."""
 
@@ -87,8 +125,9 @@ class LlmProvider:
         if not os.environ.get(self._api_key_env):
             raise RuntimeError(f"falta {self._api_key_env} en el env del worker")
         full = [{"role": "system", "content": system}, *messages]
-        payload = {"model": self.primary_model, "messages": full, "max_tokens": self._max_tokens,
-                   "tools": tools, "tool_choice": tool_choice, "parallel_tool_calls": parallel_tool_calls}
+        payload = {"messages": full, "tools": tools, "tool_choice": tool_choice,
+                   "parallel_tool_calls": parallel_tool_calls}
+        _aplicar_modelo(payload, self.primary_model, self._max_tokens)
         if self._quantizations:
             payload["provider"] = {"quantizations": self._quantizations}
         body = json.dumps(payload).encode()
@@ -98,11 +137,11 @@ class LlmProvider:
         except urllib.error.HTTPError as e:
             if _is_non_retryable_http_error(e):
                 raise NonRetryableError(f"error no-retryable de la API LLM (status {e.code}): {e}") from e
-            payload["model"] = self.failover_model
+            _aplicar_modelo(payload, self.failover_model, self._max_tokens)
             d = self._post(self._url, json.dumps(payload).encode(), self._timeout)
             model, failed_over = self.failover_model, True
         except _API_ERRORS:
-            payload["model"] = self.failover_model
+            _aplicar_modelo(payload, self.failover_model, self._max_tokens)
             d = self._post(self._url, json.dumps(payload).encode(), self._timeout)
             model, failed_over = self.failover_model, True
         choice = (d.get("choices") or [{}])[0]
@@ -138,11 +177,8 @@ class LlmProvider:
         if history:
             messages.extend(history)            # [{role:'user'|'assistant', content:...}, ...]
         messages.append({"role": "user", "content": user})
-        payload = {
-            "model": model,
-            "messages": messages,
-            "max_tokens": self._max_tokens,
-        }
+        payload = {"messages": messages}
+        _aplicar_modelo(payload, model, self._max_tokens)
         if self._quantizations:                      # OpenRouter-only; OpenAI rechaza 'provider'
             payload["provider"] = {"quantizations": self._quantizations}
         body = json.dumps(payload).encode()

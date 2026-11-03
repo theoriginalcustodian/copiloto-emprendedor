@@ -16,7 +16,14 @@
  * exactamente el loop que este diseño evita.
  */
 import { useRef, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  type NativeSyntheticEvent,
+  StyleSheet,
+  Text,
+  TextInput,
+  type TextInputKeyPressEventData,
+  View,
+} from 'react-native';
 
 import { useTema } from '../../ThemeProvider';
 import { EnvolturaCampo } from './EnvolturaCampo';
@@ -68,6 +75,7 @@ export function CampoFecha({ etiqueta, valor, onChange, error, testID = 'campo-f
   const [dia, setDia] = useState(iniciales.dia);
   const [mes, setMes] = useState(iniciales.mes);
   const [anio, setAnio] = useState(iniciales.anio);
+  const refDia = useRef<TextInput>(null);
   const refMes = useRef<TextInput>(null);
   const refAnio = useRef<TextInput>(null);
   const hayError = error != null && error !== '';
@@ -79,6 +87,15 @@ export function CampoFecha({ etiqueta, valor, onChange, error, testID = 'campo-f
     onChange(fechaValidaIso(nuevoDia, nuevoMes, nuevoAnio));
   }
 
+  /** ⌫ en un segmento VACÍO devuelve el foco al anterior (SM-N40): el avance automático sólo empuja hacia
+   *  adelante, y sin esto quien se equivocó en el día tiene que tocar el segmento a mano. Con el segmento
+   *  NO vacío no hace nada: el ⌫ borra adentro, y saltar antes de tiempo sería el defecto espejo. */
+  function atrasSiVacio(valorSegmento: string, anterior: React.RefObject<TextInput | null>) {
+    return (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+      if (e.nativeEvent.key === 'Backspace' && valorSegmento === '') anterior.current?.focus();
+    };
+  }
+
   return (
     <View style={styles.contenedor} testID={testID}>
       <Text style={[styles.etiqueta, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}>
@@ -86,6 +103,7 @@ export function CampoFecha({ etiqueta, valor, onChange, error, testID = 'campo-f
       </Text>
       <EnvolturaCampo error={hayError} style={styles.envoltura} testID={`${testID}-vidrio`}>
         <TextInput
+          ref={refDia}
           testID={`${testID}-dia`}
           style={[styles.segmento, { color: tema.color.texto, fontFamily: tema.fuente.ui, fontSize: tema.tipo.base }]}
           value={dia}
@@ -114,6 +132,7 @@ export function CampoFecha({ etiqueta, valor, onChange, error, testID = 'campo-f
             actualizar(dia, limpio, anio);
             if (limpio.length === 2) refAnio.current?.focus();
           }}
+          onKeyPress={atrasSiVacio(mes, refDia)}
         />
         <Text style={[styles.separador, { color: tema.color.textoTenue }]}>/</Text>
         <TextInput
@@ -126,6 +145,7 @@ export function CampoFecha({ etiqueta, valor, onChange, error, testID = 'campo-f
           keyboardType="number-pad"
           maxLength={4}
           onChangeText={(t) => actualizar(dia, mes, soloDigitos(t, 4))}
+          onKeyPress={atrasSiVacio(anio, refMes)}
         />
       </EnvolturaCampo>
       {hayError && (

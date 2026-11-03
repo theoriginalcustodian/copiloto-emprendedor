@@ -771,6 +771,16 @@
       "motivo": "Mapeo `afip` (2026-10-13): encabezado «ARCA vinculada · CUIT …» del prototipo (index.html:2310) en la pantalla nativa de Facturacion ARCA. La web muestra el estado del vinculo en modules/connections con otra estructura; paridad web diferida, no contenido faltante de mobile.",
       "pantalla": "modules/ajustes/afip"
     },
+    "modules/ajustes/afip::afip-perfil-categoria-monotributo": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-03",
+      "id": "afip-perfil-categoria-monotributo",
+      "motivo": "SM-N35: la categoría de monotributo en Ajustes › ARCA se pide primero en mobile (decisión del operador 2026-11-03). Disparador: se retira cuando web adopte el selector.",
+      "pantalla": "modules/ajustes/afip"
+    },
     "modules/ajustes/afip::afip-perfil-cuit-error": {
       "en": [
         "apps/copiloto-web/src/modules/ajustes/afip/PantallaAfipSetup.tsx"
@@ -1149,6 +1159,16 @@
       "fecha": "2026-09-22",
       "id": "cuenta-credenciales",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ajustes"
+    },
+    "modules/ajustes::cuenta-desde": {
+      "en": [
+        "apps/mobile/src/modules/ajustes/PantallaCuenta.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-03",
+      "id": "cuenta-desde",
+      "motivo": "SM-K5: «Desde <mes> de <año>» del mapa cuenta; la web de Cuenta aún no consume fecha_alta de /me. Disparador: se retira si web lo adopta.",
       "pantalla": "modules/ajustes"
     },
     "modules/ajustes::cuenta-email": {
@@ -1734,6 +1754,15 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/chat"
     },
+    "modules/chat::chat-area": {
+      "en": [
+        "apps/mobile/src/modules/chat/ChatView.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "chat-area",
+      "motivo": "SM-N25 (2026-11-02): estructura del dock flotante del chat MOBILE (la lista corre bajo el campo y el mic). Es geometria de la app nativa; el chat web no tiene un overlay equivalente que medir con este id."
+    },
     "modules/chat::chat-composer": {
       "en": [
         "apps/mobile/src/modules/chat/Composer.tsx"
@@ -1764,6 +1793,15 @@
       "motivo": "SM-I2 extrajo el dock (campo + mic chico al pie, D2) en mobile; la web sigue con su composer porque en el sprint de correcciones del mapa manda mobile. Marco del campo, que la barra de grabación reemplaza: gesto nativo, la web no lo tiene.",
       "pantalla": "modules/chat"
     },
+    "modules/chat::chat-composer-campo-base": {
+      "en": [
+        "apps/mobile/src/modules/chat/Composer.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "chat-composer-campo-base",
+      "motivo": "SM-N25 (2026-11-02): estructura del dock flotante del chat MOBILE (la lista corre bajo el campo y el mic). Es geometria de la app nativa; el chat web no tiene un overlay equivalente que medir con este id."
+    },
     "modules/chat::chat-contexto-aviso": {
       "en": [
         "apps/mobile/src/modules/chat/ChatView.tsx"
@@ -1793,6 +1831,24 @@
       "id": "chat-contexto-aviso-volver",
       "motivo": "El puente tarjeta de Mi día → chat (`hitl` (a), C-D5 Opción A, BLOQUENATIVO5): en el prototipo el chat se abre desde la acción de un aviso con el chip «Desde tu aviso» (`index.html:2748-2768`). Hoy sólo existe en mobile; la web no tiene todavía el verbo pulsable en la tarjeta ni el chip. Es una divergencia de la capa web declarada, NO una decisión de que no deba existir: la excepción es por qué falta, no un permiso para que siga faltando.",
       "pantalla": "modules/chat"
+    },
+    "modules/chat::chat-dock-flotante": {
+      "en": [
+        "apps/mobile/src/modules/chat/ChatView.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "chat-dock-flotante",
+      "motivo": "SM-N25 (2026-11-02): estructura del dock flotante del chat MOBILE (la lista corre bajo el campo y el mic). Es geometria de la app nativa; el chat web no tiene un overlay equivalente que medir con este id."
+    },
+    "modules/chat::chat-dock-scrim": {
+      "en": [
+        "apps/mobile/src/modules/chat/ChatView.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "chat-dock-scrim",
+      "motivo": "SM-N25 (2026-11-02): estructura del dock flotante del chat MOBILE (la lista corre bajo el campo y el mic). Es geometria de la app nativa; el chat web no tiene un overlay equivalente que medir con este id."
     },
     "modules/chat::chat-enviar": {
       "en": [
@@ -1833,6 +1889,15 @@
       "id": "chat-screen",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/chat"
+    },
+    "modules/chat::chat-scrim-superior": {
+      "en": [
+        "apps/mobile/src/modules/chat/ChatView.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "chat-scrim-superior",
+      "motivo": "SM-N25 DoD 5 (2026-11-02): scrim bajo el asa del panel del chat MOBILE (la lista corre bajo el borde superior). Es geometria de la app nativa; el chat web no tiene un overlay equivalente que medir con este id."
     },
     "modules/chat::chat-vacio-rodillo": {
       "en": [
@@ -3466,6 +3531,24 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/inteligencia/graficos"
     },
+    "modules/inteligencia/graficos::inteligencia-grafico-margen-trabajo-peor": {
+      "en": [
+        "apps/mobile/src/modules/inteligencia/graficos/GraficosInteligencia.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-03",
+      "id": "inteligencia-grafico-margen-trabajo-peor",
+      "motivo": "SM-N32 (2026-11-03): margen ponderado «Sobre N trabajos cerrados» + peor trabajo, derivados en mobile segun el mapa. Web no los dibuja todavia (deuda visible, duena: frontend1/web)."
+    },
+    "modules/inteligencia/graficos::inteligencia-grafico-margen-trabajo-resumen": {
+      "en": [
+        "apps/mobile/src/modules/inteligencia/graficos/GraficosInteligencia.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-03",
+      "id": "inteligencia-grafico-margen-trabajo-resumen",
+      "motivo": "SM-N32 (2026-11-03): margen ponderado «Sobre N trabajos cerrados» + peor trabajo, derivados en mobile segun el mapa. Web no los dibuja todavia (deuda visible, duena: frontend1/web)."
+    },
     "modules/inteligencia::inteligencia-actualizar": {
       "en": [
         "apps/copiloto-web/src/modules/inteligencia/InteligenciaScreen.tsx"
@@ -3536,6 +3619,33 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/inteligencia"
     },
+    "modules/inteligencia::inteligencia-solapa-preguntar": {
+      "en": [
+        "apps/copiloto-web/src/modules/inteligencia/InteligenciaScreen.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-11-03",
+      "id": "inteligencia-solapa-preguntar",
+      "motivo": "SM-N32 (2026-11-03): el mapa saco el selector Resumen/Preguntar (mapa-pantallas/index.html:240) y el operador lo reclamo en la app mobile. Se retira de mobile; la web sigue con el selector hasta que se alinee (deuda visible, duena: frontend1/web)."
+    },
+    "modules/inteligencia::inteligencia-solapa-resumen": {
+      "en": [
+        "apps/copiloto-web/src/modules/inteligencia/InteligenciaScreen.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-11-03",
+      "id": "inteligencia-solapa-resumen",
+      "motivo": "SM-N32 (2026-11-03): el mapa saco el selector Resumen/Preguntar (mapa-pantallas/index.html:240) y el operador lo reclamo en la app mobile. Se retira de mobile; la web sigue con el selector hasta que se alinee (deuda visible, duena: frontend1/web)."
+    },
+    "modules/inteligencia::inteligencia-solapas": {
+      "en": [
+        "apps/copiloto-web/src/modules/inteligencia/InteligenciaScreen.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-11-03",
+      "id": "inteligencia-solapas",
+      "motivo": "SM-N32 (2026-11-03): el mapa saco el selector Resumen/Preguntar (mapa-pantallas/index.html:240) y el operador lo reclamo en la app mobile. Se retira de mobile; la web sigue con el selector hasta que se alinee (deuda visible, duena: frontend1/web)."
+    },
     "modules/midia::agenda-acciones": {
       "en": [
         "apps/mobile/src/modules/midia/PantallaAgenda.tsx"
@@ -3564,6 +3674,26 @@
       "fecha": "2026-09-22",
       "id": "agenda-contenido",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/midia"
+    },
+    "modules/midia::agenda-estado-punto": {
+      "en": [
+        "apps/mobile/src/modules/midia/PantallaAgenda.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-03",
+      "id": "agenda-estado-punto",
+      "motivo": "SM-N34: la agenda del escritorio (AgendaScreen web) es una lista sin vista mixta; la línea del ahora y el punto de estado son del mapa 14 (D9) y por ahora sólo los lleva mobile. Disparador: si web adopta la vista mixta, se retira.",
+      "pantalla": "modules/midia"
+    },
+    "modules/midia::agenda-linea-ahora": {
+      "en": [
+        "apps/mobile/src/modules/midia/PantallaAgenda.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-03",
+      "id": "agenda-linea-ahora",
+      "motivo": "SM-N34: la agenda del escritorio (AgendaScreen web) es una lista sin vista mixta; la línea del ahora y el punto de estado son del mapa 14 (D9) y por ahora sólo los lleva mobile. Disparador: si web adopta la vista mixta, se retira.",
       "pantalla": "modules/midia"
     },
     "modules/midia::agenda-reintentar-fila": {
@@ -4806,6 +4936,15 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "src/shell"
     },
+    "src/shell::midia-reserva-tira": {
+      "en": [
+        "apps/mobile/src/shell/PantallaPrincipal.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "midia-reserva-tira",
+      "motivo": "SM-N22 (2026-11-02): estructura del panel/escritorio de la app NATIVA (campo de Mi día dentro del panel bajo el asa; reserva de la tira). La web no tiene panel deslizable."
+    },
     "src/shell::panel-handle": {
       "en": [
         "apps/mobile/src/shell/PanelDeslizable.tsx"
@@ -4816,15 +4955,41 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "src/shell"
     },
-    "src/shell::panel-hint": {
+    "src/shell::panel-pie-scrim": {
       "en": [
         "apps/mobile/src/shell/PanelDeslizable.tsx"
       ],
       "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "panel-hint",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "src/shell"
+      "fecha": "2026-11-03",
+      "id": "panel-pie-scrim",
+      "motivo": "SM-N38 (2026-11-03): el MISMO scrim del chat (ScrimDock) detras del campo colapsado de Mi dia, dentro del pie del panel nativo. La web no tiene panel deslizable."
+    },
+    "src/shell::panel-pie-scrim-dock": {
+      "en": [
+        "apps/mobile/src/shell/PanelDeslizable.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-03",
+      "id": "panel-pie-scrim-dock",
+      "motivo": "SM-N38 (2026-11-03): contenedor del scrim anclado al borde de pantalla en el panel nativo de Mi dia. La web no tiene panel deslizable."
+    },
+    "src/shell::panel-pie-abajo": {
+      "en": [
+        "apps/mobile/src/shell/PanelDeslizable.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-02",
+      "id": "panel-pie-abajo",
+      "motivo": "SM-N22 (2026-11-02): estructura del panel/escritorio de la app NATIVA (campo de Mi día dentro del panel bajo el asa; reserva de la tira). La web no tiene panel deslizable."
+    },
+    "src/shell::panel-superficie": {
+      "en": [
+        "apps/mobile/src/shell/PanelDeslizable.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-03",
+      "id": "panel-superficie",
+      "motivo": "SM-N38 (2026-11-03): capa de superficie del panel deslizable de la app NATIVA (su opacidad la decide la posicion del panel para que colapsado no quede tarjeta detras del campo). La web no tiene panel deslizable."
     },
     "src/shell::panel-principal": {
       "en": [

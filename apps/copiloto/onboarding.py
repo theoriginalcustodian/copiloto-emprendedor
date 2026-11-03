@@ -129,7 +129,7 @@ class GoTrueAdmin:
         """GET admin lookup del user por email (para tolerar el 422 de email duplicado). Devuelve
         el user (con `id`) o `None` si no aparece.
 
-        [ASSUMED_PENDING_VERIFY @ go-live] El parámetro de filtro exacto de GoTrue v2.186.0 no se
+        [ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente: el filtro `filter=<email>` nunca se midió contra GoTrue real; el match defensivo cubre cualquier respuesta] El parámetro de filtro exacto de GoTrue v2.186.0 no se
         pudo re-verificar en sesión (la lectura admin trae PII; el operador pidió no re-verificar
         contra fusion). Se manda `filter=<email>` (el query documentado de GoTrue para búsqueda de
         users) PERO el match final es defensivo: se recorre la lista devuelta y se compara el email
@@ -194,7 +194,7 @@ class GoTrueAdmin:
         Ante credenciales inválidas, GoTrue responde 400 (`invalid_grant`) o 401 -- se traduce a
         `InvalidCredentials` en vez de dejar que `raise_for_status()` tire un `httpx.HTTPStatusError`
         genérico, así el caller (la ruta `/auth/login`) puede mapearlo a un 401 propio sin acoplarse
-        al shape de excepción de httpx. [ASSUMED_PENDING_VERIFY @ go-live] El status code EXACTO
+        al shape de excepción de httpx. [ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente: el status exacto no se midió; `_INVALID_GRANT_STATUSES` cubre 400 y 401, sin efecto sobre el comportamiento] El status code EXACTO
         (400 vs 401) de GoTrue v2.186.0 ante credenciales inválidas no se re-verificó contra fusion
         en esta sesión -- se cubren ambos; se confirma en el go-live smoke (Task 12)."""
         resp = self._client.post(
@@ -234,7 +234,7 @@ class GoTrueAdmin:
         caller DEBE persistirlo). Mismo patrón/headers que `password_grant` (el gateway exige `apikey`
         en /auth/v1; este endpoint tampoco recibe JWT del usuario). Ante refresh inválido/expirado/
         reusado GoTrue responde 400/401 -> InvalidCredentials (la ruta lo mapea a 401), nunca un
-        httpx.HTTPStatusError crudo. [ASSUMED_PENDING_VERIFY @ go-live] el status EXACTO (400 vs 401)
+        httpx.HTTPStatusError crudo. [ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente: ídem `password_grant`, se cubren 400 y 401] el status EXACTO (400 vs 401)
         de GoTrue ante refresh inválido se confirma en el smoke vivo; se cubren ambos."""
         resp = self._client.post(
             f"{self._base_url}/auth/v1/token",

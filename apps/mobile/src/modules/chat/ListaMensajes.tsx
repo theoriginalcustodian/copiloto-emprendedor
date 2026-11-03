@@ -95,6 +95,12 @@ export interface ListaMensajesProps {
    */
   pie?: ReactElement;
   /**
+   * SM-N25 — alto que el dock (campo + mic) FLOTANTE tapa sobre el borde inferior de la lista. La lista llega hasta
+   * el borde de la pantalla y corre POR DEBAJO del dock; este padding sólo garantiza que el último mensaje se
+   * pueda scrollear hasta quedar libre del campo. Ausente = 0 (Soporte y los demás montajes no cambian).
+   */
+  margenInferior?: number;
+  /**
    * El estado del ÚLTIMO envío (`useChat().estado.sendStatus`). Decide si el último mensaje propio ya se
    * puede rotular «✓✓ recibido» (fact-voz d): en `sending`/`error` el servidor no lo aceptó. Ausente = se
    * asume que nada está en vuelo (los tests y pantallas que no tienen envío no cambian).
@@ -423,8 +429,8 @@ const FilaMensaje = memo(function FilaMensaje({
     );
   }
 
-  // 🔴 [ASSUMED_PENDING_VERIFY] sólo en el `kind` — `data` ya está confirmada (contrato §2.4 de
-  // Presupuestos). Si backend nunca manda este `kind`, esta rama no dispara y cae a `Burbuja`.
+  // 🔴 [kind resuelto SM-N39 2026-11-03: `tool_catalog.py:1004` lo emite] — `data` ya está confirmada (contrato §2.4 de
+  // Presupuestos). Si backend nunca mandara este `kind`, esta rama no dispara y cae a `Burbuja`.
   const presupuestoPropuesto = leerPresupuestoPropuesto(mensaje.card);
   if (presupuestoPropuesto) {
     return (
@@ -437,8 +443,8 @@ const FilaMensaje = memo(function FilaMensaje({
     );
   }
 
-  // 🔴 [ASSUMED_PENDING_VERIFY] sólo en el `kind` — `data` ya está confirmada (contrato de hito
-  // 9 §2.1). Si backend nunca manda `factura_propuesta`, esta rama no dispara y cae a `Burbuja`.
+  // 🔴 [kind resuelto SM-N39 2026-11-03: `tool_catalog.py:1685` lo emite] — `data` ya está confirmada (contrato de hito
+  // 9 §2.1). Si backend nunca mandara `factura_propuesta`, esta rama no dispara y cae a `Burbuja`.
   const facturaPropuesta = leerFacturaPropuesta(mensaje.card);
   if (facturaPropuesta) {
     return (
@@ -596,7 +602,7 @@ const FilaMensaje = memo(function FilaMensaje({
  */
 export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProps>(
   function ListaMensajes(
-    { messages, onChoice, onResolverTarjeta, ejemplos, vacio = 'completo', pie, sendStatus, onVolverDelRecibo, volverDesdeIndice },
+    { messages, onChoice, onResolverTarjeta, ejemplos, vacio = 'completo', pie, margenInferior = 0, sendStatus, onVolverDelRecibo, volverDesdeIndice },
     refExterno,
   ) {
     const tema = useTema();
@@ -665,7 +671,10 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
         data={messages}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        contentContainerStyle={[styles.contenido, { padding: tema.espacio.md, gap: tema.espacio.sm }]}
+        contentContainerStyle={[
+          styles.contenido,
+          { padding: tema.espacio.md, gap: tema.espacio.sm, paddingBottom: tema.espacio.md + margenInferior },
+        ]}
         removeClippedSubviews
         initialNumToRender={15}
         maxToRenderPerBatch={10}

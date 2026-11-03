@@ -104,3 +104,24 @@ registra la ficha en un PR, y la sesión marca el estado en **otro**.
 **El disparador para revisarse, porque la autoevaluación acá no sirve:** si en una jornada abriste
 más de un par de PRs y la mayoría no toca código, ya reincidiste — contalos antes de abrir el
 siguiente ([[prometer-no-es-ejecutar-el-gate-media-la-palabra]]).
+
+## Refuerzo 2026-11-03 — reincidí, y el costo que el operador nombró NO es el ruido
+
+Abrí **#1475** (el alta de una ficha) y **#1478** (el lote) en la misma jornada, ninguno de los dos
+tocando código de la app. El operador me paró con la causa dicha de otra manera que la que yo tenía
+escrita acá: *«es anti-eficiente porque hay que andar esperando por cada cosa a que termine»*.
+
+**Hasta hoy esta memoria justificaba el lote por el RUIDO de PRs. El costo real es la ESPERA.** Cada
+PR agrega una corrida de CI que hay que vigilar antes de mergear, y con tres sesiones en paralelo eso
+serializa el turno sobre algo que no produce nada. Por eso la regla operativa no es «juntá los
+commits» sino:
+
+- **Commiteá local todo lo que quieras; `push` una sola vez por jornada de registro.** El commit es
+  gratis, el push dispara CI y el PR dispara la espera.
+- **Un PR abierto se REUSA.** Si ya hay uno de registro vivo, el próximo marcado va a su rama, no a
+  una rama nueva. Abrir el segundo es la reincidencia, no el tamaño del primero.
+- El disparador de arriba —contá tus PRs del día— se queda, pero **medilo antes del `push`**, no
+  antes del `commit`: cuando ya pusheaste, la espera ya está comprada.
+
+Y el agravante de este caso: ninguno de los dos PR tocaba la app, así que la espera se pagó entera
+por mover registro. [[ejecutar-la-cola-acordada-no-es-una-decision-de-scope]]

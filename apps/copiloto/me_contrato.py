@@ -18,4 +18,5 @@ CLAVES_ME = frozenset({
     "es_admin",
     "legal_aceptado",
     "legal_version_aceptada",
+    "fecha_alta",
 })

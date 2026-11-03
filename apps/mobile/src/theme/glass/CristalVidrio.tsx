@@ -87,17 +87,23 @@ export interface CristalVidrioProps extends PropsWithChildren {
    * contenido de alto libre lo declara acá; el resto no cambia.
    */
   alturaAuto?: boolean;
+  /**
+   * SM-N38: el llamador pinta su propia superficie (p. ej. con opacidad animada). El cuerpo queda sin
+   * color, sin borde, sin luz superior y sin sombra: con el panel colapsado no debe quedar ninguna
+   * tarjeta detrás del campo.
+   */
+  sinFondo?: boolean;
   testID?: string;
 }
 
-export function CristalVidrio({ nivel = 'conversacion', style, alturaAuto = false, testID, children }: CristalVidrioProps) {
+export function CristalVidrio({ nivel = 'conversacion', style, alturaAuto = false, sinFondo = false, testID, children }: CristalVidrioProps) {
   const tema = useTema();
   const cfg = NIVELES[nivel];
 
   return (
     <View
       testID={testID}
-      style={[styles.externo, sombraNivel(tema.glass.relieve.nivel4, cfg.ancladoAbajo), style]}
+      style={[styles.externo, sinFondo ? null : sombraNivel(tema.glass.relieve.nivel4, cfg.ancladoAbajo), style]}
     >
       <View
         style={[
@@ -105,10 +111,10 @@ export function CristalVidrio({ nivel = 'conversacion', style, alturaAuto = fals
           {
             borderRadius: cfg.radio,
             borderColor: tema.glass.bd,
-            backgroundColor: tema.color[cfg.superficie],
+            backgroundColor: sinFondo ? 'transparent' : tema.color[cfg.superficie],
             // conversacion/grabacion/takeover: sólo top (la capa nace del borde inferior de la
             // pantalla); informe/menú: borde completo (flotan aislados).
-            borderTopWidth: 1,
+            borderTopWidth: sinFondo ? 0 : 1,
             borderLeftWidth: cfg.bordeCompleto ? 1 : 0,
             borderRightWidth: cfg.bordeCompleto ? 1 : 0,
             borderBottomWidth: cfg.bordeCompleto ? 1 : 0,
@@ -116,7 +122,7 @@ export function CristalVidrio({ nivel = 'conversacion', style, alturaAuto = fals
         ]}
       >
         {/* `inset 0 1.5px 0 hi` — línea de luz superior. */}
-        <View style={[styles.luzSuperior, { backgroundColor: tema.glass.hi }]} pointerEvents="none" />
+        {!sinFondo && <View style={[styles.luzSuperior, { backgroundColor: tema.glass.hi }]} pointerEvents="none" />}
         {children}
       </View>
     </View>

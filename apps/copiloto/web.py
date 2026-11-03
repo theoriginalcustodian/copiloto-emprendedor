@@ -57,7 +57,7 @@ from canario_autosanacion import disparar as disparar_canario
 from deposito_traumas import fabrica_desde
 from handler_errores_web import registrar_captura_global
 from clients.agent.providers.stt import _API_ERRORS as _STT_API_ERRORS
-from clients.agent.providers.stt import GroqSTT
+from clients.agent.providers.stt import build_stt
 from clients.agent.providers.vision import _API_ERRORS as _VISION_API_ERRORS
 from clients.agent.providers.vision import OpenAIVisionOCR
 from feedback_store import FeedbackStore
@@ -628,12 +628,12 @@ def _filename_for_content_type(content_type: str) -> str:
 
 
 def _default_transcribe(audio_bytes: bytes, content_type: str) -> str:
-    """Transcriber por default de `/chat/audio` (voz-backend): `GroqSTT` real. Se construye ACÁ
+    """Transcriber por default de `/chat/audio` (voz-backend): `build_stt()` (Groq, con OpenRouter de respaldo si hay key). Se construye ACÁ
     DENTRO -- recién se instancia/usa cuando `/chat/audio` recibe un request real, nunca al armar
     la app (import-safety, mismo criterio que `serve.py`). Si falta `GROQ_API_KEY` en el env,
     `GroqSTT.transcribe` levanta `RuntimeError` explícito (ver stt.py); la ruta lo traduce a 503
     sin romper el resto del front-door (texto por `/chat` sigue andando igual)."""
-    return GroqSTT().transcribe(audio_bytes, filename=_filename_for_content_type(content_type),
+    return build_stt().transcribe(audio_bytes, filename=_filename_for_content_type(content_type),
                                 content_type=content_type or "audio/ogg")
 
 
@@ -726,7 +726,8 @@ def _campos_tenant(conn_factory: Callable, cliente_id: str, composio_gateway, cr
                           if (c["status"] or "").upper() == "ACTIVE"]
     return {"mp_connected": _mp_connected(estado_mp),
             "composio_connected": composio_connected,
-            "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado()}
+            "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado(),
+            "fecha_alta": TenantOnboardingStore(conn_factory, cliente_id).fecha_alta()}
 
 
 def _campos_legales(conn_factory: Callable, cliente_id: str) -> dict:
@@ -757,7 +758,7 @@ def _es_cuenta_google(claims: dict) -> bool:
     """`True` si la cuenta entra con Google (no tiene una contraseña propia que cambiar). Sale de los
     claims del MISMO token ya validado: GoTrue pone `app_metadata.provider/providers` en el JWT (verificado
     en `spikes/gotrue-cambiar-mail-contrasena/RESULT.md`, sólo para cuentas email/password; el caso Google
-    real es `[ASSUMED_PENDING_VERIFY]`). Una cuenta con Google Y contraseña cuenta como Google: ocultar la
+    real es `[ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente: spikes/gotrue-cambiar-mail-contrasena/RESULT.md:31 sigue diciendo NO verificado]`). Una cuenta con Google Y contraseña cuenta como Google: ocultar la
     fila es lo seguro, mostrarla llevaría a un error confuso."""
     meta = claims.get("app_metadata") or {}
     proveedores = set(meta.get("providers") or [])

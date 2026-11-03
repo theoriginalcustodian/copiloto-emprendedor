@@ -15,6 +15,19 @@ function montar(props: React.ComponentProps<typeof GraficoTorta>) {
 }
 
 describe('GraficoTorta', () => {
+  it('SM-N32 -- la leyenda lleva el % de cada categoría sobre el total (75/25)', async () => {
+    await montar({
+      testID: 'torta',
+      orden: ORDEN,
+      porciones: [
+        { categoria: 'mercaderia', valor: '9000.00' },
+        { categoria: 'transporte', valor: '3000.00' },
+      ],
+    });
+    expect(screen.getByTestId('torta-pct-mercaderia').props.children.join('')).toBe('75%');
+    expect(screen.getByTestId('torta-pct-transporte').props.children.join('')).toBe('25%');
+  });
+
   it('dibuja una porción por categoría con valor, y tocarla abre el detalle', async () => {
     const onSegmentoPress = jest.fn();
     await montar({

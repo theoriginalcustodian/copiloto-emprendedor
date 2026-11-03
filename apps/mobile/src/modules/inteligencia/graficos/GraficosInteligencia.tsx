@@ -12,6 +12,7 @@ import {
   leerGraficoEntroVsSalio,
   leerGraficoFacturacion,
   leerGraficoMargenTrabajo,
+  margenPonderado,
 } from '@copiloto/core';
 
 import { useTema } from '../../../theme/ThemeProvider';
@@ -183,6 +184,8 @@ function TarjetaMargenTrabajo() {
     );
   }
 
+  const resumen = margenPonderado(res.trabajos);
+
   return (
     <View testID="inteligencia-grafico-margen-trabajo">
       <Text style={rotulo(tema)}>MARGEN POR TRABAJO</Text>
@@ -201,6 +204,19 @@ function TarjetaMargenTrabajo() {
             ]}
           />
         </ScrollView>
+      )}
+      {/* SM-N32: margen del conjunto, PONDERADO (Σmargen/Σcobrado) — por eso «Sobre N», no «Promedio de N». */}
+      {resumen.pct !== null && (
+        <View testID="inteligencia-grafico-margen-trabajo-resumen" style={{ marginTop: 4 }}>
+          <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
+            {Math.round(resumen.pct)}% · Sobre {resumen.n} trabajo{resumen.n === 1 ? '' : 's'} cerrado{resumen.n === 1 ? '' : 's'}
+          </Text>
+          {resumen.peor !== null && resumen.n > 1 && (
+            <Text testID="inteligencia-grafico-margen-trabajo-peor" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+              El de menor margen: {resumen.peor.etiqueta} · {Math.round(resumen.peor.pct)}%
+            </Text>
+          )}
+        </View>
       )}
       {/* SM-E3: el conteo va SIEMPRE que haya margen en pantalla -- un margen sobre cero gastos
           imputados se ve igual que uno completo (`apps/copiloto/gastos_web.py:188`). */}

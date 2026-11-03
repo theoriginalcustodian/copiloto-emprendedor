@@ -9,6 +9,7 @@ import {
   KEY_GOOGLE_CALENDAR,
   leerAgenda,
   listarCatalogo,
+  posicionLineaAhora,
   rangoAgenda,
   type AgendaMiDia,
   type EstadoConexion,
@@ -90,6 +91,19 @@ export function PantallaAgenda() {
   }
 
   const tenue = { color: tema.color.textoTenue, fontSize: tema.tipo.base } as const;
+  // La hora se lee al renderizar: la pantalla se recarga al entrar, no necesita reloj propio.
+  const ahora = new Date();
+
+  const lineaAhora = (
+    <View
+      testID="agenda-linea-ahora"
+      accessibilityLabel={`Ahora, ${ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginVertical: 4 }}
+    >
+      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tema.color.acento }} />
+      <View style={{ flex: 1, height: 1, backgroundColor: tema.color.acento }} />
+    </View>
+  );
 
   return (
     <MarcoGlass titulo="Agenda" icono="miDia" testID="pantalla-agenda">
@@ -105,17 +119,27 @@ export function PantallaAgenda() {
           Tus eventos y lo que vence, en la misma línea.
         </Text>
         {estado === 'ok' && agenda != null && agenda.conectado && (
-          <Text
-            testID="agenda-estado"
-            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}
-          >
-            Google Calendar conectada
-          </Text>
+          // SM-N34: punto + texto (igual que el mapa y que el punto de conexión del avatar). El punto es
+          // decorativo (el estado lo dice el texto: no depende sólo del color, WCAG 1.4.1).
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View
+              testID="agenda-estado-punto"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tema.color.acento }}
+            />
+            <Text
+              testID="agenda-estado"
+              style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}
+            >
+              Google Calendar conectada
+            </Text>
+          </View>
         )}
 
         <FilaBotones
           testID="agenda-acciones"
-          botones={[{ etiqueta: 'Nuevo evento', onPress: nuevoEvento, variante: 'primario', testID: 'agenda-nuevo-evento' }]}
+          botones={[{ etiqueta: '+ Nuevo evento', onPress: nuevoEvento, variante: 'primario', testID: 'agenda-nuevo-evento' }]}
         />
 
         {estado === 'cargando' && <ActivityIndicator testID="agenda-cargando" color={tema.color.acento} />}
@@ -157,23 +181,36 @@ export function PantallaAgenda() {
                   Nada por acá.
                 </Text>
               ) : (
-                g.eventos.map((ev) => {
-                  const franja = franjaDeEvento(ev);
+                (() => {
+                  // Vista mixta (D9): línea de tiempo con línea del ahora SÓLO para hoy; Mañana y Esta
+                  // semana son lista. Terracota (el acento), no rojo: es señal y el sistema ya tiene ese color.
+                  const ancla = g.id === 'hoy' ? posicionLineaAhora(g.eventos, ahora) : null;
+                  const filas = g.eventos.map((ev, i) => {
+                    const franja = franjaDeEvento(ev);
+                    return (
+                      <View key={ev.id}>
+                        {ancla === i && lineaAhora}
+                        <View
+                          testID={`agenda-evento-${ev.id}`}
+                          style={{ flexDirection: 'row', gap: 8, alignItems: 'baseline' }}
+                        >
+                          {franja != null && (
+                            <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+                              {franja}
+                            </Text>
+                          )}
+                          <Text style={{ color: tema.color.texto, fontSize: tema.tipo.chico, flexShrink: 1 }}>{ev.titulo}</Text>
+                        </View>
+                      </View>
+                    );
+                  });
                   return (
-                    <View
-                      key={ev.id}
-                      testID={`agenda-evento-${ev.id}`}
-                      style={{ flexDirection: 'row', gap: 8, alignItems: 'baseline' }}
-                    >
-                      {franja != null && (
-                        <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
-                          {franja}
-                        </Text>
-                      )}
-                      <Text style={{ color: tema.color.texto, fontSize: tema.tipo.chico, flexShrink: 1 }}>{ev.titulo}</Text>
-                    </View>
+                    <>
+                      {filas}
+                      {ancla === g.eventos.length && lineaAhora}
+                    </>
                   );
-                })
+                })()
               )}
             </View>
           ))}

@@ -661,7 +661,7 @@ class ClienteStore:
         return resumen
 
     def duplicados_probables(self) -> list[dict]:
-        """El `[ASSUMED_PENDING_VERIFY]` de §3.4: **cuántos duplicados reales genera esto**.
+        """El `[ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente: nadie corrió `derivar_clientes.py` contra tenants reales; el número sigue sin medirse]` de §3.4: **cuántos duplicados reales genera esto**.
 
         Un duplicado probable es el mismo `nombre_normalizado` en dos filas del tenant —una con
         documento y otra sin—, que es el caso concreto que el contrato describe: *«Juan Pérez»* sin

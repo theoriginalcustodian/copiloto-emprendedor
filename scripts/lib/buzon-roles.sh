@@ -30,6 +30,39 @@
 # `todos` cubre a las cuatro — no es un rol muerto, es el "para las dos" del frente de UI.
 ROLES_BUZON=(planificacion backend frontend1 frontend2 manejo-de-errores auditoria)
 
+# ⚠️ ROLES SIN SESIÓN — el universo de nombres VÁLIDOS no es el conjunto de sesiones VIVAS
+# (2026-11-03). `ROLES_BUZON` de arriba contesta «¿este destinatario existe como nombre?», que es
+# la pregunta del LECTOR: un `urgente_` histórico dirigido a `auditoria` tiene que seguir
+# parseándose, y las citas de los 3300 .md del buzón no se reescriben. Pero
+# `roles_de_broadcast todos` contesta otra cosa — «¿a quiénes INTERPELA este broadcast?» — y ahí
+# un rol sin sesión no es un destinatario: es un reclamo que nadie puede atender nunca.
+#
+# **Medido el 2026-11-03** sobre el buzón real: 5 contratos `-a-todos_` escalaban contra
+# `auditoria` y `manejo-de-errores`, y `vigilancia-check.sh` generaba **dos `urgente_` por ciclo**
+# — 5 contratos cada uno — dirigidos a roles que **nunca dieron señal de vida en este sprint**.
+# El propio gate lo decía con precisión y seguía escalando: *«nunca dio señal de vida (<8h), y
+# estos contratos se emitieron DESPUÉS — no es 'va lento', es que no hay ventana»*. Una alarma
+# cuya única salida es que aparezca una sesión que el sprint no tiene es inapagable, y un guard
+# que grita en el caso normal se desarma solo
+# ([[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]).
+#
+# **Por qué una lista declarada y no «quién dio señal de vida»:** derivarlo de la actividad es
+# circular — absolvería también a una sesión que SÍ existe y está caída, que es exactamente la
+# alarma que queremos conservar. La composición del sprint es una decisión del operador, así que
+# se **declara**. Reactivar un rol = sacarlo de esta lista, una línea.
+# Override por entorno, para no hardcodear la composición de un sprint dentro de la lib:
+#     UC_ROLES_SIN_SESION="" bash scripts/vigilancia-check.sh   # vuelve a escalar a los seis
+ROLES_SIN_SESION_BUZON=(${UC_ROLES_SIN_SESION-manejo-de-errores auditoria})
+
+# rol_sin_sesion_buzon <rol> -- exit 0 si ese rol no tiene sesión en el sprint vigente.
+rol_sin_sesion_buzon() {
+  local r="$1" s
+  for s in ${ROLES_SIN_SESION_BUZON[@]+"${ROLES_SIN_SESION_BUZON[@]}"}; do
+    [ "$r" = "$s" ] && return 0
+  done
+  return 1
+}
+
 # Roles que existen SÓLO como broadcast: nadie firma como ellos, pero se les puede escribir.
 ROLES_BROADCAST_BUZON=(frontend todos)
 
@@ -47,12 +80,31 @@ es_broadcast_buzon() {
 # uno por linea, excluyendo al emisor (nadie se escala a si mismo). Es la inversa de lee_patrones():
 # esa contesta «¿este archivo es para mi?» y esta «¿a quienes interpela este archivo?». Las dos
 # salen de la misma tabla a proposito — si divergen, un mensaje aparece en un gate y no en el otro.
+# 🔴 FAIL-OPEN OBLIGATORIO de la exclusión por sesión (2026-11-03). El caso 1 de
+# `test-escalador-roles-declarados.sh` es un guard de NO-REGRESIÓN con un veredicto escrito a
+# propósito: «cambió el comportamiento por defecto — esto NO es un fix, es un apagado». Protege
+# contra exactamente este movimiento: alguien que, para callar ruido, recorta a quiénes alcanza un
+# broadcast. Y acertó — la primera versión de `ROLES_SIN_SESION_BUZON` lo rompió.
+#
+# Lo que separa un fix de un apagado NO es la intención, que es indistinguible desde afuera: es que
+# **la exclusión no pueda dejar el conjunto VACÍO**. Si sacar a los roles sin sesión no deja a
+# nadie, la lista está mal (mal configurada, un sprint que terminó, un typo en el env) y la salida
+# segura es escalar a TODOS: un contrato que no interpela a nadie no se reclama nunca y muere en
+# silencio, que es un modo de falla peor que el ruido que esto vino a arreglar.
+#
+# Con el conjunto no vacío, el guard sigue vivo: nadie puede apagar el escalador por esta vía.
 roles_de_broadcast() {
-  local bc="$1" emisor="${2:-}" r
+  local bc="$1" emisor="${2:-}" r hay=0
+  if [ "$bc" = "todos" ]; then
+    for r in "${ROLES_BUZON[@]}"; do
+      [ "$r" = "$emisor" ] && continue
+      rol_sin_sesion_buzon "$r" || hay=1
+    done
+  fi
   for r in "${ROLES_BUZON[@]}"; do
     [ "$r" = "$emisor" ] && continue
     case "$bc" in
-      todos)    printf '%s\n' "$r" ;;
+      todos)    { [ "$hay" = "0" ] || ! rol_sin_sesion_buzon "$r"; } && printf '%s\n' "$r" ;;
       frontend) case "$r" in frontend1|frontend2) printf '%s\n' "$r" ;; esac ;;
     esac
   done

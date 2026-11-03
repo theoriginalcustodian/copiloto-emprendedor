@@ -63,3 +63,20 @@ ser. **El canónico sigue siendo `e2e-device@copiloto.test`** — esto es amplia
   3/4/14/40 en clientes/comprobantes/gastos/presupuestos) y cross-tenant (comprobante ajeno → 404).
 - **Todo uso fuera de `SM-K1`/`SM-J3` es MAYOR y vuelve al operador.** Para `SM-H3`, `SM-J4` y `SM-K6` el operador
   ofreció SU propio usuario; no se crean más cuentas.
+
+## Ampliación 2026-11-03 — el SEGUNDO tenant quedó autorizado, el canónico NO se movió
+
+El operador autorizó la **tenencia de prueba**: `scripts/provision_usuario_vacio_sm_n15.py` (idempotente,
+con verificación adversarial propia) deja de estar limitado a `SM-K1`/`SM-J3` y vale para **toda ficha
+que necesite un segundo emprendedor** (hoy `SM-J3 J4 K3 K5 K6 N16 N29 N30`).
+
+**La distinción que hay que no colapsar:** autorizar un **segundo** tenant no es **mudar** el canónico.
+`e2e-device@copiloto.test` sigue siendo el único canónico y cambiarlo sigue siendo MAYOR. Leer esta
+ampliación como «ya se puede elegir usuario» sería exactamente el error que la entrada de arriba
+previene — y es fácil, porque las dos cosas se dicen con la misma palabra («usuario de prueba»)
+([[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]).
+
+**El provisioning ya existía** y lo encontró el inventario, no se diseñó de nuevo: alta por
+`/auth/signup`, credencial a `.env.e2e` (gitignored — el repo es PÚBLICO), y tres controles
+adversariales propios (no-admin con 403 vs 401, tenant vacío **con control positivo** contra el
+canónico, y cross-tenant denegado). Corre **en el VPS**, nunca en la PC.

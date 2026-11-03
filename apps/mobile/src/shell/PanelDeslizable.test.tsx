@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import type React from 'react';
 import { useRef } from 'react';
 import { StyleSheet, Text } from 'react-native';
@@ -9,7 +9,52 @@ import * as Reanimated from 'react-native-reanimated';
 // dos capas + el handle montan sin crashear (reanimated/gesture-handler no revientan bajo el harness).
 
 import { ThemeProvider } from '../theme/ThemeProvider';
-import { opacidadRotuloAbajo, PanelDeslizable, translacionPanel } from './PanelDeslizable';
+import {
+  ALTO_HANDLE,
+  ALTO_ZONA_ARRASTRE,
+  espacioSuperior,
+  holguraArrastreArriba,
+  MARGEN_TIRADOR,
+  opacidadRotuloAbajo,
+  PanelDeslizable,
+  recorridoDesdeAlto,
+  translacionPanel,
+} from './PanelDeslizable';
+
+describe('SM-N38 — zona de arrastre del tirador de abajo', () => {
+  it('el agarre llega a 44 dp (el blanco del tirador de Mi día) sin tocar ALTO_HANDLE', () => {
+    expect(ALTO_HANDLE).toBe(13);
+    expect(ALTO_HANDLE + holguraArrastreArriba(24)).toBe(ALTO_ZONA_ARRASTRE);
+  });
+
+  it('nunca se extiende más allá del spacer del panel (no le roba toques a lo de arriba)', () => {
+    expect(holguraArrastreArriba(0)).toBeLessThanOrEqual(espacioSuperior(0));
+    expect(holguraArrastreArriba(24)).toBeLessThanOrEqual(espacioSuperior(24));
+  });
+});
+
+describe('SM-N23 — margen fijo del tirador de arriba', () => {
+  const INSET = 24;
+  const ALTO = 853;
+
+  it('hay margen bajo la barra de estado (antes era 0) y el spacer lo incluye', () => {
+    expect(MARGEN_TIRADOR).toBeGreaterThan(0);
+    expect(espacioSuperior(INSET)).toBe(INSET + MARGEN_TIRADOR);
+  });
+
+  it('el recorrido se acorta EXACTAMENTE en el margen respecto de la geometría anterior', () => {
+    const anterior = ALTO - ALTO_HANDLE - INSET;
+    expect(recorridoDesdeAlto(ALTO, INSET)).toBe(anterior - MARGEN_TIRADOR);
+  });
+
+  it('el handle de abajo cae donde siempre: recorrido + spacer = alto - ALTO_HANDLE', () => {
+    expect(recorridoDesdeAlto(ALTO, INSET) + espacioSuperior(INSET)).toBe(ALTO - ALTO_HANDLE);
+  });
+
+  it('con el alto sin medir no inventa un recorrido negativo', () => {
+    expect(recorridoDesdeAlto(0, INSET)).toBe(0);
+  });
+});
 
 async function envolver(props: Partial<React.ComponentProps<typeof PanelDeslizable>> = {}) {
   return render(
@@ -30,23 +75,31 @@ describe('PanelDeslizable (Tarea 2.4)', () => {
     expect(screen.getByTestId('panel-handle')).toBeTruthy();
   });
 
-  it('el hint con el chat arriba es el del prototipo (`index.html:1873`) — el panel nace arriba y abajo está la base', async () => {
+  // SM-N38 (orden del operador, 2026-11-03): el asa es SÓLO la línea. Se asegura el MECANISMO —el asa no
+  // tiene ningún texto y mide ALTO_HANDLE— y no la ausencia de una palabra concreta.
+  it('🔴 SM-N38: el asa es sólo la barra — sin ningún texto adentro y de alto ALTO_HANDLE (13)', async () => {
     await envolver();
-    expect(screen.getByTestId('panel-hint').props.children).toBe('Bajá para volver a Mi día');
+    const asa = screen.getByTestId('panel-handle');
+    expect(ALTO_HANDLE).toBe(13);
+    expect(StyleSheet.flatten(asa.props.style).height).toBe(ALTO_HANDLE);
+    expect(within(asa).queryByText(/./)).toBeNull();
+    expect(screen.queryByTestId('panel-hint', { includeHiddenElements: true })).toBeNull();
   });
 
-  it('🔴 con `arrancaAbajo` el hint es el del borde inferior: la app abre en la base, no en el chat', async () => {
-    // El texto ES la diferencia visible del cambio de aterrizaje (Ola 4): con la conversación abajo,
-    // la tira que asoma invita a hablarle, no a "subir la conversación" — que nombraba el mecanismo
-    // en vez de lo que se consigue.
-    await envolver({ arrancaAbajo: true, hintAbajo: 'Escribile a Odobi' });
-    expect(screen.getByText('Escribile a Odobi').props.accessibilityElementsHidden).toBe(false);
-    expect(screen.getByTestId('panel-hint', { includeHiddenElements: true }).props.accessibilityElementsHidden).toBe(true);
+  it('🔴 SM-N38: sin texto, el asa conserva su nombre accesible y dice qué hace según dónde está el panel', async () => {
+    await envolver();
+    expect(screen.getByTestId('panel-handle').props.accessibilityLabel).toBe('Bajar a Mi día');
+    expect(screen.getByTestId('panel-handle').props.accessibilityRole).toBe('button');
   });
 
-  // 🔴 SM-I6. El rótulo se decidía con un estado de React que se fija al TERMINAR la animación y que además
+  it('🔴 con `arrancaAbajo` el asa ofrece subir: la app abre en la base, no en el chat', async () => {
+    await envolver({ arrancaAbajo: true });
+    expect(screen.getByTestId('panel-handle').props.accessibilityLabel).toBe('Subir la conversación');
+  });
+
+  // 🔴 SM-I6. El crossfade se decidía con un estado de React que se fija al TERMINAR la animación y que además
   // tiene que cruzar al hilo de JS: SM-G4 midió el chat en su lugar a +0,1 s y el rótulo viejo hasta +2,6 s.
-  describe('el rótulo lo decide la posición, no el estado de React (SM-I6)', () => {
+  describe('el crossfade lo decide la posición, no el estado de React (SM-I6)', () => {
     it('muestra el de abajo recién pasada la mitad del recorrido, y a los dos extremos uno solo', () => {
       expect(opacidadRotuloAbajo(0, 800)).toBe(0);
       expect(opacidadRotuloAbajo(320, 800)).toBe(0);
@@ -59,18 +112,17 @@ describe('PanelDeslizable (Tarea 2.4)', () => {
       expect(opacidadRotuloAbajo(0, 0)).toBe(0);
     });
 
-    it('🔴 con el estado diciendo «abajo» y el panel todavía arriba, se ve el rótulo de arriba', async () => {
+    it('🔴 con el estado diciendo «abajo» y el panel todavía arriba, se ve el chat y NO el campo de Mi día', async () => {
       // `arrancaAbajo` deja el estado en «abajo» desde el primer render, y el stub deja `panelY` en 0: es
-      // justo el desacuerdo entre los dos. Si el rótulo volviera a leer el estado, acá se vería el de abajo.
+      // justo el desacuerdo entre los dos. Si el pie volviera a leer el estado, acá se vería el campo de Mi día.
       const espia = jest
         .spyOn(Reanimated, 'useAnimatedStyle')
         .mockImplementation(((actualizar: () => object) => actualizar()) as never);
       try {
-        await envolver({ arrancaAbajo: true, hintAbajo: 'Escribile a Odobi' });
+        await envolver({ arrancaAbajo: true, pieAbajo: <Text>campo-de-mi-dia</Text>, altoPieAbajo: 80 });
         const opacidad = (el: { props: Record<string, unknown> }) =>
           (StyleSheet.flatten(el.props.style as never) as { opacity?: number }).opacity;
-        expect(opacidad(screen.getByTestId('panel-hint', { includeHiddenElements: true }))).toBe(1);
-        expect(opacidad(screen.getByText('Escribile a Odobi'))).toBe(0);
+        expect(opacidad(screen.getByTestId('panel-pie-abajo', { includeHiddenElements: true }))).toBe(0);
       } finally {
         espia.mockRestore();
       }
@@ -162,5 +214,75 @@ describe('translacionPanel — la tira se va sólo con el chat abajo', () => {
 
   it('sin recorrido medido no inventa un destino', () => {
     expect(translacionPanel(0, 0, 1, altoTira)).toBe(0);
+  });
+});
+
+describe('SM-N22 — el asa queda ENCIMA del campo (pieAbajo)', () => {
+  const INSET = 24;
+  const ALTO = 853;
+  const PIE = 80;
+
+  it('el recorrido se acorta en el alto del pie: el asa sube justo esa cantidad y el campo cabe bajo ella', () => {
+    expect(recorridoDesdeAlto(ALTO, INSET, PIE)).toBe(recorridoDesdeAlto(ALTO, INSET) - PIE);
+    // asa (arriba del pie) + pie = el borde inferior de la pantalla
+    expect(recorridoDesdeAlto(ALTO, INSET, PIE) + espacioSuperior(INSET) + ALTO_HANDLE + PIE).toBe(ALTO);
+  });
+
+  it('sin pie el recorrido NO cambia (default 0: el resto de los montajes no se mueve)', () => {
+    expect(recorridoDesdeAlto(ALTO, INSET, 0)).toBe(recorridoDesdeAlto(ALTO, INSET));
+  });
+
+  it('el pie se monta DENTRO del panel y DESPUÉS del asa (el campo queda debajo de la barrita, como el mapa)', async () => {
+    await render(
+      <ThemeProvider>
+        <PanelDeslizable fondo={<Text>fondo</Text>} pieAbajo={<Text testID="campo-pie">Escribí</Text>} altoPieAbajo={PIE}>
+          <Text>chat</Text>
+        </PanelDeslizable>
+      </ThemeProvider>,
+    );
+    const pie = screen.getByTestId('panel-pie-abajo');
+    expect(screen.getByTestId('campo-pie')).toBeTruthy();
+    const e = StyleSheet.flatten(pie.props.style);
+    expect(e.position).toBe('absolute');
+    expect(e.height).toBe(PIE);
+    // `top` = spacer + handle: arranca justo bajo el asa, nunca por encima de ella
+    expect(e.top).toBeGreaterThanOrEqual(ALTO_HANDLE);
+  });
+
+  it('SM-N38: detrás del campo colapsado no se monta ninguna capa de fondo propia (el chat no la tiene)', async () => {
+    await render(
+      <ThemeProvider>
+        <PanelDeslizable fondo={<Text>fondo</Text>} pieAbajo={<Text>campo</Text>} altoPieAbajo={PIE}>
+          <Text>chat</Text>
+        </PanelDeslizable>
+      </ThemeProvider>,
+    );
+    expect(screen.queryByTestId('panel-fondo-plano', { includeHiddenElements: true })).toBeNull();
+  });
+
+  it('SM-N38: el entorno del campo colapsado es el MISMO scrim del chat, dentro del pie (hereda su opacidad por panelY)', async () => {
+    await render(
+      <ThemeProvider>
+        <PanelDeslizable fondo={<Text>fondo</Text>} pieAbajo={<Text>campo</Text>} altoPieAbajo={PIE}>
+          <Text>chat</Text>
+        </PanelDeslizable>
+      </ThemeProvider>,
+    );
+    const dock = screen.getByTestId('panel-pie-scrim-dock', { includeHiddenElements: true });
+    expect(within(dock).getByTestId('panel-pie-scrim', { includeHiddenElements: true })).toBeTruthy();
+    // anclado a pantalla: NO dentro de la caja acotada del pie (su borde de abajo caía a mitad de pantalla)
+    const pie = screen.getByTestId('panel-pie-abajo', { includeHiddenElements: true });
+    expect(within(pie).queryByTestId('panel-pie-scrim', { includeHiddenElements: true })).toBeNull();
+  });
+
+  it('control negativo: sin `pieAbajo` no se monta nada extra', async () => {
+    await render(
+      <ThemeProvider>
+        <PanelDeslizable fondo={<Text>fondo</Text>}>
+          <Text>chat</Text>
+        </PanelDeslizable>
+      </ThemeProvider>,
+    );
+    expect(screen.queryByTestId('panel-pie-abajo')).toBeNull();
   });
 });

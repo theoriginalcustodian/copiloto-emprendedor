@@ -25,14 +25,14 @@ import { ThemeProvider } from '../theme/ThemeProvider';
 import { PantallaPrincipal } from './PantallaPrincipal';
 
 describe('PantallaPrincipal — la inicial del avatar', () => {
-  it('Mi día y el escritorio muestran la inicial del nombre comercial', async () => {
+  it('el escritorio (único avatar, SM-N28) muestra la inicial del nombre comercial', async () => {
     await render(
       <ThemeProvider>
         <PantallaPrincipal />
       </ThemeProvider>,
     );
 
-    await waitFor(() => expect(screen.getByTestId('avatar-cuenta-inicial')).toHaveTextContent('M'));
-    expect(screen.getByTestId('escritorio-avatar-inicial')).toHaveTextContent('M');
+    await waitFor(() => expect(screen.getByTestId('escritorio-avatar-inicial')).toHaveTextContent('M'));
+    expect(screen.queryByTestId('avatar-cuenta-inicial')).toBeNull();
   });
 });

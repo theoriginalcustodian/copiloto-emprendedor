@@ -1,4 +1,4 @@
-import { useAudioPlayer, type AudioSource } from 'expo-audio';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
@@ -108,7 +108,16 @@ function Tagline({ reducido, testID }: { reducido: boolean; testID: string }) {
   );
 }
 
+/**
+ * SM-N30 — el prototipo tiene DOS pantallas y la app las había fusionado en una:
+ * `splash` (`#splash`, `index.html:2446`): lockup animado glifo «O» + «dobi» letra a letra + descriptor, UNA sola puerta.
+ * `reveal` (`#reveal`, `index.html:2546`): el aterrizaje estático — lockup ENTERO «Odobi», «se dice o-DO-bi» y las
+ * puertas, SIN descriptor. «Volver a entrar» (`?ver=volver`) es el `reveal`; el primer arranque es el `splash`.
+ */
+export type VarianteEntrada = 'splash' | 'reveal';
+
 export interface RevealEntradaProps {
+  variante: VarianteEntrada;
   /** Etiquetas de las dos puertas (`TEXTOS_REVEAL`): el mismo reveal aterriza distinto según la sesión. */
   primario: string;
   /** Vacío = no hay alta disponible todavía (BETA-4b): el botón secundario no se dibuja. */
@@ -116,33 +125,24 @@ export interface RevealEntradaProps {
   onPrimario: () => void;
   onSecundario: () => void;
   testID?: string;
-  /**
-   * BL-X10 — asset empaquetado de la pronunciación («se dice o-DO-bi» en voz de marca). NO hay
-   * ningún audio en el repo todavía (pedido a operador/Martín, `[ASSUMED_PENDING_VERIFY]`): sin
-   * asset, el botón no se renderiza — sólo queda el texto, como hasta ahora. A diferencia de web
-   * (BL-X12w, `speechSynthesis`), acá NO hay TTS de fallback: la voz de marca es un asset, no una
-   * síntesis genérica.
-   */
-  pronunciacionAsset?: AudioSource | null;
 }
 
 /**
- * El reveal de la entrada (prototipo `#reveal`, `?ver=reveal|volver`): el lockup entero —el primer
- * momento donde la marca se presenta completa—, «se dice o-DO-bi» y dos puertas. **Es el MISMO motor**
- * para el primer ingreso y para el post-logout (`TEXTOS_REVEAL`): no se duplica el markup. BL-X10 le
- * suma la animación de entrada (`IdentidadEntrada`) sobre este componente; no hay un segundo splash.
+ * La entrada sin sesión (prototipo `#splash` y `#reveal`, `?ver=splash|reveal|volver`). Es UN componente con
+ * DOS variantes (`VarianteEntrada`, SM-N30): el `splash` animado del primer ingreso y el `reveal` estático
+ * de «volver». Comparten puertas (`TEXTOS_REVEAL`) y tema; NO comparten lockup,
+ * descriptor ni pronunciación: fusionarlos fue el defecto que SM-N30 separó.
  */
 export function RevealEntrada({
+  variante,
   primario,
   secundario,
   onPrimario,
   onSecundario,
   testID = 'reveal-entrada',
-  pronunciacionAsset,
 }: RevealEntradaProps) {
   const tema = useTema();
   const reducido = useReducedMotion();
-  const reproductor = useAudioPlayer(pronunciacionAsset ?? null);
   // Color de MARCA fijo (`.rv-word{color:var(--terracota)}`), no `acentoTinta`: el wordmark es el logotipo
   // y su gemelo web usa `--identidad-word`. `letterSpacing:-.02em` del prototipo (46 × .02 ≈ 0,92).
   const estiloLetra = {
@@ -153,43 +153,55 @@ export function RevealEntrada({
     letterSpacing: -0.02 * FONT_WORDMARK,
   };
 
-  function pronunciar() {
-    reproductor.seekTo(0);
-    reproductor.play();
-  }
+  const esReveal = variante === 'reveal';
+  const pronunciacion = (
+    <View style={styles.pronunciacion}>
+      <Text testID={`${testID}-pronunciacion`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
+        {PRONUNCIACION_MARCA}
+      </Text>
+    </View>
+  );
 
   return (
     <View testID={testID} style={[styles.raiz, { backgroundColor: tema.color.fondo, padding: tema.espacio.lg }]}>
+      {esReveal && (
+        // `#reveal{background:linear-gradient(0deg,#F5E7DE 0%,crema 60%,crema 100%)}` (`index.html:461`).
+        <LinearGradient
+          testID={`${testID}-fondo`}
+          colors={[tema.color.fondoDegradado[0], tema.color.fondo, tema.color.fondo]}
+          locations={[0, 0.6, 1]}
+          start={{ x: 0, y: 1 }}
+          end={{ x: 0, y: 0 }}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      )}
       <View style={styles.medio}>
-        <IdentidadEntrada>
-          <View style={[styles.lockup, { gap: Math.round(LOCKUP_SIMBOLO * 0.3) }]}>
-            <OAsentada reducido={reducido}>
-              <Marca size={LOCKUP_SIMBOLO} />
-            </OAsentada>
-            <View style={styles.wordmark}>
-              {LETRAS_WORDMARK.map((letra, indice) => (
-                <LetraWordmark key={letra + indice} letra={letra} indice={indice} reducido={reducido} estilo={estiloLetra} />
-              ))}
-            </View>
+        {esReveal ? (
+          <View style={[styles.lockup, { gap: 16 }]}>
+            <Marca size={LOCKUP_SIMBOLO} />
+            <Text testID={`${testID}-palabra`} style={estiloLetra}>
+              Odobi
+            </Text>
           </View>
-        </IdentidadEntrada>
-        <Tagline reducido={reducido} testID={`${testID}-tagline`} />
-        <View style={styles.pronunciacion}>
-          <Text testID={`${testID}-pronunciacion`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-            {PRONUNCIACION_MARCA}
-          </Text>
-          {pronunciacionAsset != null && (
-            <Pressable
-              testID={`${testID}-pronunciar`}
-              accessibilityRole="button"
-              accessibilityLabel="Escuchar cómo se pronuncia Odobi"
-              onPress={pronunciar}
-              style={pressableStyle([styles.botonPronunciar, { backgroundColor: tema.color.acentoSuperficie }])}
-            >
-              <Text style={{ color: tema.color.acentoTexto, fontSize: 12 }}>▶</Text>
-            </Pressable>
-          )}
-        </View>
+        ) : (
+          <>
+            <IdentidadEntrada>
+              <View style={[styles.lockup, { gap: Math.round(LOCKUP_SIMBOLO * 0.3) }]}>
+                <OAsentada reducido={reducido}>
+                  <Marca size={LOCKUP_SIMBOLO} />
+                </OAsentada>
+                <View style={styles.wordmark}>
+                  {LETRAS_WORDMARK.map((letra, indice) => (
+                    <LetraWordmark key={letra + indice} letra={letra} indice={indice} reducido={reducido} estilo={estiloLetra} />
+                  ))}
+                </View>
+              </View>
+            </IdentidadEntrada>
+            <Tagline reducido={reducido} testID={`${testID}-tagline`} />
+          </>
+        )}
+        {esReveal && pronunciacion}
       </View>
 
       <View style={{ gap: tema.espacio.sm }}>
@@ -224,6 +236,5 @@ const styles = StyleSheet.create({
   lockup: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   wordmark: { flexDirection: 'row' },
   pronunciacion: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  botonPronunciar: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   boton: { alignItems: 'center', justifyContent: 'center' },
 });

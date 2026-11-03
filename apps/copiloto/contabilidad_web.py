@@ -16,13 +16,20 @@ from typing import Callable
 
 from fastapi import Depends, FastAPI, HTTPException
 
-from gasto_store import dos_decimales
+from escala_monotributo import ConfigEscala, cargar as cargar_escala, medidor
+from gasto_store import dos_decimales, hoy_del_negocio
 
 
 def create_contabilidad_app(*, require_tenant: Callable, cobro_store_factory: Callable,
                             gasto_store_factory: Callable,
-                            afip_comprobante_store_factory: Callable) -> FastAPI:
+                            afip_comprobante_store_factory: Callable,
+                            categoria_monotributo_factory: Callable | None = None,
+                            escala: ConfigEscala | None = None,
+                            hoy_fn: Callable = hoy_del_negocio) -> FastAPI:
+    """`categoria_monotributo_factory(cliente_id) -> 'A'..'K' | None` (SM-N36). Sin ella, o sin escala
+    vigente, `facturado.tope` sigue siendo `null`: el fail-soft es el estado por defecto."""
     app = FastAPI(title="Copiloto Contabilidad")
+    escala = escala if escala is not None else cargar_escala()
 
     @app.get("/contabilidad/resumen")
     async def resumen(periodo: str | None = None,
@@ -45,6 +52,8 @@ def create_contabilidad_app(*, require_tenant: Callable, cobro_store_factory: Ca
             asyncio.to_thread(cobro_store.top_clientes, periodo),
         )
 
+        categoria = (await asyncio.to_thread(categoria_monotributo_factory, cliente_id)
+                     if categoria_monotributo_factory else None)
         entro, salio = Decimal(ingresos["total"]), Decimal(gastos["total"])
         entro_ant = Decimal(ingresos["mes_anterior"]) if ingresos["mes_anterior"] is not None else None
         salio_ant = Decimal(gastos["mes_anterior"]) if gastos["mes_anterior"] is not None else None
@@ -65,13 +74,12 @@ def create_contabilidad_app(*, require_tenant: Callable, cobro_store_factory: Ca
                      "queda": dos_decimales(entro - salio), "mes_anterior": mes_anterior},
             "gastos": {"por_categoria": gastos["por_categoria"]},
             "facturado": {"periodo": facturado["periodo"], "doce_meses": facturado["doce_meses"],
-                         # Sin escala de monotributo vigente configurada -> null, deliberado
-                         # (contrato master §4.3): las escalas se actualizan por inflación varias
-                         # veces al año, y hardcodearlas es deuda con vencimiento garantizado -- un
-                         # tope viejo mostrado como vigente es peor que no mostrar ninguno. Deuda
-                         # declarada: propietario BACKEND, condición de pago = cada publicación
-                         # oficial de ARCA (config versionada con vigencia_desde, no código).
-                         "tope": None},
+                         # SM-N36: `null` salvo que haya categoria Y una escala VIGENTE HOY (contrato
+                         # master §4.3). Escala vencida => null, nunca el tope viejo: un tope viejo
+                         # mostrado como vigente es peor que no mostrar ninguno. La escala es config
+                         # versionada (`escala_monotributo.json`, `vigencia_desde`/`vigencia_hasta`), con
+                         # dueño de actualización escrito ahí mismo -- no código.
+                         "tope": medidor(escala, categoria, Decimal(facturado["doce_meses"]), hoy_fn())},
             "clientes": clientes,
         }
 

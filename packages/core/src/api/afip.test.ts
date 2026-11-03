@@ -121,6 +121,8 @@ describe('afip.ts', () => {
           // Sin la clave en la respuesta el ajuste queda APAGADO: subir los datos fiscales de
           // alguien a una cuenta de Drive no puede pasar por un default.
           guardarEnDrive: false,
+          // SM-N35: sin la clave → null (sin categoría), nunca una inventada.
+          categoriaMonotributo: null,
         },
       });
     });

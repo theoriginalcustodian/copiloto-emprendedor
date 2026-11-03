@@ -14,6 +14,10 @@ import { useSession } from './useSession';
  * caída SOLA (CTA5, ninguno de los dos flags) sigue yendo directo al formulario, como hasta ahora: el
  * aviso de sesión caída vive ahí.
  *
+ * SM-N30 DoD 4 (decisión, 2026-11-03): el aviso NO viaja al reveal. `avisoSesion` se pinta sólo en
+ * `PantallaLogin` (`login-aviso-sesion`); pasar por el reveal sumaría un toque antes de verlo y rompería SM-K6,
+ * que acredita ese aviso. Test: `EntradaSesion.test.tsx` («sesión caída SOLA…»).
+ *
  * «Crear una nueva cuenta»: mobile no tiene pantalla de alta propia — el alta self-service de la
  * beta es Google (`loginConGoogle`, BETA-5), donde «entrar» y «crear cuenta» son el mismo acto, ya
  * cubierto por «Empecemos»/«Entrar». No hay alta distinta que ofrecer: el botón secundario de
@@ -30,6 +34,7 @@ export function EntradaSesion() {
   const textos = cierreVoluntario != null ? TEXTOS_REVEAL.volver : TEXTOS_REVEAL.primeraVez;
   return (
     <RevealEntrada
+      variante={cierreVoluntario != null ? 'reveal' : 'splash'}
       primario={textos.primario}
       secundario={cierreVoluntario != null ? textos.secundario : ''}
       onPrimario={() => setPaso({ tipo: 'login', email: cierreVoluntario?.email ?? '' })}

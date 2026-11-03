@@ -5,6 +5,7 @@ import { Pressable } from 'react-native-gesture-handler';
 import {
   ErrorValidacionFiscal,
   cambiarAmbiente,
+  CATEGORIAS_MONOTRIBUTO,
   CONDICIONES_IVA_NO_DISPONIBLES,
   conectarArca,
   estadoAfip,
@@ -73,6 +74,9 @@ const INTERVALO_POLL_MS = 3000;
  *  nunca infinito. Pasado esto, se avisa y se ofrece reintentar en vez de girar para siempre. */
 const TOPE_ESPERA_MS = 10 * 60 * 1000;
 
+/** SM-N35 — lo que dice el campo cuando se toca Guardar con la fecha de inicio sin cerrar. */
+const MENSAJE_FECHA_INCOMPLETA = 'Completá la fecha entera (DD/MM/AAAA).';
+
 const TODAS_LAS_CONDICIONES_IVA: OpcionSelect[] = [
   { valor: 'monotributo', etiqueta: 'Monotributo' },
   { valor: 'responsable_inscripto', etiqueta: 'Responsable inscripto' },
@@ -87,6 +91,12 @@ export function opcionesCondicionIva(actual: string): OpcionSelect[] {
     (o) => !CONDICIONES_IVA_NO_DISPONIBLES.includes(o.valor as CondicionIvaEmisor) || o.valor === actual,
   );
 }
+
+/** SM-N35 — `''` = «Sin definir»: el fail-soft es el estado por defecto. */
+export const OPCIONES_CATEGORIA_MONOTRIBUTO: OpcionSelect[] = [
+  { valor: '', etiqueta: 'Sin definir' },
+  ...CATEGORIAS_MONOTRIBUTO.map((c) => ({ valor: c, etiqueta: `Categoría ${c}` })),
+];
 
 const COPY_PASO_ONBOARDING: Record<string, string> = {
   iniciado: 'Iniciando la vinculación con ARCA…',
@@ -172,6 +182,8 @@ interface CamposPerfil {
   ingresosBrutos: string;
   inicioActividades: string;
   puntoVenta: string;
+  /** SM-N35 — `''` = sin categoría (no se manda). */
+  categoriaMonotributo: string;
 }
 
 const CAMPOS_PERFIL_VACIOS: CamposPerfil = {
@@ -181,6 +193,7 @@ const CAMPOS_PERFIL_VACIOS: CamposPerfil = {
   ingresosBrutos: '',
   inicioActividades: '',
   puntoVenta: '1',
+  categoriaMonotributo: '',
 };
 
 type EstadoOperacion = 'idle' | 'cargando' | 'enviando' | 'ok' | 'error' | 'no_disponible';
@@ -230,6 +243,7 @@ export function PantallaAfipSetup() {
           ingresosBrutos: res.perfil.ingresosBrutos,
           inicioActividades: res.perfil.inicioActividades,
           puntoVenta: String(res.perfil.puntoVenta),
+          categoriaMonotributo: res.perfil.categoriaMonotributo ?? '',
         });
         // 🔴 Remonta `CampoFecha`. Es semi-controlado a propósito (sostiene sus 3 segmentos en estado
         // local y los siembra UNA vez al montar), así que su propio docstring pide una `key` nueva
@@ -251,6 +265,15 @@ export function PantallaAfipSetup() {
   }
 
   async function guardarPerfilHandler() {
+    // SM-N35: `CampoFecha` emite `''` mientras los tres segmentos no cierran una fecha válida, y el backend
+    // (`PerfilBody.inicio_actividades: date`, sin default) la rechaza con un 422 que llega sin `campo` y
+    // cae en el error genérico: el formulario se ve completo y "no se pudo guardar". Se corta ACÁ, antes de
+    // mandar, y se marca el campo que falta -- el servidor es la red, no el aviso.
+    if (camposPerfil.inicioActividades === '') {
+      setErroresPerfil({ inicio_actividades: MENSAJE_FECHA_INCOMPLETA });
+      setEstadoPerfil('idle');
+      return;
+    }
     setErroresPerfil({});
     setEstadoPerfil('enviando');
     const puntoVenta = Math.trunc(Number(camposPerfil.puntoVenta.replace(',', '.'))) || 0;
@@ -263,6 +286,8 @@ export function PantallaAfipSetup() {
         ingresosBrutos: camposPerfil.ingresosBrutos,
         inicioActividades: camposPerfil.inicioActividades,
         puntoVenta,
+        // SM-N35: sólo aplica a monotributo; vacío o de otra condición → no se manda.
+        categoriaMonotributo: camposPerfil.condicionIva === 'monotributo' ? camposPerfil.categoriaMonotributo || null : null,
       });
       if (res.status === 'no_disponible') {
         setEstadoPerfil('no_disponible');
@@ -644,6 +669,17 @@ export function PantallaAfipSetup() {
               onChange={(v) => actualizarCampoPerfil('condicionIva', v as CondicionIvaEmisor)}
               error={erroresPerfil.condicion_iva}
             />
+            {/* SM-N35: la categoría es un dato del emprendedor y sólo existe para monotributo. Opcional:
+                «Sin definir» es el estado por defecto y no bloquea guardar. El tope lo deriva el backend (SM-N36). */}
+            {camposPerfil.condicionIva === 'monotributo' && (
+              <CampoSelect
+                testID="afip-perfil-categoria-monotributo"
+                etiqueta="Categoría de monotributo"
+                opciones={OPCIONES_CATEGORIA_MONOTRIBUTO}
+                valor={camposPerfil.categoriaMonotributo}
+                onChange={(v) => actualizarCampoPerfil('categoriaMonotributo', v)}
+              />
+            )}
             <Text
               testID="afip-perfil-condicion-iva-aviso"
               style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}

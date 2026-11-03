@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """SM-N15 — provisiona y VERIFICA el segundo usuario de prueba: no-admin y tenant VACÍO.
 
-Existe SOLO para `SM-K1` (menos privilegios) y `SM-J3` (menos datos). El canónico sigue siendo
-`e2e-device@copiloto.test`; todo otro uso de este usuario es MAYOR y vuelve al operador.
+Nació SOLO para `SM-K1` (menos privilegios) y `SM-J3` (menos datos), y declaraba que cualquier otro
+uso era MAYOR y volvía al operador. **AMPLIADO 2026-11-03 por orden del operador** (*«autorizo la
+tenencia de prueba»*): este usuario es la **tenencia de prueba autorizada para TODA ficha que
+necesite un segundo emprendedor** — hoy `SM-J3 J4 K3 K5 K6 N16 N29 N30`, y las que vengan con el
+mismo disparador. No hace falta volver a preguntar por cada una.
+
+Lo que la ampliación NO cambia: **el usuario CANÓNICO sigue siendo `e2e-device@copiloto.test`**.
+Éste es el *segundo* tenant, el vacío y no-admin; cambiar el canónico sigue siendo MAYOR. La
+distinción importa porque la orden autoriza *tener* un segundo tenant, no *mudar* el primero.
 
 Idempotente: la primera corrida da el alta por `/auth/signup` (abierto, SM-C2) y escribe la credencial en
 `.env.e2e` (gitignored; el repo es PÚBLICO: la password NUNCA va a un archivo trackeado, a la memoria ni a

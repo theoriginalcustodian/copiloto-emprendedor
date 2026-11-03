@@ -252,6 +252,20 @@ export interface PerfilFiscal {
   puntoVenta: number;
   /** Archivar cada factura en el Drive del emprendedor. **Default `false`** — ver `normalizarPerfil`. */
   guardarEnDrive: boolean;
+  /**
+   * SM-N35 — categoría de monotributo (`A`…`K`). Dato DEL EMPRENDEDOR; el tope lo deriva el backend con la escala
+   * vigente de ARCA (SM-N36). `null`/ausente = no la cargó (o backend viejo): ESTADO VÁLIDO, nunca un error.
+   * Backend la persiste y la devuelve en GET desde `4a5bb923` (SM-N36, `afip_web.py` + `afip_credential_store.py`).
+   */
+  categoriaMonotributo?: string | null;
+}
+
+/** Las categorías vigentes del monotributo (A…K). Es la forma del dato, NO la escala (topes): esa la define ARCA. */
+export const CATEGORIAS_MONOTRIBUTO = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'] as const;
+
+/** Pura. Sólo `A`…`K`; cualquier otra cosa es «sin categoría» (nunca se inventa una). */
+export function leerCategoriaMonotributo(v: unknown): string | null {
+  return typeof v === 'string' && (CATEGORIAS_MONOTRIBUTO as readonly string[]).includes(v) ? v : null;
 }
 
 /** Pura. Sólo los tres valores del contrato; cualquier otra cosa es «sin causa» (nunca se inventa una). */
@@ -418,6 +432,8 @@ export interface GuardarPerfilRequest {
   /** ISO `YYYY-MM-DD`. */
   inicioActividades: string;
   puntoVenta: number;
+  /** SM-N35 — `null`/ausente NO se manda: no mandar categoría sigue siendo válido (fail-soft). */
+  categoriaMonotributo?: string | null;
 }
 
 export interface ConectarArcaRequest {
@@ -426,11 +442,9 @@ export interface ConectarArcaRequest {
   /** 🔴 Sólo vive en el `cuerpoJson` de este POST. Ver el docstring del módulo. */
   claveFiscal: string;
   /**
-   * ⚠️ [ASSUMED_PENDING_VERIFY] `ConectarBody` en `afip_web.py` (verificado contra el backend vivo el
-   * 2026-07-21) todavía NO declara este campo — pydantic ignora claves extra por default, así que
-   * mandarlo no rompe nada, pero hoy el backend lo IGNORA en silencio y el alta queda en el default
-   * (`dev`). La sesión de backend confirmó que va a aceptarlo con estos mismos valores; hasta
-   * entonces, la pantalla de Ajustes muestra el selector en solo-lectura.
+   * Resuelto (SM-N39, medido contra `fd17a89e` el 2026-11-03): `ConectarBody` en `afip_web.py:121` declara
+   * `ambiente: Literal["dev","prod"] | None = None`, así que el backend lo acepta. Antes (2026-07-21) lo ignoraba
+   * y el alta quedaba en `dev`; el selector de Ajustes ya no es de solo-lectura (`PantallaAfipSetup.tsx`).
    */
   ambiente?: AmbienteAfip;
 }
@@ -569,6 +583,7 @@ function normalizarPerfil(raw: {
   inicio_actividades: string;
   punto_venta: number;
   guardar_en_drive?: boolean;
+  categoria_monotributo?: unknown;
 }): PerfilFiscal {
   return {
     cuit: raw.cuit,
@@ -581,6 +596,7 @@ function normalizarPerfil(raw: {
     // `?? false` y no `?? true`: subir los datos fiscales de alguien a una cuenta de Drive no puede
     // pasar por defecto. Si el backend no manda la clave, el ajuste está APAGADO.
     guardarEnDrive: raw.guardar_en_drive ?? false,
+    categoriaMonotributo: leerCategoriaMonotributo(raw.categoria_monotributo),
   };
 }
 
@@ -613,6 +629,10 @@ export async function guardarPerfil(perfil: GuardarPerfilRequest): Promise<ConDi
     ingresos_brutos: perfil.ingresosBrutos,
     inicio_actividades: perfil.inicioActividades,
     punto_venta: perfil.puntoVenta,
+    // SM-N35: sólo si hay categoría válida. Omitirla es el estado por defecto y no rompe a nadie.
+    ...(leerCategoriaMonotributo(perfil.categoriaMonotributo) != null
+      ? { categoria_monotributo: perfil.categoriaMonotributo }
+      : {}),
   };
   const res = await enviarAutenticado({ metodo: 'POST', path: '/afip/perfil', cuerpoJson: cuerpo });
   if (res.ok) return { status: 'ok', ok: true };
@@ -675,9 +695,9 @@ export async function conectarArca(
 }
 
 /** `GET /afip/estado?cuit=` — Bearer requerido. Lo que Ajustes pinta. ⚠️ `cuit` se tipa opcional acá
- * (pedido §2 del plan de UI: descubrir el CUIT sin que el caller lo mande), pero `afip_web.py::estado`
- * hoy lo EXIGE (`cuit: str` sin default) — [ASSUMED_PENDING_VERIFY] mandar sin `cuit` da un 422 de
- * FastAPI, no `no_disponible`, hasta que el backend agregue el descubrimiento. */
+ * (pedido §2 del plan de UI: descubrir el CUIT sin que el caller lo mande). Resuelto (SM-N39, medido contra
+ * `fd17a89e` el 2026-11-03): `afip_web.py:655` es `estado(cuit: str | None = None, …)`, así que mandar sin `cuit`
+ * ya no da 422 (antes lo exigía como `cuit: str`). */
 export async function estadoAfip(cuit?: string): Promise<ConDisponibilidad<EstadoAfip>> {
   const query = cuit ? `?cuit=${encodeURIComponent(cuit)}` : '';
   try {

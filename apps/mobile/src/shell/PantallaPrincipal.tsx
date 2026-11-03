@@ -31,13 +31,14 @@ import { listarActividad, type ActividadItem, type ArchivoSubida, type AvisoAlCh
 
 import { destinoDe } from '../modules/actividad/destinoActividad';
 import { ChatView } from '../modules/chat';
+import { ALTO_COMPOSER_REPOSO } from '../modules/chat/Composer';
 import { DockEntrada } from '../modules/chat/DockEntrada';
 import { EscritorioFunciones, type FuncionKey } from '../modules/escritorio/EscritorioFunciones';
 import { hrefDeRuta } from '../modules/midia/destinoTarjeta';
 import { PantallaMiDia } from '../modules/midia/PantallaMiDia';
 import { tomarAvisoParaElChat } from '../navegacion/avisoParaElChat';
 import { empujarUnaVez, reabrirNavegacion } from '../navegacion/empujarUnaVez';
-import { ALTO_HANDLE, PanelDeslizable } from './PanelDeslizable';
+import { ALTO_HANDLE, espacioSuperior, PanelDeslizable } from './PanelDeslizable';
 import { PanelFunciones } from './PanelFunciones';
 
 /**
@@ -115,8 +116,9 @@ export function PantallaPrincipal() {
   // bien medido): es que la navegación no tenía invariante de "uno a la vez".
   const alFuncion = (key: FuncionKey) => empujarUnaVez(RUTA_POR_FUNCION[key]);
 
-  // SM-N16: un solo destino para las dos capas que muestran el avatar. El camino a cerrar sesión pasa
-  // por acá, y un operador quedó sin salida en el escritorio cuando el acceso vivía sólo en Mi día.
+  // SM-N16 + SM-N28: el avatar vive SÓLO en el escritorio de funciones (Mi día ya no lo pinta). El camino
+  // a cerrar sesión pasa por acá: un operador quedó sin salida cuando el acceso vivía sólo en Mi día, y
+  // quitarlo del escritorio repetiría ese incidente. No restaurar el de Mi día: es decisión del operador.
   const alAjustes = () => empujarUnaVez('/ajustes');
   const inicialCuenta = useInicialCuenta();
 
@@ -255,7 +257,9 @@ export function PantallaPrincipal() {
       alBajar={alBajarChat}
       arrancaAbajo
       ocultarTira={progresoFunciones}
-      hintAbajo="Escribile a Odobi"
+      // SM-N22: el asa queda ENCIMA del campo (mapa). El campo vive en el panel, bajo el asa.
+      pieAbajo={<DockEntrada onEnviarTexto={sinTexto} onAudio={alAudioDesdeMiDia} onTocarCampo={alTocarCampoDeMiDia} />}
+      altoPieAbajo={ALTO_COMPOSER_REPOSO}
       fondo={
         <PanelFunciones
           senalCerrar={senalCerrar}
@@ -277,8 +281,6 @@ export function PantallaPrincipal() {
           }
         >
           <PantallaMiDia
-            onAjustes={alAjustes}
-            inicialCuenta={inicialCuenta}
             onConexionCaida={setConexionCaida}
             onAgenda={() => empujarUnaVez('/agenda')}
             onVerTablero={() => empujarUnaVez('/midia')}
@@ -288,15 +290,20 @@ export function PantallaPrincipal() {
             onAvisoAlChat={alAvisoAlChat}
             cierreDeAviso={cierreDeAviso}
             pie={
-              // La tira de la conversación tapa el borde de abajo: el handle más su spacer (ver `PanelFunciones`).
-              <View style={{ marginBottom: ALTO_HANDLE + insets.top }}>
-                <DockEntrada onEnviarTexto={sinTexto} onAudio={alAudioDesdeMiDia} onTocarCampo={alTocarCampoDeMiDia} />
-              </View>
+              // La tira de la conversación tapa el borde de abajo: el asa más el campo (ver `PanelFunciones`).
+              // SM-N38: sin el spacer de status bar. Colapsado el panel no pinta superficie, así que ese
+              // espacio sólo dejaba un hueco entre «Para hoy» y la línea; el spacer queda transparente.
+              <View testID="midia-reserva-tira" style={{ height: ALTO_HANDLE + ALTO_COMPOSER_REPOSO }} />
             }
           />
         </PanelFunciones>
       }>
-      <ChatView avisoEntrante={avisoEntrante} onVolverAlTablero={alVolverAlTablero} audioEntrante={audioEntrante} />
+      <ChatView
+        avisoEntrante={avisoEntrante}
+        onVolverAlTablero={alVolverAlTablero}
+        audioEntrante={audioEntrante}
+        desplazamientoTeclado={ALTO_HANDLE + espacioSuperior(insets.top)}
+      />
     </PanelDeslizable>
   );
 }

@@ -7,8 +7,8 @@ import type { ReplyCard } from '../api/types';
  * `PantallaFacturacion` sobre el MISMO borrador). Contrato:
  * `contrato_planificacion-a-todos_hito9-facturar-por-voz-los-mismos-signals-que-la-pantalla` §2.1.
  *
- * 🔴 **`data` está confirmada por el contrato (no es analogía)**, sólo el `kind` es
- * `[ASSUMED_PENDING_VERIFY]` — mismo colchón que `presupuesto_propuesto`: `ReplyCard.kind` es
+ * 🔴 **`data` está confirmada por el contrato (no es analogía)**, sólo el `kind` era
+ * `[ASSUMED_PENDING_VERIFY]`, resuelto (SM-N39, 2026-11-03): backend lo emite, `tool_catalog.py:1685` `Artifact(kind="factura_propuesta")` — mismo colchón que `presupuesto_propuesto`: `ReplyCard.kind` es
  * `string` abierto, así que si backend nunca manda este `kind`, `leerFacturaPropuesta` siempre
  * devuelve `null` y el mensaje cae a `Burbuja` sin romper nada.
  *

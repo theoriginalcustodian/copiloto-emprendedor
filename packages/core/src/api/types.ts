@@ -129,6 +129,10 @@ export interface MeResponse {
    *  **Qué HACE la app cuando la versión aceptada no es la vigente sigue siendo decisión del operador.**
    *  Este campo sólo transporta el dato. */
   legal_version_aceptada: string | null;
+  /** SM-K5: fecha de alta de la cuenta, ISO `YYYY-MM-DD` (`tenants.created_at` del propio tenant). `null` =
+   *  el backend no la tiene: la pantalla OMITE el «desde …», nunca lo inventa. Opcional en el tipo sólo para no
+   *  tocar ~50 literales de test anteriores al campo; el backend la manda siempre, en las DOS ramas de /me. */
+  fecha_alta?: string | null;
 }
 
 // ---------------------------------------------------------------------------

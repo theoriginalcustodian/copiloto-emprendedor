@@ -60,21 +60,23 @@ _ACTIVITIES = [call_llm_tools, execute_tool, send_channel_message, notify_staff,
 
 
 def build_llm() -> LlmProvider:
-    return LlmProvider(primary_model="gpt-4o-mini", failover_model="gpt-4o-mini",
+    # `COPILOTO_LLM_MODEL` cambia el modelo del ReAct sin deploy (p. ej. `gpt-6-luna`); sin setear, el de siempre.
+    modelo = os.environ.get("COPILOTO_LLM_MODEL") or "gpt-4o-mini"
+    return LlmProvider(primary_model=modelo, failover_model=modelo,
                        api_key_env=OPENAI_API_KEY_ENV, url="https://api.openai.com/v1/chat/completions",
                        quantizations=())
 
 
 def _metering_provider(conn_factory):
-    """`(cliente_id, session_id, model, tokens, evento) -> None`, boundary `metering_sink` (BETA-1b),
+    """`(cliente_id, session_id, model, tokens, evento[, uso]) -> None`, boundary `metering_sink` (BETA-1b),
     mismo patrón que `worker_b._metering_provider` -- I2 del DoD de SOP4 ("costo por consulta medido,
     no estimado") no tenía sumidero acá: los dos dominios de soporte se registraban con
     `metering_sink=None` (default), así que ningún turno del agente de soporte dejaba fila en
     `copiloto_metering`. El try/except contra fallos de DB ya vive en
     `agent_activities._registrar_metering` (capa PLANTILLA)."""
-    def registrar(cliente_id: str, session_id: str, model: str, tokens, evento: str) -> None:
+    def registrar(cliente_id: str, session_id: str, model: str, tokens, evento: str, uso=None) -> None:
         MeteringStore(conn_factory, cliente_id).registrar(
-            session_id=session_id, model=model, tokens=tokens, evento=evento)
+            session_id=session_id, model=model, tokens=tokens, evento=evento, uso=uso)
 
     return registrar
 

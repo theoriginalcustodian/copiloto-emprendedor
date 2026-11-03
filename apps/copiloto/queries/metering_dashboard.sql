@@ -53,3 +53,37 @@ from uc_factory.copiloto_metering
 where created_at > now() - interval '24 hours'
 group by cliente_id
 order by error_rate_pct desc nulls last;
+
+-- 4) Costo REAL en USD por tenant y modelo (últimos 30 días) — tokens_entrada/salida/cacheados.
+--
+-- Las columnas `tokens_*` se llenan desde que existe el desglose; las filas anteriores las tienen en NULL
+-- («no informado», NO cero) y por eso quedan AFUERA de este cálculo y se reportan aparte en `filas_sin_desglose`:
+-- sumarlas como cero escondería gasto, estimarles una proporción reintroduciría la adivinanza que esta
+-- consulta existe para reemplazar.
+--
+-- Las TARIFAS son parámetros (USD por millón de tokens), no parte de la fórmula: se editan acá cuando el
+-- proveedor las cambia. `cacheados` ⊂ `entrada` (OpenAI los cuenta adentro de prompt_tokens), así que la
+-- entrada no cacheada es `entrada - cacheados`. `razonamiento` ⊂ `salida` y ya viene cobrado en `salida`.
+-- ⚠️ Verificar las tarifas contra la página de precios del proveedor antes de citar el total.
+with tarifa(model_prefijo, usd_entrada, usd_cacheada, usd_salida) as (values
+    ('gpt-6-luna',   0.10, 0.010, 0.50),
+    ('gpt-4o-mini',  0.15, 0.075, 0.60),
+    ('gpt-4o',       2.50, 1.250, 10.00)
+)
+select
+    m.cliente_id,
+    m.model,
+    count(*) filter (where m.tokens_entrada is not null)                              as turnos_con_desglose,
+    count(*) filter (where m.tokens_entrada is null)                                  as filas_sin_desglose,
+    sum(m.tokens_entrada)                                                             as tokens_entrada,
+    sum(m.tokens_cacheados)                                                           as tokens_cacheados,
+    sum(m.tokens_salida)                                                              as tokens_salida,
+    round((sum(coalesce(m.tokens_entrada, 0) - coalesce(m.tokens_cacheados, 0)) * t.usd_entrada
+         + sum(coalesce(m.tokens_cacheados, 0)) * t.usd_cacheada
+         + sum(coalesce(m.tokens_salida, 0)) * t.usd_salida) / 1e6, 4)                as usd
+from uc_factory.copiloto_metering m
+left join lateral (select * from tarifa t where m.model like t.model_prefijo || '%'
+                   order by length(t.model_prefijo) desc limit 1) t on true
+where m.evento = 'llm_turno' and m.created_at > now() - interval '30 days'
+group by m.cliente_id, m.model, t.usd_entrada, t.usd_cacheada, t.usd_salida
+order by usd desc nulls last;

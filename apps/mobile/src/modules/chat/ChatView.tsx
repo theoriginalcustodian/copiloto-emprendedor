@@ -1,23 +1,30 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { KeyboardAvoidingView, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import type { FlatList } from 'react-native-gesture-handler';
 
 import { ROTULO_VOLVER_AL_TABLERO, type ArchivoSubida, type AvisoAlChat, type CierreAviso } from '@copiloto/core';
 
 import { useSession } from '../auth/useSession';
 import { DockEntrada } from './DockEntrada';
-import { IndicadorModoCeremonia } from './IndicadorModoCeremonia';
 import { ListaMensajes } from './ListaMensajes';
 import { tomarPendiente } from './mensajePendiente';
-import { useCapturaFoto } from './useCapturaFoto';
 import { SheetRequiereConexion } from './SheetRequiereConexion';
+import { conAlfa } from '../../theme/glass/conAlfa';
+import { ScrimDock } from '../../theme/glass/ScrimDock';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
 import { useChat } from './useChat';
 import { useConexionRequerida } from './useConexionRequerida';
 
 export interface ChatViewProps {
+  /**
+   * SM-N22 — alto que hay entre el borde SUPERIOR de la pantalla y este chat (asa + margen del panel). `KeyboardAvoidingView`
+   * resta su `frame.y` RELATIVO al padre, no el de pantalla, así que sin esto el padding queda corto justo en esa cantidad
+   * y el teclado tapa el campo (medido en device: padding 363 px donde hacían falta 537, la diferencia = 174 px = la tira).
+   */
+  desplazamientoTeclado?: number;
   /**
    * `hitl (a)` — el aviso de una tarjeta de Mi día que el emprendedor llevó al chat. Entra **sembrado en
    * el composer** (lo manda él) y trae el chip «Desde tu aviso · …». `id` crece con cada aviso: el mismo
@@ -64,28 +71,25 @@ export interface ChatViewProps {
  * que el scroll se lo coma a él — es la causa raíz del bug de device que este contrato vino a cerrar
  * (§2 del contrato).
  *
- * 🔴 **Foto de ticket (Gastos Fase 2) — botón dentro del `Composer`, no overlay.** A diferencia de
- * la voz, elegir una foto (`useCapturaFoto`) es una sola llamada async sin fases que animar -- ver
- * el docstring de `Composer.onFoto` para el porqué de la excepción a "sin botones de acción propios".
+ * 🔴 **El chat NO lleva botón de cámara (SM-N24).** La foto del comprobante es sólo de Gastos: vive en
+ * `gastos/FotoFuncion` y aparece cuando se va a cargar un gasto. Acá no se pasa `onFoto` al dock, así que
+ * el composer no pinta el botón. (Soporte sí lo pasa, para adjuntar a un ticket: es otra pantalla.)
  *
- * Toda la lógica de envío/polling/durabilidad (texto, voz Y foto) vive en `useChat`; este componente
+ * Toda la lógica de envío/polling/durabilidad (texto y voz) vive en `useChat`; este componente
  * sólo arma los callbacks que conectan la vista con esa máquina.
  *
  * 🔴 **Sin fondo ni título propios.** Vive DENTRO del panel de vidrio (`PanelDeslizable`, fuera de
  * este ownership) que ya aporta el chrome — mismo criterio que `PantallaFacturacion`/`PantallaApps`
  * en `escritorio/`. Un `backgroundColor` acá taparía el vidrio detrás.
  */
-export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrante = null }: ChatViewProps = {}) {
+export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrante = null, desplazamientoTeclado = 0 }: ChatViewProps = {}) {
   const tema = useTema();
   // `''` sólo si `me` todavía no resolvió (no debería pasar: el guard de `_layout.tsx` exige
   // `estado === 'autenticado'` antes de montar este árbol) — `useChat` degrada ese caso a sesión
   // efímera sin persistir, nunca a una clave compartida entre tenants. Ver el hallazgo del
   // 2026-07-23 en `memoria/`.
   const { me } = useSession();
-  const { estado, send, enviarAudio, enviarFoto, descartarConexion, marcarCardResuelta } = useChat(
-    me?.cliente_id ?? '',
-  );
-  const foto = useCapturaFoto();
+  const { estado, send, enviarAudio, descartarConexion, marcarCardResuelta } = useChat(me?.cliente_id ?? '');
   const scrollRef = useRef<FlatList>(null);
 
   const manejarEnvio = useCallback((text: string) => void send(text, { kind: 'text' }), [send]);
@@ -172,15 +176,9 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
     [enviarAudio],
   );
 
-  // `useCapturaFoto().elegir()` ya resuelve `null` en cancelado/permiso denegado (con su propio
-  // `Alert` de permiso -- ver el docstring del hook), así que acá no hay nada más que chequear.
-  const alElegirFoto = useCallback(() => {
-    void (async () => {
-      const archivo = await foto.elegir();
-      if (archivo === null) return;
-      void enviarFoto(archivo);
-    })();
-  }, [foto, enviarFoto]);
+  // SM-N25 — alto real del dock flotante: es el padding que la lista reserva al final. Medido, no supuesto.
+  const [altoDock, setAltoDock] = useState(0);
+  const alMedirDock = useCallback((e: LayoutChangeEvent) => setAltoDock(Math.round(e.nativeEvent.layout.height)), []);
 
   return (
     /**
@@ -188,12 +186,13 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
      * que el composer suba sin que la lista se redimensione (mismo criterio verificado en device por
      * el origen DocuMed, mismo tipo de panel absoluto de pantalla completa).
      */
-    <KeyboardAvoidingView testID="chat-view" behavior="padding" style={styles.contenedor}>
-      {/* Contrato de modos §4 ("estado siempre visible sin abrir nada"). Primer hijo, FUERA de
-          `PanelDeslizable` — mismo placement que `ModoClinicoToggle` en documed, ver su docstring. */}
-      <View style={styles.indicadorModo}>
-        <IndicadorModoCeremonia />
-      </View>
+    <KeyboardAvoidingView testID="chat-view" behavior="padding" keyboardVerticalOffset={desplazamientoTeclado} style={styles.contenedor}>
+      {/* SM-N26: SIN indicador de modo de ceremonia en la cabecera (decisión del operador, 2026-11-02:
+          «ensucia la pantalla; sólo dejar el tirador»). Ningún control escribe `modoCeremonia`, así que
+          el cartel pintaba una constante («Pedir confirmación» para todo tenant). El contrato de modos
+          §4 («estado siempre visible») hoy NO se cumple a propósito: cuando el usuario pueda ELEGIR el
+          modo, la señal permanente vuelve con esa opción — `IndicadorModoCeremonia` queda en el repo,
+          fail-closed, para ese día. */}
 
       {/* `.ctx-chip` del prototipo (`index.html:2750`): de dónde viene lo que está por decirse. SÓLO UI —
           el texto que viaja es el del composer. La salida es la del recibo del prototipo (`:2774`). */}
@@ -226,6 +225,12 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
         </View>
       )}
 
+      {/* SM-N25 — el campo y el mic FLOTAN: la lista ocupa TODA el área y corre por debajo del dock (antes la
+          lista terminaba en un borde duro sobre el composer, así que nada se veía pasar por detrás). `area` es el
+          que encoge con el teclado (`KeyboardAvoidingView` agrega el padding al contenedor), y el dock se ancla a
+          SU borde inferior, no al de la pantalla. */}
+      <View testID="chat-area" style={styles.area}>
+      <View style={StyleSheet.absoluteFill}>
       <ListaMensajes
         ref={scrollRef}
         messages={estado?.messages ?? []}
@@ -234,18 +239,39 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
         onResolverTarjeta={marcarCardResuelta}
         onVolverDelRecibo={tarjetaDelAviso != null && onVolverAlTablero != null ? alVolverDelRecibo : undefined}
         volverDesdeIndice={mensajesAlEntrarElAviso.current?.n}
+        margenInferior={altoDock}
       />
+      </View>
 
+      {/* `box-none`: la sangría alrededor del campo no captura toques — se sigue scrolleando la lista por ahí.
+          Scrim (SM-N25 DoD 4): degradé de `fondo` que sube desde el borde inferior; es lo que garantiza el contraste
+          del texto del campo cuando por detrás pasa una card CLARA. Corto y que se desvanece a 0 arriba: el contenido
+          sigue viéndose correr, el scrim sólo le baja el contraste justo bajo el campo. */}
+      {/* SM-N25 DoD 5 — el fondo de ARRIBA. Medido en código: no sale de `ChatView` (sin backgroundColor, ver abajo) sino de
+          `CristalVidrio.tsx:108` (`backgroundColor: tema.color.fondo`, la superficie opaca del panel entero: tiene que ser
+          opaca porque detrás está Mi día). Esa superficie no se puede volver transparente; lo que sí se puede es lo que pasó
+          abajo: que la lista NO termine en un corte duro contra el asa. Scrim espejo del dock — `fondo` opaco bajo el asa que se
+          desvanece a 0 hacia abajo — y la lista corre por DEBAJO de él. */}
+      <LinearGradient
+        testID="chat-scrim-superior"
+        pointerEvents="none"
+        colors={[conAlfa(tema.color.fondo, ALFA_SCRIM_ARRIBA), conAlfa(tema.color.fondo, 0)]}
+        locations={[0, 1]}
+        style={styles.scrimSuperior}
+      />
+      <View testID="chat-dock-flotante" onLayout={alMedirDock} pointerEvents="box-none" style={styles.dockFlotante}>
+        <ScrimDock testID="chat-dock-scrim" />
       <DockEntrada
         motivoFallo={estado?.motivoFallo ?? null}
         sendStatus={estado?.sendStatus ?? 'idle'}
         onEnviarTexto={manejarEnvio}
         onAudio={alAudio}
         disabled={estado === null}
-        onFoto={alElegirFoto}
         semilla={semilla}
         scrollRef={scrollRef}
       />
+      </View>
+      </View>
 
       {/* ÚLTIMO hijo a propósito: el sheet es `position:absolute` y el composer + el botón de voz son hermanos
           en flujo — pintan DESPUÉS de lo que va antes y lo tapaban (medido en device 2026-10-15: «Conectar» /
@@ -261,10 +287,17 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
   );
 }
 
+/** Opacidad del scrim en el borde inferior del dock. Alta pero no 1: el chat se sigue viendo correr, sólo atenuado. */
+/** Opacidad del scrim bajo el asa (borde superior de la lista) y su alto. Mismo criterio que el de abajo. */
+const ALFA_SCRIM_ARRIBA = 0.9;
+const ALTO_SCRIM_ARRIBA = 28;
+
 const styles = StyleSheet.create({
   // SIN `backgroundColor` a propósito — ver docstring del módulo.
   contenedor: { flex: 1 },
-  indicadorModo: { paddingHorizontal: 16, paddingTop: 8 },
+  area: { flex: 1 },
+  scrimSuperior: { position: 'absolute', top: 0, left: 0, right: 0, height: ALTO_SCRIM_ARRIBA },
+  dockFlotante: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   contextoAviso: {
     flexDirection: 'row',
     alignItems: 'center',

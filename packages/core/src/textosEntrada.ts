@@ -22,7 +22,7 @@ export const PRONUNCIACION_MARCA = 'se dice o-DO-bi';
 
 /**
  * El descriptor que acompaña al wordmark (`#splash .tagline`, prototipo `index.html:2463`). Brand Book
- * l.69/72: acompaña, no compite en jerarquía con el nombre, y nunca va solo. La fila `splash` de DEVICE15
- * lo midió ausente en todos los cuadros.
+ * l.69/72: acompaña, no compite en jerarquía con el nombre, y nunca va solo. SM-N29 (2026-11-02, device RF8T318RN9T, dev-client)
+ * lo midió VISIBLE en el cuadro final del reveal: la fila `splash` de DEVICE15, que lo daba por ausente, quedó vencida.
  */
 export const TAGLINE_MARCA = 'Tu copiloto emprendedor';
