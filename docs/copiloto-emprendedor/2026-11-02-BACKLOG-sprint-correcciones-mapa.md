@@ -127,7 +127,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N29** | `sin-issue` | 🟧 DOD-PARCIAL | UN punto y es de INSTRUMENTO, no de app: el DoD 1 -- el reveal filmado ENTERO con su animacion de entrada y los 6,8 s… |
 | **SM-N30** | `sin-issue` | ✅ TERMINADO | Codigo: ddccda38, ancestro verificado de origin/main. El lockup del login va DESNUDO a 38, sin tinta ni acento, con l… |
 | **SM-N31** | `sin-issue` | ✅ TERMINADO | DoD 1-3 ya estaban cerrados (codigo + device 2026-11-03). El DoD 4 -- las entradas 12 y 13 del corpus en CONFORME con… |
-| **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | decision del operador: la tarjeta Facturacion se retira o se implementa -- medido que la app la dibuja (GraficosIntel… |
+| **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | Solo DEVICE y ya no hay decision pendiente. La tarjeta Facturacion SE RETIRO (decision del operador 2026-11-04; 50719… |
 | **SM-N33** | `sin-issue` | ✅ TERMINADO | DoD completo. Codigo: aba185ec (#1480), ancestro de origin/main verificado con merge-base --is-ancestor; CI 6/6 y dep… |
 | **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | 🔴 CORRIJO LO QUE YO MISMO ESCRIBI HOY. El Falta anterior (mio, lote del bloque 1) pedia «el codigo de frontend2 que N… |
 | **SM-N35** | `sin-issue` | ✅ TERMINADO | DoD completo, punto por punto, con la evidencia de device de frontend1 (2026-11-03 12:07-12:10 local, usuario CANONIC… |
@@ -146,7 +146,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N48** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 2/3 en DEVICE: par antes/despues con adb input motionevent DOWN/MOVE/UP (tap en el campo sigue abriendo escritura… |
 | **SM-N49** | `sin-issue` | ✅ TERMINADO | sha cc4adea8 (PR #1584, verificado ancestro de origin/main) - apps/copiloto/tests/test_ratchet_activity_payload_lleva… |
 | **SM-N50** | `sin-issue` | ✅ TERMINADO | a8ea35fa (PR #1592, ancestro verificado) — `diagnostico_conexiones` devuelve `(caidos, composio_mirado)` y `avanzar_t… |
-| **SM-N51** | `sin-issue` | 🟧 DOD-PARCIAL | DECISION DEL OPERADOR, y es lo unico que falta: (a) agregar al mapa el camino de alta que la app YA tiene, o (b) reti… |
+| **SM-N51** | `sin-issue` | ✅ TERMINADO | 5071953c (#1623, ancestro de origin/main). DECISION DEL OPERADOR 2026-11-04 (contrato planificacion CUATRO-DECISIONES… |
 | **SM-N52** | `sin-issue` | ✅ TERMINADO | sha b45ab84f (PR #1590), verificado ancestro de origin/main. CI 6/6. DoD1: los 9 archivos de la Consola corren en Git… |
 | **SM-N53** | `sin-issue` | ✅ TERMINADO | cd332c96 (PR #1602) — el interceptor guarda `activity_id`, el workflow lo manda con su propio `workflow.patched`, y `… |
 | **SM-N54** | `sin-issue` | ✅ TERMINADO | 6459a3ac (PR #1600) — `_cuit_del_tenant` con la DB caida responde 503 reintentable CON rastro y tenant, en vez del 40… |
@@ -2376,7 +2376,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N32 · `sin-issue` — Inteligencia de Negocio: la pantalla ENTERA difiere del mapa (faltan 4 secciones, sobran 3 elementos)
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** decision del operador: la tarjeta Facturacion se retira o se implementa -- medido que la app la dibuja (GraficosInteligencia.tsx:82, testID inteligencia-grafico-facturacion, con test PantallaInteligencia.test.tsx:348) y el mapa no la trae (11 secciones del DOM ?ver=bi, ninguna es un grafico de facturacion; el acumulado vive dentro de la seccion 10); recomendacion de frontend2: retirarla (decision A del sprint, la app se alinea al mapa).
+- **Falta:** Solo DEVICE y ya no hay decision pendiente. La tarjeta Facturacion SE RETIRO (decision del operador 2026-11-04; 5071953c, #1623: GraficosInteligencia.tsx sin TarjetaFacturacion, tests con control, excepcion de paridad de testID en la web que aun la dibuja). Queda la captura de la pasada: DoD 1 (re-verificacion en device) y las capturas de los DoD 2-6 sobre el binario nuevo, segun la receta 2026-11-04-receta-pasada-de-device-frontend2.md (fila SM-N32). Dueno: frontend1 con el telefono.
 - **Cierre:** DoD 4 (tope): cubierto por SM-N35 (categoria A..K en PantallaAfipSetup.tsx:102 y :192), SM-N36 (contabilidad_web.py:26-30,55-56: tope no nulo solo con categoria y escala vigente; escala vencida da null) y la barra del tope que ya existia en AcumuladoAnual.tsx:80-91 (testID -tope, porcentaje topeado al 100%). DoD 5 (engranaje): es el boton del dev-client, evidencia versionada en 7297415b (#1609). DoD 6 (entrada 42): veredicto de Preguntar B a A medido en codigo, PantallaInteligencia.tsx:49-51 y PantallaInteligencia.test.tsx:314-321. Codigo de las secciones: acdbff54 (#1460) y 5928f837 (#1459).
 - **Dueño:** frontend2
 - **Reportado por:** el operador, 2026-11-03, en tres mensajes: *«siguen figurando dos botones
@@ -3196,9 +3196,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N51 · `sin-issue` — El mapa afirma «lo que anotaste vos» en 7 lugares y no da ningún camino de alta: la incompleta es el MAPA
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** DECISION DEL OPERADOR, y es lo unico que falta: (a) agregar al mapa el camino de alta que la app YA tiene, o (b) retirar del mapa las afirmaciones de -lo que anotaste vos-. Ninguna de las dos es codigo de app. Sin esa decision la ficha no puede cerrar, y no la decide ni frontend1 ni planificacion.
-- **Cierre:** MEDIDA por frontend1 el 2026-11-04 contra Prototipo frontend/odobi-ui/prototipo/index.html, y el veredicto es el que la ficha anticipaba: EL QUE MIENTE POR OMISION ES EL MAPA, no la app. (1) La app SI tiene camino de alta: PantallaTuDia.tsx:328-345 (testID midia-alta, campo -Anotar algo para hoy-, boton -Agregar-, midia-alta-enviar), cubierto por el test SM-I1 en PantallaTuDia.test.tsx:893. (2) El mapa tiene CERO ocurrencias de -Anotar algo para hoy-; en el tablero la unica alta es -Nuevo evento- (:2511) y ninguna para anotar algo a mano (si hay altas de otras entidades: :2254, :1926, :2266). (3) El conteo -7-: son 7 LINEAS con -anotaste vos- pero 8 OCURRENCIAS (764 y 925 son comentarios HTML, invisibles; 2493 la trae dos veces), asi que contando lo visible son 6 lineas / 7 ocurrencias. Lineas: 764, 925, 1703, 2477, 2493 x2, 2495, 2539. (4) CORREGIDA la cita de esta ficha: decia ~1311-1443 para el tablero y esta VIEJA — hoy el tablero arranca en :2471. Es correccion de MAPA, no trabajo de frontend: no se toca la app ni se retira el alta.
+- **Estado:** TERMINADO
+- **Cierre:** 5071953c (#1623, ancestro de origin/main). DECISION DEL OPERADOR 2026-11-04 (contrato planificacion CUATRO-DECISIONES, punto 3): opcion (a), el ALTA SE AGREGA AL MAPA y la app no se toca. El tablero del mapa (Prototipo frontend/odobi-ui/prototipo/index.html, bloque #tablero-alta) dibuja ahora 'Anotar algo para hoy' + 'Agregar', espejo de PantallaTuDia.tsx:328-347 (testID midia-alta, test en PantallaTuDia.test.tsx:893). Lectura de codigo y CI 6/6; NO se vio renderizado en navegador. DoD 3 (opcion b) no aplica.
 - **Dueño:** operador (decisión de producto — **toca la norma, no sólo el mapa**)
 - **De dónde sale:** entrada **09** del corpus, medida por frontend1 el 2026-11-03 con el par
   mapa/app y **sin tocar código**, como el contrato pedía.
