@@ -79,11 +79,14 @@ beforeEach(() => {
 });
 
 describe('GraficosInteligencia — los 4 aparecen y cargan', () => {
-  it('muestra facturación, entró-vs-salió, categorías y margen por trabajo', async () => {
+  it('muestra entró-vs-salió, categorías y margen por trabajo — y NO la tarjeta «Facturación» (SM-N32)', async () => {
     await montar();
 
-    await waitFor(() => expect(screen.getByTestId('inteligencia-grafico-facturacion')).toBeTruthy());
-    expect(screen.getByTestId('inteligencia-grafico-entro-vs-salio')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-grafico-entro-vs-salio')).toBeTruthy());
+    // Control: el mock de facturación devuelve `ok` con serie (beforeEach); si la tarjeta no aparece es
+    // porque se retiró, no porque falte el dato. Y ya ni se pide el endpoint.
+    expect(screen.queryByTestId('inteligencia-grafico-facturacion')).toBeNull();
+    expect(facturacionMock).not.toHaveBeenCalled();
     expect(screen.getByTestId('inteligencia-grafico-categorias')).toBeTruthy();
     expect(screen.getByTestId('inteligencia-grafico-margen-trabajo')).toBeTruthy();
   });
@@ -104,14 +107,13 @@ describe('GraficosInteligencia — los 4 aparecen y cargan', () => {
 });
 
 describe('GraficosInteligencia — lo que NO inventa', () => {
-  it('🔴 un gráfico `no_disponible` no se pinta — no rompe a los otros 3', async () => {
-    facturacionMock.mockResolvedValue({ status: 'no_disponible' });
+  it('🔴 un gráfico `no_disponible` no se pinta — no rompe a los otros 2', async () => {
+    entroVsSalioMock.mockResolvedValue({ status: 'no_disponible' });
 
     await montar();
 
-    await waitFor(() => expect(screen.getByTestId('inteligencia-grafico-entro-vs-salio')).toBeTruthy());
-    expect(screen.queryByTestId('inteligencia-grafico-facturacion')).toBeNull();
-    expect(screen.getByTestId('inteligencia-grafico-categorias')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-grafico-categorias')).toBeTruthy());
+    expect(screen.queryByTestId('inteligencia-grafico-entro-vs-salio')).toBeNull();
     expect(screen.getByTestId('inteligencia-grafico-margen-trabajo')).toBeTruthy();
   });
 
