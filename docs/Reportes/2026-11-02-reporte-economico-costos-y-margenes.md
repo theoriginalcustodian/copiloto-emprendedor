@@ -626,6 +626,31 @@ Con la curva pesimista el tope llega antes (8.100, mes 44) y ahí deja ~US$81.00
 - **La palanca son las bajas.** Con 3% en vez de 6%, el tope recomendado sube a ~13.000 a 23.700 (el mercado lo corta en ~12.500): valor de vida doble con la misma publicidad.
 - Supuestos no medidos: costo por usuario de pago, su curva con la escala, bajas, comisión de MercadoPago, IVA computable de los proveedores del exterior y alícuota efectiva. El piloto de §13.5 mide el primero; las bajas, la beta; lo impositivo, el contador.
 
+<!-- SOCIOS:INI -->
+### 14.2 Cuánto cobra cada socio (agregado 2026-11-03)
+
+Hasta el mes 8 todo el neto va a publicidad. Cada socio pasa los **US$10 mil por mes en el mes 17**, cobra ~US$32.868 por mes al llegar a la meta (mes 19) y junta **US$1 M sin vender en el mes 44** (vendiendo, en el mes 22).
+
+| Mes | Neto por socio en el mes | Acumulado por socio | Hito |
+|---|---|---|---|
+| 8 | US$0 | −US$450 | último mes con 100% del neto a publicidad; el acumulado negativo es el aporte propio del arranque |
+| 9 | US$1.381 | US$931 |  |
+| 12 | US$3.110 | US$8.326 |  |
+| 15 | US$7.020 | US$24.923 |  |
+| 17 | US$10.731 | US$44.307 | pasa US$10 mil por mes |
+| 18 | US$17.251 | US$61.558 |  |
+| 19 | US$32.868 | US$94.425 | primer mes completo en la meta: la publicidad baja a mantenimiento |
+| 22 | US$33.351 | US$192.608 | vendiendo acá, ~US$1 M por socio |
+| 24 | US$34.625 | US$261.218 |  |
+| 30 | US$38.629 | US$482.854 |  |
+| 36 | US$42.882 | US$729.400 |  |
+| 44 | US$36.031 | US$1.004.372 | US$1 M acumulado sin vender |
+| 48 | US$38.362 | US$1.154.313 |  |
+| 60 | US$47.151 | US$1.679.686 |  |
+
+Neto después de Ganancias (14% con el régimen mientras rige, 35% después, con quebranto) y del 7% del dividendo; dos socios en partes iguales. La baja del mes 37 es el vencimiento del régimen. Venta en el mes 22: ~US$2,14 M a 4,5× el beneficio de 12 meses, 15% cedular; un comprador con 4 meses de historia en la meta puede pagar menos. Sin expansión internacional.
+<!-- SOCIOS:FIN -->
+
 ## 15. Impuestos: régimen de Economía del Conocimiento (agregado 2026-11-04)
 
 **Inscribirse en el régimen de la Ley 27.506 (modificada por la 27.570) baja Ganancias de 35% a 14%** mientras la empresa sea micro o pequeña, y a 21% como mediana. Hasta el bolsillo de los socios la carga pasa de 39,6% (35% + 7% del dividendo) a 20,0%. En los 3 años que rige son **~US$356k más**, sin salir de Argentina; si se prorroga más allá de 2029, ~US$857k en 5 años. Rinde más que operar desde Estonia mientras los socios vivan acá (el art. 130 de Ganancias atribuye igual el beneficio a los socios argentinos).
