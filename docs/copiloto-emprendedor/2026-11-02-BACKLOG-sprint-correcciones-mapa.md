@@ -95,7 +95,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-L1** | `sin-issue` | 🟧 DOD-PARCIAL | Correr el build de release y medir sobre el apk. Por ORDEN DEL OPERADOR (2026-11-02) el build de release corre ULTIMO… |
 | **SM-L2** | `sin-issue` | ✅ TERMINADO | sin-codigo -- lo que faltaba NO era codigo sino voz humana real, y el 2026-11-03 el OPERADOR las declaro CONFORME por… |
 | **SM-L3** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | La anulacion real contra ARCA NO se ejercito en este sprint: las facturas N 10 y N 11 siguen sin anularse y nadie cor… |
-| **SM-L4** | `sin-issue` | 🟧 DOD-PARCIAL | MEDIDO HOY por script, que es lo que el DoD exige: python -I -X utf8 scripts/mapa-51-estado.py sobre origin/main @a2e… |
+| **SM-L4** | `sin-issue` | 🟧 DOD-PARCIAL | REESCRITO 2026-11-03 con la remedicion de auditoria (d0f0e438, PR #1601, @61adbe95): el `Falta` anterior citaba 29/51… |
 | **SM-N1** | `sin-issue` | ✅ TERMINADO | f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs… |
 | **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
 | **SM-N3** | `sin-issue` | ✅ TERMINADO | sha 99097d83 (#1359). Test atado a TOOLS−WRITE_OPS con control positivo en ambas direcciones (VPS 23 passed). Barrido… |
@@ -126,7 +126,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N28** | `sin-issue` | ✅ TERMINADO | 4376027d (#1435, ancestro de origin/main): el avatar de Ajustes sale de Mi dia y queda solo en Funciones. DoD 4 y 5 p… |
 | **SM-N29** | `sin-issue` | 🟧 DOD-PARCIAL | UN punto y es de INSTRUMENTO, no de app: el DoD 1 -- el reveal filmado ENTERO con su animacion de entrada y los 6,8 s… |
 | **SM-N30** | `sin-issue` | ✅ TERMINADO | Codigo: ddccda38, ancestro verificado de origin/main. El lockup del login va DESNUDO a 38, sin tinta ni acento, con l… |
-| **SM-N31** | `sin-issue` | 🟧 DOD-PARCIAL | UN punto, el DoD 4, y NO es de device: las entradas 12 y 13 del corpus tienen que pasar a CONFORME con su cita, y el … |
+| **SM-N31** | `sin-issue` | ✅ TERMINADO | DoD 1-3 ya estaban cerrados (codigo + device 2026-11-03). El DoD 4 -- las entradas 12 y 13 del corpus en CONFORME con… |
 | **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4 incompleto y tres puntos mas sin evidencia (AUDITORIA H14, CONFIRMADO, LOTE 2i). DoD 4 pide cuatro secciones, e… |
 | **SM-N33** | `sin-issue` | ✅ TERMINADO | DoD completo. Codigo: aba185ec (#1480), ancestro de origin/main verificado con merge-base --is-ancestor; CI 6/6 y dep… |
 | **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | 🔴 CORRIJO LO QUE YO MISMO ESCRIBI HOY. El Falta anterior (mio, lote del bloque 1) pedia «el codigo de frontend2 que N… |
@@ -136,7 +136,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N38** | `sin-issue` | 🟧 DOD-PARCIAL | UNA sola cosa, y NO es nuestra: la corrida con el operador mirando, porque los puntos 1 y 6 son de ojo humano sobre l… |
 | **SM-N39** | `sin-issue` | ✅ TERMINADO | DoD completo, las dos mitades. Alcance TypeScript: bc8671a2 (#1474) retira los marcadores vencidos de afip.ts y factu… |
 | **SM-N40** | `sin-issue` | ✅ TERMINADO | Codigo COMPLETO y mergeado: 03370978 (#1486, ancestro de origin/main), CI 6/6, tsc limpio, jest theme 150/150. onKeyP… |
-| **SM-N41** | `sin-issue` | 🟧 DOD-PARCIAL | Los puntos 2 y 3, y el 2 es una DECISION DEL OPERADOR que no se puede sustituir por criterio tecnico: el campo va leg… |
+| **SM-N41** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO DEVICE. Reescrito 2026-11-03 con la medicion de auditoria (d0f0e438, PR #1601): el DoD 2, que era una DECISION D… |
 | **SM-N42** | `sin-issue` | ✅ TERMINADO | 1fc5f281 (#1516, CI 6/6) por frontend2, que cierra el punto 4 -- el unico que faltaba. DOD punto por punto: puntos 1 … |
 | **SM-N43** | `sin-issue` | ✅ TERMINADO | 61ee42ec (#1508, ancestro de origin/main, CI 6/6) por frontend2 + el punto 6 en DEVICE por frontend1, que era el unic… |
 | **SM-N44** | `sin-issue` | ✅ TERMINADO | DoD COMPLETO. (1) endpoint: backend #1510 c8736bff -- cuit_vinculado + test adversarial PG/RLS, suite VPS 2640 passed… |
@@ -148,14 +148,14 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N50** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N51** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N52** | `sin-issue` | ✅ TERMINADO | sha b45ab84f (PR #1590), verificado ancestro de origin/main. CI 6/6. DoD1: los 9 archivos de la Consola corren en Git… |
-| **SM-N53** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N54** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N55** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N56** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N53** | `sin-issue` | ✅ TERMINADO | cd332c96 (PR #1602) — el interceptor guarda `activity_id`, el workflow lo manda con su propio `workflow.patched`, y `… |
+| **SM-N54** | `sin-issue` | ✅ TERMINADO | 6459a3ac (PR #1600) — `_cuit_del_tenant` con la DB caida responde 503 reintentable CON rastro y tenant, en vez del 40… |
+| **SM-N55** | `sin-issue` | 🟧 DOD-PARCIAL | UN punto, el DoD 3, y es de FRONTEND: la app tiene que tratar `paso=consulta_no_disponible` como «no pude consultar» … |
+| **SM-N56** | `sin-issue` | ✅ TERMINADO | 6459a3ac (PR #1600) — el rastro que escribe `conexiones_salud.py` ahora sale con el `cliente_id` del tenant que lo or… |
 | **SM-Z1** | `sin-issue` | 🟧 DOD-PARCIAL | ACTUALIZADO 2026-11-03 23:50 - el codigo YA ESTA HECHO y desplegado; lo unico que falta es el OAuth del operador en e… |
 | **SM-Z2** | `sin-issue` | ✅ TERMINADO | `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama ➕ ANOTACION 2026-11-03 (INFO de au… |
 | **SM-Z3** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-Z4** | `sin-issue` | 🟧 DOD-PARCIAL | Parte 2 (COLOR). La parte 1 (TAMANO) esta HECHA y mergeada: HERO 34 -> 32 en PantallaLogin.tsx:25 citando index.html:… |
+| **SM-Z4** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO DEVICE. Reescrito 2026-11-03 con la medicion de auditoria (d0f0e438, PR #1601): la parte 2 (COLOR) ya no esta bl… |
 | **SM-Z5** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -930,7 +930,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-L4 · `sin-issue` — El cierre del sprint exige remedir las 51 entradas
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** MEDIDO HOY por script, que es lo que el DoD exige: python -I -X utf8 scripts/mapa-51-estado.py sobre origin/main @a2ec0a02 (lote 13 adentro), exit 0. Cifra (A) VEREDICTOS del corpus: CONFORME 9 + DIFERENTE-A 6 + DIFERENTE-B 20 + NO-VERIFICABLE 16 = 29 de 51 EN CONDICION. Esa cifra responde que decia el corpus la ultima vez que se MIDIO la app, y NO es el 61/83 del registro de fichas: citar una por la otra es el error mas repetido del sprint. EL HALLAZGO, que el control del propio medidor no podia dar (dice 0 entradas divergentes sin ficha, y es cierto): cruzando cobertura contra ESTADO, OCHO entradas no-conformes estan cubiertas UNICAMENTE por fichas en TERMINADO -- 03 ingresar (SM-K6), 06 base (SM-N1), 09 tablero (SM-I1), 17 bi-refresh (SM-N2), 33 comousar (SM-K7), 37 vacio (SM-N5), 41 presu (SM-J1+J2+J4) y 47 apps (SM-K4). Nadie las tiene en cola porque su ficha cerro, y por eso NO DAN SINTOMA: se leen como trabajo hecho mientras el corpus sigue diciendo que la entrada no esta conforme. Es el modo de falla del id que no circula, al revés: aca el id circulo y cerro, y lo que quedo sin circular es la ENTRADA del corpus. Bajado como contrato_ a-todos el 2026-11-03 con reparto por dueno (frontend1: 06, 09, 47 / frontend2: 03, 33, 37, 41 / backend: 17) y DoD binario por entrada, y empujado por SendMessage a las tres sesiones porque un broadcast a-todos no lo persigue nadie. PROHIBIDO marcar una entrada CONFORME porque su ficha esta TERMINADO: eso convierte el corpus en un reflejo del backlog y las dos cifras vuelven a citarse una por la otra, que es justo lo que DEC-18 prohibe. Falta entonces: las 8 remediciones con su cita y su sha, y despues re-correr el medidor. onb-cumplida (20) y vacio-visto (32) NO se fuerzan: necesitan dias de uso reales y el DoD las deja declaradas con su motivo.
+- **Falta:** REESCRITO 2026-11-03 con la remedicion de auditoria (d0f0e438, PR #1601, @61adbe95): el `Falta` anterior citaba 29/51 @a2ec0a02 y esa CIFRA vencio -- hoy el medidor da 34/51. Pero un Falta vencido NO es un DoD cumplido, y por eso esta ficha NO pasa a TERMINADO aunque auditoria la propusiera: su DoD pide las 51 entradas en CONFORME o DIFERENTE-B con cita, y faltan 17. De esas, las entradas 20 y 32 siguen DECLARADAS con su motivo (necesitan dias de uso reales), que es el camino que el propio DoD autoriza. Lo que falta medir es el resto. Un hallazgo nuevo sobre una entrada ya cerrada NO la reabre: va a ficha aparte (DEC-18).
 - **Cierre:** Re-medido 2026-11-03. ENTRADA 41 RESUELTA EN CODIGO: frontend2 #1528 2ab3a02f, CI 6/6, jest 72/72 -- extendio etiquetaEstado con los dias desde Presupuesto.fecha, SIN helper nuevo (el helper duplicado ya se pago en N45) y con tests de las dos mitades. 🔴 Y ME REFUTO POR SEGUNDA VEZ EN LA MISMA ENTRADA, con razon las dos: el prototipo SI muestra los dias por fila (Prototipo frontend/odobi-ui/.../index.html:2083,2088). Yo habia bajado la entrada como «diferencia de forma» ofreciendo dos salidas (chip con dias vs aviso binario suficiente) pero NUNCA MEDI EL PROTOTIPO -- clasifique la entrada sin mirar el lado contra el que se compara, que es la mitad que decide. Las dos equivocaciones mias en esta entrada fueron de instrumento, no de criterio: (1) afirme que el chip NO EXISTIA porque antigued/dias daban 0 con control positivo verde, y existia como etiqueta binaria aportada por resumenEspera.ts:74 (el literal no estaba en su forma real); (2) despues clasifique la diferencia sin medir el prototipo. Registrado en memoria/no-era-que-no-cazaba-el-patron-era-que-no-lo-cazaba-en-su-forma-real.md (refuerzo mergeado en 46af6016, #1529). Acumulado del corpus con los lotes anteriores: 1447fddb (#1497) y 9fa6fef8 (#1494), ancestros verificados con control positivo del propio chequeo de ancestria. ENTRADA 16 DESBLOQUEADA: el tenant de SM-N15 (e2e-vacio@copiloto.test) SIRVE TAL CUAL -- /ingresos 0 vs 8 del canonico, impagos 0 vs 4, resumen 0.00, con control positivo del canonico en cada linea; credencial en .env.e2e, canonico intacto (4f3ecb78).
 - **Dueño:** planificación
 - **Medido:** al 2026-11-02 el mapa está en 7 CONFORME · 31 DIFERENTE·A · 6 DIFERENTE·B · 7
@@ -2327,10 +2327,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N31 · `sin-issue` — La barra de grabación no ocupa el ancho al pie: `grabando` y `bloqueado`
 
-- **Estado:** DOD-PARCIAL
+- **Estado:** TERMINADO
 - **Dueno-activo:** frontend2
-- **Falta:** UN punto, el DoD 4, y NO es de device: las entradas 12 y 13 del corpus tienen que pasar a CONFORME con su cita, y el veredicto se cambia MIDIENDO LA APP, no por el estado de esta ficha. Eso ultimo es la mitad que se saltea sola: marcar el corpus porque la ficha cerro es exactamente el circulo que DEC-18 prohibe -- el corpus seria entonces un reflejo del backlog y no una medicion independiente, y las dos cifras del sprint volverian a citarse una por la otra. Hoy esas dos entradas estan en NO-VERIFICABLE, que es el estado correcto mientras nadie las mida. Disparador exacto: una corrida de scripts/mapa-51-estado.py (o el medidor vigente) sobre la app desplegada, citando el sha medido. No necesita telefono ni sesion. Dueno: frontend2 (dueña de la ficha).
-- **Cierre:** DoD 1, 2 y 3 CERRADOS. Codigo: la causa medida ya no existe (DockFuncion a DockEntrada, enLugarDelCampo; DockEntrada.test.tsx:108,128). DEVICE 2026-11-03 (frontend1, tenedora, cuenta canonica, en Gastos, SIN voz -- no hace falta audio para ver la pantalla): grabando a las 14:36:52 -- la barra queda AL PIE y REEMPLAZA al campo, con punto rojo, 0:02, el aviso de deslizar para cancelar y la onda en todo el ancho; bloqueado a las 14:37 -- barra de ancho completo con tacho, onda, reloj, pausa y enviar. Los DOS estados, que es lo que el punto 1 pedia. DoD 2, la regresion OBLIGATORIA: cancelar deslizando y descartar con el tacho funcionan los dos y NO se envio nada -- y esto importaba mas que las capturas, porque la ficha MUEVE la zona del gesto y lo que hoy funciona es lo que un cambio de ubicacion rompe callado. DoD 3 con el metodo declarado: adb shell input motionevent DOWN/MOVE, nunca input tap, que no ejercita un Pan de RNGH. Limites escritos por frontend1 y conservados: sin voz real, sin filmar a mas fps, sin comparacion pixel a pixel con el prototipo.
+- **Cierre:** DoD 1-3 ya estaban cerrados (codigo + device 2026-11-03). El DoD 4 -- las entradas 12 y 13 del corpus en CONFORME con su cita, cambiadas MIDIENDO LA APP -- quedo cumplido en e8ed06fb (PR #1548), y su `Falta:` vencio 19 minutos despues de escribirse: lo midio auditoria el 2026-11-03 contra origin/main @61adbe95 y lo dejo escrito en d0f0e438 (PR #1601, Auditorias/2026-11-03-auditoria-DOD-PARCIAL-...md). La clase es la del sprint: el commit que resuelve el Falta CITA el id, pero nadie vuelve a la ficha -- misma forma que J1, H5 y N34.
 - **Dueño:** frontend2
 - **De dónde sale:** del medidor `scripts/mapa-51-estado.py`, que las encontró como **las dos únicas
   entradas divergentes del mapa que NINGUNA ficha del sprint cubría**. No es un hallazgo nuevo: están
@@ -2766,7 +2765,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N41 · `sin-issue` — El campo del composer es translúcido y deja leer los mensajes de atrás
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Los puntos 2 y 3, y el 2 es una DECISION DEL OPERADOR que no se puede sustituir por criterio tecnico: el campo va legible (subir el alfa) o translucido a proposito (y entonces la ficha cierra CERRADO-POR-DECISION, sin tocar codigo). El operador pidio conservar «el de dentro» del campo y NO escribio si lo quiere translucido o legible; un alfa es decision de diseno, y subirlo puede romper el cristal que el resto de la cascara sostiene. El punto 3 solo existe si la decision es «legible»: el alfa va parametrizado donde YA vive (ALFA_BASE_CAMPO, Composer.tsx:239 -> conAlfa(tema.color.fondo, ALFA_BASE_CAMPO)), nunca hardcodeado en el JSX, y se mira en las DOS pieles. Dueno del 2: operador (escalado). Dueno del 3 si se decide: frontend2.
+- **Dueno-activo:** frontend2
+- **Falta:** SOLO DEVICE. Reescrito 2026-11-03 con la medicion de auditoria (d0f0e438, PR #1601): el DoD 2, que era una DECISION DEL OPERADOR y era el bloqueo real, YA ESTA -- se decidio «legible», y el DoD 3 esta implementado y mergeado en e213dd47 (PR #1585), con el alfa parametrizado donde ya vivia (`ALFA_BASE_CAMPO = 0.96`, Composer.tsx:302) y no hardcodeado en el JSX. El DoD 1 (captura del caso) se cerro en device el 2026-11-03. Lo unico que queda es mirarlo en LAS DOS PIELES en device, que es lo que el DoD 3 exige al final y lo que ningun gate puede verificar.
 - **Cierre:** DoD 1 CERRADO en device el 2026-11-03 (frontend1, canonica, piel clara): con el CHAT arriba, la burbuja del agente queda bajo el campo «Escribi, o habla...» y su texto se lee como FANTASMA a traves del campo y del mic. Captura b4-n41-p1-chat-burbuja-detras-del-campo-canonico, 14:23. NADIE toco ALFA_BASE_CAMPO: el punto 1 es captura, no fix. 🎯 Y la ficha registra una captura DESCARTADA, porque el descarte es la evidencia de que el criterio se aplico: la primera (14:20) era de MI DIA, no del chat, y frontend1 la retiro por su cuenta antes de que entrara al registro. El DoD 1 pide el sintoma «con el chat arriba, con mensajes detras del campo»; una captura de otra pantalla puede mostrar un campo translucido y no mostrar lo que el punto mide -- texto de BURBUJAS leyendose a traves. Una captura que se parece a la pedida no es la pedida, y el unico modo de distinguirlas es releer el criterio en vez de mirar la imagen.
 - **Dueño:** frontend2
 - **De dónde sale:** observación de **frontend1 en device**, 2026-11-03, reportada sin tocar nada
@@ -3273,7 +3273,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N53 · `sin-issue` — El trauma de turno FUNDE todos los fallos de activity en UNA fila genérica que encabeza la cola de autosanación y no se puede reparar
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** cd332c96 (PR #1602) — el interceptor guarda `activity_id`, el workflow lo manda con su propio `workflow.patched`, y `registrar_trauma_de_turno` saltea SOLO si ya hay fila del interceptor para ese (workflow_id, activity_id): es la MARCA POSITIVA del DoD, no una enumeracion de tipos. DoD 1: dos fallos distintos de activity dejan 2 filas, no 3, contra la base de tests en el VPS con PG real. DoD 2: control positivo DEPOSITOS=2 conservado. DoD 3 (el que yo habia escrito mal): medido binario, 1 deposito por caso -- NotFound y el timeout start_to_close siguen dejando UNA fila workflow_turno cada uno y no se funden, que es exactamente el caso que habria quedado ciego si el fix enumeraba ApplicationError; `schedule_to_start` quedo retirado del DoD porque no existe en este workflow (el caso lo invente yo). DoD 4: este sha, mas la mutacion -- con el codigo de origin/main caen 3 de los 7 tests y los 4 controles pasan en ambos. tests/test_sm_n53_trauma_de_turno_sin_duplicar.py. CI 6/6, suite del VPS 2724 passed / 42 skipped.
 - **Dueño:** backend
 - **De dónde sale:** `pedido_manejo-de-errores-a-backend` del 2026-11-03, después de que #1587
   cableara «fallo del turno → DLQ». El defecto es **del fix**, no de lo que el fix arregló.
@@ -3321,7 +3322,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N54 · `sin-issue` — Si la DB cae al facturar un presupuesto, la app dice «falta el CUIT» y manda al emprendedor a rehacer un perfil fiscal que ya tiene
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** 6459a3ac (PR #1600) — `_cuit_del_tenant` con la DB caida responde 503 reintentable CON rastro y tenant, en vez del 409 «falta el perfil fiscal (CUIT)» que mandaba al emprendedor a rehacer un perfil que ya tenia. DoD 1: la respuesta se distingue en codigo y texto y no instruye a tocar el perfil fiscal. DoD 2: >=1 linea estructurada con el tenant. DoD 3: control positivo conservado -- el tenant que de verdad no tiene CUIT sigue recibiendo su 409. DoD 4: el test ejercita LAS DOS causas (una sola no atribuye). 8 tests, 5 caen con el codigo viejo. Verificado aparte por manejo-de-errores con su propio spike (ROJO a VERDE). CI 6/6.
 - **Dueño:** backend
 - **De dónde sale:** `pedido_manejo-de-errores-a-backend` del 2026-11-03. Backend declaró este punto
   **«sólo LEÍDO»** en su propio cierre; manejo-de-errores lo **ejercitó** y es defecto real.
@@ -3344,7 +3346,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N55 · `sin-issue` — Con Temporal caído, consultar el onboarding devuelve el mismo `None` que «nunca hubo alta», y el alta fallida no se ve como fallida
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Dueno-activo:** frontend1 o frontend2 (DoD 3)
+- **Falta:** UN punto, el DoD 3, y es de FRONTEND: la app tiene que tratar `paso=consulta_no_disponible` como «no pude consultar» y NO como «esta tardando». El backend ya esta hecho y mergeado (6459a3ac, PR #1600): `consultar_onboarding` con Temporal UNAVAILABLE devuelve un valor propio distinto de NOT_FOUND (DoD 1) y deja su linea con el tenant (DoD 2), con el control positivo de NOT_FOUND conservado (DoD 4). Mientras el front no lea ese paso, el defecto que la ficha nombra SIGUE VISIBLE para el emprendedor: un alta fallida se presenta como un alta lenta. No tiene dueno asignado todavia -- es lo unico que separa esta ficha de TERMINADO.
 - **Dueño:** backend
 - **De dónde sale:** el mismo `pedido_` del 2026-11-03. También estaba declarado **«sólo LEÍDO»**
   por backend.
@@ -3363,7 +3367,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N56 · `sin-issue` — El rastro nuevo de Composio caído sale con `cliente_id` NULL: dice que algo falló y no de quién
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** 6459a3ac (PR #1600) — el rastro que escribe `conexiones_salud.py` ahora sale con el `cliente_id` del tenant que lo origino; antes salia null aunque el llamador (`mi_dia_detector.py`) ya tenia el tenant en mano. DoD 1 y 2: el test afirma SOBRE EL VALOR del `cliente_id`, no sobre que la linea exista -- que es la unica forma de ver volver este defecto. Verificado aparte por manejo-de-errores: «el rastro de N56 ahora lleva cliente_id; antes salia null». CI 6/6.
 - **Dueño:** backend
 - **De dónde sale:** `pedido_manejo-de-errores-a-backend` del 2026-11-03, hallado al verificar
   `SM-N50`. Es el **hueco chico del fix que acabamos de cerrar**, no un frente nuevo.
@@ -3452,7 +3457,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-Z4 · `sin-issue` — El wordmark difiere en TAMAÑO y en COLOR, y sólo el tamaño se corrige sin decidir
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Parte 2 (COLOR). La parte 1 (TAMANO) esta HECHA y mergeada: HERO 34 -> 32 en PantallaLogin.tsx:25 citando index.html:517, con test que lee .ig-marca .w del prototipo y compara contra el fontSize renderizado -- verde 13/13 y control NEGATIVO con HERO=34 en rojo (Expected 32, Received 34). SHA ab3eaf71 (#1572, CI 6/6), ancestro verificado. Falta la decision del operador sobre el color y, si es afirmativa, el par logotipo. MEDIDO por frontend2 y cambia la pregunta: NO son dos decisiones contrarias, es una divergencia que el login no heredo. El reveal tiene la decision ESCRITA -- identidadPalette.ts:13-16, COLOR_PALABRA_MARCA = #DE7250 con el motivo "es el logotipo, no texto de UI"; el login usa acentoTinta desde 810d1dff SIN decision escrita. Asi que la pregunta al operador deja de ser "el wordmark es logotipo exento?" y pasa a ser "el login adopta la misma exencion que el reveal YA tiene escrita?". Si la respuesta es si: agregar el par #de7250 -> #f7f3ec como logotipo para texto, con control positivo. Tambien pendiente de device el tamano real del wordmark en pantalla [ASSUMED_PENDING_VERIFY].
+- **Dueno-activo:** frontend2
+- **Falta:** SOLO DEVICE. Reescrito 2026-11-03 con la medicion de auditoria (d0f0e438, PR #1601): la parte 2 (COLOR) ya no esta bloqueada por el operador -- el wordmark usa `COLOR_PALABRA_MARCA` (PantallaLogin.tsx:150) y el par logotipo tiene su control, resuelto en e213dd47 (PR #1585), que es el sentido en que `RevealEntrada.tsx:146` ya lo habia resuelto y el login no habia heredado. La parte 1 (TAMANO, 34 -> 32) estaba hecha desde antes. Queda el TAMANO REAL EN DEVICE: el test compara el fontSize renderizado contra el prototipo en jsdom, y eso no acredita como se ve en pantalla.
 - **Dueño:** frontend2 (parte 1) · operador (parte 2)
 - **Medido (frontend2, al cerrar la entrada `03 · ingresar`, `809cc1fa`):** mapa **32 px** terracota
   `#DE7250` (`index.html:517`); app **34 px** (`PantallaLogin.tsx:25`) en `acentoTinta #B04A2E`.
