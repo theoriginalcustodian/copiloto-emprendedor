@@ -5,8 +5,10 @@
  * DEC-10) y misma proporción símbolo/badge.
  *
  * Cero color propio: badge `--btn-bg` y signo `--btn-fg` (el par de la acción primaria, que ya está
- * verificado para contraste en las tres pieles). El trazo se predivide por la escala para verse
- * igual de fino a cualquier tamaño (mismo mecanismo que mobile), y el isotipo va inline: sin asset.
+ * verificado para contraste en las tres pieles). El 1,3 está en unidades del viewBox de 24 y NO se
+ * predivide: el grupo escala y el trazo escala con él (a 96 px rinde 5,2 px, como el prototipo). Predividir
+ * por `escala` clavaba 1,3 px absolutos y lo dejaba 4× más fino (pedido 2026-11-04). Mismo criterio que
+ * `EntradaDiaria`. El isotipo va inline: sin asset.
  */
 interface MarcaProps {
   size?: number;
@@ -50,7 +52,7 @@ export function Marca({ size = 64 }: MarcaProps) {
               key={i}
               data-testid={`marca-isotipo-trazo-${i + 1}`}
               d={d}
-              strokeWidth={ISOTIPO_STROKE_BASE / escala}
+              strokeWidth={ISOTIPO_STROKE_BASE}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
