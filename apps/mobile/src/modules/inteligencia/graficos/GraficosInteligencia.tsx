@@ -10,7 +10,6 @@ import {
   imputacionDeTrabajos,
   leerGraficoCategorias,
   leerGraficoEntroVsSalio,
-  leerGraficoFacturacion,
   leerGraficoMargenTrabajo,
   margenPonderado,
 } from '@copiloto/core';
@@ -67,35 +66,6 @@ function Cargando({ testID }: { testID: string }) {
     <View style={styles.centro} testID={testID}>
       <ActivityIndicator color={tema.color.acento} />
     </View>
-  );
-}
-
-function TarjetaFacturacion() {
-  const tema = useTema();
-  const leer = useCallback(() => leerGraficoFacturacion(), []);
-  const res = useGrafico(leer);
-
-  if (res == null) return <Cargando testID="inteligencia-grafico-facturacion-cargando" />;
-  if (res.status !== 'ok' || res.modo !== 'serie') return null;
-
-  return (
-    <Tarjeta testID="inteligencia-grafico-facturacion" rotulo="Facturación">
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <GraficoBarras
-          testID="grafico-facturacion"
-          puntos={res.serie.map((p) => p.mes)}
-          series={[
-            {
-              id: 'total',
-              etiqueta: 'Facturado',
-              color: tema.color.acentoTinta,
-              valores: res.serie.map((p) => p.total),
-            },
-          ]}
-          epigrafe={res.periodo !== '' ? formatearPeriodo(res.periodo) : undefined}
-        />
-      </ScrollView>
-    </Tarjeta>
   );
 }
 
@@ -231,7 +201,8 @@ function TarjetaMargenTrabajo() {
 export function GraficosInteligencia() {
   return (
     <View style={styles.contenedor} testID="inteligencia-graficos">
-      <TarjetaFacturacion />
+      {/* SM-N32 (decisión del operador, 2026-11-04): la tarjeta «Facturación» se RETIRA — el mapa no la
+          dibuja. El gráfico de facturación sigue en core (`leerGraficoFacturacion`) por si vuelve. */}
       <TarjetaEntroVsSalio />
       <TarjetaCategorias />
       <TarjetaMargenTrabajo />

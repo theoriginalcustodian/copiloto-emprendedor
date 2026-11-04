@@ -333,7 +333,7 @@ describe('PantallaInteligencia — SM-N32: sin selector «Resumen»/«Preguntar�
     expect(color('inteligencia-mes-gastos')).toBe(base);
   });
 
-  it('🔴 los 4 gráficos entran DEBAJO de la portada, en el mismo scroll', async () => {
+  it('🔴 los 3 gráficos entran DEBAJO de la portada, en el mismo scroll — sin «Facturación» (SM-N32)', async () => {
     facturacionMock.mockResolvedValue({
       status: 'ok',
       modo: 'serie',
@@ -345,7 +345,9 @@ describe('PantallaInteligencia — SM-N32: sin selector «Resumen»/«Preguntar�
     await montar();
 
     await waitFor(() => expect(screen.getByTestId('inteligencia-graficos-seccion')).toBeTruthy());
-    expect(screen.getByTestId('inteligencia-grafico-facturacion')).toBeTruthy();
+    // El mock de arriba devuelve la serie `ok`: que la tarjeta no esté es retiro, no falta de dato.
+    expect(screen.queryByTestId('inteligencia-grafico-facturacion')).toBeNull();
+    expect(screen.getByTestId('inteligencia-grafico-entro-vs-salio')).toBeTruthy();
   });
 });
 
