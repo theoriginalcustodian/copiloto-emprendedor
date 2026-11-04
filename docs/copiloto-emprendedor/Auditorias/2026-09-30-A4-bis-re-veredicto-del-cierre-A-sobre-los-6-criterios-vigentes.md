@@ -5,7 +5,7 @@
 
 **SHA medido:** `origin/main` @ `e147e873` (2294 archivos en el árbol).
 **Prod medido:** deploy `2026-09-29T20:02:39Z`, backend anclado a `8c3dbede`
-(`DEPLOY-MANIFEST.jsonl`, último de 4); `apps/copiloto-web`, `packages/core` y `deploy/*` salieron del
+(`DEPLOY-MANIFEST.jsonl`, último de 4); `apps/copiloto-web`, `packages/core` y `deploy/*` salieron del ⚠️ **PREMISA VENCIDA (medido 2026-11-03):** el archivo vivo es **`DEPLOY-MANIFEST.json`** (`deploy/copiloto/deploy.sh:123,146` — NDJSON append-only, 64 deploys, el último de hoy). El `.jsonl` es el **nombre viejo** (#695), muerto desde el 2026-09-30. Esta cita es correcta **para su fecha** y queda como estaba; se anota porque otra sesión la leyó como vigente y midió el archivo equivocado.
 working tree con `archivos_sucios_en_paths_no_verificados: 0`. Bundle vivo: `index-bwqf9TEQ.js`
 —distinto del `index-BXDl2uCf.js` que midió A4—, o sea **prod cambió desde el 22/09**.
 

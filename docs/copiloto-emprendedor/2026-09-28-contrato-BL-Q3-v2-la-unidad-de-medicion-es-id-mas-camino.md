@@ -922,7 +922,7 @@ es el defecto** — lo que se arregló es que de acá en adelante no se pueda vo
 puede leerlo, la fila **no** cae a la inferencia en silencio: escribe `servido@?` y eso es un hueco
 declarado, no un techo disfrazado.
 
-> ✅ **Y el testigo del deploy CERRÓ el mismo día** (H1, backend): el segundo deploy real dejó **2 líneas** en `DEPLOY-MANIFEST.jsonl` con shas y timestamps distintos, que es lo que faltaba — con una sola línea no se distingue un append de un `cat >`. Queda dicho abajo cómo estaba antes de cerrar, porque el criterio sirve igual:
+> ✅ **Y el testigo del deploy CERRÓ el mismo día** (H1, backend): el segundo deploy real dejó **2 líneas** en `DEPLOY-MANIFEST.jsonl` con shas y timestamps distintos, que es lo que faltaba — con una sola línea no se distingue un append de un `cat >`. Queda dicho abajo cómo estaba antes de cerrar, porque el criterio sirve igual: ⚠️ **PREMISA VENCIDA (medido 2026-11-03):** el archivo vivo es **`DEPLOY-MANIFEST.json`** (`deploy/copiloto/deploy.sh:123,146` — NDJSON append-only, 64 deploys, el último de hoy). El `.jsonl` es el **nombre viejo** (#695), muerto desde el 2026-09-30. Esta cita es correcta **para su fecha** y queda como estaba; se anota porque otra sesión la leyó como vigente y midió el archivo equivocado.
 >
 > ⚠️ H1 dejó el manifiesto en `.jsonl`
 > append-only, pero con **una sola** línea real no se distingue un append de un `cat >`. Backend lo

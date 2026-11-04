@@ -69,6 +69,18 @@ jobs:
       # Con FORCE activo, como quedará producción tras la migración. El CI ejercita el estado FINAL.
       UC_RLS_FORCE: "1"
       PGPASSWORD: copiloto
+      # El rol del CICLO DE REPARACIÓN (cross-tenant, BYPASSRLS). Sin esta variable los 9 tests del
+      # ciclo —el e2e de autosanación, `tomar_un_bug_distinto`, el forjador— se SALTEABAN siempre acá
+      # y sólo corrían en `gate.sh` (vía `test-db.sh --export`). Como el merge se decide con
+      # `ci-verde.sh`, que lee ESTE job, el ciclo no protegía ningún merge y el `-q` ni decía por qué
+      # (medido 2026-11-03 en el VPS: con el DSN 39 passed, sin él 30). Mismo nombre que producción.
+      COPILOTO_AUTOSANACION_DSN: postgresql://copiloto_autosanacion:copiloto@localhost:5432/copiloto_test
+      # El rol de la CONSOLA DE OPERADOR (cross-tenant, BYPASSRLS, SELECT-only). Mismo hueco que el de
+      # arriba (SM-N52): sin él, 35 tests de la Consola —incluidos sus adversariales de aislamiento y
+      # `test_rls_invariantes`— se salteaban acá y sólo corrían en `gate.sh`. Un control de aislamiento
+      # cuyo test no corre en el gate que decide el merge es indistinguible de uno sin test
+      # (CLAUDE.md §Seguridad). Medido 2026-11-03 en el VPS, 9 archivos: con el DSN 58 passed, sin él 23.
+      COPILOTO_CONSOLA_DSN: postgresql://copiloto_consola:copiloto@localhost:5432/copiloto_test
 
     steps:
       - uses: actions/checkout@v4
@@ -110,6 +122,44 @@ jobs:
              -- real estos permisos vienen dados: acá hay que otorgarlos explícitamente.
              GRANT USAGE ON SCHEMA auth TO copiloto_app;
              GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA auth TO copiloto_app;"
+      # Espejo de `deploy/copiloto/test-db.sh:122-123,221-224`: mismo rol y MISMO recorte que en
+      # producción —una sola tabla—, así que un test que intente tocar otra falla acá igual que allá.
+      # Los GRANT van DESPUÉS de provisionar (no se otorga sobre una tabla que no existe); el
+      # `provision.py` de `backend.sh` vuelve a correr y es idempotente.
+      - name: rol del ciclo de autosanación (BYPASSRLS, recortado a copiloto_traumas)
+        run: |
+          psql "postgresql://copiloto:copiloto@localhost:5432/copiloto_test" -v ON_ERROR_STOP=1 -c \
+            "DO \$\$ BEGIN
+               IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='copiloto_autosanacion') THEN
+                 CREATE ROLE copiloto_autosanacion LOGIN PASSWORD 'copiloto' NOSUPERUSER BYPASSRLS;
+               END IF;
+             END \$\$;"
+          (cd apps/copiloto && python provision.py)
+          psql "postgresql://copiloto:copiloto@localhost:5432/copiloto_test" -v ON_ERROR_STOP=1 -c \
+            "GRANT USAGE ON SCHEMA uc_factory TO copiloto_autosanacion;
+             GRANT SELECT, INSERT, UPDATE, DELETE ON uc_factory.copiloto_traumas TO copiloto_autosanacion;
+             GRANT USAGE, SELECT ON SEQUENCE uc_factory.copiloto_traumas_id_seq TO copiloto_autosanacion;"
+      # Espejo de `deploy/copiloto/test-db.sh:129-131,233-239` (y de `provision-rol-consola.sh` en
+      # producción): SELECT-only sobre las mismas 7 tablas. Ningún GRANT de escritura — un test que
+      # intente escribir con este rol debe fallar, y falla. Las tablas ya existen: las provisionó el
+      # paso anterior.
+      - name: rol de la Consola de operador (BYPASSRLS, SELECT-only)
+        run: |
+          psql "postgresql://copiloto:copiloto@localhost:5432/copiloto_test" -v ON_ERROR_STOP=1 -c \
+            "DO \$\$ BEGIN
+               IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='copiloto_consola') THEN
+                 CREATE ROLE copiloto_consola LOGIN PASSWORD 'copiloto' NOSUPERUSER BYPASSRLS;
+               END IF;
+             END \$\$;"
+          psql "postgresql://copiloto:copiloto@localhost:5432/copiloto_test" -v ON_ERROR_STOP=1 -c \
+            "GRANT USAGE ON SCHEMA uc_factory TO copiloto_consola;
+             GRANT SELECT ON uc_factory.copiloto_metering  TO copiloto_consola;
+             GRANT SELECT ON uc_factory.copiloto_feedback  TO copiloto_consola;
+             GRANT SELECT ON uc_factory.copiloto_traumas   TO copiloto_consola;
+             GRANT SELECT ON uc_factory.copiloto_auditoria TO copiloto_consola;
+             GRANT SELECT ON uc_factory.tenants            TO copiloto_consola;
+             GRANT SELECT ON uc_factory.copiloto_tickets   TO copiloto_consola;
+             GRANT SELECT ON uc_factory.copiloto_mensajes  TO copiloto_consola;"
       # Provisiona + corre (collect y suite completa) -- la definición vive en scripts/ci/backend.sh,
       # el mismo script que invoca `sync-test-backend.sh` en el VPS (ADR-001). Sin lista de archivos:
       # todo lo que exista corre.

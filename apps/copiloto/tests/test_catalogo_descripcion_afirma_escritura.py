@@ -25,7 +25,10 @@ import services
 import tool_catalog
 from services import drive
 
-_AFIRMA_ESCRIBIR = re.compile(r"\b(?:gener|envi|agend|guard|cre|agreg)[aá]\b", re.I)
+# Voseo imperativo («Generá») e infinitivo/3ª persona del prototipo («Generar», «Mandar», «Agendarte»,
+# «Archiva»): los textos canónicos de `/catalog` son los del prototipo (entrada 47).
+_AFIRMA_ESCRIBIR = re.compile(
+    r"\b(?:gener|envi|mand|agend|guard|archiv|cre|agreg)(?:[aá]|ar|arte)\b", re.I)
 
 # Destino de la tool de 1ra clase en `TOOL_INDEX` para los dos servicios que no viven en `services/`.
 _DESTINO_PRIMERA_CLASE = {"googlecalendar": ("calendar",), catalog.MERCADOPAGO_KEY: ("mp",)}
@@ -100,7 +103,7 @@ def test_control_texto_que_promete_escribir_sin_cablear_pone_ROJO(monkeypatch):
     from services import sheets
     monkeypatch.setattr(sheets, "TOOLS", {})
     monkeypatch.setattr(sheets, "WRITE_OPS", frozenset())
-    assert "Agregá" in catalog._PRESENTATION["googlesheets"]["description"]
+    assert "Agregar" in catalog._PRESENTATION["googlesheets"]["description"]
     assert desajuste("googlesheets") is not None
 
 

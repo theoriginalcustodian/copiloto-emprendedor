@@ -153,3 +153,18 @@ describe('Composer -- SM-I2: mic, barra y campo que abre', () => {
     expect(onTocarCampo).toHaveBeenCalledTimes(1);
   });
 });
+describe('Composer -- SM-N41: la base del campo es LEGIBLE (decidido por el operador, 2026-11-03)', () => {
+  function alfaDeLaBase(): number {
+    const { StyleSheet } = require('react-native');
+    const estilo = StyleSheet.flatten(screen.getByTestId('chat-composer-campo-base').props.style);
+    const m = /^rgba\(\d+,\d+,\d+,([\d.]+)\)$/.exec(estilo.backgroundColor);
+    expect(m).not.toBeNull(); // control ciego: si el formato cambia, falla acá y no pasa por vacío
+    return Number(m![1]);
+  }
+
+  it('la base tapa lo que pasa detrás: alfa >= .95 (con .85 todavía se leía «Editar/Cancelar» a través del campo)', async () => {
+    await renderComposer();
+    await waitFor(() => expect(screen.getByTestId('chat-composer-campo-base')).toBeTruthy());
+    expect(alfaDeLaBase()).toBeGreaterThanOrEqual(0.95);
+  });
+});

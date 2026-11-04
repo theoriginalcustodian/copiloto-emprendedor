@@ -67,6 +67,32 @@ def flood_threshold() -> int:
         return FLOOD_THRESHOLD_DEFAULT
 
 
+#: Evento de la línea que deja un depósito fallido. Nombre estable: es lo que se grepea/alarma.
+EVENTO_DEPOSITO_FALLIDO = "dlq_deposito_fallido"
+
+
+def avisar_deposito_fallido(exc: BaseException, *, cliente_id: str | None, fingerprint: str,
+                            workflow: str) -> None:
+    """Deja UNA línea estructurada cuando la DLQ no pudo guardar un trauma. **Nunca lanza.**
+
+    Sin esto, una DLQ rota (tabla que no está, policy que rechaza, base caída) no daba ningún síntoma:
+    el error original quedaba logueado, `depositar` devolvía `None`, y la DLQ vacía se leía como
+    «no hay nada que reparar». Un mecanismo roto hacia el «no» tiene que dejar rastro él mismo,
+    porque el silencio es justo el estado que parece sano. Medido 2026-11-03: 0 líneas de log con el
+    INSERT reventando y 0 con la conexión caída.
+
+    `fingerprint` es el del error que se quería depositar, no el de este fallo: es el dato que
+    permite saber QUÉ trauma se perdió.
+    """
+    try:
+        from log_estructurado import log_error
+        log_error(exc, workflow=EVENTO_DEPOSITO_FALLIDO, cliente_id=cliente_id,
+                  extra={"evento": EVENTO_DEPOSITO_FALLIDO, "fingerprint_perdido": fingerprint,
+                         "workflow_perdido": workflow})
+    except Exception:  # noqa: BLE001 — regla 1: avisar del fallo no puede generar otro
+        pass
+
+
 class TraumaStore:
     """Depósito de errores de la DLQ. **Dos modos de uso, y confundirlos falla en silencio.**
 
@@ -99,7 +125,9 @@ class TraumaStore:
         """
         try:
             conn = self._conn_factory()
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            avisar_deposito_fallido(exc, cliente_id=self._cid, fingerprint=fingerprint,
+                                    workflow=workflow)
             return None
         try:
             with conn.cursor() as cur:
@@ -124,7 +152,9 @@ class TraumaStore:
                      json.dumps(contexto, ensure_ascii=False, default=str) if contexto else None,
                      PENDIENTE, RESUELTO, PENDIENTE))
                 dedupe_count, insertado = cur.fetchone()
-        except Exception:  # noqa: BLE001 — regla 1: depositar un error no puede generar otro
+        except Exception as exc:  # noqa: BLE001 — regla 1: depositar un error no puede generar otro
+            avisar_deposito_fallido(exc, cliente_id=self._cid, fingerprint=fingerprint,
+                                    workflow=workflow)
             return None
         finally:
             try:
@@ -133,6 +163,41 @@ class TraumaStore:
                 pass
         return {"dedupe_count": dedupe_count, "insertado": bool(insertado),
                 "inundado": dedupe_count >= flood_threshold()}
+
+    def ya_deposito_la_activity(self, *, workflow_id: str, activity_id: str) -> bool | None:
+        """¿El interceptor de activities ya dejó la fila de ESTA activity de ESTE workflow?
+
+        Es la MARCA POSITIVA de SM-N53: el workflow que ve un `ActivityError` sólo puede saltear su
+        propio depósito si el interceptor dejó rastro de esa activity. Un fallo que el interceptor
+        nunca vio (activity no registrada → `NotFoundError`; `start_to_close` vencido) no tiene fila,
+        y ahí el depósito del workflow es el único que existe.
+
+        Devuelve `None` si no pudo mirar (conexión caída, RLS): "no pude mirar" NO es "no hay fila", y
+        el llamador debe depositar igual — duplicar es el error barato, perder el fallo no.
+        Si dos activities distintas fallan con el MISMO fingerprint, el upsert deja el `activity_id`
+        de la última: la primera se vería "sin fila" y se deposita de más. Sobre-reportar, no perder.
+        """
+        try:
+            conn = self._conn_factory()
+        except Exception:  # noqa: BLE001
+            return None
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""SELECT 1 FROM {TABLA}
+                         WHERE cliente_id = %s AND costura = 'activity_interceptor'
+                           AND contexto ->> 'workflow_id' = %s
+                           AND contexto ->> 'activity_id' = %s
+                         LIMIT 1""",
+                    (self._cid, workflow_id, activity_id))
+                return cur.fetchone() is not None
+        except Exception:  # noqa: BLE001
+            return None
+        finally:
+            try:
+                conn.close()
+            except Exception:  # noqa: BLE001
+                pass
 
     # ------------------------------------------------------- máquina de estados
     def tomar(self, *, limite: int = 10) -> list[dict]:

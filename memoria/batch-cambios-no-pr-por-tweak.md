@@ -125,3 +125,13 @@ commits» sino:
 
 Y el agravante de este caso: ninguno de los dos PR tocaba la app, así que la espera se pagó entera
 por mover registro. [[ejecutar-la-cola-acordada-no-es-una-decision-de-scope]]
+
+**Refuerzo 2026-11-03 (sesión manejo-de-errores) — reincidí con 4 PRs en ~1 h** (#1584 ratchet, #1586 DLQ,
+#1589 y #1590 CI). Cada uno era sustantivo y con control propio, y por eso **no me pareció tweak**: ése es el
+agujero de la regla. *«Es un fix real»* no exime: el criterio es si **desbloquea a otra sesión HOY**, y
+ninguno de los cuatro lo hacía. #1589 y #1590 eran el MISMO cambio (rol + DSN en `tests.yml`) separados
+media hora: lo correcto era medir los dos huecos y abrir **un** PR. El operador: *«agrupa por lotes un poco
+más grandes… traba mucho el trabajo por el CI»*.
+**Cómo aplicarlo:** un frente de auditoría (barrido de N patrones) junta sus fixes en **una rama por frente**
+y abre **un** PR al cerrar el barrido (o al acumular ~3-5 cambios), no uno por hallazgo. El aviso a
+planificación puede salir por hallazgo; el PR, no.

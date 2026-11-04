@@ -333,6 +333,11 @@ export function PantallaAfipSetup() {
         }
         return;
       }
+      // SM-N55: la consulta cayó (no es un alta lenta) -> cortar y decirlo, sin esperar los 10 min.
+      if (res.estado.onboarding?.paso === 'consulta_no_disponible') {
+        setPoleando(false);
+        return;
+      }
       if (res.estado.onboarding?.terminado) {
         setPoleando(false);
         if (res.estado.onboarding.paso === 'habilitado') {
@@ -360,6 +365,8 @@ export function PantallaAfipSetup() {
 
   const onboardingActual = estadoGeneral?.onboarding ?? null;
   const conectado = estadoGeneral?.conectado === true;
+  const consultaNoDisponible =
+    !poleando && !conectado && onboardingActual?.paso === 'consulta_no_disponible';
 
   // -------------------------------------------------------------------------------------------
   // Bloque 3 -- Ambiente.
@@ -523,9 +530,30 @@ export function PantallaAfipSetup() {
       <section className="afip-setup-bloque" data-testid="afip-bloque-arca">
         <h2 className="afip-setup-bloque__titulo">2. Conectar con ARCA</h2>
 
-        {poleando || pollTardando || (onboardingActual?.paso === 'fallido' && !conectado) ? (
+        {poleando || pollTardando || consultaNoDisponible || (onboardingActual?.paso === 'fallido' && !conectado) ? (
           <div data-testid="afip-arca-progreso">
-            {pollTardando ? (
+            {consultaNoDisponible ? (
+              <>
+                <p
+                  className="afip-setup-bloque__texto afip-setup-bloque__texto--peligro"
+                  data-testid="afip-arca-progreso-no-consulta"
+                >
+                  No pude consultar el estado de tu vinculación con ARCA. Eso no significa que haya
+                  fallado: probá de nuevo en unos segundos.
+                </p>
+                <div className="afip-setup-bloque__acciones" data-testid="afip-arca-progreso-botones">
+                  <Button
+                    data-testid="afip-arca-reintentar"
+                    onClick={() => {
+                      setPoleando(true);
+                      setIntentoPoll((n) => n + 1);
+                    }}
+                  >
+                    Reintentar
+                  </Button>
+                </div>
+              </>
+            ) : pollTardando ? (
               <>
                 <p className="afip-setup-bloque__texto" data-testid="afip-arca-progreso-tardando">
                   Está tardando más de lo normal. El alta ante ARCA puede demorar varios minutos,

@@ -102,8 +102,16 @@ def avanzar_tablero(conn_factory: Callable, cliente_id: str,
             avisos.emitir(regla, c["entidad_tipo"], c["entidad_id"],
                           dias_silencio=c["dias_silencio"], datos=c["datos"])
         vigentes = {str(c["entidad_id"]) for c in candidatos}
+        # Cerrar «por el HECHO» exige haber MIRADO el hecho: lo que no tuvo fuente en esta pasada (Composio
+        # caído o no inyectado) trae `[]` por «no sé», y cerrarlo diría «lo resolviste» sobre una conexión
+        # que sigue vencida. Se cierra sólo lo que sí se miró (MP sale de la DB); al volver la fuente,
+        # se reconcilia el resto.
         if regla in REGLAS_AUTO_CIERRE:
-            tarjetas.cerrar_resueltas(regla, vigentes)
+            miradas = getattr(crudos, "sin_fuente", {}).get(regla)
+            if miradas is None:
+                tarjetas.cerrar_resueltas(regla, vigentes)
+            else:
+                tarjetas.cerrar_resueltas(regla, vigentes, solo_entidades=miradas)
         if regla in REGLAS_REARMAN_AL_BAJAR:
             avisos.liberar_ausentes(regla, vigentes)   # «una vez por CRUCE»: si bajó, el próximo cruce avisa
 

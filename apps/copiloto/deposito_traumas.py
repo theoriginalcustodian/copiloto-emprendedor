@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from trauma_store import TraumaStore
+from trauma_store import TraumaStore, avisar_deposito_fallido
 
 #: `fabrica(cliente_id) -> TraumaStore | None`. La arma el composition root (`serve.py`, `worker_b.py`)
 #: a partir de la `conn_factory` ya envuelta con `conexion_con_tenant`.
@@ -70,5 +70,10 @@ def depositar(fabrica: FabricaDeTraumas | None, *, fingerprint: str, workflow: s
         # lanza). Ese `None` es el caso que importa distinguir: hubo intento y no quedó nada.
         return store.depositar(fingerprint=fingerprint, workflow=workflow, error_type=error_type,
                                costura=costura, contexto=contexto) is not None
-    except Exception:  # noqa: BLE001 — depositar un error jamás puede generar uno nuevo
+    except Exception as exc:  # noqa: BLE001 — depositar un error jamás puede generar uno nuevo
+        # La fábrica o el store reventaron por fuera de lo que el store ya captura: mismo rastro
+        # que un INSERT fallido. Los dos `return False` de arriba NO avisan a propósito: son los
+        # motivos legítimos (sin base, sin tenant) y gritarían en cada ruta pública.
+        avisar_deposito_fallido(exc, cliente_id=cliente_id, fingerprint=fingerprint,
+                                workflow=workflow)
         return False
