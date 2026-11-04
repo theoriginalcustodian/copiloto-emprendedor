@@ -5,7 +5,7 @@
 # Cobertura [UNVERIFIED] — declarada 2026-11-03, se revisa el 2026-12-03 o antes de abrir la beta a usuarios reales.
 # Agregar una línea acá es DECLARAR que esa pregunta queda sin responder: va con clase, dueño y motivo.
 
-## N57 · dueño backend · SM-N57: tapa el aislamiento de memoria entre tenants (la clase grave, ficha propia)
+## N57 · dueño backend · SM-N57: aislamiento de memoria entre tenants. Desde #1619 (f76e6751) CORRE en el gate del VPS; acá queda por GitHub, que no tiene Graphity
 apps.copiloto.tests.test_memory_isolation_live::test_recall_isolation_cross_emprendedor
 
 ## COSTURA-NUESTRA · dueño manejo-de-errores · pregunta sobre NUESTRO código; ejecutable sin credencial con un LLM grabado

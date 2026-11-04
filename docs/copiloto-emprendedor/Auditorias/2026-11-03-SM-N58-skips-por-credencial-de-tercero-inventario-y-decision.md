@@ -118,6 +118,11 @@ en un entorno no ocurre se informa («no ocurrió», que suele ser buena noticia
 
 Línea base resultante: **43 nodeids** (26 + 17), y los nodeids coinciden entre los dos entornos.
 
+**Re-corrida con la línea base completa, sobre `0c2f082b`** (que ya trae `SM-N57`, #1619):
+
+- **VPS:** `2939 passed, 25 skipped`, `NUEVOS: 0`, 18 declarados que no ocurrieron (los 17 de GitHub + `test_memory_isolation_live.py`, que desde #1619 corre en el gate: es el skip que `SM-N57` vino a matar, y el conteo lo muestra solo).
+- **GitHub (run `41764003844`):** `2922 passed, 42 skipped`, `NUEVOS: 0`, 6/6 jobs verdes.
+
 Una observación lateral: `test_afip_onboarding.py::test_el_history_del_workflow_no_contiene_la_clave_fiscal`
 **sólo** corre en el VPS. Está bien porque el gate canónico es el del VPS (ADR-001), pero quiere decir que
 un verde de GitHub **no** acredita que la clave fiscal quede fuera del history de Temporal. Ahora el
