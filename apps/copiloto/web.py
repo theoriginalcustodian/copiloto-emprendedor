@@ -182,6 +182,11 @@ def make_start_onboarding(temporal_client, *, task_queue: str = AGENT_B_TASK_QUE
 # try/except). Nombrar la interrupción es mejor que dejar al usuario esperando: puede reintentar.
 _MOTIVO_ALTA_INTERRUMPIDA = ("La vinculación con ARCA se interrumpió. Podés volver a intentarla.")
 
+# SM-N55: el servidor de workflows no contestó. NO es un `paso` del alta: la app lo tiene que distinguir de
+# «dando_de_alta» (que sí es «está tardando») y de `None` (nunca hubo alta).
+PASO_CONSULTA_NO_DISPONIBLE = "consulta_no_disponible"
+_MOTIVO_CONSULTA_NO_DISPONIBLE = "No pudimos consultar el estado de tu vinculación ahora. Reintentá en unos segundos."
+
 
 def _wf_id_onboarding(cliente_id: str, cuit: str, ambiente: str = "dev") -> str:
     """Un alta por (tenant, CUIT, ambiente). `dev` conserva el id histórico —sin sufijo— para no
@@ -210,8 +215,17 @@ def make_consultar_onboarding(temporal_client) -> Callable:
         try:
             descripcion = await handle.describe()
             vivo = descripcion.status is None or descripcion.status.name == "RUNNING"
-        except Exception:  # noqa: BLE001 — nunca hubo alta, o expiró la retención: no es un error
-            return None
+        except Exception as exc:  # noqa: BLE001
+            if _no_existe(exc):
+                return None   # nunca hubo alta, o expiró la retención: no es un error
+            # SM-N55: «no pude preguntar» (Temporal UNAVAILABLE, deadline) NO es «nunca hubo alta». Con
+            # `None` la app seguía en «está tardando» —un estado legítimo del alta—, y un alta que no
+            # se puede ni consultar se veía como una lenta: sin síntoma y sin una línea de log.
+            from log_estructurado import log_error
+            log_error(exc, workflow="consultar_onboarding", cliente_id=cliente_id,
+                      extra={"costura": "onboarding_describe"})
+            return {"paso": PASO_CONSULTA_NO_DISPONIBLE, "terminado": False, "ok": False,
+                    "motivo": _MOTIVO_CONSULTA_NO_DISPONIBLE, "causa": "servicio", "ws_autorizados": []}
 
         try:
             progreso = await handle.query("progreso")

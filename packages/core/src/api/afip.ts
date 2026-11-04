@@ -94,7 +94,14 @@ type EstadoFacturaConocido =
 /** Máquina de estados de `FacturaWorkflow.estado()` (`afip_rules.EstadoFactura`). Unión ABIERTA. */
 export type EstadoFactura = EstadoFacturaConocido | (string & {});
 
-type PasoOnboardingConocido = 'iniciado' | 'dando_de_alta' | 'verificando' | 'habilitado' | 'fallido';
+/** `consulta_no_disponible` (SM-N55): el backend NO pudo preguntarle a Temporal -- distinto de "no hay alta". */
+type PasoOnboardingConocido =
+  | 'iniciado'
+  | 'dando_de_alta'
+  | 'verificando'
+  | 'habilitado'
+  | 'fallido'
+  | 'consulta_no_disponible';
 /** Pasos de `AfipOnboardingWorkflow.progreso()`. Unión ABIERTA. */
 export type PasoOnboarding = PasoOnboardingConocido | (string & {});
 

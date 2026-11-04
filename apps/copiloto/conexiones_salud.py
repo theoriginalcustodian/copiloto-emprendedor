@@ -45,8 +45,8 @@ def composio_caidos(conexiones: Iterable[dict], soportados: frozenset[str] | Non
     return sorted(caidos - activos)
 
 
-def diagnostico_conexiones(mp_store, composio_conexiones: Callable[[], Iterable[dict]] | None = None
-                           ) -> tuple[list[str], bool]:
+def diagnostico_conexiones(mp_store, composio_conexiones: Callable[[], Iterable[dict]] | None = None,
+                           cliente_id: str | None = None) -> tuple[list[str], bool]:
     """`(caidos, composio_mirado)`. Distingue «sano» de «no pude mirar»: `caidos == []` sólo significa
     «sano» cuando `composio_mirado` es True.
 
@@ -62,7 +62,9 @@ def diagnostico_conexiones(mp_store, composio_conexiones: Callable[[], Iterable[
             mirado = True
         except Exception as exc:  # noqa: BLE001 -- el tablero no puede caerse por esto, pero tampoco callar
             from log_estructurado import log_error
-            log_error(exc, workflow="conexiones_salud", extra={"costura": "composio_list_connections"})
+            # SM-N56: con el tenant. Un rastro sin `cliente_id` en un sistema multi-tenant no se atribuye.
+            log_error(exc, workflow="conexiones_salud", cliente_id=cliente_id,
+                      extra={"costura": "composio_list_connections"})
     return caidos, mirado
 
 

@@ -31,6 +31,9 @@ import {
   type OpcionSelect,
 } from '../../../theme/glass/campos';
 import { MarcoGlass } from '../../../theme/glass/MarcoGlass';
+
+// Subtítulo del mapa (index.html:2306, §afip). El test lo lee de ahí y lo compara: no copia el literal.
+const SUBTITULO_AFIP = 'Tus datos fiscales y el vínculo con ARCA. Sin esto no se puede facturar.';
 import { useTema } from '../../../theme/ThemeProvider';
 import { pressableStyle } from '../../../theme/glass/presion';
 import { useSession } from '../../auth';
@@ -66,6 +69,9 @@ import { useSession } from '../../auth';
  * desde el 2026-07-21 devuelve `cuit` resuelto por el backend con `primer_cuit()` -- si la caché y el
  * backend difieren, gana el backend.
  */
+
+/** `paso` que el backend devuelve cuando no pudo consultar el alta (SM-N55, `web.PASO_CONSULTA_NO_DISPONIBLE`). */
+const PASO_CONSULTA_NO_DISPONIBLE = 'consulta_no_disponible';
 
 /** Ritmo del polling de `estadoAfip` durante el alta ARCA -- ver §5 del plan ("cada 3 s"). */
 const INTERVALO_POLL_MS = 3000;
@@ -542,6 +548,13 @@ export function PantallaAfipSetup() {
         // próximo tick reintenta, mismo criterio que `useChat.poll`.
         return;
       }
+      // SM-N55: el backend no pudo consultar el alta (Temporal caído). NO es "está tardando": seguir
+      // polleando hasta el corte de 10 min disfrazaba un alta fallida de alta lenta. Se corta ya y la
+      // UI lo dice (`consultaNoDisponible`, derivado de este mismo `paso`).
+      if (res.estado.onboarding?.paso === PASO_CONSULTA_NO_DISPONIBLE) {
+        setPoleando(false);
+        return;
+      }
       if (res.estado.onboarding?.terminado) {
         setPoleando(false);
         if (res.estado.onboarding.paso === 'habilitado') {
@@ -581,6 +594,10 @@ export function PantallaAfipSetup() {
    */
   const conectado = estadoGeneral?.conectado === true;
 
+  /** SM-N55: sólo cuando el polling ya se detuvo -- durante un reintento (`poleando`) manda el sondeo. */
+  const consultaNoDisponible =
+    !poleando && !conectado && onboardingActual?.paso === PASO_CONSULTA_NO_DISPONIBLE;
+
   // -------------------------------------------------------------------------------------------
   // Bloque 3 -- Ambiente. `ambientesVinculados` es OPCIONAL en el contrato: `undefined` significa
   // "el backend todavía no lo manda", no "no hay ninguno vinculado". La diferencia es la que decide
@@ -598,7 +615,24 @@ export function PantallaAfipSetup() {
   // Render.
   // -------------------------------------------------------------------------------------------
   return (
-    <MarcoGlass titulo="Facturación ARCA" icono="perfilFiscal" testID="pantalla-afip-setup">
+    <MarcoGlass
+      titulo="Facturación ARCA"
+      icono="perfilFiscal"
+      testID="pantalla-afip-setup"
+      // SM-L4 entrada 46: el mapa lleva subtítulo bajo el título (index.html:2306). Fijo, fuera del scroll.
+      encabezadoExtra={
+        <Text
+          style={{
+            color: tema.color.textoTenue,
+            fontSize: tema.tipo.base,
+            paddingHorizontal: tema.espacio.lg,
+            paddingBottom: tema.espacio.sm,
+          }}
+        >
+          {SUBTITULO_AFIP}
+        </Text>
+      }
+    >
       <ScrollFormulario
         style={styles.scroll}
         testID="afip-setup-scroll"
@@ -776,9 +810,33 @@ export function PantallaAfipSetup() {
             El fallo no se esconde: baja a aviso secundario, que es su jerarquía real. */}
         <Seccion titulo="2. Conectar con ARCA" testID="afip-bloque-arca">
           <View style={{ gap: tema.espacio.md }}>
-            {poleando || pollTardando || (onboardingActual?.paso === 'fallido' && !conectado) ? (
+            {poleando ||
+            pollTardando ||
+            consultaNoDisponible ||
+            (onboardingActual?.paso === 'fallido' && !conectado) ? (
               <View style={{ gap: tema.espacio.sm }} testID="afip-arca-progreso">
-                {pollTardando ? (
+                {consultaNoDisponible ? (
+                  <>
+                    <Text testID="afip-arca-progreso-no-consulta" style={{ color: tema.color.peligro }}>
+                      No pude consultar el estado de tu vinculación con ARCA. Eso no significa que haya
+                      fallado: probá de nuevo en unos segundos.
+                    </Text>
+                    <FilaBotones
+                      testID="afip-arca-progreso-botones"
+                      botones={[
+                        {
+                          etiqueta: 'Reintentar',
+                          variante: 'primario',
+                          testID: 'afip-arca-reintentar',
+                          onPress: () => {
+                            setPoleando(true);
+                            setIntentoPoll((n) => n + 1);
+                          },
+                        },
+                      ]}
+                    />
+                  </>
+                ) : pollTardando ? (
                   <>
                     <Text testID="afip-arca-progreso-tardando" style={{ color: tema.color.texto }}>
                       Está tardando más de lo normal. El alta ante ARCA puede demorar varios minutos,

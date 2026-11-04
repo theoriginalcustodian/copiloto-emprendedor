@@ -60,7 +60,9 @@ if [ -n "${UC_TEST_DATABASE_URL:-}" ]; then
     PG_ENV="${PG_ENV}COPILOTO_CONSOLA_DSN='${UC_TEST_CONSOLA_URL}' "
   PG_AVISO="ON — los tests @necesita_pg CORREN y ESCRIBEN en la base apuntada (UC_RLS_FORCE=${UC_RLS_FORCE:-1})"
 else
-  PG_ENV=""
+  # `backend.sh` provisiona por default y sin base aborta antes de correr nada (fail-closed para CI).
+  # El dev-loop sin Postgres lo pide explícito; sin esto el aviso de abajo era falso.
+  PG_ENV="UC_SIN_PG=1 "
   PG_AVISO="OFF — los tests @necesita_pg se SALTAN (no están en el número de abajo)"
 fi
 
@@ -109,10 +111,15 @@ echo "==> sync worktree -> ${HOST}:${STAGE} (clean)"
 # `packages/core/src/chat/__fixtures__/requiere_conexion.cards.json` viaja por lo mismo: es el fixture del
 # PAR de la costura `alcance` (lo consume el lado app y lo ata `tests/test_alcance_condicion.py` con una
 # igualdad contra `requiere_conexion_card`). Sólo ese archivo; si falta, el test falla.
+# `apps/mobile/src/theme/glass/phosphor.ts` viaja por lo mismo (SM-I7): `test_ningun_icono_emitido_esta_fuera_de_PHOSPHOR`
+# lo LEE para cruzar los `icono` que sirve el backend contra los glifos que la app dibuja. Sin él en el stage el test
+# se SALTEABA justo donde corre el gate (medido 2026-11-04: `30 passed, 1 skipped`), y la costura quedaba afirmada
+# por lectura. Sólo ese archivo; si falta, el test falla.
 tar -C "$LOCAL" --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' \
   --exclude='.env' --exclude='.env.*' \
   -czf - apps/copiloto "$MOTOR" deploy/worker deploy/copiloto scripts spikes/afip-emit-pdf/RESULT.md \
   packages/core/src/chat/__fixtures__/requiere_conexion.cards.json \
+  apps/mobile/src/theme/glass/phosphor.ts \
   | ssh "$HOST" "rm -rf '$STAGE' && mkdir -p '$STAGE' && tar -C '$STAGE' -xzf -"
 
 echo "==> scripts/ci/backend.sh en el venv del VPS${PYTEST_ARGS:+ (args: ${PYTEST_ARGS})}"
