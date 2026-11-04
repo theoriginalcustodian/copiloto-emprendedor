@@ -23,9 +23,17 @@ Verificación ADVERSARIAL contra el backend REAL (sale con exit 1 al primer cont
   3. cross-tenant: el nuevo pide un comprobante y una conversación del canónico y NO los obtiene.
 
 Uso:  UC_ENV_E2E=<ruta a .env.e2e> python scripts/provision_usuario_vacio_sm_n15.py
+
+TERCER TENANT (SM-L4 entrada 20, autorizado por el operador 2026-11-04; acotado a esa entrada):
+  python scripts/provision_usuario_vacio_sm_n15.py --email e2e-onb@copiloto.test --prefijo ONB
+  (1) provisiona VACÍO · (2) se siembra con deploy/copiloto/seed-midia-e2e.py --email ... --ejecutar ·
+  (3) se re-corre con --sembrado: el control 2 pasa a exigir que HAYA comprobantes (por API, sin abrir la app).
+Sin banderas hace EXACTAMENTE lo de siempre. El email sólo se acepta si es `@copiloto.test`: nunca una
+cuenta real. La credencial va a E2E_<PREFIJO>_* en .env.e2e, jamás a la salida.
 """
 from __future__ import annotations
 
+import argparse
 import os
 import secrets
 import sys
@@ -43,7 +51,10 @@ for _f in (sys.stdout, sys.stderr):
 BASE = os.environ.get("UC_BASE", "https://copilotoemprendedor.duckdns.org")
 RAIZ = Path(__file__).resolve().parent.parent
 ENV_E2E = Path(os.environ.get("UC_ENV_E2E", RAIZ / ".env.e2e"))
-EMAIL = "e2e-vacio@copiloto.test"          # a fuego: igual que el canónico, nadie elige otro
+EMAIL_DEFECTO = "e2e-vacio@copiloto.test"   # default a fuego: sin --email nadie elige otro
+DOMINIO_SINTETICO = "@copiloto.test"
+EMAIL = EMAIL_DEFECTO                       # se fija en main() desde --email
+PREFIJO = "VACIO"                           # claves E2E_<PREFIJO>_* en .env.e2e
 LISTADOS = {"clientes": "/clientes", "comprobantes": "/afip/comprobantes", "gastos": "/gastos",
             "presupuestos": "/presupuestos"}
 RUTAS_ADMIN = ("/admin/salud", "/admin/uso", "/admin/tenants")
@@ -93,8 +104,8 @@ def cantidad(token: str, ruta: str, **params) -> int:
 def asegurar_credencial() -> tuple[str, str]:
     """(password, cliente_id). Alta sólo si .env.e2e no la tiene; la password nunca se imprime."""
     env = leer_env()
-    if env.get("E2E_VACIO_PASSWORD"):
-        return env["E2E_VACIO_PASSWORD"], env.get("E2E_VACIO_CLIENTE_ID", "")
+    if env.get(f"E2E_{PREFIJO}_PASSWORD"):
+        return env[f"E2E_{PREFIJO}_PASSWORD"], env.get(f"E2E_{PREFIJO}_CLIENTE_ID", "")
     password = "Vacio-" + secrets.token_hex(12)
     r = requests.post(f"{BASE}/auth/signup", json={"email": EMAIL, "password": password}, timeout=25)
     if r.status_code != 200:
@@ -102,13 +113,27 @@ def asegurar_credencial() -> tuple[str, str]:
               f".env.e2e, hay que resolverlo a mano: NO se pisa una cuenta ajena)")
     cliente_id = r.json()["cliente_id"]
     with ENV_E2E.open("a", encoding="utf-8") as f:
-        f.write(f"\n# SM-N15 — segundo usuario de prueba (SOLO SM-K1/SM-J3): no-admin, tenant vacío\n"
-                f"E2E_VACIO_EMAIL={EMAIL}\nE2E_VACIO_PASSWORD={password}\nE2E_VACIO_CLIENTE_ID={cliente_id}\n")
+        f.write(f"\n# SM-N15 — usuario de prueba sintético {EMAIL} (no-admin; tenant vacío al provisionar)\n"
+                f"E2E_{PREFIJO}_EMAIL={EMAIL}\nE2E_{PREFIJO}_PASSWORD={password}\nE2E_{PREFIJO}_CLIENTE_ID={cliente_id}\n")
     log(f"alta hecha: cliente_id={cliente_id} — credencial escrita en {ENV_E2E.name} (no se imprime)")
     return password, cliente_id
 
 
 def main() -> int:
+    global EMAIL, PREFIJO
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--email", default=EMAIL_DEFECTO)
+    ap.add_argument("--prefijo", default="VACIO")
+    ap.add_argument("--sembrado", action="store_true",
+                    help="el tenant YA fue sembrado: el control 2 exige comprobantes en vez de cero")
+    a = ap.parse_args()
+    if not a.email.endswith(DOMINIO_SINTETICO):
+        fallo(f"--email debe terminar en {DOMINIO_SINTETICO}: esto jamás se corre contra una cuenta real")
+    if a.email != EMAIL_DEFECTO and a.prefijo == "VACIO":
+        fallo("con un --email distinto del default hay que dar --prefijo propio: no se pisa la credencial del vacío")
+    if a.sembrado and a.email == EMAIL_DEFECTO:
+        fallo("--sembrado sólo aplica a un tenant sintético NUEVO; el vacío por defecto debe seguir vacío")
+    EMAIL, PREFIJO = a.email, a.prefijo.upper()
     env = leer_env()
     tok_canon = login(env["E2E_DEVICE_EMAIL"], env["E2E_DEVICE_PASSWORD"])
     password, _ = asegurar_credencial()
@@ -131,7 +156,7 @@ def main() -> int:
             fallo(f"{ruta} con token NO-admin dio {con}, esperado 403 — el control de admin NO deniega")
         log(f"   {ruta}: sin token {sin} · no-admin {con} ✔")
 
-    log("2) tenant vacío + control positivo del canónico")
+    log("2) tenant " + ("SEMBRADO (hay comprobantes)" if a.sembrado else "vacío") + " + control positivo del canónico")
     perfil = get(tok_canon, "/afip/estado")
     cuit = (perfil.json() or {}).get("cuit") if perfil.status_code == 200 else None  # sin param: resuelve el vinculado
     if not cuit:
@@ -142,7 +167,17 @@ def main() -> int:
              for k, r in LISTADOS.items()}
     log(f"   nuevo    = {nuevo}")
     log(f"   canónico = {canon}")
-    if any(nuevo.values()):
+    if a.sembrado:
+        # Los comprobantes del nuevo se cuentan con SU cuit (el vinculado), no con el del canónico.
+        propio = get(tok, "/afip/estado")
+        cuit_n = (propio.json() or {}).get("cuit") if propio.status_code == 200 else None
+        if not cuit_n:
+            fallo(f"el tenant sembrado no tiene CUIT vinculado ({propio.status_code}): la siembra no corrió")
+        n = cantidad(tok, "/afip/comprobantes", cuit=cuit_n)
+        log(f"   comprobantes del tenant nuevo (por API) = {n}")
+        if n <= 0:
+            fallo("el tenant sembrado no tiene comprobantes por API")
+    elif any(nuevo.values()):
         fallo(f"el tenant nuevo NO está vacío: {nuevo}")
     if not any(canon.values()):
         fallo("CONTROL: el canónico también da todo en cero — el instrumento mira mal, no el tenant")
@@ -166,7 +201,8 @@ def main() -> int:
         fallo(f"/reply de una sesión ajena no vino vacío: {r.status_code} {r.text[:120]}")
     log("   /reply con session_id ajeno: vacío ✔")
 
-    log("✅ SM-N15 verificado: no-admin (403), tenant vacío (0 vs canónico >0), cross-tenant denegado")
+    estado = "tenant sembrado (comprobantes >0)" if a.sembrado else "tenant vacío (0 vs canónico >0)"
+    log(f"✅ SM-N15 verificado: no-admin (403), {estado}, cross-tenant denegado")
     return 0
 
 
