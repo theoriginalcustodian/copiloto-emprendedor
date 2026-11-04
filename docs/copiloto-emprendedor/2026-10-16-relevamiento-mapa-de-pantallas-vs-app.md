@@ -373,6 +373,7 @@ corrige a **`A`** (gana el mapa, se retiran) **midiendo la app en device**, que 
 de `SM-N32`; antes de retirar «Preguntar» hay que medir a dónde va hoy, porque si es el único acceso
 a ese camino se retira **junto con** el dock que lo reemplaza, no antes.  
 *Medición 2026-11-03 (código en `origin/main`, SM-L4):* **Las secciones que faltaban están implementadas (SM-N32, DOD-PARCIAL: `acdbff54` #1460 + backend `5928f837` #1459); lo único que falta es la captura.** La ficha lo dice en su `Falta:`: sólo la captura de device. **Exige del device:** la pantalla de Inteligencia SCROLLEADA entera (no el tope: el corpus ya pagó el error de medir contra una captura recortada) con el canónico, contra el DOM del prototipo `?ver=bi`; una sola pasada de scroll con 4 capturas.  
+*Veredicto «Preguntar» (SM-N32 DoD 6): `B` → `A`, medido en código el 2026-11-04 (frontend2, sobre `origin/main`):* el mapa no dibuja el selector Resumen/Preguntar y declara la baja en pasado (`mapa-pantallas/index.html:240`); la app ya lo retiró (`PantallaInteligencia.tsx:49-50`) y un test lo exige (`PantallaInteligencia.test.tsx:314-321`, `queryByText('Preguntar')` = null). La pregunta libre sigue disponible por el chat, así que no se dejó al usuario sin ese camino. Ganó el mapa: `A`.
 *Corrección:* Igualar cabecera, etiqueta de mes, mosaicos y dock («Volver» ya resuelto: N6).  
 *Vínculo:* F6 · F6b · N6 · F12
 
