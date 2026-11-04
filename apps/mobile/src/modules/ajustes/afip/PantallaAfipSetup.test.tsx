@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 
 // Jest (jest-expo) -- describe/it/expect/jest son globales, no se importan de vitest.
@@ -947,5 +949,17 @@ describe('PantallaAfipSetup', () => {
     await fireEvent.press(screen.getByTestId('afip-ambiente-prod-usar'));
 
     await waitFor(() => expect(cambiarAmbiente).toHaveBeenCalledWith(CUIT, 'prod'));
+  });
+});
+
+// SM-L4 entrada 46: el subtítulo del mapa se LEE de la fuente (`index.html` §afip), no se repite acá.
+describe('PantallaAfipSetup -- subtítulo del mapa (SM-L4 entrada 46)', () => {
+  it('muestra el subtítulo que dibuja `.titulo-pag p` de «Facturación ARCA»', async () => {
+    const html = readFileSync(join(__dirname, '../../../../../../Prototipo frontend/odobi-ui/prototipo/index.html'), 'utf8');
+    const m = /<h2>Facturación ARCA<\/h2><p>([^<]+)<\/p>/.exec(html);
+    // Control de ceguera: si el mapa cambia de forma, falla acá y no pasa por vacío.
+    expect(m).not.toBeNull();
+    await montar();
+    expect(await screen.findByText(m![1])).toBeTruthy();
   });
 });
