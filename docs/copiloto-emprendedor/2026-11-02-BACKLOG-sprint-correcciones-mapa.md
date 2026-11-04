@@ -149,6 +149,9 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N51** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N52** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 3 NO cumplido: el control positivo del propio control. El Cierre nombra DoD1, DoD2 y DoD4 y NO menciona DoD3 -- v… |
 | **SM-N53** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N54** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N55** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N56** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-Z1** | `sin-issue` | 🟧 DOD-PARCIAL | ACTUALIZADO 2026-11-03 23:50 - el codigo YA ESTA HECHO y desplegado; lo unico que falta es el OAuth del operador en e… |
 | **SM-Z2** | `sin-issue` | ✅ TERMINADO | `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama |
 | **SM-Z3** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -3290,6 +3293,66 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   3. Un caso del conjunto `[NO MEDIDO]` (`schedule_to_start` o `NotFound`) **sigue dejando rastro**
      — el test lo ejercita. Sin esto, el fix cambia un defecto por una ceguera.
   4. El `Cierre:` cita un sha **ancestro de `origin/main`** y el par antes/después con sus filas.
+
+### SM-N54 · `sin-issue` — Si la DB cae al facturar un presupuesto, la app dice «falta el CUIT» y manda al emprendedor a rehacer un perfil fiscal que ya tiene
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **De dónde sale:** `pedido_manejo-de-errores-a-backend` del 2026-11-03. Backend declaró este punto
+  **«sólo LEÍDO»** en su propio cierre; manejo-de-errores lo **ejercitó** y es defecto real.
+- **Medido (spike en el VPS sobre `a8ea35fa`): ROJO.** Con la DB caída, `presupuestos_web.py:218`
+  responde **409 «falta el perfil fiscal (CUIT)»**, la misma respuesta que recibe un tenant que
+  **nunca** cargó el CUIT, y **no deja ni una línea de log**.
+- **🔴 Por qué es más grave que un error mal rotulado:** el mensaje no es sólo impreciso, es
+  **accionable y falso**. Manda al emprendedor a **rehacer** un perfil fiscal que ya tiene, así que
+  el usuario gasta trabajo contra una causa inexistente mientras la real —la DB— no deja rastro para
+  nadie. Es la forma de [[dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una]]:
+  dos causas comparten el 409 y el mensaje elige la benigna.
+- **DoD:**
+  1. Con la DB caída, la respuesta **se distingue** de la del CUIT faltante (código y texto) y
+     **no** instruye a tocar el perfil fiscal.
+  2. Deja **≥1 línea de log** estructurada con el tenant.
+  3. **Control positivo conservado:** el tenant que de verdad no tiene CUIT sigue recibiendo el 409
+     con su mensaje. Sin esto, el fix puede haber apagado el caso legítimo.
+  4. Un test de integración ejercita **las dos** causas — una sola no atribuye.
+  5. El `Cierre:` cita un sha **ancestro de `origin/main`** y dice qué hizo.
+
+### SM-N55 · `sin-issue` — Con Temporal caído, consultar el onboarding devuelve el mismo `None` que «nunca hubo alta», y el alta fallida no se ve como fallida
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **De dónde sale:** el mismo `pedido_` del 2026-11-03. También estaba declarado **«sólo LEÍDO»**
+  por backend.
+- **Medido (spike en el VPS sobre `a8ea35fa`): ROJO.** Con Temporal `UNAVAILABLE`,
+  `web.py:213` `consultar_onboarding` devuelve el **mismo `None`** que con `NOT_FOUND`, y con
+  **0 líneas de log**. La app sigue haciendo polling hasta mostrar «está tardando».
+- **🔴 El síntoma es indistinguible de lentitud, y por eso nadie lo mira:** «está tardando» es un
+  estado **legítimo** del alta, así que un alta **fallida** se presenta como un alta **lenta** —
+  [[supuesto-cuya-falla-parece-un-estado-legitimo]]. Nadie abre un ticket por algo que tarda.
+- **DoD:**
+  1. `UNAVAILABLE` se distingue de `NOT_FOUND` en el valor que devuelve la función.
+  2. Deja **≥1 línea de log** con el tenant.
+  3. La app **no** presenta el caso caído como «está tardando».
+  4. **Control positivo conservado:** `NOT_FOUND` (nunca hubo alta) sigue dando su camino actual.
+  5. El `Cierre:` cita un sha **ancestro de `origin/main`**.
+
+### SM-N56 · `sin-issue` — El rastro nuevo de Composio caído sale con `cliente_id` NULL: dice que algo falló y no de quién
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **De dónde sale:** `pedido_manejo-de-errores-a-backend` del 2026-11-03, hallado al verificar
+  `SM-N50`. Es el **hueco chico del fix que acabamos de cerrar**, no un frente nuevo.
+- **Medido:** la línea que escribe `conexiones_salud.py:65` sale con `cliente_id=null`, **aunque
+  quien la llama ya tiene el tenant en mano** (`mi_dia_detector.py:447`). Es un kwarg que no se pasa.
+- **Por qué igual tiene ficha siendo chico:** un rastro sin tenant en un sistema **multi-tenant** no
+  se puede atribuir, así que el primer reclamo real obliga a rehacer la medición. Y la razón de
+  escribirlo acá y no dejarlo en el buzón es la del sprint:
+  [[el-registro-no-se-marcaba-porque-su-id-no-circulaba]] — un hallazgo sin casilla no lo persigue
+  nadie. **No es urgente** y no bloquea `SM-N50`.
+- **DoD:**
+  1. La línea sale con el `cliente_id` del tenant que la originó.
+  2. Un test lo afirma **sobre el valor**, no sobre que la línea exista.
+  3. El `Cierre:` cita un sha **ancestro de `origin/main`**.
 
 ### SM-Z1 · `sin-issue` — Apps muestra 5 servicios y el mapa dibuja 6: las 5 son CORRECTAS
 
