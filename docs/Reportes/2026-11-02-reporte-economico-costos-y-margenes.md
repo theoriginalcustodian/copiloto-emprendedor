@@ -679,3 +679,63 @@ Fuentes: [iProfesional](https://www.iprofesional.com/management/464370-solo-crec
 [RealSender](https://realsender.com/email-trends/2020-email-providers) ·
 [OIT vía Accounter](https://accounter.co/noticias/actualidad/el-empleo-a-medias-se-apodera-de-la-region) ·
 [SEGIB](https://www.segib.org/wp-content/uploads/Encuesta-Iberoamericana-de-la-Mipyme-2022.pdf)
+
+### 14.1 Después de 5.000: crecimiento de 2% mensual, tope y punto antieconómico (agregado 2026-11-03)
+
+**Cifras realistas:** a diferencia de §13.3, acá el precio de US$30 **incluye IVA 21%**, MercadoPago
+cobra ~5% y el beneficio paga **Ganancias 35%** (comisión y alícuota son supuestos: confirmarlos con el
+contador). Así cada usuario de pago deja **~US$23 por mes**, no 29,4, y con 6% de bajas su valor de vida
+es **~US$383**. Arriba de 5.000: soporte 1 persona (US$3.000) cada 2.500 de pago, community manager
+US$1.200 (US$2.400 desde 10.000) y servidores US$520 cada 5.000. El costo por usuario de pago sube con la
+escala (doble a 5.000) y además al agotar el segmento de §14. Curva pesimista: se duplica cada 5.000 más.
+
+**Los tres umbrales** (usuarios de pago):
+
+| Umbral | Curva base | Curva pesimista | Qué significa |
+|---|---|---|---|
+| **Tope recomendado:** valor de vida = 3 × costo de conseguirlo | **~7.700** | **~6.800** | Estándar de SaaS sano. Debajo, cada usuario nuevo deja margen para errores de estimación |
+| Máximo beneficio total | ~19.800 (fuera del mercado realista) | ~9.900 | Más allá, cada usuario extra **baja** el beneficio total |
+| **Antieconómico:** valor de vida = costo de conseguirlo | ~29.500 | **~14.400** | Cada usuario nuevo cuesta más de lo que va a dejar |
+| Techo de mercado (5% del segmento) | ~12.500 | ~12.500 | Más allá, otro país |
+
+Entre el tope recomendado y el máximo hay una **zona gris**: cada usuario nuevo todavía suma, pero poco,
+y cualquier error en el costo por usuario la vuelve pérdida. Sólo se entra con el costo medido.
+
+**Beneficio mensual sosteniendo cada tamaño** (curva base; la publicidad sólo repone bajas, US$):
+
+| De pago | Costo por usuario | Valor de vida / costo | Publicidad | Beneficio antes de Ganancias | Después de Ganancias |
+|---|---|---|---|---|---|
+| 5.000 | 100 | 3,8 | 23.077 | 83.972 | 54.582 |
+| 7.500 | 126 | 3,0 | 43.715 | 117.198 | 76.178 |
+| 10.000 | 153 | 2,5 | 70.673 | 143.424 | 93.226 |
+| 12.500 | 181 | 2,1 | 104.150 | 163.812 | 106.478 |
+
+En la curva pesimista, 10.000 deja 119.866 y 12.500 **baja** a 99.630: crecer resta.
+
+**Trayectoria con 2% mensual desde 5.000 hasta el tope recomendado** (curva base, US$ por mes):
+
+| Mes | De pago | Ingreso (con IVA) | Publicidad | Beneficio antes de Ganancias | Después de Ganancias |
+|---|---|---|---|---|---|
+| 18 | 5.000 | 150.000 | 30.769 | 76.279 | 49.582 |
+| 24 | 5.631 | 168.924 | 36.932 | 81.076 | 52.699 |
+| 36 | 7.141 | 214.237 | 53.826 | 98.851 | 64.253 |
+| **40 (tope)** | **7.700** | 231.000 | 45.637 | 116.867 | **75.963** |
+
+| Año | Ingreso (con IVA) | Publicidad | Después de Ganancias | Margen sobre lo que paga el cliente |
+|---|---|---|---|---|
+| 3 | ~2,31 M | ~546.000 | ~707.000 | 31% |
+| 4 | ~2,75 M | ~580.000 | ~882.000 | 32% |
+| 5 en adelante | ~2,77 M | ~548.000 | ~912.000 | 33% |
+
+Con la curva pesimista el tope llega antes (6.800, mes 34) y desde el año 4 deja ~US$813.000 por año.
+
+**Lectura:**
+
+- **El techo real no lo pone el mercado (~12.500) sino el costo de conseguir usuarios: ~7.000 a 8.000
+  de pago.** Con 2% mensual se llega en los meses 34 a 40, unos 3 años desde el arranque.
+- **La palanca son las bajas.** Con 3% en vez de 6%, el tope recomendado sube a ~11.600 a 19.100 (el
+  mercado lo corta en ~12.500): valor de vida doble con la misma publicidad.
+- **§13.3 es optimista:** usa US$30 como ingreso neto. Con IVA y comisión, cada usuario deja ~23% menos y la
+  llegada a 5.000 se demora. Pendiente recalcular §13.3 con el ingreso neto.
+- Supuestos no medidos: costo por usuario de pago, su curva con la escala, bajas, comisión de
+  MercadoPago y alícuota efectiva. El piloto de §13.5 mide el primero; las bajas, la beta.
