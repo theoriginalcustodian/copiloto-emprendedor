@@ -143,7 +143,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N45** | `sin-issue` | ✅ TERMINADO | a6600880 (#1520, CI 6/6) + 3c616615 (#1539, CI 6/6), las dos de frontend2. DoD 1, 3, 4, 5: componente Tarjeta en them… |
 | **SM-N46** | `sin-issue` | ✅ TERMINADO | DoD original + el alcance de CLASE, los dos en prod. 83466828 (#1542) y 16d3ecc3 (#1546), CI 6/6, desplegados, durabi… |
 | **SM-N47** | `sin-issue` | ✅ TERMINADO | sin-codigo: es ficha de ATRIBUCION, y cierra con la SEGUNDA de las dos frases que su DoD 4 permite -- no se pudo atri… |
-| **SM-N48** | `sin-issue` | ⬜ PENDIENTE | ACTUALIZADO 2026-11-03 con la medicion de frontend1, y lo medido CORRIGE lo que yo suponia: el PR #1581 estaba en dra… |
+| **SM-N48** | `sin-issue` | 🟨 EN-CURSO | ACTUALIZADO 2026-11-03 con la medicion de frontend1, y lo medido CORRIGE lo que yo suponia: el PR #1581 estaba en dra… |
 | **SM-N49** | `sin-issue` | ✅ TERMINADO | sha cc4adea8 (PR #1584, verificado ancestro de origin/main) - apps/copiloto/tests/test_ratchet_activity_payload_lleva… |
 | **SM-N50** | `sin-issue` | ✅ TERMINADO | a8ea35fa (PR #1592, ancestro verificado) — `diagnostico_conexiones` devuelve `(caidos, composio_mirado)` y `avanzar_t… |
 | **SM-N51** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -3104,8 +3104,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N48 · `sin-issue` — El tirador de ABAJO sólo agarra en la línea; el de ARRIBA agarra en toda la franja
 
-- **Estado:** PENDIENTE
-- **Dueno-activo:** frontend1 (dueña del shell)
+- **Estado:** EN-CURSO
+- **Dueno-activo:** frontend1
 - **Falta:** ACTUALIZADO 2026-11-03 con la medicion de frontend1, y lo medido CORRIGE lo que yo suponia: el PR #1581 estaba en draft con mergeable=UNKNOWN y yo lo habia leido como «falta la captura». NO era eso -- el LINT estaba ROJO por paridad de testID (`panel-pie-gesto`, nuevo y nativo-only). Lo arreglo frontend1 con una excepcion declarada con su motivo (3872e008, `testid_paridad --check` exit 0) y el PR quedo mergeable limpio (merge-tree sin conflicto). Es exactamente la clase que este sprint mide: un bloqueo de CODIGO disfrazado de bloqueo de DEVICE habria esperado el telefono para siempre. QUEDA, y ahora si es solo device: los DoD 2 y 3 piden el arrastre en la franja ejercitado con `adb shell input motionevent` DOWN/MOVE/UP -- NUNCA `input tap`, que no ejercita un Pan de RNGH. El PR se queda en draft a proposito hasta tenerlos. Sigue PENDIENTE y no DOD-PARCIAL porque su codigo NO esta en main: vive en la rama del draft, y DOD-PARCIAL exige codigo mergeado.
 - **Dueño:** frontend1 (dueña del shell)
 - **Reportado por:** el operador, en su device, 2026-11-03: *«el tirador de mi dia sobre el campo de
