@@ -80,3 +80,47 @@ entre los dos no era de nadie.
 **El control, si hace falta:** antes de asignar, `git show origin/main:<doc> | grep -c "^### <id> "`.
 Si da `0`, el id no es asignable todavía — y `0` acá significa «mi PR no está mergeado», no «la ficha
 no existe» ([[medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero]]).
+
+## Refuerzo 2026-11-02 — el registro ATRASADO no sólo deja de acreditar: hace REDESPACHAR
+
+La entrada de arriba cubre el id que no circula. Este refuerzo es el **daño simétrico y más caro**:
+la ficha que **declara menos de lo que hay**. En un día, tres veces:
+
+1. **Reporté al operador «6 fichas del sprint sin una sola línea de código».** Era falso para **4 de
+   6** — `SM-N24` (`32a0d66e`), `SM-N28` (`4376027d`), `SM-N17` (`8378d53d`) y **`SM-N23`
+   (`2d257f95`), el tirador que le dije que no se había corregido y ya tenía el fix en `main`**. Lo
+   refutó frontend2, no el gate.
+2. **Despaché a backend dos trabajos ya hechos y desplegados** (`SM-H5`, #1363 `681c3b53`): el
+   `Falta:` de la ficha seguía diciendo que eran suyos. El `cierre_` existía en el buzón desde
+   horas antes; la ficha no lo sabía.
+3. **`SM-K6` le pedía a backend un contrato del 401 que ya estaba contestado** en ese mismo cierre.
+
+**Por qué el estado que afirma DE MENOS es peor que el que afirma de más.** El gate
+(`sprint-estado.py --check`) exige que un `TERMINADO` tenga sha ancestro de `origin/main`: vigila al
+que se adelanta. Al que se queda corto **no lo mira nadie**, y **no da síntoma** — se lee como
+trabajo pendiente, que es un estado perfectamente normal. Entonces se despacha de nuevo: en el mejor
+caso la sesión que lo recibe lo refuta (costo: un viaje), en el peor **lo reimplementa**
+([[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] ·
+[[supuesto-cuya-falla-parece-un-estado-legitimo]]).
+
+**La causa común de los tres no es descuido: la evidencia y el registro viven en lugares distintos.**
+El `cierre_` va al buzón (que no está versionado) y el `Falta:` vive en el doc. Quien cierra escribe
+en el buzón; quien despacha lee el doc. **Nadie es dueño del salto entre los dos**
+([[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]).
+
+**El control, y está escrito:** `scripts/fichas-desincronizadas.py` — para cada ficha en
+`PENDIENTE`, busca commits de `origin/main` cuyo **asunto** cite su id. No prueba que el DoD esté
+hecho; **refuta «no tiene una sola línea»**, que es la frase que se dijo mal. Medido antes de
+embarcarlo ([[medir-si-un-gate-dispara-antes-de-embarcarlo]]): 3 sobre el `main` del momento, 6
+sobre el de dos horas antes, con control positivo (caza las dos que había marcado a mano). **No está
+cableado a ningún gate todavía**, a propósito.
+⚠️ Y el instrumento llegó con su propio defecto, que es el mismo error en chico: el docstring decía
+«asunto» y `git log --grep` busca el **mensaje completo**, así que reportaba una ficha por un commit
+que la mencionaba al pasar. El filtro del asunto se hace en el script, no se delega en git
+([[el-contrato-afirma-el-mecanismo-que-no-opero]]).
+
+**Lo que el script NO cubre, y hay que hacer a mano:** el `Falta:` desactualizado de una ficha que ya
+está en `DOD-PARCIAL` (casos 2 y 3). Ahí no hay estado que contradecir — **el texto miente y el
+estado está bien**, así que ningún control estructural lo ve. El único control es **barrer los
+`cierre_` del buzón dirigidos al frente ANTES de despachar**, que es justo el paso que me salté las
+dos veces.

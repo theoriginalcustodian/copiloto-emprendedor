@@ -7,11 +7,13 @@
     "alcance": [
       {
         "texto": "Leer tus cobros",
-        "condicion": "solo_lectura"
+        "condicion": "solo_lectura",
+        "icono": "coins"
       },
       {
         "texto": "Armar links de cobro cuando vos confirmás",
-        "condicion": "requiere_ok"
+        "condicion": "requiere_ok",
+        "icono": "link"
       }
     ],
     "connect_path": "/mp/connect"
@@ -24,7 +26,8 @@
     "alcance": [
       {
         "texto": "Enviar mails",
-        "condicion": "requiere_ok"
+        "condicion": "requiere_ok",
+        "icono": "paper-plane-tilt"
       }
     ],
     "connect_path": "/composio/connect?service=gmail"

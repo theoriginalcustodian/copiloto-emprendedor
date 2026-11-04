@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
@@ -54,6 +56,25 @@ describe('PantallaLogin', () => {
     jest.mocked(GoogleSignin.hasPlayServices).mockReset().mockResolvedValue(true);
     (global as any).fetch = jest.fn();
     process.env.EXPO_PUBLIC_API_BASE = 'https://copilotoemprendedor.duckdns.org';
+  });
+
+  it('SM-N30: el lockup del login es el símbolo DESNUDO (sin badge) de 38, como `.ig-marca` del mapa', async () => {
+    await montar();
+    const caja = StyleSheet.flatten(screen.getByTestId('marca').props.style);
+    // Sin fondo de badge: con `tinta` (avatar redondo de Soporte) esto es el color `bloque`.
+    expect(caja.backgroundColor).toBe('transparent');
+    // `size` es el del signo (mapa: svg width=38), no un tile de 38 con un signo de 16 adentro.
+    expect(screen.getByTestId('marca-isotipo').props.width).toBe(38);
+  });
+
+  it('SM-Z4: el wordmark del login mide lo que dice `.ig-marca .w` del prototipo (leído de la fuente, no repetido)', async () => {
+    const html = readFileSync(join(__dirname, '../../../../../Prototipo frontend/odobi-ui/prototipo/index.html'), 'utf8');
+    const m = /\.ig-marca \.w\{[^}]*font-size:(\d+)px/.exec(html);
+    // Control de ceguera: si la regla cambia de forma, el test falla acá y no pasa por vacío.
+    expect(m).not.toBeNull();
+    await montar();
+    const wordmark = StyleSheet.flatten(screen.getByTestId('login-wordmark').props.style);
+    expect(wordmark.fontSize).toBe(Number(m![1]));
   });
 
   it('botón "Entrar con Google" visible, no interfiere con el camino email/password', async () => {

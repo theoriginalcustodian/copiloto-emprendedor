@@ -54,18 +54,18 @@ async function montar() {
 }
 
 describe('PantallaCuenta', () => {
-  beforeEach(() => {
-    mockLogout.mockClear();
-    jest.mocked(router.push).mockClear();
-    mockSesion.me = { cliente_id: 'c-1', email: 'ana@negocio.test' };
+  it('SM-K5: muestra «Desde marzo de 2021» con fecha_alta', async () => {
+    mockSesion.me = { cliente_id: 'c-1', email: 'ana@negocio.test', fecha_alta: '2021-03-15' } as never;
+    await montar();
+    expect(screen.getByTestId('cuenta-desde')).toHaveTextContent('Desde marzo de 2021');
   });
 
-  /**
-   * 🔴 **Decir con qué cuenta estás adentro no es cosmético.** En este mismo proyecto el tenant con
-   * el que entra el teléfono resultó ser distinto del que el operador creía (`pruebas-facturacion@`
-   * en vez de su cuenta personal), y eso explicaba por qué el archivado en Drive no funcionaba. No
-   * había forma de verlo desde la app: hubo que ir a la base de datos.
-   */
+  it.each([[null], ['ayer'], ['2021-13-01']])('SM-K5: fecha_alta %p OMITE la línea (no se inventa)', async (f) => {
+    mockSesion.me = { cliente_id: 'c-1', email: 'ana@negocio.test', fecha_alta: f } as never;
+    await montar();
+    expect(screen.queryByTestId('cuenta-desde')).toBeNull();
+  });
+
   it('muestra el email real de la sesión', async () => {
     await montar();
     expect(screen.getByTestId('cuenta-email')).toHaveTextContent('ana@negocio.test');
@@ -239,6 +239,24 @@ describe('PantallaCuenta', () => {
       expect(screen.getByTestId('cuenta-legal-aceptar-error')).toHaveTextContent(/No pudimos registrar/);
       expect(boton()).not.toBeNull();
     });
+  });
+
+  it('🔴 SM-K5: con «Aceptar versión vigente» arriba, la confirmación de salida vive DENTRO del scroll (alcanzable a cualquier fuente)', async () => {
+    // El caso que se escapó: la cuenta CON el botón extra empuja el contenido y la confirmación quedaba
+    // cortada contra el borde. Sin ese control el defecto no se ve, así que el test lo incluye.
+    mockSesion.me = { cliente_id: 'c-1', email: 'ana@negocio.test', legal_aceptado: false, legal_version_aceptada: null } as never;
+    await montar();
+    expect(screen.getByTestId('cuenta-legal-aceptar')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('cuenta-cerrar-sesion'));
+    // Cada elemento accionable de la confirmación tiene un ScrollView por ancestro (host RCTScrollView).
+    const dentroDeScroll = (id: string) => {
+      let n = screen.getByTestId(id).parent;
+      while (n && n.type !== 'RCTScrollView') n = n.parent;
+      return n !== null;
+    };
+    expect(dentroDeScroll('cuenta-confirmar-salida')).toBe(true);
+    expect(dentroDeScroll('cuenta-cerrar-sesion-si')).toBe(true);
+    expect(dentroDeScroll('cuenta-cerrar-sesion-no')).toBe(true);
   });
 
   it('confirmar cierra la sesión; decir que no, no', async () => {

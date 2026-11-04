@@ -560,6 +560,21 @@ def _ensure_metering_evento_column(conn) -> None:
     print(f"OK {SCHEMA}.copiloto_metering.evento (columna aditiva text, idempotente)", flush=True)
 
 
+def _ensure_metering_uso_columns(conn) -> None:
+    """Migración aditiva del desglose de tokens de `copiloto_metering`: entrada / salida / cacheados /
+    razonamiento. Hasta acá la tabla sólo guardaba `tokens` (= `total_tokens`), y como entrada y salida
+    cuestan distinto el gasto real era una estimación con proporción supuesta.
+
+    Nullable a propósito y SIN default: NULL = «no informado» (filas previas, eventos de tool), distinto de
+    0 = «informado y fue cero». Mismo criterio y ubicación que `_ensure_metering_evento_column`: corre
+    ANTES del pase estándar, `ADD COLUMN IF NOT EXISTS` -> idempotente, corrible N veces."""
+    cur = conn.cursor()
+    for col in ("tokens_entrada", "tokens_salida", "tokens_cacheados", "tokens_razonamiento"):
+        cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_metering ADD COLUMN IF NOT EXISTS {col} bigint;")
+    print(f"OK {SCHEMA}.copiloto_metering.tokens_{{entrada,salida,cacheados,razonamiento}} "
+          f"(columnas aditivas bigint nullable, idempotente)", flush=True)
+
+
 def _ensure_afip_comprobante_params_pdf_column(conn) -> None:
     """Migración aditiva de `afip_comprobantes.params_pdf_json jsonb` (residuo AFIP, Bandeja
     2026-08-04): persiste el `params` COMPLETO con el que se generó el PDF de la factura (items,
@@ -574,6 +589,17 @@ def _ensure_afip_comprobante_params_pdf_column(conn) -> None:
                 f"ADD COLUMN IF NOT EXISTS params_pdf_json jsonb;")
     print(f"OK {SCHEMA}.afip_comprobantes.params_pdf_json (columna aditiva jsonb, idempotente)",
           flush=True)
+
+
+def _ensure_afip_perfil_categoria_monotributo(conn) -> None:
+    """Migración aditiva de `afip_perfil.categoria_monotributo text` (SM-N36): la categoría A…K del emisor,
+    nullable (NULL = no la cargó). Declarada también en `uc_tables.json`, así que el guard anti-colisión
+    del pase estándar abortaría sobre una tabla viva sin ella: corre ANTES del pase estándar, igual que
+    sus hermanas. `ADD COLUMN IF NOT EXISTS` -> idempotente."""
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.afip_perfil "
+                f"ADD COLUMN IF NOT EXISTS categoria_monotributo text;")
+    print(f"OK {SCHEMA}.afip_perfil.categoria_monotributo (columna aditiva text, idempotente)", flush=True)
 
 
 def _apply_sql_files(conn) -> list[str]:
@@ -638,7 +664,9 @@ def provision(conn) -> dict:
     _ensure_nacio_completo(conn)                    # ídem para `copiloto_cobros.nacio_completo`.
     _ensure_imputacion_de_gastos(conn)              # ídem para los `*_ref` y el cobro a mano.
     _ensure_metering_evento_column(conn)            # ídem para `copiloto_metering.evento` (BETA-1b).
+    _ensure_metering_uso_columns(conn)              # ídem para el desglose de tokens de `copiloto_metering`.
     _ensure_afip_comprobante_params_pdf_column(conn)  # ídem para `afip_comprobantes.params_pdf_json`.
+    _ensure_afip_perfil_categoria_monotributo(conn)   # ídem para `afip_perfil.categoria_monotributo` (SM-N36).
     standard_done = _provision_standard(standard_spec, conn)
     _provision_tenants(conn)
     _ensure_onboarding_completado(conn)             # K-14: flag del onboarding en `tenants`.

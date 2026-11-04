@@ -1,0 +1,10 @@
+{
+  "propietario": "backend (sesión BACKEND del repo copiloto-emprendedor)",
+  "como_actualizar": "ARCA publica la escala vigente dos veces al año (recategorización: febrero y agosto, IPC). Cada publicación: agregar UNA escala nueva con vigencia_desde, vigencia_hasta y fuente (URL oficial de ARCA), copiando los topes de la columna «Ingresos brutos» del cuadro oficial. NO editar una escala vieja ni cargar cifras de un agregador. Una escala sin renovar vence sola en vigencia_hasta y el tope pasa a null: es el comportamiento buscado (SM-N36).",
+  "umbrales": {
+    "amarillo_pct": 80,
+    "rojo_pct": 95,
+    "aviso_pct": 80
+  },
+  "escalas": []
+}

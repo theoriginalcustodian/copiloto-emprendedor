@@ -57,7 +57,7 @@ from canario_autosanacion import disparar as disparar_canario
 from deposito_traumas import fabrica_desde
 from handler_errores_web import registrar_captura_global
 from clients.agent.providers.stt import _API_ERRORS as _STT_API_ERRORS
-from clients.agent.providers.stt import GroqSTT
+from clients.agent.providers.stt import build_stt
 from clients.agent.providers.vision import _API_ERRORS as _VISION_API_ERRORS
 from clients.agent.providers.vision import OpenAIVisionOCR
 from feedback_store import FeedbackStore
@@ -182,6 +182,11 @@ def make_start_onboarding(temporal_client, *, task_queue: str = AGENT_B_TASK_QUE
 # try/except). Nombrar la interrupción es mejor que dejar al usuario esperando: puede reintentar.
 _MOTIVO_ALTA_INTERRUMPIDA = ("La vinculación con ARCA se interrumpió. Podés volver a intentarla.")
 
+# SM-N55: el servidor de workflows no contestó. NO es un `paso` del alta: la app lo tiene que distinguir de
+# «dando_de_alta» (que sí es «está tardando») y de `None` (nunca hubo alta).
+PASO_CONSULTA_NO_DISPONIBLE = "consulta_no_disponible"
+_MOTIVO_CONSULTA_NO_DISPONIBLE = "No pudimos consultar el estado de tu vinculación ahora. Reintentá en unos segundos."
+
 
 def _wf_id_onboarding(cliente_id: str, cuit: str, ambiente: str = "dev") -> str:
     """Un alta por (tenant, CUIT, ambiente). `dev` conserva el id histórico —sin sufijo— para no
@@ -210,8 +215,17 @@ def make_consultar_onboarding(temporal_client) -> Callable:
         try:
             descripcion = await handle.describe()
             vivo = descripcion.status is None or descripcion.status.name == "RUNNING"
-        except Exception:  # noqa: BLE001 — nunca hubo alta, o expiró la retención: no es un error
-            return None
+        except Exception as exc:  # noqa: BLE001
+            if _no_existe(exc):
+                return None   # nunca hubo alta, o expiró la retención: no es un error
+            # SM-N55: «no pude preguntar» (Temporal UNAVAILABLE, deadline) NO es «nunca hubo alta». Con
+            # `None` la app seguía en «está tardando» —un estado legítimo del alta—, y un alta que no
+            # se puede ni consultar se veía como una lenta: sin síntoma y sin una línea de log.
+            from log_estructurado import log_error
+            log_error(exc, workflow="consultar_onboarding", cliente_id=cliente_id,
+                      extra={"costura": "onboarding_describe"})
+            return {"paso": PASO_CONSULTA_NO_DISPONIBLE, "terminado": False, "ok": False,
+                    "motivo": _MOTIVO_CONSULTA_NO_DISPONIBLE, "causa": "servicio", "ws_autorizados": []}
 
         try:
             progreso = await handle.query("progreso")
@@ -628,12 +642,12 @@ def _filename_for_content_type(content_type: str) -> str:
 
 
 def _default_transcribe(audio_bytes: bytes, content_type: str) -> str:
-    """Transcriber por default de `/chat/audio` (voz-backend): `GroqSTT` real. Se construye ACÁ
+    """Transcriber por default de `/chat/audio` (voz-backend): `build_stt()` (Groq, con OpenRouter de respaldo si hay key). Se construye ACÁ
     DENTRO -- recién se instancia/usa cuando `/chat/audio` recibe un request real, nunca al armar
     la app (import-safety, mismo criterio que `serve.py`). Si falta `GROQ_API_KEY` en el env,
     `GroqSTT.transcribe` levanta `RuntimeError` explícito (ver stt.py); la ruta lo traduce a 503
     sin romper el resto del front-door (texto por `/chat` sigue andando igual)."""
-    return GroqSTT().transcribe(audio_bytes, filename=_filename_for_content_type(content_type),
+    return build_stt().transcribe(audio_bytes, filename=_filename_for_content_type(content_type),
                                 content_type=content_type or "audio/ogg")
 
 
@@ -726,7 +740,8 @@ def _campos_tenant(conn_factory: Callable, cliente_id: str, composio_gateway, cr
                           if (c["status"] or "").upper() == "ACTIVE"]
     return {"mp_connected": _mp_connected(estado_mp),
             "composio_connected": composio_connected,
-            "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado()}
+            "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado(),
+            "fecha_alta": TenantOnboardingStore(conn_factory, cliente_id).fecha_alta()}
 
 
 def _campos_legales(conn_factory: Callable, cliente_id: str) -> dict:
@@ -757,7 +772,7 @@ def _es_cuenta_google(claims: dict) -> bool:
     """`True` si la cuenta entra con Google (no tiene una contraseña propia que cambiar). Sale de los
     claims del MISMO token ya validado: GoTrue pone `app_metadata.provider/providers` en el JWT (verificado
     en `spikes/gotrue-cambiar-mail-contrasena/RESULT.md`, sólo para cuentas email/password; el caso Google
-    real es `[ASSUMED_PENDING_VERIFY]`). Una cuenta con Google Y contraseña cuenta como Google: ocultar la
+    real es `[ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente: spikes/gotrue-cambiar-mail-contrasena/RESULT.md:31 sigue diciendo NO verificado]`). Una cuenta con Google Y contraseña cuenta como Google: ocultar la
     fila es lo seguro, mostrarla llevaría a un error confuso."""
     meta = claims.get("app_metadata") or {}
     proveedores = set(meta.get("providers") or [])

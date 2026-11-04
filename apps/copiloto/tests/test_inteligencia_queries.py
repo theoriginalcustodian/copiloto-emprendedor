@@ -19,6 +19,7 @@ from decimal import Decimal
 
 import pytest
 
+from cliente_store import ClienteStore
 from cobro_store import CobroStore
 from gasto_store import CATEGORIAS, GastoStore, hoy_del_negocio
 from inteligencia_queries import DIAS_VENCIDO, InteligenciaQueries, variacion_pct
@@ -44,7 +45,8 @@ def tenants(conn_de_tenant):
         conn = conn_de_tenant(cid)()
         with conn.cursor() as cur:
             for t in ("copiloto_cobros", "copiloto_gastos", "mp_payments", "afip_comprobantes",
-                      "copiloto_presupuesto_items", "copiloto_presupuestos", "copiloto_eventos"):
+                      "copiloto_presupuesto_items", "copiloto_presupuestos", "copiloto_eventos",
+                      "copiloto_clientes"):
                 cur.execute(f"DELETE FROM uc_factory.{t} WHERE cliente_id = %s", (cid,))
         conn.close()
 
@@ -572,7 +574,8 @@ def test_margen_trabajo_detalle_es_el_mismo_objeto_que_trabajo_store_margen(conn
 def test_margen_por_trabajo_sin_ninguna_actividad_es_vacio(conn_de_tenant, tenants):
     a, _ = tenants
     assert InteligenciaQueries(conn_de_tenant(a), a).margen_por_trabajo() == \
-           {"tipo": "barras", "trabajos": [], "sin_ingreso": []}
+           {"tipo": "barras", "trabajos": [], "sin_ingreso": [],
+            "resumen": {"trabajos": 0, "margen_pct_ponderado": None, "peor": None}}
 
 
 @necesita_pg
@@ -583,4 +586,164 @@ def test_margen_por_trabajo_aislamiento_A_no_ve_los_trabajos_de_B(conn_de_tenant
     TrabajoStore(conn_de_tenant(b), b).imputar(gasto["id"], "presupuesto", p_id)
 
     assert InteligenciaQueries(conn_de_tenant(a), a).margen_por_trabajo() == \
-           {"tipo": "barras", "trabajos": [], "sin_ingreso": []}
+           {"tipo": "barras", "trabajos": [], "sin_ingreso": [],
+            "resumen": {"trabajos": 0, "margen_pct_ponderado": None, "peor": None}}
+
+
+# ── SM-N32: lo que la pantalla de Inteligencia necesita y el backend no devolvía ──────────────────
+
+@necesita_pg
+def test_N32_torta_viene_de_mayor_a_menor_con_porcentaje_del_total_del_mes(conn_de_tenant, tenants):
+    a, _ = tenants
+    _gasto(conn_de_tenant, a, "300.00", categoria="mercaderia")
+    _gasto(conn_de_tenant, a, "100.00", categoria="otros")
+    _gasto(conn_de_tenant, a, "100.00", categoria="servicios")
+    serie = InteligenciaQueries(conn_de_tenant(a), a).torta_categorias()["serie"]
+    assert len(serie) == len(CATEGORIAS)                       # las 8, siempre
+    assert [c["categoria"] for c in serie[:3]] == ["mercaderia", "servicios", "otros"]   # desempate = orden de CATEGORIAS
+    assert [c["porcentaje"] for c in serie[:3]] == ["60.0", "20.0", "20.0"]
+    assert {c["porcentaje"] for c in serie[3:]} == {"0.0"}
+    assert sum(Decimal(c["porcentaje"]) for c in serie) == Decimal("100.0")
+
+
+@necesita_pg
+def test_N32_torta_sin_gastos_no_divide_por_cero_y_dice_cero(conn_de_tenant, tenants):
+    a, _ = tenants
+    serie = InteligenciaQueries(conn_de_tenant(a), a).torta_categorias()["serie"]
+    assert [c["categoria"] for c in serie] == list(CATEGORIAS)
+    assert {c["porcentaje"] for c in serie} == {"0.0"}
+
+
+@necesita_pg
+def test_N32_margen_es_PONDERADO_por_monto_no_el_promedio_simple(conn_de_tenant, tenants):
+    """Dos trabajos: uno de $100.000 con 80% y otro de $1.000 con 10%. El promedio simple diría 45%; el
+    ponderado -- el que describe el negocio -- es (80000+100)/(100000+1000) = 79.3%. Ese es el control:
+    si `margen_pct_ponderado` fuera el simple, este test lo delata."""
+    a, _ = tenants
+    p1, c1 = _trabajo_completo(conn_de_tenant, a, nro=810)
+    p2, c2 = _trabajo_completo(conn_de_tenant, a, nro=811)
+    CobroStore(conn_de_tenant(a), a).registrar(c1, monto="100000.00")
+    CobroStore(conn_de_tenant(a), a).registrar(c2, monto="1000.00")
+    gastos = GastoStore(conn_de_tenant(a), a)
+    TrabajoStore(conn_de_tenant(a), a).imputar(gastos.crear(monto=Decimal("20000"), categoria="herramientas")["id"],
+                                               "presupuesto", p1)
+    TrabajoStore(conn_de_tenant(a), a).imputar(gastos.crear(monto=Decimal("900"), categoria="herramientas")["id"],
+                                               "presupuesto", p2)
+
+    g = InteligenciaQueries(conn_de_tenant(a), a).margen_por_trabajo()
+    assert sorted(t["margen_pct"] for t in g["trabajos"]) == ["10.0", "80.0"]
+    assert g["resumen"]["trabajos"] == 2
+    assert g["resumen"]["margen_pct_ponderado"] == "79.3"       # NO "45.0"
+    assert g["resumen"]["peor"]["margen_pct"] == "10.0"
+    assert g["resumen"]["peor"]["etiqueta"] == next(t["etiqueta"] for t in g["trabajos"] if t["margen_pct"] == "10.0")
+
+
+def test_N32_resumen_de_margen_sin_trabajos_con_cobro_es_vacio_no_cero():
+    assert InteligenciaQueries._resumen_de_margen([]) == {"trabajos": 0, "margen_pct_ponderado": None, "peor": None}
+
+
+def _comprobante_con_documento(conn_de_tenant, cid, doc, *, nro):
+    conn = conn_de_tenant(cid)()
+    with conn.cursor() as cur:
+        cur.execute("""INSERT INTO uc_factory.afip_comprobantes
+                       (cliente_id, cuit, tipo_cbte, punto_venta, nro, cae, fecha_emision, total, estado,
+                        receptor_nombre, doc_tipo, doc_nro)
+                       VALUES (%s,'30712345678',6,1,%s,'CAE-DOC',%s,'5000.00','emitida','x',80,%s)""",
+                    (cid, nro, _dia_del_negocio(), doc))
+
+
+@necesita_pg
+def test_N32_mejores_clientes_trae_comprobantes_por_documento_y_None_si_no_se_puede_saber(conn_de_tenant, tenants):
+    a, _ = tenants
+    doc = "20111111112"
+    clientes = ClienteStore(conn_de_tenant(a), a)
+    clientes.crear(nombre="Panadería Los Tilos", doc_tipo=80, doc_nro=doc)       # con CUIT y 2 facturas
+    clientes.crear(nombre="Kiosco Sin Facturas", doc_tipo=80, doc_nro="20222222223")   # con CUIT, 0 facturas
+    clientes.crear(nombre="Taller Sin Documento")                                # ficha sin documento
+    _comprobante_con_documento(conn_de_tenant, a, doc, nro=901)
+    _comprobante_con_documento(conn_de_tenant, a, doc, nro=902)
+    cobros = CobroStore(conn_de_tenant(a), a)
+    for nombre, monto in (("Panadería Los Tilos", "900.00"), ("Kiosco Sin Facturas", "800.00"),
+                          ("Taller Sin Documento", "700.00"), ("Sin Ficha En La Cartera", "600.00")):
+        cobros.registrar_suelto(monto=monto, cliente_nombre=nombre)
+
+    ranking = {c["cliente"]: c["comprobantes"]
+               for c in InteligenciaQueries(conn_de_tenant(a), a).portada()["mejores_clientes"]}
+    assert ranking["Panadería Los Tilos"] == 2
+    assert ranking["Kiosco Sin Facturas"] == 0              # con documento: el 0 es «no compró»
+    assert ranking["Taller Sin Documento"] is None          # sin documento: «no lo puedo saber», NO 0
+    assert ranking["Sin Ficha En La Cartera"] is None
+
+
+@necesita_pg
+def test_N32_ADVERSARIAL_las_facturas_de_B_con_el_mismo_CUIT_no_cuentan_en_el_ranking_de_A(conn_de_tenant, tenants):
+    a, b = tenants
+    doc = "20111111112"
+    for tenant in (a, b):
+        ClienteStore(conn_de_tenant(tenant), tenant).crear(nombre="Panadería", doc_tipo=80, doc_nro=doc)
+        CobroStore(conn_de_tenant(tenant), tenant).registrar_suelto(monto="500.00", cliente_nombre="Panadería")
+    _comprobante_con_documento(conn_de_tenant, b, doc, nro=903)      # sólo B facturó a ese CUIT
+
+    en_a = InteligenciaQueries(conn_de_tenant(a), a).portada()["mejores_clientes"][0]
+    en_b = InteligenciaQueries(conn_de_tenant(b), b).portada()["mejores_clientes"][0]
+    assert en_a["comprobantes"] == 0          # A no hereda la factura de B
+    assert en_b["comprobantes"] == 1          # control positivo: el mismo armado en B la ve
+
+
+# ── SM-N33: el ranking agrupa por IDENTIFICADOR, no por nombre ─────────────────────────────────────
+
+def _ranking(conn_de_tenant, tid):
+    return InteligenciaQueries(conn_de_tenant(tid), tid).portada()["mejores_clientes"]
+
+
+@necesita_pg
+def test_N33_dos_grafias_del_mismo_cliente_dan_UNA_fila(conn_de_tenant, tenants):
+    """Sentido 1 del defecto: «Juan Pérez» y «Juan Perez» con el mismo CUIT se subdeclaraban en dos filas."""
+    a, _ = tenants
+    ficha = ClienteStore(conn_de_tenant(a), a).crear(nombre="Juan Pérez", doc_tipo=80, doc_nro="20111111112")
+    cobros = CobroStore(conn_de_tenant(a), a)
+    cobros.registrar_suelto(monto="600.00", cliente_ref=ficha["id"], cliente_nombre="Juan Pérez")
+    cobros.registrar_suelto(monto="400.00", cliente_ref=ficha["id"], cliente_nombre="Juan Perez")
+    cobros.registrar_suelto(monto="100.00", cliente_nombre="JUAN PEREZ")      # sin ref: la única ficha lo resuelve
+    ranking = _ranking(conn_de_tenant, a)
+    assert [(c["cliente"], c["total"]) for c in ranking] == [("Juan Pérez", "1100.00")]
+
+
+@necesita_pg
+def test_N33_dos_homonimos_con_CUIT_distinto_dan_DOS_filas(conn_de_tenant, tenants):
+    """Sentido 2 (opuesto): dos «Juan Pérez» distintos se fundían en uno e inflaban a quien no correspondía."""
+    a, _ = tenants
+    clientes = ClienteStore(conn_de_tenant(a), a)
+    uno = clientes.crear(nombre="Juan Pérez", doc_tipo=80, doc_nro="20111111112")
+    otro = clientes.crear(nombre="Juan Pérez", doc_tipo=80, doc_nro="20222222223", forzar=True)
+    cobros = CobroStore(conn_de_tenant(a), a)
+    cobros.registrar_suelto(monto="700.00", cliente_ref=uno["id"], cliente_nombre="Juan Pérez")
+    cobros.registrar_suelto(monto="300.00", cliente_ref=otro["id"], cliente_nombre="Juan Pérez")
+    ranking = _ranking(conn_de_tenant, a)
+    assert sorted(c["total"] for c in ranking) == ["300.00", "700.00"]
+    assert len(ranking) == 2
+
+
+@necesita_pg
+def test_N33_sin_identificador_agrupa_por_nombre_normalizado_y_no_afirma_comprobantes(conn_de_tenant, tenants):
+    """La regla del caso difícil, escrita: sin ficha ni documento se agrupa por nombre normalizado, y
+    `comprobantes` es None («no se puede saber»), nunca 0."""
+    a, _ = tenants
+    cobros = CobroStore(conn_de_tenant(a), a)
+    cobros.registrar_suelto(monto="200.00", cliente_nombre="Kiosco Pérez")
+    cobros.registrar_suelto(monto="50.00", cliente_nombre="kiosco perez")
+    ranking = _ranking(conn_de_tenant, a)
+    assert [(c["total"], c["comprobantes"]) for c in ranking] == [("250.00", None)]
+
+
+@necesita_pg
+def test_N33_ADVERSARIAL_el_mismo_CUIT_en_A_y_B_no_se_mezcla(conn_de_tenant, tenants):
+    """Regresión obligatoria: la ficha toca la clave de agrupamiento. Mismo CUIT en A y B: cada uno suma lo suyo."""
+    a, b = tenants
+    for tenant, monto in ((a, "500.00"), (b, "900.00")):
+        ficha = ClienteStore(conn_de_tenant(tenant), tenant).crear(nombre="Panadería", doc_tipo=80, doc_nro="20111111112")
+        CobroStore(conn_de_tenant(tenant), tenant).registrar_suelto(monto=monto, cliente_ref=ficha["id"], cliente_nombre="Panadería")
+    _comprobante_con_documento(conn_de_tenant, b, "20111111112", nro=904)
+    en_a, en_b = _ranking(conn_de_tenant, a), _ranking(conn_de_tenant, b)
+    assert [(c["total"], c["comprobantes"]) for c in en_a] == [("500.00", 0)]      # A no ve la factura de B
+    assert [(c["total"], c["comprobantes"]) for c in en_b] == [("900.00", 1)]      # control positivo

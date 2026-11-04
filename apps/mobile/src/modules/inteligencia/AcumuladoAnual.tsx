@@ -22,7 +22,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { formatearImporte, obtenerResumenContabilidad, type ResumenContabilidad } from '@copiloto/core';
 
-import { Row } from '../../theme/glass/Row';
+import { Tarjeta } from '../../theme/Tarjeta';
 import { useTema } from '../../theme/ThemeProvider';
 
 export function AcumuladoAnual({ testID = 'inteligencia-acumulado' }: { testID?: string }) {
@@ -57,21 +57,25 @@ export function AcumuladoAnual({ testID = 'inteligencia-acumulado' }: { testID?:
     rojo: tema.color.peligro,
   };
 
+  // SM-N45 DoD 2 (prototipo `index.html:1996-1998`): «Acumulado del año» es la etiqueta de SECCIÓN
+  // (`.lista-lbl`) y va FUERA de la card; el `h4` de la card es «Facturado en los últimos 12 meses».
   return (
-    <Row testID={testID}>
+    <View style={styles.seccion}>
+      <Text
+        testID={`${testID}-etiqueta`}
+        accessibilityRole="header"
+        style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}
+      >
+        Acumulado del año
+      </Text>
+      <Tarjeta testID={testID} rotulo="Facturado en los últimos 12 meses">
       <View style={styles.cuerpo}>
-        <View style={styles.fila}>
-          <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
-            Acumulado del año
-          </Text>
-          <Text
-            testID={`${testID}-doce-meses`}
-            style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}
-          >
-            {formatearImporte(facturado.doceMeses)}
-          </Text>
-        </View>
-        <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Últimos 12 meses facturados</Text>
+        <Text
+          testID={`${testID}-doce-meses`}
+          style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}
+        >
+          {formatearImporte(facturado.doceMeses)}
+        </Text>
 
         {facturado.tope != null && (
           <View style={styles.medidor} testID={`${testID}-tope`}>
@@ -100,13 +104,14 @@ export function AcumuladoAnual({ testID = 'inteligencia-acumulado' }: { testID?:
           </View>
         )}
       </View>
-    </Row>
+      </Tarjeta>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  cuerpo: { flex: 1, gap: 4 },
-  fila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  seccion: { gap: 8 },
+  cuerpo: { gap: 4 },
   medidor: { gap: 6, marginTop: 8 },
   medidorFondo: { height: 8, borderRadius: 4, overflow: 'hidden' },
   medidorBarra: { height: 8, borderRadius: 4 },

@@ -215,8 +215,18 @@ def create_presupuestos_app(
             return None
         try:
             return await asyncio.to_thread(afip_cred_store_factory(cliente_id).primer_cuit)
-        except Exception:  # noqa: BLE001 — sin CUIT resoluble el endpoint responde 409, no 500
-            return None
+        except Exception as exc:  # noqa: BLE001
+            # SM-N54: «no pude leer el CUIT» (DB caída) NO es «no tiene CUIT». Devolver None acá lo
+            # convertía en el 409 «falta el perfil fiscal», que es accionable y FALSO: manda a rehacer
+            # un perfil que ya existe, y la causa real no dejaba ni una línea de log. Se responde 503
+            # (reintentable) y el fallo queda contable. El 409 queda SOLO para el store que contestó vacío.
+            fingerprint = log_error(exc, workflow="facturar_presupuesto", cliente_id=cliente_id,
+                                    extra={"costura": "cuit_del_tenant"})
+            depositar(traumas, fingerprint=fingerprint, workflow="facturar_presupuesto",
+                      error_type=type(exc).__name__, cliente_id=cliente_id,
+                      costura="cuit_del_tenant", contexto={})
+            raise HTTPException(status_code=503,
+                                detail="no pude leer tu perfil fiscal ahora: reintentá en unos segundos") from exc
 
     # --- perfil del negocio -------------------------------------------------------
 

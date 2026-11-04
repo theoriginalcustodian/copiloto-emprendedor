@@ -320,7 +320,7 @@ export async function borrarTarjetaMiDia(
  * gracia si el toolkit no está conectado: `conectado: false` no es un error, es un estado a mostrar
  * ("conectá tu Calendar"). Ver `mi_dia_web.py` para el detalle del lado backend.
  *
- * 🔴 **`inicio` es `[ASSUMED_PENDING_VERIFY]`** (docstring de `mi_dia_web.py`): backend pasa crudo lo
+ * 🔴 **`inicio` es `[ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente]`** (docstring de `mi_dia_web.py`): backend pasa crudo lo
  * que devuelve Composio en `start`, sin shape confirmado contra datos reales (bloqueado por el OAuth
  * del tenant canónico). Por eso NO se parsea acá — se transporta como `inicioCrudo: unknown` y
  * `horaDeEvento` (abajo) sólo intenta mostrarlo si reconoce una de las 2 formas públicas y documentadas
@@ -372,6 +372,19 @@ export async function leerCalendario(): Promise<ConDisponibilidad<{ calendario: 
 /** Ver el docstring de `EventoCalendario` arriba — sólo reconoce las 2 formas públicas de la API de
  *  Google Calendar; `null` si no puede mostrar una hora con certeza (evento de día completo incluido:
  *  `{date}` sin `dateTime` es "todo el día", no una hora que valga la pena mostrar). */
+export function instanteDeEvento(inicioCrudo: unknown): number | null {
+  let iso: string | null = null;
+  if (typeof inicioCrudo === 'string') {
+    iso = inicioCrudo;
+  } else if (typeof inicioCrudo === 'object' && inicioCrudo !== null) {
+    const r = inicioCrudo as Record<string, unknown>;
+    if (typeof r.dateTime === 'string') iso = r.dateTime;
+  }
+  if (iso == null) return null;
+  const t = new Date(iso).getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
 export function horaDeEvento(inicioCrudo: unknown): string | null {
   let iso: string | null = null;
   if (typeof inicioCrudo === 'string') {

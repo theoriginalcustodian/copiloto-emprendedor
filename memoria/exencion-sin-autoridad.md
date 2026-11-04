@@ -130,3 +130,85 @@ quedó **vivo** en el buzón: cerrar no fue dejar de preguntar, fue dejar de **e
 [[una-espera-sin-disparador-nombrable-es-paralisis]] pide, y lo contrario de
 [[un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar]], donde una ficha quedaba
 `DOD-PARCIAL` para siempre aunque ya estuviera resuelta.
+
+## Refuerzo 2026-11-03 — la exención propia recorta el DENOMINADOR, y su cita nadie la abre
+
+El caso de este archivo era una exención que citaó una autoridad que no la amparaba. El del
+2026-11-03 es el mismo defecto con **la autoridad adentro del repo**, y muerde más fuerte porque
+*parece* lo contrario de un atajo.
+
+Había bajado una `ENMIENDA FUNDADA` a la ficha `SM-J1` que recortaba su alcance **de 6 funciones a
+4**, con dos argumentos técnicos y su `path:línea`. Los dos eran falsos, y las dos refutaciones
+estaban **en los archivos que yo mismo cité**:
+
+- «`ContextoTranscripcion` admite sólo cuatro valores» — el docstring **dos líneas arriba del tipo**
+  dice *«sólo logging/telemetría… un valor fuera de esta lista se ignora ahí, nunca 422»*
+  (`packages/core/src/api/transcribir.ts:5-7`), y la firma lo tiene **opcional** (`:49`).
+- «sería una segunda entrada a una acción irreversible» — `DockFuncion` **no guarda ni despacha
+  nada** (`DockFuncion.tsx:38-60`): devuelve texto y la pantalla decide; la card HITL sigue siendo el
+  único gate.
+
+**Por qué sobrevivió dos semanas:** una cita con `archivo:línea` *parece* verificada, así que **nadie
+abre el archivo** — el formato de la evidencia hace el trabajo que debería hacer la evidencia. Y lo
+que produjo no fue un error visible sino **trabajo que dejó de existir**: dos funciones salieron del
+denominador, ninguna sesión las tomó, ningún gate las echó de menos — porque un gate compara contra
+el alcance **declarado**, y la enmienda había cambiado justamente eso. Lo cazó el operador mirando el
+device. Mismo mecanismo que
+[[nada-cazaba-al-mal-clasificado-solo-al-no-clasificado]]: lo que se da por bueno sale del circuito.
+
+🔴 **Y reapareció en otra sesión el mismo día.** Horas después de retirarla, frontend2 llegó al
+**mismo argumento con la misma cita** (*«requieren un destino en `ContextoTranscripcion`« = contrato
+backend nuevo»*) y propuso un componente nuevo para esquivar un bloqueo inexistente. **La refutación
+no viaja sola: viaja el archivo.** Mientras el `transcribir.ts:7` siga leíble sin el docstring de
+`:5-6`, cualquiera que mire el tipo va a concluir lo mismo — no es un error de esa sesión, es una
+trampa del archivo. Corolario: **cuando retirás una enmienda falsa, el trabajo no termina en la
+ficha; termina cuando la trampa que la generó está desactivada en el código** (acá, sumar los valores
+al union para que el tipo deje de parecer restrictivo).
+
+**La cuarta pregunta del control de arriba:**
+
+> 4. ¿esta exención **recorta el alcance**? Entonces no alcanza con que su cita exista: hay que
+>    **abrir el archivo y leer alrededor de la línea**. Una exención que cierra trabajo se verifica
+>    como se verifica un borrado, no como se verifica un comentario — y el que la escribió es el peor
+>    verificador de todos, porque ya la encontró convincente una vez.
+
+
+## Refuerzo 2026-11-03 (segundo) — el tercer motivo: autoridad VIGENTE, objeto DESAPARECIDO
+
+Los dos tramos de arriba cubren la exención cuya **cita no la ampara** y la que **recorta el
+denominador**. Hay un tercer modo, y lo encontré equivocándome: **la exención estaba perfectamente
+fundada el día que se escribió, y el defecto que excusaba se arregló después. La autoridad sigue
+vigente; lo que desapareció es el objeto.** Nadie la retira, porque retirar una exención no es tarea
+de nadie: no falla, no molesta, y sigue pareciendo justificada.
+
+**El caso.** La excepción `modules/inteligencia::inteligencia-clientes` del gate de paridad de
+testID (alta 2026-09-22, `falta_en: "mobile"`) declaraba una **brecha real**: web tenía la card con
+ese testID y mobile no. El 2026-11-03, al envolver las secciones de Inteligencia, mobile **ganó el
+mismo testID** (`PantallaInteligencia.tsx:303`), la brecha se cerró y la excepción quedó sin
+referente. El gate la marcó `[STALE]` y frontend2 la sacó.
+
+**Y el error fui yo.** Vi «quité un testID del baseline de paridad» y planteé dos motivos posibles:
+el elemento dejó de existir, o el gate se quejó y se lo silenció. **Era un tercero que no se me
+ocurrió**, y el que tenía la medición era la sesión ejecutora: midió `a6600880^` vs `a6600880` con
+**control inverso** (0 testID mobile-only nuevo, 510 excepciones vigentes intactas) — probó lo que
+yo sospechaba *y* que no había hecho otra cosa de paso.
+
+**La lección operativa:** ante una exención retirada, la pregunta no es «¿la sacaron para apagar el
+gate?» (binaria y acusatoria, y las dos respuestas que admite eran falsas acá) sino **«¿qué le pasó
+al objeto de la exención entre su alta y hoy?»**. Esa sí admite las tres respuestas, y es la única
+que se contesta midiendo los dos lados del commit.
+
+**Corolario para todo gate con exenciones:** una exención necesita, además de su autoridad, un
+control de que **su objeto sigue existiendo**. Sin eso un gate acumula exenciones vencidas que
+ensanchan el agujero sin que nadie lo decida — el mecanismo de
+[[un-umbral-calibrado-al-corpus-del-dia-envejece-con-el]] aplicado a la lista de excusas en vez de
+al número. Que este gate marque `[STALE]` solo **es** ese control, y por eso acá se cazó.
+
+### Y el guard de este mismo refuerzo falló por la misma familia
+
+El script que escribió este texto usaba `"## Refuerzo 2026-11-03"` como marca de idempotencia, y dio
+**falso idempotente**: este archivo ya tenía un refuerzo de ese día sobre otra cosa. **La clave
+colapsaba dos hechos distintos del mismo día**, que es
+[[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]] otra vez, y van dos en el mismo archivo. Peor:
+el modo de falla es silencioso —imprime «idempotente» y sale 0—, así que no escribe y no avisa. La
+marca pasó a ser **una frase del cuerpo**, que es lo único que identifica al hecho y no a su fecha.

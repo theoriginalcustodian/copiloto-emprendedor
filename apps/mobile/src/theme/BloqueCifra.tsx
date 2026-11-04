@@ -91,7 +91,7 @@ export function BloqueCifra({ rotulo, cifra, chip, children, style, testID }: Bl
 /* La elevación del sistema (§5): 0 4px 18px negro tostado al 7%. En Android `elevation` no acepta
    color ni radio, así que se aproxima con el valor que da una sombra equivalente — es la misma
    limitación que ya documenta `relieve.ts`. */
-const elevacion = (sombra: string) =>
+export const elevacion = (sombra: string) =>
   Platform.select({
     ios: {
       shadowColor: sombra,

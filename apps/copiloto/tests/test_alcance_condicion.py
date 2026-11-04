@@ -23,7 +23,7 @@ def _catalogo():
 def _fuera_del_enum(items) -> list:
     """Los ítems cuya `condicion` no es del enum cerrado (o a los que les falta una clave)."""
     return [i for i in items
-            if set(i) != {"texto", "condicion"} or i["condicion"] not in CONDICIONES
+            if set(i) - {"icono"} != {"texto", "condicion"} or i["condicion"] not in CONDICIONES
             or not isinstance(i["texto"], str) or not i["texto"].strip()]
 
 
@@ -79,7 +79,7 @@ def test_la_card_manda_alcance_con_objetos_y_NO_duplica_la_lista_en_otra_clave()
     """D1 (planificación): el core ya lee `card.alcance` en las dos formas y pinta la insignia; una clave
     paralela (`alcance_items`) en la card quedaría sin lector, y la insignia moriría muda."""
     card = requiere_conexion_card("mercadopago", "Mercado Pago")
-    assert all(isinstance(i, dict) and set(i) == {"texto", "condicion"} for i in card["alcance"])
+    assert all(isinstance(i, dict) and set(i) - {"icono"} == {"texto", "condicion"} for i in card["alcance"])
     assert "alcance_items" not in card
 
 
@@ -156,3 +156,66 @@ def test_el_par_no_es_vacio_el_fixture_trae_objetos_con_condicion_en_alcance():
     assert len(cards) >= 3 and len(items) >= 3
     assert not _fuera_del_enum(items), "el fixture trae ítems fuera del contrato {texto, condicion}"
     assert all("alcance_items" not in c for c in cards), "los objetos van en `alcance`, no en `alcance_items`"
+
+
+# ── SM-I7: `icono` por fila, opcional ──────────────────────────────────────────────────────────────────
+_PHOSPHOR_TS = Path(__file__).resolve().parents[3] / "apps" / "mobile" / "src" / "theme" / "glass" / "phosphor.ts"
+
+
+def _glifos_de_la_app() -> set[str]:
+    """Las claves de `PHOSPHOR` leídas del TS (el backend no ve la app, pero el repo sí)."""
+    import re
+    texto = _PHOSPHOR_TS.read_text(encoding="utf-8")
+    return set(re.findall(r"^\s{2}'([a-z0-9-]+)':\s*\[", texto, flags=re.M))
+
+
+def _iconos(items) -> list:
+    return [i["icono"] for i in items if "icono" in i]
+
+
+def test_el_icono_sale_por_LAS_DOS_superficies_con_el_mismo_valor():
+    """Una sola fuente (`_cap`), dos salidas: `GET /catalog` (`alcance_items`) y la card (`alcance`)."""
+    for key in ("mercadopago", "gmail", "googledocs"):
+        entrada = next(s for s in _catalogo_con_mp() if s["key"] == key)
+        card = requiere_conexion_card(key, key)
+        assert _iconos(entrada["alcance_items"]), f"{key}: ningún icono en /catalog"
+        assert _iconos(entrada["alcance_items"]) == _iconos(card["alcance"]), key
+
+
+def test_mercadopago_lleva_coins_y_link_los_dos_del_mockup():
+    mp = next(s for s in _catalogo_con_mp() if s["key"] == "mercadopago")
+    assert [(i["texto"], i["icono"]) for i in mp["alcance_items"]] == [
+        ("Leer tus cobros", "coins"), ("Armar links de cobro cuando vos confirmás", "link")]
+
+
+def test_icono_es_OPCIONAL_una_fila_sin_icono_no_emite_la_clave():
+    """Calendar/Sheets/Drive no tienen glifo propio todavía: la fila sale igual, sin `icono`."""
+    cal = next(s for s in _catalogo_con_mp() if s["key"] == "googlecalendar")
+    assert cal["alcance_items"] and all("icono" not in i for i in cal["alcance_items"])
+
+
+def test_CONTROL_un_icono_en_PRESENTATION_aparece_y_una_fila_nueva_sin_icono_tambien_se_emite(monkeypatch):
+    monkeypatch.setitem(catalog._PRESENTATION, "gmail", {
+        **catalog._PRESENTATION["gmail"],
+        "alcance": [catalog._cap("Enviar mails", CONDICION_REQUIERE_OK, "gmail_send", "inventado"),
+                    catalog._cap("Otra", CONDICION_SOLO_LECTURA, "gmail_send")]})
+    gmail = next(s for s in _catalogo_con_mp() if s["key"] == "gmail")
+    assert gmail["alcance_items"][0]["icono"] == "inventado"
+    assert "icono" not in gmail["alcance_items"][1] and gmail["alcance_items"][1]["texto"] == "Otra"
+
+
+@pytest.mark.skipif(not _PHOSPHOR_TS.exists(), reason="el árbol de la app no está en este checkout")
+def test_ningun_icono_emitido_esta_fuera_de_PHOSPHOR():
+    """El backend nunca manda un nombre que la app no dibuje (DoD 2 del contrato SM-I7)."""
+    glifos = _glifos_de_la_app()
+    assert {"coins", "link", "eye", "check", "plugs-connected"} <= glifos, "el parser no leyó PHOSPHOR"
+    emitidos = set()
+    for entrada in _catalogo_con_mp():
+        emitidos |= set(_iconos(entrada["alcance_items"]))
+    for key in ("mercadopago", *_TOOLKITS):
+        emitidos |= set(_iconos(requiere_conexion_card(key, key)["alcance"]))
+    assert emitidos and emitidos <= glifos, sorted(emitidos - glifos)
+
+
+def _catalogo_con_mp():
+    return build_catalog(valid_toolkits=_TOOLKITS, mp_connected=False, composio_connected=[])

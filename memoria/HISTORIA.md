@@ -530,3 +530,30 @@ Dos entradas nuevas que sólo importan al tocar animaciones de `apps/mobile`. Se
 
 - [🧠 Trifecta cognitiva - SOTA con 2 lentes](trifecta-sota-lente-lateral-hack.md) - el 2º lente colapsa el problema.
 - [Pasada de device: 5 trampas](pasada-device-fe2-trampas-env-gate-y-registro.md) — API_BASE, #dígitos, sorted(), registro del cierre, harness.
+
+
+## Bajadas del indice el 2026-11-03 (techo de bytes)
+- [🚦📄 Un gate cuyo alcance depende del FORMATO DE SALIDA](un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate.md) - vivía tras el `return --json`.
+- [🧟 Un script que revierte AL FINAL deja el mutante](un-script-que-muta-produccion-y-revierte-al-final-deja-el-mutante.md) - `finally` + backup en disco.
+- [🗂️🕳️ Una sesión en WORKTREE es invisible al monitor](una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd.md) - el buzón manda.
+
+## Bajadas del indice el 2026-11-03 (el indice estaba a 2 bytes del techo de 24.000)
+
+- [🛡️✅ El guard que te acusa de APAGAR algo suele tener razon](el-guard-que-te-acusa-de-apagar-algo-suele-tener-razon.md) - no lo edites: que tu cambio no pueda dejar el conjunto VACIO.
+  - **Por que salio del indice:** redundante en el indice con las otras dos lineas de guards (grita-en-el-caso-normal y falla-abierto-en-su-caso-de-activacion)
+- [🔨🎯 El forjador NO acierta siempre](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) - formato válido ≠ contenido correcto.
+  - **Por que salio del indice:** sin forjador activo en el sprint en curso
+- [🧪 El sujeto de prueba ÚNICO no encarna el estado exigido](sujeto-de-prueba-unico-no-encarna-el-estado-que-exige-el-control.md) — 4 fichas, 1 causa
+  - **Por que salio del indice:** SUPERADA el 2026-11-03: su causa (un solo sujeto de prueba que no podia encarnar el estado exigido) la resolvio la provision de la tenencia e2e-vacio, y la leccion vive ahora en un-falta-que-dice-imposible-describe-el-instrumento-del-dia.md
+- [🔌🕳️ `adb devices` vacío NO acredita que no haya teléfono](adb-devices-vacio-no-acredita-que-no-haya-telefono.md) - el server en frío lista antes de enumerar. `wait-for-device` primero.
+  - **Por que salio del indice:** detalle de arranque ya superado: el device esta habilitado y con dueno unico declarado
+
+## Bajadas del indice el 2026-11-03 (3.a vuelta) - la cifra del sprint ANTERIOR, vencida al abrir el de correcciones del mapa
+
+- **📊 2 cifras, 2 medidores (15-10 @`410250ec`): criterio 3 web 54/54 · mobile **53/54** — bajada al abrir el sprint de correcciones del mapa.
+
+## Bajadas del indice el 2026-11-03 (4.a vuelta) - vencidas por el cierre del sprint anterior y por el frente de errores ya medido en sus 6 patrones
+
+- **Prod-beta vivo**, RLS `FORCE` · smoke **39/39 sobre `92fd8a06`** + durabilidad 8/8. [[copiloto-deploy-multitenant-vivo]]
+- **⚠️ El frente de MANEJO DE ERRORES lo destaparon INSTRUMENTOS QUE MENTÍAN, no features** (5 de 35 PRs). [[instrumentos-que-confirman-en-vez-de-verificar]]
+- [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild. **Subida 13-10: device habilitado.**

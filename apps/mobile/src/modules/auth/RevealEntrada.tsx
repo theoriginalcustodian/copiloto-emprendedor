@@ -1,4 +1,3 @@
-import { useAudioPlayer, type AudioSource } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -30,13 +29,16 @@ const FONT_WORDMARK = 46;
 const TAGLINE_RETRASO = 320;
 const TAGLINE_DURACION = 680;
 
-/** "O" ya cubierta por `Marca` (`app/_layout.tsx:113` — el monograma ES el glifo real de la O): el
+/** La «O» se dibuja aparte (`OAsentada`, SM-Z3: letra, no isotipo): el
  * wordmark sólo necesita animar el resto, igual que web separa `__o` de `__rest` (H-A4-2). */
 const LETRAS_WORDMARK = ['d', 'o', 'b', 'i'];
 /** 0.4em del `fontSize` del wordmark (46) — mismo offset que `translateY(0.4em)` de `Splash.css`. */
-const OFFSET_LETRA = Math.round(FONT_WORDMARK * 0.4);
+/** Variante splash (SM-Z3): el wordmark es puramente tipográfico a 96 (#splash .word{font-size:96px;letter-spacing:-.01em},
+ * index.html:1221-1222), no los 46 del eveal. */
+const FONT_SPLASH = 96;
+const OFFSET_LETRA_SPLASH = Math.round(FONT_SPLASH * 0.4);
 
-/** Settle de la "O" (`Marca`): mismo fade+scale(1.06→1) que `.identidad-splash__o` en web. */
+/** Settle de la "O" (letra, SM-Z3): mismo fade+scale(1.06→1) que `.identidad-splash__o` en web. */
 function OAsentada({ reducido, children }: { reducido: boolean; children: React.ReactNode }) {
   const opacidad = useSharedValue(reducido ? 1 : 0);
   const escala = useSharedValue(reducido ? 1 : 1.06);
@@ -56,9 +58,9 @@ function OAsentada({ reducido, children }: { reducido: boolean; children: React.
 }
 
 /** Una letra del wordmark "dobi": fade + bounce, mismo tempo/curva que `.identidad-splash__letra`. */
-function LetraWordmark({ letra, indice, reducido, estilo }: { letra: string; indice: number; reducido: boolean; estilo: object }) {
+function LetraWordmark({ letra, indice, reducido, estilo, offset }: { letra: string; indice: number; reducido: boolean; estilo: object; offset: number }) {
   const opacidad = useSharedValue(reducido ? 1 : 0);
-  const traslado = useSharedValue(reducido ? 0 : OFFSET_LETRA);
+  const traslado = useSharedValue(reducido ? 0 : offset);
 
   useEffect(() => {
     if (reducido) return;
@@ -126,20 +128,12 @@ export interface RevealEntradaProps {
   onPrimario: () => void;
   onSecundario: () => void;
   testID?: string;
-  /**
-   * BL-X10 — asset empaquetado de la pronunciación («se dice o-DO-bi» en voz de marca). NO hay
-   * ningún audio en el repo todavía (pedido a operador/Martín, `[ASSUMED_PENDING_VERIFY]`): sin
-   * asset, el botón no se renderiza — sólo queda el texto, como hasta ahora. A diferencia de web
-   * (BL-X12w, `speechSynthesis`), acá NO hay TTS de fallback: la voz de marca es un asset, no una
-   * síntesis genérica.
-   */
-  pronunciacionAsset?: AudioSource | null;
 }
 
 /**
  * La entrada sin sesión (prototipo `#splash` y `#reveal`, `?ver=splash|reveal|volver`). Es UN componente con
  * DOS variantes (`VarianteEntrada`, SM-N30): el `splash` animado del primer ingreso y el `reveal` estático
- * de «volver». Comparten puertas (`TEXTOS_REVEAL`), tema y asset de pronunciación; NO comparten lockup,
+ * de «volver». Comparten puertas (`TEXTOS_REVEAL`) y tema; NO comparten lockup,
  * descriptor ni pronunciación: fusionarlos fue el defecto que SM-N30 separó.
  */
 export function RevealEntrada({
@@ -149,11 +143,9 @@ export function RevealEntrada({
   onPrimario,
   onSecundario,
   testID = 'reveal-entrada',
-  pronunciacionAsset,
 }: RevealEntradaProps) {
   const tema = useTema();
   const reducido = useReducedMotion();
-  const reproductor = useAudioPlayer(pronunciacionAsset ?? null);
   // Color de MARCA fijo (`.rv-word{color:var(--terracota)}`), no `acentoTinta`: el wordmark es el logotipo
   // y su gemelo web usa `--identidad-word`. `letterSpacing:-.02em` del prototipo (46 × .02 ≈ 0,92).
   const estiloLetra = {
@@ -164,28 +156,15 @@ export function RevealEntrada({
     letterSpacing: -0.02 * FONT_WORDMARK,
   };
 
-  function pronunciar() {
-    reproductor.seekTo(0);
-    reproductor.play();
-  }
-
+  // SM-Z3 (decidido por el operador, 2026-11-03): el splash NO lleva el isotipo -- el mapa dibuja la O como LETRA (index.html:2459,
+  // <span class="o">O</span>, sin <svg>). Mismo color de marca y misma fuente que el resto de la palabra, a 96.
+  const estiloSplash = { ...estiloLetra, fontSize: FONT_SPLASH, letterSpacing: -0.01 * FONT_SPLASH };
   const esReveal = variante === 'reveal';
   const pronunciacion = (
     <View style={styles.pronunciacion}>
       <Text testID={`${testID}-pronunciacion`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
         {PRONUNCIACION_MARCA}
       </Text>
-      {pronunciacionAsset != null && (
-        <Pressable
-          testID={`${testID}-pronunciar`}
-          accessibilityRole="button"
-          accessibilityLabel="Escuchar cómo se pronuncia Odobi"
-          onPress={pronunciar}
-          style={pressableStyle([styles.botonPronunciar, { backgroundColor: tema.color.acentoSuperficie }])}
-        >
-          <Text style={{ color: tema.color.acentoTexto, fontSize: 14 }}>▶</Text>
-        </Pressable>
-      )}
     </View>
   );
 
@@ -206,7 +185,9 @@ export function RevealEntrada({
       <View style={styles.medio}>
         {esReveal ? (
           <View style={[styles.lockup, { gap: 16 }]}>
-            <Marca size={LOCKUP_SIMBOLO} />
+            {/* SM-A2: `#reveal` dibuja el signo DESNUDO, terracota, a 54 (`index.html:2547`, svg width 54), sin badge.
+                El `splash` de abajo es otra pantalla y tampoco lleva signo: la «O» es letra (`index.html:2459`, SM-Z3). */}
+            <Marca size={LOCKUP_SIMBOLO} tono="desnudo" />
             <Text testID={`${testID}-palabra`} style={estiloLetra}>
               Odobi
             </Text>
@@ -214,13 +195,15 @@ export function RevealEntrada({
         ) : (
           <>
             <IdentidadEntrada>
-              <View style={[styles.lockup, { gap: Math.round(LOCKUP_SIMBOLO * 0.3) }]}>
+              <View style={styles.lockup}>
                 <OAsentada reducido={reducido}>
-                  <Marca size={LOCKUP_SIMBOLO} />
+                  <Text testID={`${testID}-o`} style={estiloSplash}>
+                    O
+                  </Text>
                 </OAsentada>
                 <View style={styles.wordmark}>
                   {LETRAS_WORDMARK.map((letra, indice) => (
-                    <LetraWordmark key={letra + indice} letra={letra} indice={indice} reducido={reducido} estilo={estiloLetra} />
+                    <LetraWordmark key={letra + indice} letra={letra} indice={indice} reducido={reducido} estilo={estiloSplash} offset={OFFSET_LETRA_SPLASH} />
                   ))}
                 </View>
               </View>
@@ -263,6 +246,5 @@ const styles = StyleSheet.create({
   lockup: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   wordmark: { flexDirection: 'row' },
   pronunciacion: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  botonPronunciar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   boton: { alignItems: 'center', justifyContent: 'center' },
 });

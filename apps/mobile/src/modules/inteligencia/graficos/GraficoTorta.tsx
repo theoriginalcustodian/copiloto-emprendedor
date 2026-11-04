@@ -122,6 +122,12 @@ export function GraficoTorta({ porciones, orden, epigrafe, onSegmentoPress, test
                 <Text style={{ color: tema.color.texto, fontSize: tema.tipo.chico, flexShrink: 1 }} numberOfLines={1}>
                   {a.categoria}
                 </Text>
+                <Text
+                  testID={testID ? `${testID}-pct-${a.categoria}` : undefined}
+                  style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.mono }}
+                >
+                  {Math.round(a.fraccion * 100)}%
+                </Text>
                 <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.mono }}>
                   {formatearImporte(String(a.num))}
                 </Text>

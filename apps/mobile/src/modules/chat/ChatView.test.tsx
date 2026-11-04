@@ -918,6 +918,16 @@ describe('ChatView -- sheet «conectá X»: debe pintar ENCIMA del composer y de
 });
 
 describe('ChatView -- SM-N25: el campo y el mic FLOTAN sobre la lista', () => {
+  it('DoD 5: scrim superior bajo el asa — overlay absoluto arriba que no captura toques y se desvanece a alfa 0', async () => {
+    await renderChatView();
+    const scrim = screen.getByTestId('chat-scrim-superior');
+    expect(StyleSheet.flatten(scrim.props.style)).toMatchObject({ position: 'absolute', top: 0, left: 0, right: 0 });
+    expect(scrim.props.pointerEvents).toBe('none');
+    const colores = scrim.props.colors as number[];
+    expect(colores[0] >>> 24).toBeGreaterThan(0);
+    expect(colores[1] >>> 24).toBe(0);
+  });
+
   it('el dock es un overlay absoluto anclado abajo, y la lista NO es hermana en flujo (corre por debajo)', async () => {
     await renderChatView();
     const dock = screen.getByTestId('chat-dock-flotante');

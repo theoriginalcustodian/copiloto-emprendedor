@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { configurarApi, type AlmacenTokens, type HttpPort, type RespuestaHttp } from '@copiloto/core';
@@ -220,5 +220,41 @@ describe('PantallaAfipSetup — SM-E1: el selector no ofrece lo que el backend r
       'responsable_inscripto',
       'exento',
     ]);
+  });
+});
+
+/**
+ * SM-N44 (contrato de NO-DIVERGENCIA con mobile). Mobile lee un CUIT cacheado al montar y, si el backend le
+ * dice `cuitVinculado` distinto, lo reemplaza. Web no tiene caché: al montar pregunta `/afip/estado` SIN
+ * `cuit`, y el único CUIT explícito es el que el usuario ESCRIBE para vincular (un segundo CUIT del mismo
+ * tenant). «Corregir» ese a `cuitVinculado` le pisaría el que está dando de alta.
+ */
+describe('PantallaAfipSetup (web) — SM-N44: al montar no manda CUIT (sin caché que corregir)', () => {
+  it('el primer GET /afip/estado va sin `cuit` aunque la respuesta traiga cuit_vinculado', async () => {
+    const pedidos: string[] = [];
+    const http: HttpPort = {
+      async enviar(p) {
+        if (p.metodo === 'GET' && p.path.startsWith('/afip/estado')) {
+          pedidos.push(p.path);
+          return respuesta(200, {
+            cuit: CUIT,
+            conectado: true,
+            ws_autorizados: [],
+            ambiente: 'prod',
+            ambientes_vinculados: ['prod'],
+            perfil_completo: false,
+            puede_facturar: false,
+            drive_conectado: true,
+            cuit_vinculado: '27999999995',
+          });
+        }
+        return respuesta(404, {});
+      },
+    };
+    configurarApi({ http, tokens });
+    render(<PantallaAfipSetup />);
+
+    await waitFor(() => expect(pedidos.length).toBeGreaterThan(0));
+    expect(pedidos[0]).not.toContain('cuit=');
   });
 });

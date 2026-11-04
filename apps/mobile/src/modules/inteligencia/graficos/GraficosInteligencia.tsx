@@ -12,8 +12,10 @@ import {
   leerGraficoEntroVsSalio,
   leerGraficoFacturacion,
   leerGraficoMargenTrabajo,
+  margenPonderado,
 } from '@copiloto/core';
 
+import { Tarjeta } from '../../../theme/Tarjeta';
 import { useTema } from '../../../theme/ThemeProvider';
 import { GraficoBarras } from './GraficoBarras';
 import { GraficoTorta } from './GraficoTorta';
@@ -68,14 +70,6 @@ function Cargando({ testID }: { testID: string }) {
   );
 }
 
-const rotulo = (tema: ReturnType<typeof useTema>) => ({
-  color: tema.color.acentoTinta,
-  fontFamily: tema.fuente.mono,
-  fontSize: 11,
-  letterSpacing: 1.2,
-  opacity: 0.7,
-});
-
 function TarjetaFacturacion() {
   const tema = useTema();
   const leer = useCallback(() => leerGraficoFacturacion(), []);
@@ -85,8 +79,7 @@ function TarjetaFacturacion() {
   if (res.status !== 'ok' || res.modo !== 'serie') return null;
 
   return (
-    <View testID="inteligencia-grafico-facturacion">
-      <Text style={rotulo(tema)}>FACTURACIÓN</Text>
+    <Tarjeta testID="inteligencia-grafico-facturacion" rotulo="Facturación">
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <GraficoBarras
           testID="grafico-facturacion"
@@ -102,7 +95,7 @@ function TarjetaFacturacion() {
           epigrafe={res.periodo !== '' ? formatearPeriodo(res.periodo) : undefined}
         />
       </ScrollView>
-    </View>
+    </Tarjeta>
   );
 }
 
@@ -115,8 +108,7 @@ function TarjetaEntroVsSalio() {
   if (res.status !== 'ok' || res.modo !== 'serie') return null;
 
   return (
-    <View testID="inteligencia-grafico-entro-vs-salio">
-      <Text style={rotulo(tema)}>ENTRÓ VS SALIÓ</Text>
+    <Tarjeta testID="inteligencia-grafico-entro-vs-salio" rotulo="Entró vs. salió">
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <GraficoBarras
           testID="grafico-entro-vs-salio"
@@ -128,12 +120,11 @@ function TarjetaEntroVsSalio() {
           epigrafe={res.periodo !== '' ? formatearPeriodo(res.periodo) : undefined}
         />
       </ScrollView>
-    </View>
+    </Tarjeta>
   );
 }
 
 function TarjetaCategorias() {
-  const tema = useTema();
   const leer = useCallback(() => leerGraficoCategorias(), []);
   const res = useGrafico(leer);
 
@@ -149,15 +140,14 @@ function TarjetaCategorias() {
   }));
 
   return (
-    <View testID="inteligencia-grafico-categorias">
-      <Text style={rotulo(tema)}>EN QUÉ SE ME VA</Text>
+    <Tarjeta testID="inteligencia-grafico-categorias" rotulo="En qué se me va">
       <GraficoTorta
         testID="grafico-categorias"
         porciones={porciones}
         orden={ordenEtiquetas}
         epigrafe={res.periodo !== '' ? formatearPeriodo(res.periodo) : undefined}
       />
-    </View>
+    </Tarjeta>
   );
 }
 
@@ -171,21 +161,21 @@ function TarjetaMargenTrabajo() {
 
   if (res.trabajos.length === 0 && res.sinIngreso.length === 0) {
     return (
-      <View testID="inteligencia-grafico-margen-trabajo">
-        <Text style={rotulo(tema)}>MARGEN POR TRABAJO</Text>
+      <Tarjeta testID="inteligencia-grafico-margen-trabajo" rotulo="Margen por trabajo">
         <Text
           testID="inteligencia-grafico-margen-trabajo-vacio"
           style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
         >
           Todavía no hay trabajos con presupuesto o factura para medir margen.
         </Text>
-      </View>
+      </Tarjeta>
     );
   }
 
+  const resumen = margenPonderado(res.trabajos);
+
   return (
-    <View testID="inteligencia-grafico-margen-trabajo">
-      <Text style={rotulo(tema)}>MARGEN POR TRABAJO</Text>
+    <Tarjeta testID="inteligencia-grafico-margen-trabajo" rotulo="Margen por trabajo">
       {res.trabajos.length > 0 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <GraficoBarras
@@ -201,6 +191,19 @@ function TarjetaMargenTrabajo() {
             ]}
           />
         </ScrollView>
+      )}
+      {/* SM-N32: margen del conjunto, PONDERADO (Σmargen/Σcobrado) — por eso «Sobre N», no «Promedio de N». */}
+      {resumen.pct !== null && (
+        <View testID="inteligencia-grafico-margen-trabajo-resumen" style={{ marginTop: 4 }}>
+          <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
+            {Math.round(resumen.pct)}% · Sobre {resumen.n} trabajo{resumen.n === 1 ? '' : 's'} cerrado{resumen.n === 1 ? '' : 's'}
+          </Text>
+          {resumen.peor !== null && resumen.n > 1 && (
+            <Text testID="inteligencia-grafico-margen-trabajo-peor" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+              El de menor margen: {resumen.peor.etiqueta} · {Math.round(resumen.peor.pct)}%
+            </Text>
+          )}
+        </View>
       )}
       {/* SM-E3: el conteo va SIEMPRE que haya margen en pantalla -- un margen sobre cero gastos
           imputados se ve igual que uno completo (`apps/copiloto/gastos_web.py:188`). */}
@@ -221,7 +224,7 @@ function TarjetaMargenTrabajo() {
           todavía — no entra{res.sinIngreso.length === 1 ? '' : 'n'} al margen.
         </Text>
       )}
-    </View>
+    </Tarjeta>
   );
 }
 

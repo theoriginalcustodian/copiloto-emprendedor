@@ -293,9 +293,13 @@ export function Composer({
 const RADIO_FOTO = 16;
 /** El campo del mapa: píldora de 52, el mismo lado que el mic (`.campo`/`.mic`, `index.html:166-171`). */
 const ALTO_BARRA = 52;
+/** Alto del composer en reposo (sin renglón de estado): `paddingTop` 10 + barra + `paddingBottom` 18. Lo usa el panel para
+ *  reservar el lugar del campo de Mi día bajo el asa (SM-N22). */
+export const ALTO_COMPOSER_REPOSO = 10 + ALTO_BARRA + 18;
 const RADIO_CAMPO = ALTO_BARRA / 2;
-/** Opacidad de la base bajo el vidrio del campo (SM-N25): suficiente para que lo que pasa detrás no compita con el texto. */
-const ALFA_BASE_CAMPO = 0.85;
+/** Opacidad de la base bajo el vidrio del campo (SM-N25 / SM-N41): que lo que pasa detrás NO se lea. Con .85 todavía se alcanzaba
+ *  a leer «Editar/Cancelar» a través del campo (medido en device, 2026-11-03); el operador decidió LEGIBLE: se sube ACÁ, nunca en el JSX. */
+const ALFA_BASE_CAMPO = 0.96;
 
 const styles = StyleSheet.create({
   contenedor: {},

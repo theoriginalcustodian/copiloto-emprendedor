@@ -67,12 +67,30 @@ escribir() {
 
 BC="2026-09-29_contrato_planificacion-a-todos_FACTID-mitad-frontend.md"
 
-echo "── Caso 1: NO-REGRESIÓN — sin línea ROLES:, se expande a todos"
-escribir "$BC"; correr
+# ⚠️ Este caso se EDITÓ el 2026-11-03, y el motivo importa más que el cambio. Medía el default con
+# el universo entero de roles; desde `ROLES_SIN_SESION_BUZON` el default excluye a los roles que no
+# tienen sesión en el sprint. Editar el guard que te acusa es el anti-patrón, así que acá se hacen
+# las dos cosas que lo evitan: (1) el caso ORIGINAL se conserva ÍNTEGRO, fijando el universo con
+# `UC_ROLES_SIN_SESION=` — sigue midiendo exactamente lo que medía, que nadie recorte el alcance
+# base de un broadcast; (2) el caso 1.bis agrega el eje nuevo con su propio FAIL-OPEN, que es un
+# guard MÁS fuerte que el anterior: ahora es imposible apagar el escalador por esta vía, aunque la
+# lista de exclusión esté mal.
+echo "── Caso 1: NO-REGRESIÓN — sin línea ROLES: y con el universo completo, se expande a todos"
+escribir "$BC"; UC_ROLES_SIN_SESION= correr
 if echo "$out" | grep -q 'manejo-de-errores' && echo "$out" | grep -q 'backend'; then
   ok "sin declaración, el broadcast sigue alcanzando a todos los roles"
 else
   fail "cambió el comportamiento por defecto — esto NO es un fix, es un apagado"
+  echo "$out" | sed 's/^/      /' | head -4
+fi
+
+echo "── Caso 1.bis: FAIL-OPEN — la exclusión por sesión NO puede dejar a nadie"
+escribir "$BC"
+UC_ROLES_SIN_SESION="planificacion backend frontend1 frontend2 manejo-de-errores auditoria" correr
+if echo "$out" | grep -q 'backend' && echo "$out" | grep -q 'manejo-de-errores'; then
+  ok "excluir a TODOS no apaga el escalador: cae al universo completo"
+else
+  fail "la exclusión vació el conjunto — un contrato que no interpela a nadie no se reclama nunca"
   echo "$out" | sed 's/^/      /' | head -4
 fi
 

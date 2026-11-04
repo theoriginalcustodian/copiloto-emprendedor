@@ -16,10 +16,12 @@ jest.mock('@copiloto/core', () => {
     leerGraficoEntroVsSalio: jest.fn(),
     leerGraficoCategorias: jest.fn(),
     leerGraficoMargenTrabajo: jest.fn(),
+    obtenerResumenContabilidad: jest.fn(),
   };
 });
 
 import { router } from 'expo-router';
+import { StyleSheet } from 'react-native';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 
 import {
@@ -28,6 +30,7 @@ import {
   leerGraficoFacturacion,
   leerGraficoMargenTrabajo,
   leerPortada,
+  obtenerResumenContabilidad,
 } from '@copiloto/core';
 
 import { PantallaInteligencia } from './PantallaInteligencia';
@@ -46,7 +49,7 @@ const PORTADA = {
     { mes: '2026-03', ingresos: '80000.00', gastos: '20000.00' },
     { mes: '2026-04', ingresos: '95000.00', gastos: '31000.00' },
   ],
-  mejoresClientes: [{ cliente: 'Panadería Los Tilos', total: '48000.00' }],
+  mejoresClientes: [{ cliente: 'Panadería Los Tilos', total: '48000.00', comprobantes: 2 }],
   porCobrar: { total: '30000.00', vencido: '12000.00' },
 };
 
@@ -67,6 +70,7 @@ beforeEach(() => {
   entroVsSalioMock.mockResolvedValue({ status: 'no_disponible' });
   categoriasMock.mockResolvedValue({ status: 'no_disponible' });
   margenTrabajoMock.mockResolvedValue({ status: 'no_disponible' });
+  jest.mocked(obtenerResumenContabilidad).mockResolvedValue({ status: 'no_disponible' });
 });
 
 describe('PantallaInteligencia — lo que muestra', () => {
@@ -95,6 +99,56 @@ describe('PantallaInteligencia — lo que muestra', () => {
     await montar();
     await waitFor(() => expect(screen.getByTestId('inteligencia-caja')).toBeTruthy());
     expect(screen.getAllByText('Inteligencia de Negocio')).toHaveLength(1);
+  });
+});
+
+describe('SM-N45 — las secciones del prototipo son CARDS, y la portada sigue siendo el bloque', () => {
+  const SECCIONES = [
+    'inteligencia-por-cobrar',
+    'inteligencia-grafico-categorias',
+    'inteligencia-grafico-entro-vs-salio',
+    'inteligencia-clientes',
+    'inteligencia-acumulado',
+    'inteligencia-grafico-margen-trabajo',
+  ];
+
+  async function conTodoCargado() {
+    facturacionMock.mockResolvedValue({ status: 'ok', modo: 'serie', tipo: 'barras', periodo: '2026-07', serie: [{ mes: '2026-07', total: '120000.00', cantidad: 8 }] });
+    entroVsSalioMock.mockResolvedValue({ status: 'ok', modo: 'serie', tipo: 'barras_enfrentadas', periodo: '2026-07', serie: [{ mes: '2026-07', entro: '95000.00', salio: '31000.00' }] });
+    categoriasMock.mockResolvedValue({ status: 'ok', modo: 'serie', tipo: 'torta', periodo: '2026-07', serie: [{ categoria: 'servicios', total: '18000.00' }] });
+    margenTrabajoMock.mockResolvedValue({
+      status: 'ok', modo: 'lista', tipo: 'barras',
+      trabajos: [{ eslabon: 'comprobante', ref: 1, etiqueta: 'Factura #12', cobrado: '30000.00', gastado: '10000.00', margen: '20000.00', gastosImputados: 2 }],
+      sinIngreso: [],
+    });
+    jest.mocked(obtenerResumenContabilidad).mockResolvedValue({ status: 'ok', resumen: { facturado: { doceMeses: '4420000.00', tope: null } } } as never);
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-grafico-margen-trabajo')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('inteligencia-acumulado')).toBeTruthy());
+  }
+
+  const fondo = (testID: string) => StyleSheet.flatten(screen.getByTestId(testID).props.style)?.backgroundColor;
+
+  it('🔴 las seis tienen contenedor con el color de SUPERFICIE del tema (no un blanco fijo)', async () => {
+    await conTodoCargado();
+    const esperado = fondo('inteligencia-por-cobrar');
+    expect(esperado).toBeTruthy();
+    for (const id of SECCIONES) expect(fondo(id)).toBe(esperado);
+  });
+
+  it('🔴 y la portada «Saldo en caja» NO es una card clara: sigue siendo el bloque de máximo contraste', async () => {
+    await conTodoCargado();
+    // Sin esta mitad, «envolví las seis» no se distingue de «envolví todo»: las dos salen verdes.
+    expect(fondo('inteligencia-caja')).not.toBe(fondo('inteligencia-por-cobrar'));
+  });
+
+  it('🔴 «Acumulado del año» es la etiqueta de sección FUERA de la card, y el h4 de la card es «Facturado en los últimos 12 meses» (index.html:1996-1998)', async () => {
+    await conTodoCargado();
+    expect(screen.getByTestId('inteligencia-acumulado-rotulo')).toHaveTextContent('Facturado en los últimos 12 meses');
+    expect(screen.getByTestId('inteligencia-acumulado-etiqueta')).toHaveTextContent('Acumulado del año');
+    // Control negativo: la etiqueta NO está dentro de la card (sería el estado de antes, título adentro).
+    expect(screen.getByTestId('inteligencia-acumulado')).not.toContainElement(screen.getByTestId('inteligencia-acumulado-etiqueta'));
+    expect(screen.getByTestId('inteligencia-acumulado-doce-meses')).toHaveTextContent('$4.420.000,00');
   });
 });
 
@@ -236,33 +290,47 @@ describe('PantallaInteligencia — SM-J3: mes en la cabecera y «Sin ventas toda
   });
 });
 
-describe('PantallaInteligencia — la solapa "Preguntar" es una SALIDA al chat (decisión táctica 2026-10-13)', () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
+describe('PantallaInteligencia — SM-N32: «N comprobantes» por cliente', () => {
+  it('muestra «2 comprobantes» y «0 comprobantes» reales, y OCULTA el sufijo con null (nunca un 0 inventado)', async () => {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      portada: {
+        ...PORTADA,
+        mejoresClientes: [
+          { cliente: 'Con dos', total: '10.00', comprobantes: 2 },
+          { cliente: 'Con cero', total: '5.00', comprobantes: 0 },
+          { cliente: 'Sin dato', total: '1.00', comprobantes: null },
+        ],
+      },
+    });
+    await montar();
+    await waitFor(() => expect(screen.getByText('Con dos')).toBeTruthy());
+    expect(screen.getByText('2 comprobantes')).toBeTruthy();
+    expect(screen.getByText('0 comprobantes')).toBeTruthy();
+    expect(screen.queryByTestId('inteligencia-cliente-Sin dato-comprobantes')).toBeNull();
   });
+});
 
-  it('tocar "Preguntar" vuelve al chat (router.back) y NO monta ninguna pantalla intermedia', async () => {
-    const back = jest.spyOn(router, 'back').mockImplementation(() => {});
+describe('PantallaInteligencia — SM-N32: sin selector «Resumen»/«Preguntar» y montos del mes en negro', () => {
+  it('el selector NO se monta (el mapa lo sacó)', async () => {
     await montar();
     await waitFor(() => expect(screen.getByTestId('inteligencia-caja')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('inteligencia-solapa-preguntar'));
-
-    expect(back).toHaveBeenCalledTimes(1);
-    // Sin composer propio: la pregunta se escribe en el chat, que ya tiene el suyo.
-    expect(screen.queryByTestId('preguntar-inteligencia')).toBeNull();
-    // Y la portada sigue ahí — tocarla no cambió de cuerpo.
-    expect(screen.getByTestId('inteligencia-caja')).toBeTruthy();
+    expect(screen.queryByTestId('inteligencia-solapas')).toBeNull();
+    expect(screen.queryByTestId('inteligencia-solapa-preguntar')).toBeNull();
+    expect(screen.queryByTestId('inteligencia-solapa-resumen')).toBeNull();
+    expect(screen.queryByText('Preguntar')).toBeNull();
   });
 
-  it('🔴 CONTROL — tocar "Resumen" (la pantalla actual) NO navega: el spy distingue las dos solapas', async () => {
-    const back = jest.spyOn(router, 'back').mockImplementation(() => {});
+  it('Ingresos y Gastos del mes usan el mismo color que Facturado y Cobrado (sin verde/rojo)', async () => {
     await montar();
-    await waitFor(() => expect(screen.getByTestId('inteligencia-caja')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('inteligencia-solapa-resumen'));
-
-    expect(back).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-mes-ingresos')).toBeTruthy());
+    const color = (id: string) => {
+      const textos = within(screen.getByTestId(id)).getAllByText(/./);
+      return StyleSheet.flatten(textos[textos.length - 1].props.style).color;
+    };
+    const base = color('inteligencia-mes-facturado');
+    expect(color('inteligencia-mes-ingresos')).toBe(base);
+    expect(color('inteligencia-mes-gastos')).toBe(base);
   });
 
   it('🔴 los 4 gráficos entran DEBAJO de la portada, en el mismo scroll', async () => {

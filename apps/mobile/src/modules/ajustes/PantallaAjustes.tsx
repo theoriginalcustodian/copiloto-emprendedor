@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 
 import { leerPerfilNegocio } from '@copiloto/core';
@@ -7,13 +7,14 @@ import { leerPerfilNegocio } from '@copiloto/core';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { GlassIcon } from '../../theme/glass/GlassIcon';
 import type { NombreIconoGlass } from '../../theme/glass/icons';
-import { Tile } from '../../theme/glass/Tile';
+import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
+import { Chevron } from './Chevron';
 
 /**
  * Las entradas de Ajustes. Nació como port 1:1 del rediseño de vidrio de documed y creció a 8; el
  * 2026-07-22 volvió a 6 sacando andamiajes y fusionando los pares que se pisaban; el 2026-10-06 (DEC-8)
- * salió «Mi plan» y quedaron 5 -- ver `TILES_AJUSTES` para el detalle de qué se fue a dónde.
+ * salió «Mi plan» y quedaron 5 -- ver `FILAS_AJUSTES` para el detalle de qué se fue a dónde.
  */
 export type AjusteKey =
   | 'perfilNegocio'
@@ -25,52 +26,55 @@ export type AjusteKey =
   | 'soporte'
   | 'feedback';
 
-interface DefinicionTileAjuste {
+interface DefinicionFilaAjuste {
   key: AjusteKey;
   label: string;
+  /** La segunda línea de la fila. SALE DEL MAPA (`index.html` §ajustes, `.aj-fila .t > span`), no se inventa:
+   * el test la lee de la fuente y la compara. */
+  subtitulo: string;
   icono: NombreIconoGlass;
 }
 
 /**
- * Los 5 tiles de Ajustes (8 → 6 el 2026-07-22, 6 → 5 el 2026-10-06), en orden de cuándo se necesitan.
+ * Las 8 filas de Ajustes, en orden de cuándo se necesitan.
+ *
+ * 🔴 SM-Z5 (decidido por el operador, 2026-11-03): Ajustes pasa de GRILLA de íconos (tiles de 3 columnas)
+ * a LISTA de filas, como el mapa: ícono chico, título, subtítulo y chevron, agrupadas en una tarjeta por
+ * rótulo. Lo que NO se tiró con la forma:
  *
  * 🔴 **Quedó en 6 el 2026-07-22, y lo que se sacó importa más que lo que quedó.** De los 8 anteriores,
  * **tres eran `PantallaAndamiaje`** —el placeholder vacío— y había **dos pares que se pisaban**:
- * *Datos personales* vs *Cuenta*, y *Planes disponibles* vs *Plan actual*. Dos tiles para un solo
+ * *Datos personales* vs *Cuenta*, y *Planes disponibles* vs *Plan actual*. Dos filas para un solo
  * concepto es exactamente lo que confunde a alguien que entró a configurar algo: no sabe cuál de los
  * dos es el que busca, y entra a los dos.
  *
  * - *Datos personales* → **absorbido por «Mi cuenta»**.
- * - *Planes disponibles* + *Plan actual* → **fusionados en «Mi plan»** (una sola ruta de andamiaje).
+ * - *Planes disponibles* + *Plan actual* → **fusionados en «Mi plan»**, que salió después (DEC-8 / SM-N42).
  * - *Configuración del sistema* → su única fila (el lugar reservado de «No molestar») **se mudó a
- *   «Mi cuenta»**; no justificaba un tile propio.
+ *   «Mi cuenta»**; no justificaba una entrada propia.
  * - *Skins* → **«Apariencia»**, en castellano como el resto de la app.
  * - **«Apps conectadas» llega del escritorio**: no es una función del negocio, es configuración de
- *   conexiones que se tocan una vez. La pantalla no se reescribió — sólo cambió desde dónde se llega.
+ *   conexiones que se tocan una vez.
+ * - **«Cómo hablarle» (la 3ª fila de «La app» del mapa) NO existe en la app, a propósito**: la pantalla
+ *   se fundió en «Cómo usar la app» y el tono y la forma de responder viven en «Mi negocio». Es una
+ *   enmienda fundada, no un olvido; el test la nombra (`ENMIENDAS_DEL_MAPA`) para que una fila NUEVA
+ *   del mapa sí rompa y esta no.
  *
- * 🔴 Ningún ícono se repite DENTRO de este grid -- elegir mal acá es entrar a la pantalla equivocada.
- * Desde ODOBI hito 5 cada tile usa el ícono de función que lleva su MISMO nombre en el set de 21
- * (`icons.ts`) -- Apariencia ya tiene un glifo propio (semicírculo claro/oscuro) y Facturación AFIP
- * dejó de compartir ícono con el tile de Facturación del escritorio (ver abajo). La MUESTRA de color
- * real sigue viviendo en la pantalla de destino (`PantallaSkins.tsx`); acá sólo cambia el glifo.
+ * 🔴 Ningún ícono se repite ENTRE FILAS -- entrar por un ícono y llegar a otra pantalla desorienta.
+ * Cada fila usa el ícono de función que lleva su MISMO nombre en el set de 21 (`icons.ts`). La MUESTRA de
+ * color real sigue viviendo en la pantalla de destino (`PantallaSkins.tsx`); acá sólo cambia el glifo.
  */
-const TILES_AJUSTES: readonly DefinicionTileAjuste[] = [
+const FILAS_AJUSTES: readonly DefinicionFilaAjuste[] = [
   // Primero: es lo que hay que completar el día 1. `miNegocio` porque la mitad de esa pantalla es
   // literalmente cómo conversa el copiloto.
-  { key: 'perfilNegocio', label: 'Mi negocio', icono: 'miNegocio' },
-  // Perfil fiscal + vínculo con ARCA + ambiente. Antes compartía ícono con el tile de Facturación del
-  // escritorio (`doc_search`, catálogo viejo de 11 nombres, sin uno propio para "trámite/alta ante
-  // ARCA"). El set de 21 SÍ tiene uno distinto (`perfilFiscal`, escudo con check) -- usarlo separa la
-  // función (Facturación) de su configuración (esta pantalla), que es más preciso que compartir.
-  { key: 'facturacionAfip', label: 'Facturación ARCA', icono: 'perfilFiscal' },
-  // Antes `folder` (la carpeta que agrupa), heredado del escritorio. `appsConectadas` es el nombre
-  // propio del set de 21 para este mismo concepto -- la pantalla es la misma, sólo cambió el glifo.
-  { key: 'apps', label: 'Apps conectadas', icono: 'appsConectadas' },
-  { key: 'cuenta', label: 'Mi cuenta', icono: 'cuenta' },
-  // Antes `media` (ojo/preview) -- el catálogo viejo no tenía ningún glifo que significara
-  // literalmente "paleta de colores". El set de 21 sí: `apariencia` es un semicírculo claro/oscuro,
-  // dibujado para esto.
-  { key: 'apariencia', label: 'Apariencia', icono: 'apariencia' },
+  { key: 'perfilNegocio', label: 'Mi negocio', subtitulo: 'Qué vendés, a quién y tu horario', icono: 'miNegocio' },
+  // Perfil fiscal + vínculo con ARCA + ambiente. `perfilFiscal` (escudo con check) separa la función
+  // (Facturación, en el escritorio) de su configuración (esta pantalla).
+  { key: 'facturacionAfip', label: 'Facturación ARCA', subtitulo: 'CUIT, condición y punto de venta', icono: 'perfilFiscal' },
+  { key: 'apps', label: 'Apps conectadas', subtitulo: 'Gmail, Drive, Calendar, Mercado Pago', icono: 'appsConectadas' },
+  { key: 'cuenta', label: 'Mi cuenta', subtitulo: 'Mail, contraseña y cerrar sesión', icono: 'cuenta' },
+  // `apariencia` es un semicírculo claro/oscuro, dibujado para esto.
+  { key: 'apariencia', label: 'Apariencia', subtitulo: 'Claro u oscuro', icono: 'apariencia' },
   /**
    * ── AYUDA (Ola 5) ────────────────────────────────────────────────────────
    * Las tres del prototipo, que hasta el 2026-09-18 vivían **escondidas adentro de Mi cuenta** como
@@ -78,54 +82,20 @@ const TILES_AJUSTES: readonly DefinicionTileAjuste[] = [
    * la cuenta, que es donde uno va a cambiar el mail.
    *
    * **`comoHablarle` es el ÍCONO, no la pantalla.** El glifo (burbuja con ecualizador) sigue siendo
-   * el de "guía de uso" — el set separa ése del de grabar (cápsula de micrófono), y acá corresponde
-   * el primero porque esto es la guía, no la acción. La pantalla vieja «Cómo hablarle» se fundió en
-   * «Cómo usar la app»; el tono y la forma de responder viven en Mi negocio, donde ya estaban.
+   * el de "guía de uso": el set lo separa del de grabar (cápsula de micrófono).
    */
-  { key: 'comoUsar', label: 'Cómo usar la app', icono: 'comoHablarle' },
-  { key: 'soporte', label: 'Soporte técnico', icono: 'soporte' },
-  // «Contanos qué tal» en el prototipo. Acá el label corto entra mejor bajo un tile de 3 columnas, y
-  // la frase larga la dice la propia pantalla.
-  { key: 'feedback', label: 'Contanos qué tal', icono: 'feedback' },
+  { key: 'comoUsar', label: 'Cómo usar la app', subtitulo: 'Te lo muestro paso a paso, con ejemplos', icono: 'comoHablarle' },
+  { key: 'soporte', label: 'Soporte técnico', subtitulo: 'Contanos el problema y abrimos un ticket', icono: 'soporte' },
+  { key: 'feedback', label: 'Contanos qué tal', subtitulo: 'Sugerencias y cosas que no funcionan', icono: 'feedback' },
 ];
 
-/** Cuántos tiles entran por fila. 3 en un ancho de teléfono deja la etiqueta legible sin recortar. */
-const COLUMNAS = 3;
-
 /**
- * Agrupa los tiles en filas de `COLUMNAS`.
+ * Los tres grupos del mapa (`index.html` §ajustes): «Tu negocio» / «La app» / «Ayuda». Cada grupo es una
+ * tarjeta con su rótulo (el mapa lo dibuja en mayúsculas por CSS: acá `textTransform`, el texto queda como
+ * en la fuente). «Mi plan» —4º de «Tu negocio» en versiones viejas del mapa— salió de la beta (DEC-8).
  *
- * 🔴 **Reemplaza a dos `slice` hardcodeados** (`slice(0,3)` / `slice(3,6)`), que asumían exactamente 6
- * tiles: al sumar el séptimo (Facturación AFIP) el tile nuevo quedaba fuera de las dos filas y no se
- * renderizaba — un ícono que desaparece en silencio, sin error, sólo porque el array creció. Con esto,
- * agregar el octavo es agregar una línea a `TILES_AJUSTES` y nada más.
- *
- * La última fila se completa con `null` (ver `rellenar`): sin relleno, una fila de 1 tile con `flex:1`
- * lo estira a todo el ancho y la grilla se ve rota.
- */
-function agruparEnFilas(
-  tiles: readonly DefinicionTileAjuste[],
-): readonly (readonly (DefinicionTileAjuste | null)[])[] {
-  const filas: (DefinicionTileAjuste | null)[][] = [];
-  for (let i = 0; i < tiles.length; i += COLUMNAS) {
-    const fila: (DefinicionTileAjuste | null)[] = tiles.slice(i, i + COLUMNAS);
-    while (fila.length < COLUMNAS) fila.push(null); // huecos invisibles, para que no se estiren
-    filas.push(fila);
-  }
-  return filas;
-}
-
-/**
- * Los tres grupos del prototipo (index.html:2108-2138): «Tu negocio» / «La app» / «Ayuda». Cada grupo
- * lleva su rótulo y arma sus PROPIAS filas de `COLUMNAS` (el último hueco se rellena, ver
- * `agruparEnFilas`). «Mi plan» —4º de «Tu negocio» en el prototipo— salió de la beta (DEC-8).
- *
- * ENMIENDAS FUNDADAS (mapeo `ajustes`, 2026-10-13), no divergencia sin dueño:
- *  - la entrada sigue siendo un TILE (ícono + etiqueta) y no una fila con subtítulo («Qué vendés, a
- *    quién y tu horario»): la grilla de vidrio es la decisión de diseño de esta pantalla, y en 3
- *    columnas no entra una segunda línea sin recortarla;
- *  - del encabezado «El Galpón · Martín Cairo» se muestra el nombre comercial (`perfilNegocio`, SM-N9);
- *    el nombre de la PERSONA no, porque `/me` no lo trae: no se fabrica.
+ * Del encabezado «El Galpón · Martín Cairo» se muestra el nombre comercial (`perfilNegocio`, SM-N9); el
+ * nombre de la PERSONA no, porque `/me` no lo trae: no se fabrica.
  */
 const GRUPOS_AJUSTES: readonly { id: string; rotulo: string; keys: readonly AjusteKey[] }[] = [
   { id: 'negocio', rotulo: 'Tu negocio', keys: ['perfilNegocio', 'facturacionAfip', 'apps'] },
@@ -135,11 +105,11 @@ const GRUPOS_AJUSTES: readonly { id: string; rotulo: string; keys: readonly Ajus
 
 const FILAS_POR_GRUPO = GRUPOS_AJUSTES.map((g) => ({
   ...g,
-  filas: agruparEnFilas(TILES_AJUSTES.filter((t) => g.keys.includes(t.key))),
+  filas: FILAS_AJUSTES.filter((f) => g.keys.includes(f.key)),
 }));
 
 export interface PantallaAjustesProps {
-  /** Un handler único para las entradas del grid -- el tile tocado se identifica por `key`; el
+  /** Un handler único para las entradas de la lista -- la fila tocada se identifica por `key`; el
    * `router.push` real vive en la ruta que monta esta pantalla, no acá. */
   onAjuste?: (key: AjusteKey) => void;
 }
@@ -170,13 +140,18 @@ function useNombreComercial(): string | undefined {
   return nombre;
 }
 
+/** `.aj-fila .ic{width:38px;height:38px}` y el svg de 18-21 px adentro (`index.html:1512`, 2115-2131). */
+const LADO_ICONO = 38;
+const TAMANO_ICONO = 22;
+
 /**
- * Pantalla Ajustes -- grilla de iconos con las 5 entradas. Esta pantalla sólo cablea la navegación
- * (identifica QUÉ tile se tocó), nunca decide a dónde va cada una.
+ * Pantalla Ajustes -- lista de filas agrupadas por rótulo. Esta pantalla sólo cablea la navegación
+ * (identifica QUÉ fila se tocó), nunca decide a dónde va cada una.
  */
 export function PantallaAjustes({ onAjuste }: PantallaAjustesProps) {
   const tema = useTema();
   const nombreComercial = useNombreComercial();
+  const g = tema.glass;
 
   return (
     <MarcoGlass titulo="Ajustes" icono="ajustes" etiqueta={nombreComercial} testID="pantalla-ajustes">
@@ -186,48 +161,52 @@ export function PantallaAjustes({ onAjuste }: PantallaAjustesProps) {
         <Text testID="ajustes-intro" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, marginBottom: tema.espacio.sm }}>
           Los datos de tu negocio, tus apps y cómo se comporta Odobi.
         </Text>
-        <View style={styles.grid}>
-          {FILAS_POR_GRUPO.map((g) => (
-            <View key={g.id} style={styles.grupo}>
+        <View style={styles.lista}>
+          {FILAS_POR_GRUPO.map((grupo) => (
+            <View key={grupo.id} style={styles.grupo}>
               <Text
-                testID={`ajustes-grupo-${g.id}`}
-                style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}
+                testID={`ajustes-grupo-${grupo.id}`}
+                // `.lista-lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase}` (`index.html:448`).
+                style={{
+                  color: tema.color.textoTenue,
+                  fontSize: 11,
+                  letterSpacing: 0.14 * 11,
+                  textTransform: 'uppercase',
+                  fontFamily: tema.fuente.uiSemibold,
+                }}
               >
-                {g.rotulo}
+                {grupo.rotulo}
               </Text>
-              {g.filas.map((fila, iFila) => (
-            <View key={iFila} style={styles.filaGrid}>
-              {fila.map((t, iCol) =>
-                // Hueco de relleno de la última fila: ocupa la columna para que los tiles reales
-                // conserven su ancho, pero no dibuja nada ni recibe toques.
-                t === null ? (
-                  <View key={`hueco-${iCol}`} style={styles.tile} pointerEvents="none" />
-                ) : (
-                <Tile
-                  key={t.key}
-                  testID={`ajuste-tile-${t.key}`}
-                  accessibilityLabel={t.label}
-                  onPress={() => onAjuste?.(t.key)}
-                  style={styles.tile}
-                >
-                  <GlassIcon name={t.icono} size={46} />
-                  {/* `numberOfLines={2}` acota el peor caso: una etiqueta más larga que las actuales
-                      no puede volver a romper la grilla creciendo a 3 líneas — se recorta con "…",
-                      que es visible y arreglable, en vez de desalinear todo en silencio. */}
-                  <Text
-                    numberOfLines={2}
-                    style={[
-                      styles.labelTile,
-                      { color: tema.color.texto, fontFamily: tema.fuente.uiSemibold },
-                    ]}
+              <View style={[styles.tarjeta, { backgroundColor: g.s1, borderColor: g.chip }]}>
+                {grupo.filas.map((f, i) => (
+                  <Pressable
+                    key={f.key}
+                    testID={`ajuste-tile-${f.key}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={f.label}
+                    accessibilityHint={f.subtitulo}
+                    onPress={() => onAjuste?.(f.key)}
+                    // `.aj-fila + .aj-fila{border-top}` (`index.html:1511`): la línea separa, no enmarca.
+                    style={pressableStyle(
+                      [styles.fila, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: g.chip }],
+                      PRESS_FADE,
+                    )}
                   >
-                    {t.label}
-                  </Text>
-                </Tile>
-                ),
-              )}
-            </View>
-              ))}
+                    <View style={[styles.icono, { backgroundColor: g.chip }]}>
+                      <GlassIcon name={f.icono} size={TAMANO_ICONO} />
+                    </View>
+                    <View style={styles.textos}>
+                      <Text numberOfLines={1} style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>
+                        {f.label}
+                      </Text>
+                      <Text numberOfLines={2} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, marginTop: 2 }}>
+                        {f.subtitulo}
+                      </Text>
+                    </View>
+                    <Chevron />
+                  </Pressable>
+                ))}
+              </View>
             </View>
           ))}
         </View>
@@ -236,23 +215,14 @@ export function PantallaAjustes({ onAjuste }: PantallaAjustesProps) {
   );
 }
 
-/**
- * 🔴 **Alto reservado para la etiqueta.** Sin esto cada tile mide lo que mida su etiqueta:
- * "Configuración del sistema" envuelve a 2 líneas y "Skins" o "Cuenta" entran en 1, así que las cards
- * de una misma fila saldrían de alturas distintas. Se arregla en la CAUSA -- la etiqueta de altura
- * variable -- reservando siempre 2 líneas: todas las cards pasan a medir lo mismo SOLAS, y ese "lo
- * mismo" es exactamente el tamaño de la card más grande. Un `height` a mano en el `Tile` sería un
- * número mágico que además puede achicar las cards de 1 línea.
- */
-const ALTO_LABEL = 30;
-
 const styles = StyleSheet.create({
   contenedor: { flex: 1 },
-  grid: { gap: 16 },
+  lista: { gap: 16 },
   grupo: { gap: 8 },
-  filaGrid: { flexDirection: 'row', gap: 12 },
-  tile: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
-  // `lineHeight` explícito para que 2 líneas entren exactas en `ALTO_LABEL` en vez de depender del
-  // interlineado por defecto de cada plataforma.
-  labelTile: { fontSize: 11.5, lineHeight: 14, height: ALTO_LABEL, textAlign: 'center' },
+  // `.grupo{border-radius;padding:4px var(--s2)}` (`index.html:949`): una tarjeta por rótulo.
+  tarjeta: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 4, overflow: 'hidden' },
+  // `.aj-fila{gap:12px;padding:13px 0;min-height:64px}` (`index.html:1510`).
+  fila: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, minHeight: 64 },
+  icono: { width: LADO_ICONO, height: LADO_ICONO, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  textos: { flex: 1, minWidth: 0 },
 });

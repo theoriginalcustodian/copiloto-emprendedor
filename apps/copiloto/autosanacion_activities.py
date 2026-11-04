@@ -63,6 +63,7 @@ from typing import Any
 
 from temporalio import activity
 
+from clients.agent.providers.llm import kwargs_sdk
 from autosanacion_gates import puede_reparar
 from auditor_parches import auditar as _auditar
 from auditor_parches import verificar_auditor
@@ -333,9 +334,10 @@ async def forjar_parche(trauma: dict) -> dict:
     prompt = prompt_de_forja(archivo=origen["archivo"], contenido=contenido,
                              salida_pytest=_evidencia_del_fallo(trauma, origen),
                              no_romper=no_romper)
+    modelo = os.environ.get("COPILOTO_FORJADOR_MODELO", "gpt-4o-mini")
     respuesta = _llm_client.chat.completions.create(
-        model=os.environ.get("COPILOTO_FORJADOR_MODELO", "gpt-4o-mini"),
-        messages=[{"role": "user", "content": prompt}], temperature=0)
+        model=modelo, messages=[{"role": "user", "content": prompt}],
+        **kwargs_sdk(modelo, temperature=0))
     texto = respuesta.choices[0].message.content or ""
 
     aplicacion = aplicar_bloques(texto, contenido)

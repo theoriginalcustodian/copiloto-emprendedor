@@ -1,7 +1,11 @@
 """Store cifrado de credenciales OAuth de vendedores MercadoPago (capa CLIENTE, multi-tenant).
 
-Aislamiento por tenant: el filtro EXPLÍCITO por `cliente_id` en CADA query es la barrera efectiva — el worker
-usa el rol owner de DATABASE_URL, que BYPASSA la policy RLS (igual que reply_store.py). Los tokens se guardan
+Aislamiento por tenant: el filtro EXPLÍCITO por `cliente_id` en CADA query es una barrera; la otra es RLS, que
+SÍ aplica al rol de DATABASE_URL (FORCE RLS): sin el claim `request.jwt.claims` del tenant en la conexión, un
+INSERT falla con InsufficientPrivilege (medido 2026-11-03 corriendo `deploy/copiloto/sembrar-mp-e2e-vacio.py`
+sin claim). Este docstring decía antes que el rol owner «BYPASSA la policy RLS»: era falso y mandaba a buscar
+la causa de ese error en cualquier lado menos en el claim. Quien use el store fuera del servicio tiene que
+declarar el claim (ver `contexto_tenant.py`). Los tokens se guardan
 cifrados con Fernet (nunca en claro). Una fila por (cliente_id, seller_user_id) — idempotencia por índice único."""
 from __future__ import annotations
 
@@ -113,8 +117,8 @@ class MpCredentialStore:
 
         Borra por `cliente_id` y nada más: no recibe ni acepta un id de fila, así que un tenant no
         puede alcanzar las credenciales de otro ni probando ids (mismo criterio que el resto del
-        store -- el filtro explícito por `cliente_id` es la barrera efectiva, porque el rol owner de
-        DATABASE_URL bypassa RLS).
+        store -- el filtro explícito por `cliente_id` va junto con RLS, que sí aplica al rol de
+        DATABASE_URL con el claim del tenant declarado).
 
         Alcance HONESTO: esto borra la credencial LOCAL, con lo cual el copiloto pierde el acceso.
         NO revoca el token del lado de MercadoPago (su API de revocación no está integrada acá) --

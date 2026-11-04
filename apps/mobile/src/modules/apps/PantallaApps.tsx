@@ -111,8 +111,19 @@ const CONSECUENCIA_EXTRA: Record<string, string> = {
  *  fondo»). Hoy sólo Drive — archiva las facturas y «no se usa por chat». */
 const SERVICIOS_DE_FONDO = new Set(['googledrive']);
 
+/** Orden de las filas del prototipo (index.html:2338-2344): Gmail, Calendar, Mercado Pago, Sheets, Docs · Drive.
+ *  La lista llegaba en el orden que sirve el backend (Mercado Pago primero): el orden es del diseño, no del
+ *  servidor. Una key que el mapa no conoce va al final, en el orden en que llegó — nunca se esconde una fila. */
+const ORDEN_DEL_MAPA = ['gmail', 'googlecalendar', 'mercadopago', 'googlesheets', 'googledocs', 'googledrive'];
+const lugarEnElMapa = (key: string) => {
+  const i = ORDEN_DEL_MAPA.indexOf(key);
+  return i === -1 ? ORDEN_DEL_MAPA.length : i;
+};
+
 /** Los dos grupos del prototipo, sin el que quede vacío (no se pinta un rótulo sin filas). */
-function gruposDe(servicios: ServicioCatalogo[], destacado: string | null = null) {
+function gruposDe(serviciosLlegados: ServicioCatalogo[], destacado: string | null = null) {
+  // `sort` es estable: los empatados (keys que el mapa no conoce) conservan el orden de llegada.
+  const servicios = [...serviciosLlegados].sort((a, b) => lugarEnElMapa(a.key) - lugarEnElMapa(b.key));
   // H5b: si llegamos desde «Reconectar» de Mi día, esa conexión va PRIMERA de su grupo y su grupo primero
   // del todo — es a lo que vino el usuario. Un `destacado` que no está en el catálogo no reordena nada
   // (lista tal cual): nunca rompe ni esconde filas.

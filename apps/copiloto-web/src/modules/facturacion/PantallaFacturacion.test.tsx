@@ -344,3 +344,28 @@ describe('PantallaFacturacion (web) — SM-E1: puedeFacturar:false por condició
     expect(screen.queryByTestId('facturacion-cta-configurar')).not.toBeInTheDocument();
   });
 });
+
+/**
+ * SM-N44 (contrato de NO-DIVERGENCIA con mobile). En mobile el gate se CORRIGE con `cuitVinculado` porque
+ * mobile CACHEA el CUIT en el teléfono y lo manda al backend: un CUIT cacheado que no es del tenant se
+ * re-escribía a sí mismo para siempre. Web NO tiene esa caché y por eso NO necesita esa corrección: pregunta
+ * `estadoAfip()` SIN parámetro y el backend resuelve el CUIT del propio tenant (`primer_cuit()`,
+ * afip_web.py:709), así que `res.cuit` ya es suyo. Esto lo sostenía sólo un comentario; si alguien le agrega
+ * un CUIT a la llamada «para ser consistente con mobile», revive el defecto y nada lo frenaba.
+ */
+describe('PantallaFacturacion (web) — SM-N44: el gate pregunta SIN CUIT (no hay caché que corregir)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('llama estadoAfip() sin argumentos aunque la respuesta traiga cuitVinculado', async () => {
+    mockEstadoAfip.mockResolvedValue(estadoAfipMock({ cuit: '20111111112', cuitVinculado: '27999999995' }));
+    render(<PantallaFacturacion />);
+
+    await waitFor(() => expect(mockEstadoAfip).toHaveBeenCalled());
+    // Invariante: web nunca manda un CUIT en el gate. Con argumento, el backend podría rechazarlo.
+    expect(mockEstadoAfip.mock.calls.every((c) => c.length === 0)).toBe(true);
+    // Y el gate llega a «listo» con `res.cuit` (el del tenant): no se re-pregunta con el `cuitVinculado`.
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeInTheDocument());
+  });
+});

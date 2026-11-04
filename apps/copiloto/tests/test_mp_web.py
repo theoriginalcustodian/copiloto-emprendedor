@@ -18,13 +18,13 @@ class _FakeGateway:
 
 class _FakeCredStore:
     def __init__(self): self.saved = {}
-    def save(self, seller, **kw): self.saved[seller] = kw
-    def get(self, seller): return {"access_token": "AT"} if seller in self.saved or seller == "146" else {"access_token": "AT"}
+    def save(self, seller_user_id, **kw): self.saved[seller_user_id] = kw
+    def get(self, seller_user_id): return {"access_token": "AT"} if seller_user_id in self.saved or seller_user_id == "146" else {"access_token": "AT"}
 
 
 class _FakePayStore:
     def __init__(self): self.upserts = []
-    def upsert_from_payment(self, p, *, seller_user_id): self.upserts.append((p["id"], seller_user_id))
+    def upsert_from_payment(self, payment, *, seller_user_id): self.upserts.append((payment["id"], seller_user_id))
 
 
 @pytest.fixture
@@ -88,7 +88,7 @@ def test_webhook_valid_signature_without_creds_does_not_persist(ctx):
     pay = _FakePayStore()
 
     class _NoCredStore:
-        def get(self, seller):
+        def get(self, seller_user_id):
             return None
 
     app = create_mp_app(gateway=_FakeGateway(), crypto=crypto,

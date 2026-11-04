@@ -12,6 +12,7 @@ import {
 
 import { TEXTO_CREDENCIALES_INCORRECTAS, TEXTO_PIE_INGRESAR } from '@copiloto/core';
 
+import { COLOR_PALABRA_MARCA } from '../../theme/identidadPalette';
 import { pressableStyle } from '../../theme/glass/presion';
 import { Marca } from '../../theme/Marca';
 import { useTema } from '../../theme/ThemeProvider';
@@ -22,7 +23,8 @@ type FormState = 'idle' | 'enviando' | 'error-credenciales' | 'no-habilitada' | 
 // Tamaños de la jerarquía del login. Son medidas de layout (no colores → no violan `temaSinHex`), y
 // viven acá y no en los tokens porque son propias de ESTE hero, no del sistema compartido (evita
 // inflar la escala global `tipo` con un tamaño que sólo usa una pantalla).
-const HERO = 34;
+/** El wordmark «Odobi» del lockup: `.ig-marca .w{font-size:32px}` (`prototipo/index.html:517`). SM-Z4 parte 1 (era 34). */
+const HERO = 32;
 /** El símbolo del lockup. El wordmark va al lado, no debajo — ver el bloque de marca del render. */
 const LOCKUP_SIMBOLO = 38;
 const ALTO_CAMPO = 52;
@@ -130,14 +132,22 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
           * un número elegido a ojo.
           */}
         <View style={[styles.marca, { gap: Math.round(LOCKUP_SIMBOLO * 0.3), marginBottom: tema.espacio.xl }]}>
-          <Marca size={LOCKUP_SIMBOLO} tono="tinta" />
+          {/* SM-N30: `desnudo` = el símbolo SIN badge, terracota, como el mapa (`prototipo/index.html:2571`,
+              `<svg width="38">` con `stroke: var(--terracota)`). Era `tinta`, que es el avatar redondo de
+              Soporte: el login importó el círculo sin su motivo. En `desnudo` el `size` es el del SIGNO
+              (38, como el mapa), no el de un tile; el `gap` de abajo sigue siendo 0,3 × ese ancho. */}
+          <Marca size={LOCKUP_SIMBOLO} tono="desnudo" />
           {/* El wordmark es la marca en su forma más literal: usa `fuente.display` (Plus Jakarta
               Sans Bold), no `fuente.uiBold` como el resto de la UI. */}
+          {/* SM-Z4 parte 2 (DECIDIDO por el operador, 2026-11-03): el wordmark es el LOGOTIPO y va en la terracota de marca del mapa
+              (--terracota #DE7250, index.html:517), igual que el reveal (COLOR_PALABRA_MARCA, identidadPalette.ts). Es exención
+              WCAG 1.4.3 (logotipo), NO texto de UI: el control de contraste lo reconoce sólo por color de marca + este testID
+              (LOGOTIPOS_TEXTO, paresPintadosContraste.test.tsx). No copiar este color a otro <Text>. */}
           <Text
             testID="login-wordmark"
             style={[
               styles.titulo,
-              { color: tema.color.acentoTinta, fontSize: HERO, fontFamily: tema.fuente.display },
+              { color: COLOR_PALABRA_MARCA, fontSize: HERO, fontFamily: tema.fuente.display },
             ]}
           >
             Odobi

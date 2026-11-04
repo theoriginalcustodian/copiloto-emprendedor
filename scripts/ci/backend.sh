@@ -19,7 +19,15 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT/apps/copiloto"
 PY="${PYTHON_BIN:-python}"
 
-"$PY" provision.py
+# Sin base, `provision.py` aborta (KeyError DATABASE_URL) y con `set -e` no corre NI UN test. En CI eso es
+# lo correcto: fallar cerrado evita el verde con los @necesita_pg salteados. Pero el dev-loop sin Postgres
+# que `sync-test-backend.sh` documenta como DEFAULT quedaba muerto (anunciaba «se SALTAN» y abortaba).
+# El salto es OPT-OUT EXPLÍCITO: sólo el runner lo pide, y CI nunca define la variable.
+if [ "${UC_SIN_PG:-0}" = "1" ]; then
+  echo "==> provision.py SALTEADO (UC_SIN_PG=1): corrida sin Postgres, los @necesita_pg se saltan"
+else
+  "$PY" provision.py
+fi
 
 if [ "$#" -gt 0 ]; then
   "$PY" -m pytest -ra "$@"

@@ -148,6 +148,46 @@ describe('PantallaAgenda (BL-J13)', () => {
     expect(tomarPendiente()).toBe(TEXTO_NUEVO_EVENTO);
   });
 
+  it('SM-N34: «+ Nuevo evento» lleva el «+» del mapa y el estado lleva su punto', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('agenda-estado-punto', { includeHiddenElements: true })).toBeTruthy());
+    expect(screen.getByText('+ Nuevo evento')).toBeTruthy();
+  });
+
+  it('SM-N34: la línea del ahora aparece SOLO en Hoy (Mañana y Esta semana son lista) y SOLO con eventos con hora', async () => {
+    const hace = (h: number) => new Date(Date.now() + h * 3600_000).toISOString();
+    mockLeer.mockResolvedValue({
+      status: 'ok',
+      agenda: {
+        conectado: true,
+        grupos: [
+          {
+            id: 'hoy',
+            titulo: 'Hoy',
+            eventos: [
+              { id: 'pasado', titulo: 'Ya pasó', inicioCrudo: hace(-3), finCrudo: null, diaCompleto: false },
+              { id: 'futuro', titulo: 'Falta', inicioCrudo: hace(3), finCrudo: null, diaCompleto: false },
+            ],
+          },
+          { id: 'manana', titulo: 'Mañana', eventos: [{ id: 'm1', titulo: 'Mañana', inicioCrudo: hace(26), finCrudo: null, diaCompleto: false }] },
+          { id: 'semana', titulo: 'Esta semana', eventos: [] },
+          { id: 'sin_hora', titulo: 'Sin hora', eventos: [] },
+        ],
+      },
+    });
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('agenda-evento-pasado')).toBeTruthy());
+    expect(screen.getAllByTestId('agenda-linea-ahora')).toHaveLength(1);
+    expect(screen.getByTestId('agenda-grupo-hoy')).toContainElement(screen.getByTestId('agenda-linea-ahora'));
+    expect(screen.getByTestId('agenda-grupo-manana')).not.toContainElement(screen.getByTestId('agenda-linea-ahora'));
+  });
+
+  it('SM-N34: Hoy vacío o sin hora legible NO dibuja la línea del ahora', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('agenda-grupo-hoy-vacio')).toBeTruthy());
+    expect(screen.queryByTestId('agenda-linea-ahora')).toBeNull();
+  });
+
   it('mapeo `agenda`: subtítulo del prototipo y «Google Calendar conectada» sólo con Calendar conectado', async () => {
     await montar();
     expect(screen.getByTestId('agenda-intro').props.children).toBe('Tus eventos y lo que vence, en la misma línea.');

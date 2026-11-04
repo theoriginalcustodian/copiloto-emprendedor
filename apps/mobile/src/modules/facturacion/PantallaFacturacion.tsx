@@ -38,6 +38,7 @@ import { useTema } from '../../theme/ThemeProvider';
 // que recibe el foco en vez de dejarlo tapado por el teclado. Ver su docstring y el de `MarcoGlass`.
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
+import { DockAlChat } from '../voz';
 import { generarId } from '../../util/id';
 import { guardarCuitCacheado, leerCuitCacheado } from '../afip/cuitCache';
 import { derivarPasoVisible, type PasoVisible } from './maquinaEstado';
@@ -267,6 +268,15 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
           setGate({ tipo: 'no_disponible' });
           return;
         }
+        // 🔴 SM-N44 — la caché se CORRIGE con el CUIT del propio tenant. Si el pedido fue por un CUIT que no
+        // es suyo, el backend lo echa con `conectado:false` y manda el vinculado: se reemplaza la caché y se
+        // vuelve a verificar con ése. Sin esto el valor rechazado se re-escribía y la próxima lectura volvía
+        // a preguntar por él, para siempre (un caché alimentado por su propia entrada rechazada no converge).
+        if (res.cuitVinculado && res.cuitVinculado !== cuit) {
+          void guardarCuitCacheado(res.cuitVinculado);
+          setGate({ tipo: 'verificando', cuit: res.cuitVinculado });
+          return;
+        }
         // El CUIT que manda el backend GANA sobre el cacheado (la caché es sólo primera pintura).
         const cuitReal = res.cuit ?? cuit;
         if (!cuitReal) {
@@ -274,7 +284,8 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
           setGate({ tipo: 'sin_cuit' });
           return;
         }
-        void guardarCuitCacheado(cuitReal);
+        // SM-N44: una respuesta que dice «no» (`conectado:false`) no es fuente de verdad para la caché.
+        if (res.conectado) void guardarCuitCacheado(cuitReal);
         setGate(
           res.puedeFacturar
             ? { tipo: 'listo', cuit: cuitReal, ambiente: res.ambiente ?? null }
@@ -690,6 +701,9 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
           </>
         )}
       </ScrollFormulario>
+
+      {/* SM-J1: el dock al pie, fuera del scroll. El texto va al chat (propone, nunca emite). */}
+      {gate.tipo === 'listo' && vista === 'listado' && <DockAlChat contexto="factura" origen="Facturación" placeholder="Una factura, o hablá…" />}
 
       {/* 🔴 FUERA del `ScrollFormulario`, a propósito. Un overlay absoluto montado DENTRO del scroll
           se posiciona contra el contenido —miles de píxeles con 20 comprobantes— y aparece centrado

@@ -57,22 +57,46 @@ export function chipResumenEspera(r: ResumenEspera): string | undefined {
   return partes.length > 0 ? partes.join(' · ') : undefined;
 }
 
+/** Días enteros desde `fecha` (ISO) hasta `ahora`; `null` si la fecha falta, no parsea o es futura. */
+function diasDesde(fecha: string | undefined, ahora: Date): number | null {
+  if (!fecha) return null;
+  const ms = Date.parse(fecha);
+  if (Number.isNaN(ms)) return null;
+  const dias = Math.floor((ahora.getTime() - ms) / 86_400_000);
+  return dias < 0 ? null : dias;
+}
+
+function textoDias(dias: number): string {
+  if (dias === 0) return 'hoy';
+  return dias === 1 ? '1 día' : `${dias} días`;
+}
+
 /**
  * El estado de la FILA del listado (`presu`, mapeo 2026-10-12): el prototipo dice «Aceptado», «Se
- * enfría · 31 días», «Enviado · 5 días». Acá sólo lo que el dato respalda: `Presupuesto` no distingue
- * «enviado» de «pendiente» ni trae los días, así que no se inventa un «Enviado · N días» — `sinRespuesta`
- * (más de 30 días sin contestación, calculado por el backend) es lo único que dice que se enfría.
+ * enfría · 31 días», «Enviado · 5 días» (`prototipo/index.html:2083,2088,2093`). Los DÍAS salen de
+ * `Presupuesto.fecha` (ISO UTC, la misma que el backend usa para `sinRespuesta`: `presupuesto_store.py:154`),
+ * no de un campo nuevo. `Presupuesto` no distingue «enviado» de «pendiente», así que no se inventa un
+ * «Enviado»: la fila dice «Esperando respuesta · N días». `sinRespuesta` (más de 30 días, lo calcula el
+ * backend) sigue siendo lo único que dice que se enfría. SM-L4, entrada 41.
+ *
+ * Sin `fecha` parseable no se inventan días: queda el texto sin ellos (el binario de antes).
+ * `ahora` se inyecta para que el cálculo sea determinista en test.
  *
  * `estado: null` → `null`: es «el backend no lo manda», no «pendiente» (docstring de `Presupuesto.estado`).
  * Un reemplazado no tiene estado propio que mostrar: ya lo sustituyó otro.
  */
-export function etiquetaEstado(p: Presupuesto): { texto: string; tono: 'exito' | 'tenue' } | null {
+export function etiquetaEstado(
+  p: Presupuesto,
+  ahora: Date = new Date(),
+): { texto: string; tono: 'exito' | 'tenue' } | null {
   if (p.reemplazadoPor != null || p.estado == null) return null;
   if (p.estado === 'aprobado') return { texto: 'Aceptado', tono: 'exito' };
   if (p.estado === 'pendiente') {
-    return p.sinRespuesta === true
-      ? { texto: 'Sin respuesta hace más de un mes', tono: 'tenue' }
-      : { texto: 'Esperando respuesta', tono: 'tenue' };
+    const dias = diasDesde(p.fecha, ahora);
+    if (p.sinRespuesta === true) {
+      return { texto: dias != null ? `Se enfría · ${textoDias(dias)}` : 'Sin respuesta hace más de un mes', tono: 'tenue' };
+    }
+    return { texto: dias != null ? `Esperando respuesta · ${textoDias(dias)}` : 'Esperando respuesta', tono: 'tenue' };
   }
   return { texto: 'Desestimado', tono: 'tenue' };
 }

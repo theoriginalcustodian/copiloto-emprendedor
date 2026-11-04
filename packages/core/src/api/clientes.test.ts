@@ -293,7 +293,7 @@ describe('clientes.ts', () => {
     });
 
     it('acepta la respuesta ENVUELTA y la PELADA — la envoltura no está medida', async () => {
-      // `[ASSUMED_PENDING_VERIFY]`: `POST /gastos` devuelve pelado y `/presupuestos` envuelve. Apostar
+      // `[ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente: `POST /clientes` devuelve lo que retorna `cliente_store.crear`, sin medir]`: `POST /gastos` devuelve pelado y `/presupuestos` envuelve. Apostar
       // a una y errar no da error: daría un cliente con id `NaN`, que se lee como bug del backend.
       responder = () => respuesta(201, { cliente: clienteCrudo({ id: 31 }) });
       const envuelto = await crearCliente({ nombre: 'A' });

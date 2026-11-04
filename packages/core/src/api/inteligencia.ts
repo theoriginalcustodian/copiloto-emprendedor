@@ -68,6 +68,9 @@ export interface PuntoSerie {
 export interface MejorCliente {
   cliente: string;
   total: string | null;
+  /** SM-N32: facturas con CAE por documento (mismo predicado que `/clientes`). `null` = no se puede saber
+   *  (sin ficha, homónimos, sin documento) o backend viejo: NUNCA se pinta como «0 comprobantes». */
+  comprobantes?: number | null;
 }
 
 /** Lo que falta cobrar, y cuánto de eso ya está vencido. */
@@ -112,9 +115,11 @@ function puntoSerie(v: unknown): PuntoSerie | null {
 
 function mejorCliente(v: unknown): MejorCliente | null {
   if (typeof v !== 'object' || v === null) return null;
-  const r = v as { cliente?: unknown; total?: unknown };
+  const r = v as { cliente?: unknown; total?: unknown; comprobantes?: unknown };
   if (typeof r.cliente !== 'string' || r.cliente.trim() === '') return null;
-  return { cliente: r.cliente.trim(), total: importe(r.total) };
+  const comprobantes =
+    typeof r.comprobantes === 'number' && Number.isInteger(r.comprobantes) && r.comprobantes >= 0 ? r.comprobantes : null;
+  return { cliente: r.cliente.trim(), total: importe(r.total), comprobantes };
 }
 
 export async function leerPortada(): Promise<ConDisponibilidad<{ portada: Portada }>> {
@@ -659,4 +664,35 @@ export function imputacionDeTrabajos(
     gastosImputados,
     texto: textoDeImputacion(total, sinNingunGasto, gastosImputados),
   };
+}
+
+/**
+ * SM-N32 — el margen del conjunto de trabajos CERRADOS (con cobro), **ponderado**: `Σmargen / Σcobrado`.
+ * Decisión de planificación: un promedio simple de porcentajes deja que un trabajo de $1.000 pese igual
+ * que uno de $500.000. Por eso el rótulo es «Sobre N trabajos cerrados» y no «Promedio de N» (no es un
+ * promedio de los porcentajes). `peor` es el de menor margen %, con nombre. Sin trabajos con `cobrado > 0`
+ * y `margen` legibles → `pct: null` (ausente ≠ cero). Los `sinIngreso` no entran: ni siquiera llegan acá.
+ */
+export interface MargenPonderado {
+  n: number;
+  pct: number | null;
+  peor: { etiqueta: string; pct: number } | null;
+}
+
+export function margenPonderado(trabajos: readonly TrabajoConMargen[]): MargenPonderado {
+  let sumMargen = 0;
+  let sumCobrado = 0;
+  let n = 0;
+  let peor: { etiqueta: string; pct: number } | null = null;
+  for (const t of trabajos) {
+    const cobrado = t.cobrado != null ? Number(t.cobrado) : NaN;
+    const margen = t.margen != null ? Number(t.margen) : NaN;
+    if (!Number.isFinite(cobrado) || !Number.isFinite(margen) || cobrado <= 0) continue;
+    n += 1;
+    sumMargen += margen;
+    sumCobrado += cobrado;
+    const pct = (margen / cobrado) * 100;
+    if (peor === null || pct < peor.pct) peor = { etiqueta: t.etiqueta, pct };
+  }
+  return { n, pct: sumCobrado > 0 ? (sumMargen / sumCobrado) * 100 : null, peor };
 }

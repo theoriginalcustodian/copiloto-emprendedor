@@ -78,7 +78,10 @@ class _CobroFake:
                                        "idem_key": idem_key})
         saldo = float(factura["saldo"]) - float(cobrado)
         return ({"id": 1, "monto": str(cobrado), "origen": ORIGEN_FACTURA},
-                {"estado": "cobrada" if saldo <= 0 else "parcial", "saldo": f"{saldo:.2f}"})
+                # La forma REAL de `CobroStore._resumen`: `estado` es el del COMPROBANTE y `estado_cobro` el derivado.
+                # (Antes este fake devolvía `estado:"cobrada"`, un contrato que el store no cumple: verde falso.)
+                {"estado": "emitida", "estado_cobro": "cobrada" if saldo <= 0 else "parcial",
+                 "saldo": f"{saldo:.2f}"})
 
 
 class _PresupuestoFake:
@@ -290,6 +293,31 @@ def test_marcar_cobrada_por_nombre_parcial():
     assert "0001-00000042" in res.observation["result"]
 
 
+_DOS_PANADERIAS = [
+    {"id": 10, "nro": "0001-00000042", "receptor_nombre": "Panadería Los Tilos", "saldo": "50000.00", "total": "50000.00"},
+    {"id": 11, "nro": "0001-00000043", "receptor_nombre": "Panadería Don Pepe", "saldo": "50000.00", "total": "50000.00"},
+    {"id": 12, "nro": "0001-00000142", "receptor_nombre": "Ferretería Sur", "saldo": "9000.00", "total": "9000.00"},
+]
+
+
+@pytest.mark.parametrize("frase", ["42 de la panadería", "la de Los Tilos por 50000", "la 42 de 50000"])
+def test_marcar_cobrada_resuelve_frases_con_dos_datos(frase):
+    """Misma clase que SM-N46: `_coincide` es UNA función con 4 call-sites; acá la referencia con dos datos
+    (número+cliente, cliente+importe) daba 0 candidatos. El importe es el `saldo` de la impaga."""
+    store = _CobroFake(impagas=[dict(f) for f in _DOS_PANADERIAS])
+    _correr("marcar_factura_cobrada", {"factura": frase}, cobro=store)
+    assert [c["comprobante_id"] for c in store.cobros_de_factura] == [10]
+
+
+@pytest.mark.parametrize("frase", ["panadería", "50000", "la de 50000 de la panadería"])
+def test_marcar_cobrada_con_dato_ambiguo_pregunta_y_NO_cobra(frase):
+    """La mitad que importa: ensanchar candidatas no puede ensanchar a quién se le registra plata."""
+    store = _CobroFake(impagas=[dict(f) for f in _DOS_PANADERIAS])
+    res = _correr("marcar_factura_cobrada", {"factura": frase}, cobro=store)
+    assert store.cobros_de_factura == []
+    assert "Hay var" in res.observation["result"]
+
+
 def test_marcar_cobrada_por_numero_corto():
     """Dice «la 42», no `0001-00000042`. Si sólo matcheara el número completo, la tool existiría
     para una forma de hablar que nadie usa."""
@@ -344,6 +372,43 @@ def test_aprobar_por_nombre_del_cliente():
                   presupuesto=store)
     assert store.cambios == [(1, "aprobado")]
     assert "aprobado" in res.observation["result"]
+
+
+def _cartera_del_87():
+    """El caso medido en device (2026-11-03): el N° 87 de ClienteJ4 por $50.000, con vecinos que un
+    matching flojo confundiría — el 187 y el 870 contienen «87», y el 870 comparte el importe."""
+    return _PresupuestoFake(filas=[
+        _presu(1, 87, "ClienteJ4", total="50000.00", concepto="Pintura de local"),
+        _presu(2, 187, "Kiosco Don Ramón", total="20000.00", concepto="Cartelería"),
+        _presu(3, 870, "Panadería Los Tilos", total="50000.00", concepto="Mostrador"),
+    ])
+
+
+@pytest.mark.parametrize("frase", ["87 de ClienteJ4", "el de ClienteJ4 por 50000", "presupuesto 87",
+                                   "el 87", "ClienteJ4 50000", "el de la pintura"])
+def test_aprobar_resuelve_frases_con_dos_datos_y_cae_en_el_87_y_solo_en_el_87(frase):
+    """Las dos primeras son LITERALES las que el agente le pasó a la tool en device y dieron «no encontré»:
+    la referencia tenía que aparecer entera dentro de UN campo. Ahora vale cada palabra en algún campo,
+    y un número exige límite de dígitos (87 no es 187 ni 870)."""
+    store = _cartera_del_87()
+    res = _correr("marcar_presupuesto", {"presupuesto": frase, "estado": "aprobado"}, presupuesto=store)
+    assert store.cambios == [(1, "aprobado")], res.observation
+
+
+def test_aprobar_con_un_dato_ambiguo_pregunta_y_NO_elige():
+    """Ensanchar quién es candidato no puede ensanchar quién se aprueba: «50000» es el 87 Y el 870."""
+    store = _cartera_del_87()
+    res = _correr("marcar_presupuesto", {"presupuesto": "50000", "estado": "aprobado"}, presupuesto=store)
+    assert store.cambios == []
+    assert "Hay varios" in res.observation["result"]
+
+
+def test_aprobar_con_una_palabra_que_no_esta_en_ningun_campo_no_aprueba_nada():
+    """Control negativo: AND entre palabras. «87 de OtroCliente» no cae en el 87 sólo por el número."""
+    store = _cartera_del_87()
+    res = _correr("marcar_presupuesto", {"presupuesto": "87 de OtroCliente", "estado": "aprobado"},
+                  presupuesto=store)
+    assert store.cambios == [] and res.observation["candidatos"] == []
 
 
 def test_K07_aprobar_ofrece_armar_la_factura_y_descartar_no():

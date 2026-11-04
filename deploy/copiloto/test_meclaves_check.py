@@ -16,7 +16,7 @@ DECLARADAS_LOGIN = cargar_claves_login_declaradas()
 def test_lector_carga_el_set_real():
     assert DECLARADAS == frozenset({
         "cliente_id", "email", "cuenta_google", "onboarding_completado", "mp_connected",
-        "composio_connected", "es_admin", "legal_aceptado", "legal_version_aceptada",
+        "composio_connected", "es_admin", "legal_aceptado", "legal_version_aceptada", "fecha_alta",
     })
 
 

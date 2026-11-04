@@ -137,7 +137,7 @@ function FilaSistema({ activo, onPress, temaActivo }: Omit<SkinCardProps, 'nombr
 /**
  * Pantalla Apariencia (`apar`, index.html:2395) -- DOS pieles con la MUESTRA DE SUS COLORES REALES
  * (no un nombre en una lista) lado a lado, y «Como el teléfono» en su propia fila debajo. Se llega
- * desde el tile "Apariencia" del grid de Ajustes (`PantallaAjustes.tsx`).
+ * desde la fila "Apariencia" de la lista de Ajustes (`PantallaAjustes.tsx`).
  *
  * La selección/persistencia/aplicación instantánea sale de `usePreferenciaTema()`
  * (`ThemeProvider.tsx`) -- este componente sólo es la VISTA, no la lógica.
@@ -151,8 +151,8 @@ export function PantallaSkins() {
   const [preferencia, setPreferencia] = usePreferenciaTema();
 
   return (
-    // Mismo ícono que el tile de entrada en el grid de Ajustes ('apariencia') -- entrar por un ícono
-    // y llegar a otro desorienta. Título = «Apariencia», como el tile y el prototipo (antes «Skins»).
+    // Mismo ícono que la fila de entrada en la lista de Ajustes ('apariencia') -- entrar por un ícono
+    // y llegar a otro desorienta. Título = «Apariencia», como la fila y el prototipo (antes «Skins»).
     <MarcoGlass titulo="Apariencia" icono="apariencia" testID="pantalla-skins">
       <ScrollView
       // 🔴 `flex:1` en el ScrollView MISMO, no sólo en su contenedor. Un ScrollView sin flex se

@@ -22,10 +22,12 @@ explícito es la barrera efectiva, con test adversarial que la ejercita (regla 7
 from __future__ import annotations
 
 import datetime
+import re
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Callable
 
 from afip_rules import facturado_filtro_sql, facturado_monto_sql
+from cliente_store import _facturas_del_documento_sql, _es_atribuible, normalizar_nombre
 from cobro_store import CobroStore
 from gasto_store import CATEGORIAS, dos_decimales, hoy_del_negocio
 from mp_credential_store import MpCredentialStore
@@ -87,6 +89,14 @@ def variacion_pct(actual: Decimal, anterior: Decimal) -> str | None:
         return None
     pct = (actual - anterior) / abs(anterior) * 100
     return str(pct.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+
+
+def _porcentaje(parte: Decimal, total: Decimal) -> str:
+    """`parte/total` en %, string con UNA posición (como `variacion_pct`). Total 0 -> "0.0", no división por
+    cero ni None: la categoría existe y pesó cero."""
+    if not total:
+        return "0.0"
+    return str((parte / total * 100).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
 def _primer_dia_del_mes(d: datetime.date) -> datetime.date:
@@ -159,22 +169,92 @@ class InteligenciaQueries:
         return Decimal(str(cur.fetchone()[0] or 0))
 
     def _mejores_clientes(self, cur, limite: int) -> list[dict]:
-        """Ranking por lo cobrado, resolviendo el nombre: los dictados lo traen en `cliente_nombre`,
-        los de factura en el `receptor_nombre` del comprobante. Los cobros sin nombre resoluble quedan
-        afuera (no se inventan un "(sin nombre)" que encabece el ranking). MP no entra: sus pagos no
-        vienen atados a un cliente, y atribuirlos sería adivinar."""
+        """Ranking por lo cobrado, agrupado por **IDENTIFICADOR** del cliente y no por su nombre (SM-N33).
+
+        La clave de cada cobro, en este orden (`_clave_de_cobro`):
+          1. **documento** (`doc:<tipo>:<nro>`): el de la ficha del cobro (`cliente_ref`, o la única ficha que
+             lleva ese nombre) o, si no hay ficha, el del receptor de la factura que se cobró;
+          2. **ficha sin documento** (`ficha:<id>`): sigue siendo UN cliente, aunque no se le pueda atar facturas;
+          3. **sin identificador** (`nombre:<normalizado>`): el caso difícil. No hay a qué atarlo, así que se
+             agrupa por nombre normalizado (sin tildes ni mayúsculas) —«Juan Pérez» y «juan perez» son una
+             fila— y se declara: `comprobantes` queda `None` («no se puede saber»), nunca 0.
+        Dos grafías del mismo documento son UNA fila; dos homónimos con documento distinto, DOS.
+
+        Los cobros sin nombre ni ficha resoluble quedan afuera (no se inventa un «(sin nombre)» que encabece
+        el ranking). MP no entra: sus pagos no vienen atados a un cliente, y atribuirlos sería adivinar."""
         cur.execute(f"""
-            SELECT cliente, total FROM (
-                SELECT coalesce(nullif(trim(k.cliente_nombre), ''), c.receptor_nombre, '') AS cliente,
-                       coalesce(sum(k.monto), 0) AS total
-                  FROM {_SCHEMA}.copiloto_cobros k
-                  LEFT JOIN {_SCHEMA}.afip_comprobantes c
-                         ON c.cliente_id = k.cliente_id AND c.id = k.comprobante_id
-                 WHERE k.cliente_id = %(cid)s
-                 GROUP BY 1
-            ) x WHERE cliente <> '' ORDER BY total DESC, cliente LIMIT %(limite)s
-        """, {"cid": self._cliente_id, "limite": max(1, int(limite))})
-        return [{"cliente": nombre, "total": dos_decimales(total)} for nombre, total in cur.fetchall()]
+            SELECT k.cliente_ref, nullif(trim(k.cliente_nombre), ''), c.receptor_nombre,
+                   c.doc_tipo, c.doc_nro, k.monto
+              FROM {_SCHEMA}.copiloto_cobros k
+              LEFT JOIN {_SCHEMA}.afip_comprobantes c
+                     ON c.cliente_id = k.cliente_id AND c.id = k.comprobante_id
+             WHERE k.cliente_id = %(cid)s
+             ORDER BY k.fecha DESC, k.id DESC
+        """, {"cid": self._cliente_id})
+        cobros = cur.fetchall()
+        cur.execute(f"""
+            SELECT id, nombre, nombre_normalizado, doc_tipo, doc_nro FROM {_SCHEMA}.copiloto_clientes
+             WHERE cliente_id = %(cid)s
+        """, {"cid": self._cliente_id})
+        fichas = cur.fetchall()
+        por_id = {f[0]: f for f in fichas}
+        por_nombre: dict[str, list] = {}
+        for f in fichas:
+            por_nombre.setdefault(f[2], []).append(f)
+
+        grupos: dict[str, dict] = {}
+        for ref, nombre_cobro, receptor, doc_tipo, doc_nro, monto in cobros:
+            ficha = por_id.get(ref)
+            nombre = nombre_cobro or (ficha[1] if ficha else None) or receptor or ""
+            if ficha is None and nombre:
+                homonimas = por_nombre.get(normalizar_nombre(nombre), [])
+                ficha = homonimas[0] if len(homonimas) == 1 else None
+            clave, doc = self._clave_de_cobro(ficha, nombre, doc_tipo, doc_nro)
+            if clave is None:
+                continue
+            g = grupos.setdefault(clave, {"cliente": ficha[1] if ficha else nombre, "total": Decimal(0), "doc": doc})
+            g["total"] += Decimal(str(monto or 0))
+        ranking = sorted(grupos.values(), key=lambda g: (-g["total"], g["cliente"]))[:max(1, int(limite))]
+        return [{"cliente": g["cliente"], "total": dos_decimales(g["total"]),
+                 "comprobantes": self._comprobantes_del_documento(cur, g["doc"])} for g in ranking]
+
+    @staticmethod
+    def _clave_de_cobro(ficha, nombre: str, doc_tipo, doc_nro) -> tuple[str | None, tuple | None]:
+        """`(clave de agrupamiento, (doc_tipo, doc_nro) | None)` de UN cobro; `(None, None)` si no hay
+        con qué identificarlo. Ver `_mejores_clientes` para el orden de la regla."""
+        if ficha is not None and _es_atribuible(ficha[3], ficha[4]):
+            doc_tipo, doc_nro = ficha[3], ficha[4]
+        # Consumidor final (tipo 99 / documento 0) NO identifica a nadie: agruparía a todos los anónimos.
+        elif ficha is None and _es_atribuible(doc_tipo, doc_nro) and doc_tipo != 99:
+            pass
+        else:
+            doc_tipo = doc_nro = None
+        if doc_nro is not None:
+            digitos = re.sub(r"\D", "", str(doc_nro))
+            if digitos.strip("0"):
+                return f"doc:{doc_tipo}:{digitos}", (doc_tipo, digitos)
+        if ficha is not None:
+            return f"ficha:{ficha[0]}", None
+        norm = normalizar_nombre(nombre) if nombre else ""
+        return (f"nombre:{norm}", None) if norm else (None, None)
+
+    def _comprobantes_del_documento(self, cur, doc: tuple | None) -> int | None:
+        """SM-N32: «N comprobantes» del ranking = facturas con CAE atribuidas por DOCUMENTO del receptor,
+        el MISMO referente (y el mismo predicado, `_facturas_del_documento_sql`) que `comprobantes_cantidad`
+        de `GET /clientes`: dos cifras con un rótulo darían números distintos.
+
+        `None` = «no se puede saber», nunca 0: una fila sin documento (ficha sin CUIT, o sin ficha) no tiene
+        a qué atar facturas, y un 0 diría «no te compró» (la misma regla que `facturas_atribuibles`). Desde
+        SM-N33 la fila ya viene agrupada por documento, así que los homónimos ya no la vuelven ambigua."""
+        if doc is None:
+            return None
+        doc_tipo, digitos = doc
+        cur.execute(f"""
+            SELECT count(*) FROM {_SCHEMA}.afip_comprobantes a
+             WHERE a.cliente_id = %(cid)s
+               AND {_facturas_del_documento_sql('a', '%(dt)s', '%(doc)s')}
+        """, {"cid": self._cliente_id, "dt": doc_tipo, "doc": digitos})
+        return int(cur.fetchone()[0])
 
     def _serie_mensual(self, cur, meses: int) -> list[dict]:
         """`[{mes, ingresos, gastos}]` para los últimos `meses` (incluido el actual), SIN huecos: los
@@ -399,7 +479,13 @@ class InteligenciaQueries:
                  GROUP BY 1
             """, {"cid": self._cliente_id, "ini": ini, "fin": fin})
             por_cat = {cat: Decimal(str(total or 0)) for cat, total in cur.fetchall()}
-        serie = [{"categoria": cat, "total": dos_decimales(por_cat.get(cat, 0))} for cat in CATEGORIAS]
+        total_mes = sum(por_cat.values(), Decimal(0))
+        # De mayor a menor (desempate por el orden de CATEGORIAS: determinista) y con el % calculado ACÁ,
+        # sobre el total del mes: el backend tiene el dato completo, el front podría no tenerlo. Cuántas se
+        # muestran y el «Otros» son presentación y viven en el front (SM-N32). Siempre las 8, en "0.00".
+        orden = sorted(CATEGORIAS, key=lambda c: (-por_cat.get(c, Decimal(0)), CATEGORIAS.index(c)))
+        serie = [{"categoria": cat, "total": dos_decimales(por_cat.get(cat, 0)),
+                  "porcentaje": _porcentaje(por_cat.get(cat, Decimal(0)), total_mes)} for cat in orden]
         return {"tipo": "torta", "periodo": clave, "serie": serie}
 
     def categoria_detalle(self, mes: str | None, categoria: str) -> dict:
@@ -489,8 +575,28 @@ class InteligenciaQueries:
             else:
                 trabajos.append({**base, "cobrado": m["cobrado"], "gastado": m["gastado"],
                                  "margen": m["margen"]})
+        for t in trabajos:
+            cobrado = Decimal(t["cobrado"])
+            t["margen_pct"] = _porcentaje(Decimal(t["margen"]), cobrado) if cobrado > 0 else None
         trabajos.sort(key=lambda t: Decimal(t["margen"]), reverse=True)
-        return {"tipo": "barras", "trabajos": trabajos, "sin_ingreso": sin_ingreso}
+        return {"tipo": "barras", "trabajos": trabajos, "sin_ingreso": sin_ingreso,
+                "resumen": self._resumen_de_margen(trabajos)}
+
+    @staticmethod
+    def _resumen_de_margen(trabajos: list[dict]) -> dict:
+        """SM-N32: el margen PONDERADO por monto (Σmargen / Σcobrado), no el promedio simple de porcentajes:
+        un trabajo de $1.000 pesaría igual que uno de $500.000. Por eso el rótulo es «Sobre N trabajos», no
+        «Promedio» (enmienda D4 del mapa). Solo cuentan los trabajos con cobro; los `sin_ingreso` siguen
+        aparte, nunca promediados. `peor` = el de menor margen_pct, con su nombre."""
+        con_cobro = [t for t in trabajos if t["margen_pct"] is not None]
+        if not con_cobro:
+            return {"trabajos": 0, "margen_pct_ponderado": None, "peor": None}
+        sum_margen = sum((Decimal(t["margen"]) for t in con_cobro), Decimal(0))
+        sum_cobrado = sum((Decimal(t["cobrado"]) for t in con_cobro), Decimal(0))
+        peor = min(con_cobro, key=lambda t: (Decimal(t["margen_pct"]), t["etiqueta"]))
+        return {"trabajos": len(con_cobro),
+                "margen_pct_ponderado": _porcentaje(sum_margen, sum_cobrado),
+                "peor": {"etiqueta": peor["etiqueta"], "margen_pct": peor["margen_pct"]}}
 
     def margen_trabajo_detalle(self, eslabon: str, ref: int) -> dict:
         """El mismo objeto que `GET /trabajos/{eslabon}/{ref}/margen` — no una forma nueva (§0)."""

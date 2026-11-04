@@ -256,3 +256,50 @@ grepear el **fragmento más corto e indivisible** (`Confirmáselo`, no la frase)
 total independiente** antes de citar la cifra. Si el inventario va a una ficha, el DoD pide el
 instrumento que mide el valor, no el que mide el texto — si no, el implementador descubre tu error
 por su cuenta, y descubrirlo es suerte.
+
+
+## Refuerzo 2026-11-03 — el control positivo prueba que el instrumento VE, no que preguntes por el NOMBRE correcto
+
+**Lo que creía que me cubría y no me cubrió.** Medí si existía un «chip de antigüedad por fila» en
+`apps/mobile/src/modules/presupuestos/` (10 archivos) y armé la medición como corresponde:
+
+- `antigued` → 0 · `antigüed` → 0 · `dias` → 0 · `Dias` → 0
+- **control positivo:** `Presupuesto` → 143 → el instrumento no está ciego
+- **control negativo:** un literal inventado → 0 → no afirma de más
+
+Con los dos controles verdes escribí que la función estaba **ausente**, y encima que eso **cambiaba
+la clase de la entrada y su dueño**. Era falso. El aviso por fila existe:
+`TarjetaPresupuesto.tsx:40` llama `etiquetaEstado(p)` y `resumenEspera.ts:74` devuelve
+`«Sin respuesta hace más de un mes»`, con test propio en `TarjetaPresupuesto.test.tsx:31`.
+
+**Por qué los controles no podían salvarme.** El control positivo responde *«¿este grep encuentra
+algo en este corpus?»*. No responde *«¿el corpus llama a la cosa como yo la llamo?»*. Acá el
+concepto no se llamaba «antigüedad» ni contaba «días»: era una **etiqueta de estado binaria**
+(>1 mes sí/no) y **vivía en otro módulo**. Mis cuatro patrones eran cuatro sinónimos de la **misma**
+hipótesis de nombre — cuatro tiros al mismo lugar no son cuatro mediciones.
+
+## Lo que sí lo cazó
+
+Un conteo lateral que no era parte del juicio: `hace ` daba **13** coincidencias y fui a ver **dónde
+vivían**. Ahí estaba. O sea lo que me refutó fue **mirar un patrón que no confirmaba mi tesis** —
+el mismo movimiento que [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]
+pide, aplicado al NOMBRE y no al instrumento.
+
+**La pregunta que falta cuando un barrido da 0 con controles verdes:** no «¿el grep funciona?»
+(eso ya lo contestó el control positivo) sino **«¿cómo se llamaría esto si lo hubiera escrito otra
+persona?»** — y en particular: ¿puede ser un **booleano** en vez de una magnitud, una **etiqueta**
+en vez de un chip, un **estado** en vez de un tiempo, y estar **en otro archivo** que el que lo usa.
+
+## Y es reincidencia del mismo día, por eso vale escribirlo
+
+Horas antes afirmé que `PantallaInteligencia.tsx` no tenía contenedores de card porque su único
+`borderRadius` era una barra de gráfico: el contenedor lo aportaba `Row` (`theme/glass/Row.tsx:61`).
+Dos veces la misma forma — **medir una propiedad dentro del archivo que la USA cuando la APORTA
+otro** — y las dos veces el cero venía con su control positivo en verde. Ver
+[[dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una]]§Refuerzo-2026-11-03, que es el otro
+borde del mismo día: ahí el patrón matcheaba por la FORMA; acá el grep matcheaba por el NOMBRE.
+En los dos casos lo que faltaba era el **mecanismo**.
+
+Corolario operativo, porque esto me iba a hacer mover una ficha de clase: un 0 que **cambia a quién
+le toca** el trabajo necesita la pregunta del nombre contestada **por escrito** antes de usarse.
+Un 0 que sólo confirma lo que ya se sabía puede vivir con menos.

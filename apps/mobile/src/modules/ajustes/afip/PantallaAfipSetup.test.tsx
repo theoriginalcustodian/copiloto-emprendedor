@@ -100,6 +100,12 @@ async function avanzarAPaso3() {
   await fireEvent.press(screen.getByTestId('afip-arca-paso-2-confirmar'));
 }
 
+async function completarFecha(dia = '15', mes = '01', anio = '2020') {
+  await fireEvent.changeText(screen.getByTestId('afip-perfil-inicio-actividades-dia'), dia);
+  await fireEvent.changeText(screen.getByTestId('afip-perfil-inicio-actividades-mes'), mes);
+  await fireEvent.changeText(screen.getByTestId('afip-perfil-inicio-actividades-anio'), anio);
+}
+
 describe('PantallaAfipSetup', () => {
   beforeEach(() => {
     jest.mocked(almacenClave.leer).mockReset().mockResolvedValue(null);
@@ -331,6 +337,34 @@ describe('PantallaAfipSetup', () => {
     expect(screen.queryByTestId('afip-perfil-cuit-cambiar')).toBeNull();
   });
 
+  it('SM-N44: si el CUIT cacheado no es del tenant, la caché se CORRIGE con `cuitVinculado` y el perfil se recarga con ése', async () => {
+    const PROPIO = '20111111112';
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest
+      .mocked(estadoAfip)
+      .mockResolvedValueOnce(estadoOk({ cuit: CUIT, conectado: false, cuitVinculado: PROPIO }))
+      .mockResolvedValue(estadoOk({ cuit: PROPIO, conectado: true }));
+
+    await montar();
+
+    await waitFor(() => expect(almacenClave.guardar).toHaveBeenCalledWith(expect.any(String), PROPIO));
+    await waitFor(() => expect(leerPerfil).toHaveBeenCalledWith(PROPIO));
+    expect(almacenClave.guardar).not.toHaveBeenCalledWith(expect.any(String), CUIT);
+  });
+
+  it('SM-N44 control negativo: sin `cuitVinculado` la caché no se toca', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ cuit: CUIT, conectado: true }));
+
+    await montar();
+
+    await waitFor(() => expect(leerPerfil).toHaveBeenCalledWith(CUIT));
+    await waitFor(() => expect(estadoAfip).toHaveBeenCalled());
+    expect(almacenClave.guardar).not.toHaveBeenCalled();
+  });
+
   it('mapeo `afip`: con vínculo dice «ARCA vinculada · CUIT …» y sin vínculo NO lo afirma; label «Condición frente al IVA»', async () => {
     jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
     jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
@@ -374,6 +408,55 @@ describe('PantallaAfipSetup', () => {
     ]);
   });
 
+  // -----------------------------------------------------------------------------------------
+  // SM-N35 — categoría de monotributo.
+  // -----------------------------------------------------------------------------------------
+  it('SM-N35: la categoría se elige SOLO con monotributo, y viaja en el guardado', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ conectado: true }));
+    jest.mocked(guardarPerfil).mockResolvedValue({ status: 'ok', ok: true });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('afip-perfil-categoria-monotributo')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('afip-perfil-categoria-monotributo-opcion-A'));
+    await fireEvent.press(screen.getByTestId('afip-perfil-guardar'));
+
+    await waitFor(() => expect(guardarPerfil).toHaveBeenCalled());
+    expect(jest.mocked(guardarPerfil).mock.calls[0]![0]).toMatchObject({ condicionIva: 'monotributo', categoriaMonotributo: 'A' });
+  });
+
+  it('SM-N35: NO elegir categoría sigue siendo válido (fail-soft): se guarda con null, sin bloquear', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ conectado: true }));
+    jest.mocked(guardarPerfil).mockResolvedValue({ status: 'ok', ok: true });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('afip-perfil-categoria-monotributo')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('afip-perfil-guardar'));
+
+    await waitFor(() => expect(guardarPerfil).toHaveBeenCalled());
+    expect(jest.mocked(guardarPerfil).mock.calls[0]![0].categoriaMonotributo).toBeNull();
+  });
+
+  it('SM-N35: una condición que no es monotributo no muestra el campo ni manda categoría', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({
+      status: 'ok',
+      perfil: perfilMock({ condicionIva: 'exento', categoriaMonotributo: 'C' }),
+    });
+    jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ conectado: true }));
+    jest.mocked(guardarPerfil).mockResolvedValue({ status: 'ok', ok: true });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('afip-perfil-condicion-iva')).toBeTruthy());
+    expect(screen.queryByTestId('afip-perfil-categoria-monotributo')).toBeNull();
+    await fireEvent.press(screen.getByTestId('afip-perfil-guardar'));
+    await waitFor(() => expect(guardarPerfil).toHaveBeenCalled());
+    expect(jest.mocked(guardarPerfil).mock.calls[0]![0].categoriaMonotributo).toBeNull();
+  });
+
   it('sin CUIT cacheado, el CUIT del perfil arranca editable y sin datos precargados', async () => {
     await montar();
 
@@ -385,6 +468,29 @@ describe('PantallaAfipSetup', () => {
   // -----------------------------------------------------------------------------------------
   // 422 de guardarPerfil -- pinta el campo correcto.
   // -----------------------------------------------------------------------------------------
+  it('SM-N35: con la fecha de inicio incompleta NO se manda nada y se marca el campo (el 422 llegaría sin campo)', async () => {
+    jest.mocked(guardarPerfil).mockClear();
+    await montar();
+    await fireEvent.changeText(screen.getByTestId('afip-perfil-cuit-input'), CUIT);
+    await fireEvent.changeText(screen.getByTestId('afip-perfil-inicio-actividades-dia'), '01');
+    await fireEvent.press(screen.getByTestId('afip-perfil-guardar'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('afip-perfil-inicio-actividades-error')).toHaveTextContent(
+        'Completá la fecha entera (DD/MM/AAAA).',
+      ),
+    );
+    expect(guardarPerfil).not.toHaveBeenCalled();
+
+    // Control positivo: con la fecha cerrada el MISMO botón sí manda, y el aviso se va.
+    jest.mocked(guardarPerfil).mockResolvedValue({ status: 'ok', ok: true });
+    await completarFecha('01', '01', '2020');
+    await fireEvent.press(screen.getByTestId('afip-perfil-guardar'));
+    await waitFor(() => expect(guardarPerfil).toHaveBeenCalledTimes(1));
+    expect(jest.mocked(guardarPerfil).mock.calls[0]![0].inicioActividades).toBe('2020-01-01');
+    expect(screen.queryByTestId('afip-perfil-inicio-actividades-error')).toBeNull();
+  });
+
   it('un 422 de guardarPerfil pinta CADA campo con SU mensaje, código del backend sin traducir', async () => {
     jest.mocked(guardarPerfil).mockRejectedValueOnce(
       new ErrorValidacionFiscal([
@@ -395,6 +501,7 @@ describe('PantallaAfipSetup', () => {
 
     await montar();
     await fireEvent.changeText(screen.getByTestId('afip-perfil-cuit-input'), CUIT);
+    await completarFecha();
     await fireEvent.press(screen.getByTestId('afip-perfil-guardar'));
 
     await waitFor(() =>
@@ -416,6 +523,7 @@ describe('PantallaAfipSetup', () => {
 
     await montar();
     await fireEvent.changeText(screen.getByTestId('afip-perfil-cuit-input'), CUIT);
+    await completarFecha();
     await fireEvent.press(screen.getByTestId('afip-perfil-guardar'));
 
     await waitFor(() =>
@@ -583,6 +691,23 @@ describe('PantallaAfipSetup', () => {
     expect(await screen.findByText(texto)).toBeTruthy();
   });
 
+  it.each([
+    ['dato', 'Corregir mis datos', 'afip-arca-rehacer', 'afip-arca-paso-1'],
+    ['servicio', 'Reintentar', 'afip-arca-rehacer', 'afip-arca-paso-3'],
+    ['desconocida', 'Rehacer', 'afip-arca-rehacer', 'afip-arca-paso-1'],
+  ] as const)('SM-K3: la acción sigue a la causa «%s» (botón «%s», cae en %s)', async (causa, etiqueta, boton, paso) => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue(
+      estadoOk({ conectado: false, onboarding: onboardingMock({ paso: 'fallido', terminado: true, motivo: 'x', causa }) }),
+    );
+    await montar();
+    await screen.findByTestId('afip-arca-progreso-fallido');
+    expect(screen.getByTestId(boton)).toHaveTextContent(etiqueta);
+    await fireEvent.press(screen.getByTestId(boton));
+    expect(await screen.findByTestId(paso)).toBeTruthy();
+  });
+
   it('SM-K3: sin causa (backend viejo) no se afirma ninguna', async () => {
     jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
     jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
@@ -624,6 +749,80 @@ describe('PantallaAfipSetup', () => {
       expect(screen.getByTestId('afip-arca-reintentar')).toBeTruthy();
       // Nunca "terminado": el estado real seguía en `dando_de_alta` -- esto es un CORTE, no un éxito.
       expect(screen.queryByTestId('afip-arca-conectado')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  // -----------------------------------------------------------------------------------------
+  // SM-N55 -- `paso=consulta_no_disponible`: un alta que NO se pudo consultar no es un alta lenta.
+  // Los dos caminos en el mismo bloque: con uno solo no se distingue "leo el paso nuevo" de
+  // "cambié el texto para todos".
+  // -----------------------------------------------------------------------------------------
+  async function vincularYEsperar(ms: number) {
+    await montar();
+    await avanzarAPaso3();
+    await fireEvent.changeText(screen.getByTestId('afip-arca-usuario-input'), 'ana.emprendedora');
+    await fireEvent.changeText(screen.getByTestId('afip-arca-clave-campo-input'), 'clave123');
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('afip-arca-vincular'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(ms);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  }
+
+  it('SM-N55: con `consulta_no_disponible` corta el polling y dice «no pude consultar», no «está tardando»', async () => {
+    jest.useFakeTimers();
+    try {
+      jest.mocked(conectarArca).mockResolvedValueOnce({ status: 'ok', ok: true, workflowId: 'w1', mensaje: 'ok' });
+      jest
+        .mocked(estadoAfip)
+        .mockResolvedValue(estadoOk({ onboarding: onboardingMock({ paso: 'consulta_no_disponible' }) }));
+
+      await vincularYEsperar(3_000);
+
+      expect(screen.getByTestId('afip-arca-progreso-no-consulta')).toHaveTextContent('No pude consultar', {
+        exact: false,
+      });
+      expect(screen.queryByTestId('afip-arca-progreso-tardando')).toBeNull();
+      expect(screen.getByTestId('afip-arca-reintentar')).toBeTruthy();
+
+      // El polling se detuvo de verdad: pasar los 10 min NO cambia el aviso ni vuelve a consultar.
+      const llamadas = jest.mocked(estadoAfip).mock.calls.length;
+      await act(async () => {
+        jest.advanceTimersByTime(10 * 60 * 1000);
+        await Promise.resolve();
+      });
+      expect(jest.mocked(estadoAfip).mock.calls.length).toBe(llamadas);
+      expect(screen.queryByTestId('afip-arca-progreso-tardando')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('SM-N55 (control positivo): el alta que de verdad está en curso sigue pollenado y termina en «está tardando»', async () => {
+    jest.useFakeTimers();
+    try {
+      jest.mocked(conectarArca).mockResolvedValueOnce({ status: 'ok', ok: true, workflowId: 'w1', mensaje: 'ok' });
+      jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ onboarding: onboardingMock({ paso: 'dando_de_alta' }) }));
+
+      await vincularYEsperar(3_000);
+      // En curso: muestra el paso, NO el aviso de consulta caída.
+      expect(screen.getByTestId('afip-arca-progreso-paso')).toBeTruthy();
+      expect(screen.queryByTestId('afip-arca-progreso-no-consulta')).toBeNull();
+
+      await act(async () => {
+        jest.advanceTimersByTime(10 * 60 * 1000);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.getByTestId('afip-arca-progreso-tardando')).toBeTruthy();
+      expect(screen.queryByTestId('afip-arca-progreso-no-consulta')).toBeNull();
     } finally {
       jest.useRealTimers();
     }

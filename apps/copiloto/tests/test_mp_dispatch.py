@@ -14,13 +14,13 @@ class _FakeMpGateway:
 
 
 class _FakeMpCred:
-    def get(self, seller): return {"access_token": "AT"}
+    def get(self, seller_user_id): return {"access_token": "AT"}
     def salud(self): return "conectado"
 
 
 class _FakeMpCredCaido:
     """Fila EXISTE (creds truthy) pero `salud()` == "caido" -- el caso que `not creds` solo no detecta."""
-    def get(self, seller): return {"access_token": "AT-VENCIDO"}
+    def get(self, seller_user_id): return {"access_token": "AT-VENCIDO"}
     def salud(self): return "caido"
 
 
@@ -65,7 +65,7 @@ def test_mp_charge_proposes_then_confirm_returns_link():
 
 def test_mp_charge_without_connection_asks_to_connect():
     class _NoCred:
-        def get(self, seller): return None
+        def get(self, seller_user_id): return None
     ctx = _ctx(mp_gateway=_FakeMpGateway(), mp_cred_store=_NoCred())
     d = _dispatch()
     r1 = d(Intent(action="mp_charge", entities={"amount": 150, "concept": "x"}, reply_es=""), {}, ctx)
@@ -210,7 +210,7 @@ class _FakeMpCredConectadoSpy:
     """`salud()` dice "conectado" (pasa el guard preventivo) -- registra si `marcar_reauth` se llamó."""
     def __init__(self):
         self.reauth_calls = []
-    def get(self, seller): return {"access_token": "AT"}
+    def get(self, seller_user_id): return {"access_token": "AT"}
     def salud(self): return "conectado"
     def marcar_reauth(self, seller_user_id): self.reauth_calls.append(seller_user_id)
 

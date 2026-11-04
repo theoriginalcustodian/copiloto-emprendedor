@@ -23,8 +23,8 @@ import uuid
 
 import pytest
 
-from trauma_store import (DESCARTADO, EN_PROCESO, PENDIENTE, RESUELTO, TABLA, TraumaStore,
-                          flood_threshold)
+from trauma_store import (DESCARTADO, EN_PROCESO, EVENTO_DEPOSITO_FALLIDO, PENDIENTE, RESUELTO,
+                          TABLA, TraumaStore, flood_threshold)
 
 necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
                                  reason="requiere Postgres real (DATABASE_URL)")
@@ -289,6 +289,86 @@ def test_depositar_NUNCA_lanza_aunque_la_query_reviente():
 
     store = TraumaStore(lambda: _ConnRota(), str(uuid.uuid4()))
     assert store.depositar(fingerprint="fp", workflow="w", error_type="E") is None
+
+
+# ======================================================================================
+# 2026-11-03 — una DLQ rota no puede fallar MUDA
+# ======================================================================================
+# Los dos tests de arriba afirman `is None`, y eso era igual de verde con la DLQ rota en silencio:
+# medido, 0 líneas de log con el INSERT reventando y 0 con la base caída. Estos exigen el rastro.
+
+class _CursorRoto:
+    def __enter__(self): return self
+    def __exit__(self, *_): return False
+    def execute(self, *_a, **_k): raise RuntimeError('relation "copiloto_traumas" does not exist')
+
+
+class _ConnRota:
+    def cursor(self): return _CursorRoto()
+    def close(self): pass
+
+
+def _base_caida():
+    raise ConnectionError("la base no está")
+
+
+def _lineas_dlq_caida(caplog) -> list[dict]:
+    import json
+    salida = []
+    for r in caplog.records:
+        try:
+            d = json.loads(r.getMessage())
+        except ValueError:
+            continue
+        if d.get("evento") == EVENTO_DEPOSITO_FALLIDO:
+            salida.append(d)
+    return salida
+
+
+@pytest.mark.parametrize("conn_factory", [lambda: _ConnRota(), _base_caida],
+                         ids=["insert-revienta", "base-caida"])
+def test_un_deposito_fallido_deja_UNA_linea_con_el_fingerprint_perdido(conn_factory, caplog):
+    caplog.set_level("WARNING")
+    cid = str(uuid.uuid4())
+    assert TraumaStore(conn_factory, cid).depositar(fingerprint="fp-perdido", workflow="w",
+                                                    error_type="E") is None
+    lineas = _lineas_dlq_caida(caplog)
+    assert len(lineas) == 1, f"la DLQ falló sin dejar rastro: {[r.getMessage() for r in caplog.records]}"
+    assert lineas[0]["fingerprint_perdido"] == "fp-perdido"
+    assert lineas[0]["workflow_perdido"] == "w"
+    assert lineas[0]["cliente_id"] == cid
+
+
+def test_CONTROL_un_deposito_sin_tenant_NO_avisa(caplog):
+    # Motivo legítimo (ruta pública): avisar acá gritaría en el caso normal y el aviso se desarmaría.
+    from deposito_traumas import depositar
+    caplog.set_level("WARNING")
+    assert depositar(lambda cid: TraumaStore(_base_caida, cid), fingerprint="fp", workflow="w",
+                     error_type="E", cliente_id=None, costura="http") is False
+    assert _lineas_dlq_caida(caplog) == []
+
+
+def test_la_fabrica_que_revienta_tambien_deja_rastro(caplog):
+    from deposito_traumas import depositar
+    caplog.set_level("WARNING")
+
+    def fabrica_rota(_cid):
+        raise RuntimeError("no pude armar el store")
+
+    assert depositar(fabrica_rota, fingerprint="fp-f", workflow="w", error_type="E",
+                     cliente_id="c1", costura="http") is False
+    assert [d["fingerprint_perdido"] for d in _lineas_dlq_caida(caplog)] == ["fp-f"]
+
+
+def test_si_el_AVISO_mismo_falla_depositar_sigue_sin_lanzar(monkeypatch):
+    import log_estructurado
+
+    def log_roto(*_a, **_k):
+        raise RuntimeError("el logger también se cayó")
+
+    monkeypatch.setattr(log_estructurado, "log_error", log_roto)
+    assert TraumaStore(_base_caida, "c1").depositar(fingerprint="fp", workflow="w",
+                                                    error_type="E") is None
 
 
 # ======================================================================================

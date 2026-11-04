@@ -83,6 +83,7 @@ import {
   type ServicioCatalogo,
 } from '@copiloto/core';
 
+import { COLOR_PALABRA_MARCA } from './identidadPalette';
 import { SKINS, type NombreSkin, type Tokens } from './tokens';
 import { ThemeProvider, useTema } from './ThemeProvider';
 import { PantallaTicket } from '../modules/soporte/PantallaTicket';
@@ -165,7 +166,15 @@ function aplanarHexAlpha(hex6: string, alphaHex2: string, hexFondo: string): str
  * Ningún `<Text>` real puede aparecer jamás como `'grafico'`: es este campo, no el nombre del token,
  * el que decide la clase de contraste exigible (ver `evaluarPar` más abajo).
  */
-type OrigenPar = 'texto' | 'grafico';
+/**
+ * SM-Z4 (2026-11-03, operador): 'logotipo' es un <Text> que ES el logotipo (el wordmark «Odobi»), no texto de UI. Se decide
+ * estructuralmente en ecorrer() y SÓLO si se cumplen las DOS: el color es exactamente COLOR_PALABRA_MARCA Y el 	estID está
+ * ENUMERADO en LOGOTIPOS_TEXTO (declarado acá, a mano). Cualquier otro <Text> con el mismo hex sigue siendo 'texto'.
+ */
+type OrigenPar = 'texto' | 'grafico' | 'logotipo';
+
+/** Los únicos <Text> exentos como logotipo. Agregar uno es una decisión de marca, no un arreglo de contraste. */
+const LOGOTIPOS_TEXTO: readonly string[] = ['login-wordmark'];
 
 interface ParPintado {
   ruta: string;
@@ -328,7 +337,8 @@ function recorrer(
   const style = StyleSheet.flatten((props.style as never) ?? {}) as Record<string, unknown>;
   if (typeof style.color === 'string') {
     const c = colorEfectivo(style.color, base);
-    if (c) for (const bg of candidatosTexto) pares.push({ ruta, color: c, bg, origen: 'texto' });
+    const esLogotipo = c != null && c.toLowerCase() === COLOR_PALABRA_MARCA.toLowerCase() && typeof props.testID === 'string' && LOGOTIPOS_TEXTO.includes(props.testID);
+    if (c) for (const bg of candidatosTexto) pares.push({ ruta, color: c, bg, origen: esLogotipo ? 'logotipo' : 'texto' });
   }
   if (typeof props.placeholderTextColor === 'string') {
     const c = colorEfectivo(props.placeholderTextColor, base);
@@ -809,6 +819,11 @@ const DEUDA_CONOCIDA: Record<NombreSkin, Record<string, Excepcion>> = {
     // `tema.color.acento` (#de7250) como texto/link directo sobre superficies claras neutras --
     // patrón "texto acento sobre tarjeta clara" repetido en detalle de presupuesto/comprobante,
     // botón "confirmar" de PasoResumen, chip seleccionado de CampoSelect.
+    // SM-N43 (2026-11-03): `superficie`/`superficieAlta` pasaron a `#FFFFFF` (las cards y los campos del prototipo
+    // son `--blanco`; `#F5EBD5`/`#FAF7EC` eran hex que el prototipo no contiene). El MISMO acento-como-texto de la deuda
+    // de abajo ahora cae sobre blanco y sobre su overlay: el ratio SUBE (2,95 -> 3,17 y 2,57 -> 2,83), no empeora.
+    '#de7250→#ffffff': { min: 3.16, clase: 'texto', motivo: 'acento como texto (total/CAE de DetallePresupuesto/DetalleComprobante, chip seleccionado de CampoSelect) sobre superficie blanca -- mismo patron que #de7250→#faf7ec, que dejo de existir con SM-N43; el ratio mejora.' },
+    '#de7250→#f2f2f2': { min: 2.82, clase: 'texto', motivo: 'acento como texto de accion (mandar por mail / guardar) sobre el overlay de la superficie blanca -- sucesor de #de7250→#ebe7e0 (SM-N43); el ratio mejora.' },
     '#de7250→#faf7ec': { min: 2.95, clase: 'texto', motivo: 'acento como texto (total/CAE) sobre superficie clara -- DetallePresupuesto/DetalleComprobante.' },
     '#de7250→#eeebe0': { min: 2.65, clase: 'texto', motivo: 'acento como texto de acción (mandar por mail / guardar) sobre superficie clara.' },
     '#de7250→#ebe7e0': { min: 2.57, clase: 'texto', motivo: 'acento como texto del botón "confirmar" (PasoResumen) y variante primario de FilaBotones, piel clara.' },
@@ -834,6 +849,10 @@ const DEUDA_CONOCIDA: Record<NombreSkin, Record<string, Excepcion>> = {
     // `#f8e0d9` ni a `#de7250`: los dos renglones de deuda que existían para ese par (éste y el de
     // abajo, `no-texto`) se dan de baja -- ninguno de los dos vuelve a aparecer en el barrido.
     '#ffffff→#de7250': { min: 3.16, clase: 'logotipo', motivo: 'isotipo Odobi (trazo blanco) sobre acento sólido -- Marca (BotonVoz salió de este par en DEC11FILL Pieza A, 2026-09-30).' },
+    // SM-N30 (2026-11-03): el lockup del login es el isotipo DESNUDO (trazos acento sobre el fondo de pantalla),
+    // como el mapa (prototipo/index.html:2571). Antes los trazos eran blancos sobre el badge sólido (par de arriba).
+    // Es el LOGOTIPO de la marca -- exento por norma; 2,86:1 medido en CI sobre #f7f3ec.
+    '#de7250→#f7f3ec': { min: 2.85, clase: 'logotipo', motivo: 'lockup del login sobre el fondo de pantalla: isotipo desnudo (trazos acento, SM-N30) Y wordmark «Odobi» en la terracota de marca (origen logotipo, SM-Z4 parte 2, decidido por el operador 2026-11-03); es el logotipo, exento por norma.' },
     '#f8e0d9→#ebe7e0': { min: 1.02, clase: 'no-texto', motivo: 'ícono de enviar (Composer, chat-enviar), trazo SVG -- objeto gráfico, casi invisible contra su propio fondo (parece estado inactivo/vacío, sin texto en el composer al montar). Pre-existente, ajeno a DEC-11, no se arregla acá.' },
   },
   oscuro: {
@@ -917,7 +936,13 @@ describe('BL-Q4 — pares color/fondo PINTADOS de verdad en mobile (árbol rende
 });
 
 describe('DEC-11 -- umbral por clase (WCAG 1.4.3 texto vs 1.4.11 no-texto vs logotipo exento)', () => {
-  it('control anti-aflojamiento: el ÚNICO par cuyo veredicto cambia frente al umbral uniforme de 4.5 es #ffffff→#de7250', () => {
+  it('control anti-aflojamiento: los ÚNICOS DOS pares cuyo veredicto cambia frente al umbral uniforme de 4.5 son #ffffff→#de7250 y #de7250→#f7f3ec', () => {
+    // SM-N30 (2026-11-03, aceptado por planificación, decisión táctica): pasó de 1 a 2 pares, ENUMERADOS A MANO. Un tercero sigue fallando.
+    //  1. #ffffff→#de7250 -- isotipo Odobi, trazo blanco sobre la placa de acento (Marca tono acento/superficie).
+    //  2. #de7250→#f7f3ec -- el REVERSO del mismo lockup: isotipo desnudo (trazo acento sobre el fondo de pantalla, PantallaLogin).
+    //     Motivo: WCAG 1.4.3 exime logotipos y nombres de marca; el prototipo lo dibuja así (index.html:2571, stroke terracota)
+    //     y la placa plena se eliminó (mockups/01-onboarding/index.html:187). Oscurecer el trazo inventaría un color del diseño.
+    // No es una clase nueva ni se generaliza: es el otro orden del mismo color.
     // "Veredicto" = ¿necesita registrarse como deuda (rojo) o no (verde)? -- independiente de si HOY
     // ya estaba o no en `DEUDA_CONOCIDA` (eso es detalle de mantenimiento, no del criterio WCAG).
     // DoD Pieza B, DEC-11 §3: si aparece un SEGUNDO par en esta lista, el cambio afloja el gate en vez
@@ -933,7 +958,7 @@ describe('DEC-11 -- umbral por clase (WCAG 1.4.3 texto vs 1.4.11 no-texto vs log
         if (veredictoViejo !== veredictoNuevo) cambios.push(clavePar(par));
       }
     }
-    expect(dedup(cambios)).toEqual(['#ffffff→#de7250']);
+    expect(dedup(cambios).sort()).toEqual(['#de7250→#f7f3ec', '#ffffff→#de7250']);
   });
 
   it('control positivo: declarar clase "no-texto" en un par de TEXTO real NO lo exceptúa -- el origen estructural manda', () => {
@@ -947,6 +972,23 @@ describe('DEC-11 -- umbral por clase (WCAG 1.4.3 texto vs 1.4.11 no-texto vs log
     expect(falla).toMatch(/origen texto.*no puede exceptuarse/);
   });
 
+  it('SM-Z4: el wordmark del login (origen logotipo) pasa con la excepción logotipo; el mismo hex en un <Text> de UI NO', () => {
+    const excepcion = DEUDA_CONOCIDA.claro['#de7250→#f7f3ec'];
+    expect(excepcion?.clase).toBe('logotipo');
+    const wordmark: ParPintado = { ruta: 'control · wordmark', color: '#de7250', bg: '#f7f3ec', origen: 'logotipo' };
+    expect(evaluarPar(wordmark, excepcion)).toBeNull();
+    // CONTROL NEGATIVO: idéntico par, pero un <Text> cualquiera (origen 'texto') -- la exención del logotipo NO se hereda por color.
+    const textoDeUI: ParPintado = { ruta: 'control · texto de UI', color: '#de7250', bg: '#f7f3ec', origen: 'texto' };
+    expect(evaluarPar(textoDeUI, excepcion)).toMatch(/origen texto.*no puede exceptuarse/);
+    // y un logotipo SIN excepción registrada sigue siendo rojo (2,86:1 < 4,5).
+    expect(evaluarPar(wordmark, undefined)).toMatch(/SIN registrar/);
+  });
+
+  it('SM-Z4: el barrido REAL ve el wordmark del login como logotipo (control ciego: si no lo ve, el control de arriba mide un fixture)', () => {
+    const delLogin = PARES_POR_PIEL.claro.filter((p) => p.ruta.includes('login-wordmark'));
+    expect(delLogin.length).toBeGreaterThan(0);
+    expect(delLogin.every((p) => p.origen === 'logotipo')).toBe(true);
+  });
   it('control positivo: una excepción SIN "clase" declarada rompe el gate -- no hay default silencioso', () => {
     // TypeScript ya exige `clase` en `Excepcion` (no compila sin ella) -- este control ejercita el
     // camino en RUNTIME (p.ej. un objeto armado dinámicamente que se saltee el chequeo del compilador).

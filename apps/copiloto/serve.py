@@ -226,6 +226,7 @@ async def _serve() -> None:
         cobro_store_factory=lambda cid: CobroStore(conn_factory, cid),
         gasto_store_factory=lambda cid: GastoStore(conn_factory, cid),
         afip_comprobante_store_factory=lambda cid: AfipComprobanteStore(conn_factory, cid),
+        categoria_monotributo_factory=lambda cid: AfipPerfilStore(conn_factory, cid).categoria_monotributo(),
     )
 
     actividad_app = create_actividad_app(

@@ -28,9 +28,10 @@ describe('TarjetaPresupuesto — estado de la fila (mapeo `presu`)', () => {
     expect(screen.getByTestId('presupuesto-card-5-estado')).toHaveTextContent('Aceptado');
   });
 
-  it('sin respuesta hace más de un mes lo dice', async () => {
-    await montar(pres({ estado: 'pendiente', sinRespuesta: true }));
-    expect(screen.getByTestId('presupuesto-card-5-estado')).toHaveTextContent('Sin respuesta hace más de un mes');
+  it('sin respuesta dice «Se enfría · N días» con los días de la fecha', async () => {
+    const hace31 = new Date(Date.now() - 31 * 86_400_000 - 3_600_000).toISOString();
+    await montar(pres({ estado: 'pendiente', sinRespuesta: true, fecha: hace31 }));
+    expect(screen.getByTestId('presupuesto-card-5-estado')).toHaveTextContent('Se enfría · 31 días');
   });
 
   it('control negativo: sin `estado` del backend NO se dibuja ninguna etiqueta', async () => {

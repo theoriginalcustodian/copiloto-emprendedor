@@ -44,6 +44,8 @@ CASOS = {
     "trabajo_con_gastos_y_sin_ingreso": ("presupuesto:10", {"etiqueta": "Pintura", "gastado": "45000", "dias": 20}),
     "gasto_del_mes_alto": ("2026-10", {"mes": "2026-10", "gasto_actual": "900000", "gasto_anterior": "300000"}),
     "conexion_caida": ("mercadopago", {"servicio": "mercadopago", "nombre": "Mercado Pago"}),
+    "monotributo_cerca_del_limite": ("A:2026-08-01", {"categoria": "A", "porcentaje": 83.4, "tope": "1000000.00",
+                                                       "facturado": "834000.00", "semaforo": "amarillo"}),
 }
 
 

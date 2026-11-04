@@ -5,6 +5,7 @@ import { Pressable } from 'react-native-gesture-handler';
 import {
   ErrorValidacionFiscal,
   cambiarAmbiente,
+  CATEGORIAS_MONOTRIBUTO,
   CONDICIONES_IVA_NO_DISPONIBLES,
   conectarArca,
   estadoAfip,
@@ -66,12 +67,18 @@ import { useSession } from '../../auth';
  * backend difieren, gana el backend.
  */
 
+/** `paso` que el backend devuelve cuando no pudo consultar el alta (SM-N55, `web.PASO_CONSULTA_NO_DISPONIBLE`). */
+const PASO_CONSULTA_NO_DISPONIBLE = 'consulta_no_disponible';
+
 /** Ritmo del polling de `estadoAfip` durante el alta ARCA -- ver §5 del plan ("cada 3 s"). */
 const INTERVALO_POLL_MS = 3000;
 
 /** Corte honesto del polling -- el alta es un RPA entrando al portal de ARCA, "típicamente" minutos,
  *  nunca infinito. Pasado esto, se avisa y se ofrece reintentar en vez de girar para siempre. */
 const TOPE_ESPERA_MS = 10 * 60 * 1000;
+
+/** SM-N35 — lo que dice el campo cuando se toca Guardar con la fecha de inicio sin cerrar. */
+const MENSAJE_FECHA_INCOMPLETA = 'Completá la fecha entera (DD/MM/AAAA).';
 
 const TODAS_LAS_CONDICIONES_IVA: OpcionSelect[] = [
   { valor: 'monotributo', etiqueta: 'Monotributo' },
@@ -87,6 +94,12 @@ export function opcionesCondicionIva(actual: string): OpcionSelect[] {
     (o) => !CONDICIONES_IVA_NO_DISPONIBLES.includes(o.valor as CondicionIvaEmisor) || o.valor === actual,
   );
 }
+
+/** SM-N35 — `''` = «Sin definir»: el fail-soft es el estado por defecto. */
+export const OPCIONES_CATEGORIA_MONOTRIBUTO: OpcionSelect[] = [
+  { valor: '', etiqueta: 'Sin definir' },
+  ...CATEGORIAS_MONOTRIBUTO.map((c) => ({ valor: c, etiqueta: `Categoría ${c}` })),
+];
 
 const COPY_PASO_ONBOARDING: Record<string, string> = {
   iniciado: 'Iniciando la vinculación con ARCA…',
@@ -172,6 +185,8 @@ interface CamposPerfil {
   ingresosBrutos: string;
   inicioActividades: string;
   puntoVenta: string;
+  /** SM-N35 — `''` = sin categoría (no se manda). */
+  categoriaMonotributo: string;
 }
 
 const CAMPOS_PERFIL_VACIOS: CamposPerfil = {
@@ -181,6 +196,7 @@ const CAMPOS_PERFIL_VACIOS: CamposPerfil = {
   ingresosBrutos: '',
   inicioActividades: '',
   puntoVenta: '1',
+  categoriaMonotributo: '',
 };
 
 type EstadoOperacion = 'idle' | 'cargando' | 'enviando' | 'ok' | 'error' | 'no_disponible';
@@ -230,6 +246,7 @@ export function PantallaAfipSetup() {
           ingresosBrutos: res.perfil.ingresosBrutos,
           inicioActividades: res.perfil.inicioActividades,
           puntoVenta: String(res.perfil.puntoVenta),
+          categoriaMonotributo: res.perfil.categoriaMonotributo ?? '',
         });
         // 🔴 Remonta `CampoFecha`. Es semi-controlado a propósito (sostiene sus 3 segmentos en estado
         // local y los siembra UNA vez al montar), así que su propio docstring pide una `key` nueva
@@ -251,6 +268,15 @@ export function PantallaAfipSetup() {
   }
 
   async function guardarPerfilHandler() {
+    // SM-N35: `CampoFecha` emite `''` mientras los tres segmentos no cierran una fecha válida, y el backend
+    // (`PerfilBody.inicio_actividades: date`, sin default) la rechaza con un 422 que llega sin `campo` y
+    // cae en el error genérico: el formulario se ve completo y "no se pudo guardar". Se corta ACÁ, antes de
+    // mandar, y se marca el campo que falta -- el servidor es la red, no el aviso.
+    if (camposPerfil.inicioActividades === '') {
+      setErroresPerfil({ inicio_actividades: MENSAJE_FECHA_INCOMPLETA });
+      setEstadoPerfil('idle');
+      return;
+    }
     setErroresPerfil({});
     setEstadoPerfil('enviando');
     const puntoVenta = Math.trunc(Number(camposPerfil.puntoVenta.replace(',', '.'))) || 0;
@@ -263,6 +289,8 @@ export function PantallaAfipSetup() {
         ingresosBrutos: camposPerfil.ingresosBrutos,
         inicioActividades: camposPerfil.inicioActividades,
         puntoVenta,
+        // SM-N35: sólo aplica a monotributo; vacío o de otra condición → no se manda.
+        categoriaMonotributo: camposPerfil.condicionIva === 'monotributo' ? camposPerfil.categoriaMonotributo || null : null,
       });
       if (res.status === 'no_disponible') {
         setEstadoPerfil('no_disponible');
@@ -330,7 +358,16 @@ export function PantallaAfipSetup() {
       if (!cacheado) return;
       setCuit(cacheado);
       await precargarPerfil(cacheado);
-      void refrescarEstadoGeneral(cacheado);
+      const r = await refrescarEstadoGeneral(cacheado);
+      // 🔴 SM-N44 — mismo defecto que `PantallaFacturacion`: si el CUIT cacheado no es del tenant, el backend
+      // manda el vinculado y la caché se CORRIGE (se reemplaza, no sólo se muestra), y se recarga con ése.
+      const vinculado = r.estado?.cuitVinculado;
+      if (vinculado && vinculado !== cacheado) {
+        void guardarCuitCacheado(vinculado);
+        setCuit(vinculado);
+        await precargarPerfil(vinculado);
+        void refrescarEstadoGeneral(vinculado);
+      }
     })();
   }, []);
 
@@ -430,6 +467,22 @@ export function PantallaAfipSetup() {
     setMostrarFormularioArca(true);
   }
 
+  /**
+   * SM-K3 · causa `servicio`: el problema no fue lo que el emprendedor cargó, así que NO se le vuelve a
+   * pedir nada que ya dio. Se conservan CUIT y usuario y se salta directo al paso de la clave. La clave
+   * fiscal es lo único que hay que volver a escribir, y no por fricción nuestra: nunca se guarda (ver
+   * `conectarArca`), así que no existe forma de reintentar el alta sin ella.
+   */
+  function reintentarSinCambiarDatos() {
+    setErrorArca(null);
+    setPoleando(false);
+    setPollTardando(false);
+    setClaveArca('');
+    setEstadoGeneral((prev) => (prev ? { ...prev, onboarding: null } : prev));
+    setPasoArca(3);
+    setMostrarFormularioArca(true);
+  }
+
   async function vincularArcaHandler() {
     // 🔴 La clave se copia a una constante local ANTES de tocar el estado -- lo que sale por
     // `conectarArca` es ESTA copia, y el estado del componente queda vacío de inmediato, no recién
@@ -492,6 +545,13 @@ export function PantallaAfipSetup() {
         // próximo tick reintenta, mismo criterio que `useChat.poll`.
         return;
       }
+      // SM-N55: el backend no pudo consultar el alta (Temporal caído). NO es "está tardando": seguir
+      // polleando hasta el corte de 10 min disfrazaba un alta fallida de alta lenta. Se corta ya y la
+      // UI lo dice (`consultaNoDisponible`, derivado de este mismo `paso`).
+      if (res.estado.onboarding?.paso === PASO_CONSULTA_NO_DISPONIBLE) {
+        setPoleando(false);
+        return;
+      }
       if (res.estado.onboarding?.terminado) {
         setPoleando(false);
         if (res.estado.onboarding.paso === 'habilitado') {
@@ -530,6 +590,10 @@ export function PantallaAfipSetup() {
    * tuvo un onboarding `habilitado`, así que derivarlo del rastro lo mostraba como desconectado.
    */
   const conectado = estadoGeneral?.conectado === true;
+
+  /** SM-N55: sólo cuando el polling ya se detuvo -- durante un reintento (`poleando`) manda el sondeo. */
+  const consultaNoDisponible =
+    !poleando && !conectado && onboardingActual?.paso === PASO_CONSULTA_NO_DISPONIBLE;
 
   // -------------------------------------------------------------------------------------------
   // Bloque 3 -- Ambiente. `ambientesVinculados` es OPCIONAL en el contrato: `undefined` significa
@@ -644,6 +708,17 @@ export function PantallaAfipSetup() {
               onChange={(v) => actualizarCampoPerfil('condicionIva', v as CondicionIvaEmisor)}
               error={erroresPerfil.condicion_iva}
             />
+            {/* SM-N35: la categoría es un dato del emprendedor y sólo existe para monotributo. Opcional:
+                «Sin definir» es el estado por defecto y no bloquea guardar. El tope lo deriva el backend (SM-N36). */}
+            {camposPerfil.condicionIva === 'monotributo' && (
+              <CampoSelect
+                testID="afip-perfil-categoria-monotributo"
+                etiqueta="Categoría de monotributo"
+                opciones={OPCIONES_CATEGORIA_MONOTRIBUTO}
+                valor={camposPerfil.categoriaMonotributo}
+                onChange={(v) => actualizarCampoPerfil('categoriaMonotributo', v)}
+              />
+            )}
             <Text
               testID="afip-perfil-condicion-iva-aviso"
               style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
@@ -715,9 +790,33 @@ export function PantallaAfipSetup() {
             El fallo no se esconde: baja a aviso secundario, que es su jerarquía real. */}
         <Seccion titulo="2. Conectar con ARCA" testID="afip-bloque-arca">
           <View style={{ gap: tema.espacio.md }}>
-            {poleando || pollTardando || (onboardingActual?.paso === 'fallido' && !conectado) ? (
+            {poleando ||
+            pollTardando ||
+            consultaNoDisponible ||
+            (onboardingActual?.paso === 'fallido' && !conectado) ? (
               <View style={{ gap: tema.espacio.sm }} testID="afip-arca-progreso">
-                {pollTardando ? (
+                {consultaNoDisponible ? (
+                  <>
+                    <Text testID="afip-arca-progreso-no-consulta" style={{ color: tema.color.peligro }}>
+                      No pude consultar el estado de tu vinculación con ARCA. Eso no significa que haya
+                      fallado: probá de nuevo en unos segundos.
+                    </Text>
+                    <FilaBotones
+                      testID="afip-arca-progreso-botones"
+                      botones={[
+                        {
+                          etiqueta: 'Reintentar',
+                          variante: 'primario',
+                          testID: 'afip-arca-reintentar',
+                          onPress: () => {
+                            setPoleando(true);
+                            setIntentoPoll((n) => n + 1);
+                          },
+                        },
+                      ]}
+                    />
+                  </>
+                ) : pollTardando ? (
                   <>
                     <Text testID="afip-arca-progreso-tardando" style={{ color: tema.color.texto }}>
                       Está tardando más de lo normal. El alta ante ARCA puede demorar varios minutos,
@@ -756,12 +855,22 @@ export function PantallaAfipSetup() {
                     <FilaBotones
                       testID="afip-arca-progreso-botones"
                       botones={[
-                        {
-                          etiqueta: 'Rehacer',
-                          variante: 'primario',
-                          testID: 'afip-arca-rehacer',
-                          onPress: () => iniciarAltaPara(ambienteObjetivo),
-                        },
+                        // SM-K3: la acción sigue a la causa. `dato` → corregir (vuelve al paso 1);
+                        // `servicio` → reintentar con lo ya cargado; `desconocida`/sin causa → el
+                        // «Rehacer» de siempre, sin afirmar nada (no se degrada a `servicio` ante la duda).
+                        onboardingActual.causa === 'servicio'
+                          ? {
+                              etiqueta: 'Reintentar',
+                              variante: 'primario',
+                              testID: 'afip-arca-rehacer',
+                              onPress: reintentarSinCambiarDatos,
+                            }
+                          : {
+                              etiqueta: onboardingActual.causa === 'dato' ? 'Corregir mis datos' : 'Rehacer',
+                              variante: 'primario',
+                              testID: 'afip-arca-rehacer',
+                              onPress: () => iniciarAltaPara(ambienteObjetivo),
+                            },
                       ]}
                     />
                   </>

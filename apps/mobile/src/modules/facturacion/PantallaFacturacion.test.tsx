@@ -92,6 +92,7 @@ import {
 
 import { almacenClave } from '../../adapters/almacen';
 import { ThemeProvider } from '../../theme/ThemeProvider';
+import { tomarAvisoParaElChat } from '../../navegacion/avisoParaElChat';
 import { empujarUnaVez } from '../../navegacion/empujarUnaVez';
 import { CLAVE_CUIT_AFIP } from '../afip/cuitCache';
 import { CLAVE_IDEM_STORAGE_KEY, PantallaFacturacion } from './PantallaFacturacion';
@@ -294,6 +295,52 @@ describe('PantallaFacturacion', () => {
 
     await waitFor(() => expect(screen.getByTestId('facturacion-no-puede-facturar')).toBeTruthy());
     expect(screen.queryByTestId('facturacion-cta-configurar')).toBeNull();
+  });
+
+  /**
+   * SM-N44 — la caché NO se re-escribe con su propia entrada rechazada. El backend echa el CUIT pedido con
+   * `conectado:false` cuando no es del tenant y manda el vinculado en `cuitVinculado`; el cliente persistía
+   * `res.cuit ?? cuit` (el rechazado) y la próxima lectura volvía a preguntar por él, para siempre. Un test
+   * que sólo afirme el happy-path no distingue el fix del estado pegado: éste mira QUÉ se guarda.
+   */
+  describe('SM-N44 — la caché converge al CUIT vinculado', () => {
+    const AJENO = CUIT;
+    const PROPIO = '27222333449'; // distinto de CUIT: si fueran iguales el test no distinguiría nada
+
+    it('🔴 con `conectado:false` + `cuitVinculado`: guarda el VINCULADO, nunca el rechazado, y re-verifica con él', async () => {
+      jest
+        .mocked(estadoAfip)
+        .mockResolvedValueOnce(
+          estadoAfipMock({ cuit: AJENO, conectado: false, perfilCompleto: false, puedeFacturar: false, cuitVinculado: PROPIO }),
+        )
+        .mockResolvedValueOnce(estadoAfipMock({ cuit: PROPIO, conectado: true }));
+
+      await montar();
+
+      await waitFor(() => expect(almacenClave.guardar).toHaveBeenCalledWith(CLAVE_CUIT_AFIP, PROPIO));
+      await waitFor(() => expect(estadoAfip).toHaveBeenLastCalledWith(PROPIO));
+      expect(almacenClave.guardar).not.toHaveBeenCalledWith(CLAVE_CUIT_AFIP, AJENO);
+    });
+
+    it('control negativo: `conectado:false` SIN vinculado no re-escribe la caché con la respuesta que dijo «no»', async () => {
+      jest
+        .mocked(estadoAfip)
+        .mockResolvedValueOnce(estadoAfipMock({ cuit: AJENO, conectado: false, puedeFacturar: false }));
+
+      await montar();
+
+      await waitFor(() => expect(estadoAfip).toHaveBeenCalled());
+      await waitFor(() => expect(screen.getByTestId('facturacion-cta-configurar')).toBeTruthy());
+      expect(almacenClave.guardar).not.toHaveBeenCalledWith(CLAVE_CUIT_AFIP, AJENO);
+    });
+
+    it('control positivo: `conectado:true` sigue guardando el CUIT (la caché no se apagó)', async () => {
+      jest.mocked(estadoAfip).mockResolvedValueOnce(estadoAfipMock({ cuit: AJENO, conectado: true }));
+
+      await montar();
+
+      await waitFor(() => expect(almacenClave.guardar).toHaveBeenCalledWith(CLAVE_CUIT_AFIP, AJENO));
+    });
   });
 
   it('lee el CUIT de la MISMA clave que usa cuitCache.ts (contrato compartido con F5)', async () => {
@@ -860,5 +907,28 @@ describe('PantallaFacturacion (mobile) — idem_key en "Nueva factura" (FACTID)'
 
     await waitFor(() => expect(crearFactura).toHaveBeenCalledTimes(1));
     expect(jest.mocked(crearFactura).mock.calls[0]![1]).not.toBe('clave-vieja-huerfana');
+  });
+
+  /**
+   * SM-J1 — el dock de Facturación SIEMBRA el chat; jamás emite. Lo escrito llega como aviso al chat (donde la
+   * card HITL pide confirmación) y la pantalla vuelve atrás. Control negativo: ninguna API de emisión se toca.
+   */
+  it('SM-J1 -- el texto del dock va al chat y NO emite ni crea borrador', async () => {
+    jest.mocked(almacenClave.leer).mockImplementation(async (clave: string) => (clave === CLAVE_CUIT_AFIP ? '20111222339' : null));
+    jest.mocked(estadoAfip).mockResolvedValue(estadoAfipMock());
+    jest.mocked(listarComprobantes).mockResolvedValue({ status: 'ok', comprobantes: [] });
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('dock-funcion')).toBeTruthy());
+
+    await fireEvent.changeText(screen.getByTestId('chat-composer'), 'Factura a Pérez por 1500');
+    await fireEvent.press(screen.getByTestId('chat-enviar'));
+
+    const aviso = tomarAvisoParaElChat();
+    expect(aviso).toMatchObject({ texto: 'Factura a Pérez por 1500', contexto: 'Facturación' });
+    expect(router.back).toHaveBeenCalled();
+    expect(crearFactura).not.toHaveBeenCalled();
+    expect(confirmarConTokenFresco).not.toHaveBeenCalled();
+    expect(setCliente).not.toHaveBeenCalled();
+    expect(agregarItem).not.toHaveBeenCalled();
   });
 });

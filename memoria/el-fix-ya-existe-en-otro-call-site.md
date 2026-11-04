@@ -169,3 +169,39 @@ menor atencion a los casos que no encajan.
 **Lo que mide el alcance real, y es la parte que no se ve sin barrer:** de los **27** `scripts/**/*.py` de `main`, **5 imprimen no-ASCII y no tienen el `reconfigure`** (10 prints en total). Uno está en `scripts/ci/`. Y el grep ingenuo «el archivo tiene no-ASCII» da **8** — **sobre-reporta**, porque cuenta comentarios y docstrings, que no imprimen nada: hay que grepear las líneas que tienen `print(` **y** el byte no-ASCII.
 
 **Por qué parchear de a uno es el error, y no una solución parcial:** cada script nuevo nace sin la línea. El sexto ya está garantizado. El fix de raíz es un bootstrap compartido que los scripts importen, o `PYTHONUTF8=1` exportado por `gate.sh` — que cubre los 27 **y** a los que nazcan mañana. Un fix que hay que recordar aplicar es una deuda con cara de solución ([[cero-deuda-no-gestionada]]). Fila `ENCODINGWINPRINT`.
+
+---
+
+## Refuerzo 2026-11-03 — la variante más cara: el fix estaba en el INSTRUMENTO CANÓNICO, y me escribí el mío
+
+Hasta acá esta entrada hablaba de call-sites de **código**. El caso del 2026-11-03 es la misma falla
+un nivel más arriba, y sale más caro porque rompe una **precondición**, no una feature.
+
+Mergeé el PR #1511 con **3 de 6 jobs todavía `IN_PROGRESS`**. Mi gate contaba
+`select(.conclusion != null)` y GitHub devuelve **cadena vacía** (`""`), no `null`, para un job en
+curso: los 3 corriendo se contaron como completos y el umbral `>= 6` dio verde. La impresión del
+detalle mostraba las conclusiones vacías **en la misma salida**, y aun así el conteo mandó — un
+resumen numérico tapa el detalle que lo refuta.
+
+**Lo que lo convierte en reincidencia y no en bug nuevo:** `scripts/ci-verde.sh` existe, es el
+instrumento canónico de este repo para esto, y su cabecera (`:5-8`) **documenta este exacto defecto
+con el síntoma literal** — `backend:  core:SUCCESS  mobile:  web:  lint:SUCCESS  drift:SUCCESS`.
+Mergeé. — más la explicación de por qué (`//` en jq sustituye `null` y `false`, **no** la cadena
+vacía) y el criterio correcto (`:14`): *verde = todos los jobs ESPERADOS presentes **y** cada uno con
+`conclusion == SUCCESS`*. El fix no faltaba: estaba escrito, con su causa y su control.
+
+**La pregunta que lo habría evitado no es técnica:** antes de escribir un chequeo en el scratchpad,
+*¿existe el instrumento versionado de esto?* Un wrapper propio no hereda los defectos **ya pagados**
+del canónico — nace sin ellos y los vuelve a descubrir. Y nace callado: el canónico grita
+`❌ backend: sin conclusión todavía (status=IN_PROGRESS) — está CORRIENDO, no pasó`, mi jq no decía
+nada porque contaba.
+
+**Agravante del contexto:** `ci-verde.sh <PR>` está en el índice de memoria como el paso previo a
+mergear. No era conocimiento ausente ni enterrado: estaba a una línea de donde miro cada sesión.
+
+**Qué cambia en la práctica:** un instrumento propio de verificación sólo se escribe cuando se buscó
+el canónico y se escribió **dónde no está**. «Es un chequeo de dos líneas» es justamente la
+racionalización que lo produce — las dos líneas son las que ya fallaron una vez.
+
+Ver [[instrumento-que-no-mira-nunca-falla]] (el conteo que no nombra qué miró) ·
+[[el-instrumento-tambien-CONDENA-no-solo-absuelve]] · [[barrer-llamadores-incluye-los-instrumentos-de-verificacion]].

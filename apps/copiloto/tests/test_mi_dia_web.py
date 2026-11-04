@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from clients.agent.providers.composio_gateway import ConnectionRequired
 from mi_dia_tarjeta_store import ESTADOS, HACIENDO, PARA_HOY
-from mi_dia_web import create_mi_dia_app
+from mi_dia_web import _agrupar, create_mi_dia_app
 
 
 def _tenant_fijo(cid: str = "cid-A"):
@@ -179,7 +179,7 @@ def test_calendario_no_conectado_da_conectado_false_no_500():
 
 
 def test_calendario_conectado_devuelve_eventos_parseados():
-    """[ASSUMED_PENDING_VERIFY] shape de ejemplo -- sólo `id`/`summary`/`start`, los únicos campos
+    """[ASSUMED_PENDING_VERIFY @ 2026-11-03 vigente: Calendar sin conectar, SM-N34] shape de ejemplo -- sólo `id`/`summary`/`start`, los únicos campos
     que `test_e2e.py::_events()` ya ejercitó contra Composio real (ver docstring de `_eventos_de`)."""
     resultado = {"data": {"items": [
         {"id": "evt1", "summary": "Reunión con cliente", "start": {"dateTime": "2026-08-11T15:00:00-03:00"}},
@@ -289,3 +289,30 @@ def test_calendar_book_sigue_pasando_por_el_gate_HITL():
     """ADR-004 §3: la escritura de eventos NO tiene endpoint directo; sólo el confirm-gate."""
     from tool_catalog import WRITE_TOOLS
     assert "calendar_book" in WRITE_TOOLS
+
+
+# --- SM-N34: un evento no sale dos veces, ni en dos grupos --------------------------------------------
+
+def test_N34_el_mismo_evento_por_dos_ramas_del_payload_sale_UNA_vez():
+    ev = {"id": "evt1", "summary": "Reunión", "start": {"dateTime": "2026-08-11T15:00:00-03:00"}}
+    resultado = {"data": {"items": [ev], "response_data": {"items": [ev]}}}
+    r = _app(composio_gateway=_ComposioGatewayFake(resultado=resultado)).get("/mi-dia/calendario")
+    assert [e["id"] for e in r.json()["eventos"]] == ["evt1"]
+
+
+def test_N34_instancias_de_un_recurrente_con_id_distinto_siguen_siendo_varias():
+    """El otro sentido: no enmascarar un dato real (dos instancias legítimas con mismo título y hora)."""
+    items = [{"id": f"base_{d}", "summary": "Standup", "start": {"dateTime": f"2026-08-{d}T09:00:00-03:00"}}
+             for d in ("11", "12")]
+    r = _app(composio_gateway=_ComposioGatewayFake(resultado={"data": {"items": items}})).get("/mi-dia/calendario")
+    assert [e["id"] for e in r.json()["eventos"]] == ["base_11", "base_12"]
+
+
+def test_N34_agrupar_pone_cada_evento_en_UN_solo_grupo():
+    hoy = date(2026, 11, 3)
+    evs = [{"id": "a", "inicio": {"dateTime": "2026-11-03T10:00:00-03:00"}},
+           {"id": "b", "inicio": {"dateTime": "2026-11-04T10:00:00-03:00"}},
+           {"id": "c", "inicio": {"dateTime": "2026-11-07T10:00:00-03:00"}},
+           {"id": "d", "inicio": {"date": "2026-11-05"}}]
+    ids = [e["id"] for g in _agrupar(evs, hoy) for e in g["eventos"]]
+    assert sorted(ids) == ["a", "b", "c", "d"]
