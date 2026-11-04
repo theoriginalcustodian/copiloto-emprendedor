@@ -196,7 +196,7 @@ Clientes, Mi Día, Inteligencia, Contabilidad, Ajustes). Su orden es por frecuen
 _Avoid_: sección, módulo, app. Y no confundir con "function" de código.
 
 **Apps**:
-Las integraciones externas conectables (Gmail, Drive, Sheets, HubSpot, Instagram, MercadoPago).
+Las integraciones externas conectables (Gmail, Drive, Sheets, HubSpot, MercadoPago).
 Distinto de las **funciones**, que son los módulos propios.
 _Avoid_: conexiones, servicios, integraciones. (La web llama "Conexiones" a esta misma pantalla —
 divergencia conocida.)

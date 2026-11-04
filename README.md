@@ -55,7 +55,7 @@ El único lugar donde el copiloto **habla primero**. Cada mañana arma las tarje
 Autenticación robusta y directa utilizando el Credential Manager nativo en dispositivos móviles e integración directa en la web.
 
 ### 🔌 Tus apps, conectadas
-Gmail, Drive, Sheets, Docs, Calendar, HubSpot, Instagram y MercadoPago. El presupuesto se convierte en un Doc, la factura se archiva sola, el mail sale con tu tono. Y lo irreversible (mandar un mail, emitir, cobrar) **siempre te pregunta antes**.
+Gmail, Drive, Sheets, Docs, Calendar, HubSpot y MercadoPago. El presupuesto se convierte en un Doc, la factura se archiva sola, el mail sale con tu tono. Y lo irreversible (mandar un mail, emitir, cobrar) **siempre te pregunta antes**.
 
 ### ⚙️ Apariencia e Identidad (Odobi Skin)
 Cinco temas visuales completos diseñados con relieve y contraste de accesibilidad mejorado (AA). Funciona tanto en el teléfono móvil como en la web (PWA) de forma responsiva.

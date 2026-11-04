@@ -36,3 +36,41 @@ con razón ayer y quedaron vencidas por un merge de otra sesión.
   búsqueda del próximo que lo lea.
   [[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]] ·
   [[un-test-que-afirma-el-sintoma-del-defecto-lo-vuelve-inmortal]]
+
+---
+
+## Refuerzo 2026-11-04 — corregir la premisa vencida es el momento en que se INVENTA la próxima
+
+La clase de arriba es «la premisa envejeció». Este refuerzo es el paso siguiente, y es peor porque
+llega disfrazado de diligencia: **el acto de corregir una premisa vencida es exactamente donde se
+cuela una premisa inventada**, y nadie la audita porque viene envuelta en una corrección legítima.
+
+Medido hoy, sobre mi propio despacho. `SM-N19` declaraba en su `Falta`: *«BLOQUEADA POR LA CUENTA…
+la cuenta del OPERADOR es READ ONLY — dictar un presupuesto ahí sería escribir en su tenant real
+48a9d75f, que él no pidió»*. Lo pidió tres mensajes antes. Cacé el bloqueo vencido —eso estuvo
+bien— y en el mismo movimiento escribí la razón de reemplazo: *«su cuenta es la única con datos
+reales»*. **Falso.** El control que otra sesión había medido ese mismo día daba, para el tenant
+canónico: comprobantes 4, gastos 14, presupuestos 50, clientes 4. Y el `Falta` de la ficha vecina
+(`SM-L4`) ya traía escrito el argumento que yo no consideré: esas fichas *«son de cáscara y rótulos
+y no tocan Gmail ni MercadoPago, así que van con la CANÓNICA — correrlas con su cuenta metería
+escrituras evitables en su tenant fiscal real»*. Despaché a la sesión del device a dictar un
+presupuesto en la cuenta fiscal real del operador. Lo frené leyendo mi propia ficha, no por un gate.
+
+**Por qué no lo caza nada.** Un `Falta` vencido tiene gate: hay barridos de premisas de ausencia, y
+el propio doc obliga a citar `path:línea`. La premisa **nueva** no tiene ninguno: nace en el mismo
+commit que la corrección, hereda su credibilidad, y el revisor que lee «✅ ya no está bloqueada,
+re-medido» lee la parte verificada y pasa por encima de la parte inventada. Es el mismo mecanismo
+que [[el-comentario-que-declara-una-proteccion-desactiva-la-busqueda-del-proximo]], pero el
+comentario que apaga la búsqueda lo acabo de escribir yo.
+
+**La regla.** Al retirar una premisa vencida, la de reemplazo se mide con el mismo rigor que la que
+se retira, y se cita. Si la corrección dice «ahora se hace con X», la pregunta obligada es *¿por qué
+no con Y?* — y en este caso Y tenía la respuesta escrita en la ficha de al lado. Dos chequeos
+baratos que la habrían cazado: (1) grepear el id en las fichas vecinas antes de reescribir su
+disparador, porque un disparador compartido está declarado en más de un lugar; (2) ante «es el único
+que puede», contar los candidatos en vez de afirmarlo — el conteo del canónico existía y era de otra
+sesión, de ese mismo día.
+
+[[supuesto-cuya-falla-parece-un-estado-legitimo]] ·
+[[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]] ·
+[[el-contrato-que-manda-a-hacer-algo-ya-hecho]]

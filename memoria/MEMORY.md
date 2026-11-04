@@ -7,10 +7,10 @@
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
 
 - **🌐 EL REPO ES PÚBLICO** (2026-08-06). Un `.env` commiteado es público al instante; historia auditada: 0 secretos. `CLAUDE.md` §cabecera.
-- **📊 SPRINT VIGENTE = CORRECCIONES DEL MAPA** (02-11) @`3a393132`: 93 fichas · 63 TERMINADO · 22 DOD-PARCIAL. Lo mide `sprint-estado.py`, nada más.
+- **📊 SPRINT VIGENTE = CORRECCIONES DEL MAPA** @`eea4b80c`: 99 fichas · 86 TERMINADO · 11 DOD-PARCIAL. Sólo lo mide `sprint-estado.py`.
 - **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO en los DOS sentidos** — archivos ATRASADOS (commitearlos revierte fixes) y trabajo real sin respaldo; `??` ≠ nuevo. Medí el SIGNO contra main, por archivo.
-- **🚧 Abiertos:** OAuth Google (es de Composio) · clientes por voz · ingesta al grafo: corre VACÍA, falta tráfico. [[copiloto-oauth-google-propio]] · [[copiloto-ingesta-grafo-por-tenant-real-frente-abierto]]
+- **🚧 Abiertos:** clientes por voz · ingesta al grafo: corre VACÍA, falta tráfico. [[copiloto-ingesta-grafo-por-tenant-real-frente-abierto]]
 - **🔀 Tres sesiones** por buzón · **identidad:** agentes durables (moat = Temporal). [[coordinacion-tres-sesiones-buzon]] · [[copiloto-emprendedor-roadmap]]
 
 ## 🔑 Órdenes del operador (reglas duras - se cumplen, no se evalúan)
@@ -32,6 +32,7 @@
 ### Cadencia, cierre y ocio
 - [🎯📈 Un criterio que CRECE con cada medición no se puede alcanzar](un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar.md) — `DEC-18`: sólo UN lugar mide, y un hallazgo no reabre un ✅.
 - [🗂️🏷️ El registro no se marca si su id NO CIRCULA](el-registro-no-se-marcaba-porque-su-id-no-circulaba.md) — 18/26 fichas jamás nombradas en 460 cierres.
+- [🏷️ Dueño sin el INSTRUMENTO que el Falta exige](la-ficha-esperaba-a-un-dueno-que-no-podia-tocarla.md) — 13/19.
 - [🔁 EL BUCLE CANÓNICO - dos auditorías y el enganche](bucle-canonico-dos-auditorias-y-el-enganche.md) - marco de todo sprint.
 - [🤞🚫 PROMETER no es ejecutar - y el gate medía la PALABRA](prometer-no-es-ejecutar-el-gate-media-la-palabra.md) - hacela antes de escribirla.
 - [🛑💤 Detectar la parálisis y sólo reportarla es ocio PASIVO](deteccion-de-paralisis-sin-resolucion-es-ocio-pasivo.md) - el blocker es tuyo.
@@ -43,7 +44,6 @@
 - [🚀📱 Entrega progresiva por hito + E2E en device](entrega-progresiva-y-e2e-en-device.md) - no cierra hasta desplegado y probado.
 - [🎓 Cierre del aprendizaje no es opcional](cierre-del-aprendizaje-no-opcional.md) - test *¿puede volver?* Si no, no terminó.
 - [♻️ Cero deuda de MEJORA - implementar TODAS al cerrar](cero-deuda-de-mejora.md) - sólo se difiere no-código + MAYOR.
-- [📋 Lo que NO está en la TABLA DE HITOS no existe](lo-que-no-esta-en-la-tabla-de-hitos-no-existe.md) - cada dueño necesita su renglón.
 - [Propagar el cierre a TODOS los docs maestros](propagar-cierre-a-docs-maestros.md) - al doc-de-registro único.
 
 ### Evidencia: el instrumento antes que el resultado
@@ -72,12 +72,12 @@
 - [🏷️🩸 El marcador de pendencia SOBREVIVE a su refutacion](el-marcador-de-pendencia-sobrevive-a-su-propia-refutacion.md) - y el texto ANTES del marcador es lo HECHO, no el motivo.
 - [🧪💀 Un test que afirma el SÍNTOMA del defecto lo vuelve inmortal](un-test-que-afirma-el-sintoma-del-defecto-lo-vuelve-inmortal.md) — verde POR el bug, 5 días. ¿Sería verde si el mecanismo estuviera roto?
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) - el falso rojo parece prudencia.
+- [⚙️🎭 El rojo del WRAPPER se lee como rojo del GATE](el-script-de-fondo-lee-su-archivo-por-ruta-fija-y-el-primer-plano-lo-pisa.md) - ruta única en background.
 - [🛥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) · [y el que corre tras el guard no llega](un-control-de-ceguera-ubicado-despues-del-guard-que-dispara.md)
 - [🔄↔️ Base rancia: el diff INVIERTE la dirección](base-rancia-invierte-la-direccion-del-diff.md) — lo que main borró parece tu aporte. `git log -S` antes.
 - [🪞 El guard se satisface con su PROPIO comentario](el-guard-se-satisface-con-su-propio-comentario.md) - descartá comentarios al buscar.
 - 🎚️ El gate que NO dispara: [medí si dispara antes de embarcarlo](medir-si-un-gate-dispara-antes-de-embarcarlo.md) · [un umbral del día envejece](un-umbral-calibrado-al-corpus-del-dia-envejece-con-el.md) - un empate no separa.
 - 🏷️ El MAL clasificado: [nada lo cazaba](nada-cazaba-al-mal-clasificado-solo-al-no-clasificado.md) · [corroborar premia al que más cita](un-control-de-corroboracion-premia-al-que-mas-cita.md) - el analítico aprueba.
-- [🎯🔧 Un control positivo con ESPERADO FALSO acusa al script](un-control-positivo-con-esperado-falso-acusa-al-script.md) - ¿lo midió o lo escribió alguien?
 - [🔬⚖️ Lo que se retira es la CAUSA, no la OBSERVACIÓN](una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira.md) - la conclusión sobrevive.
 - [🧪🔀 Comparar ramas con un instrumento VERSIONADO mide DOS variables](el-instrumento-versionado-difiere-por-rama.md) — fijá uno: un archivo que nadie toca.
 - [🎭🚪 Dos causas comparten el CÓDIGO DE SALIDA](dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md) - el falso lleva al `--no-verify`.
@@ -96,7 +96,7 @@
 - [🛡️💥 Un guard que grita en el caso NORMAL se desarma](el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md) - el falso positivo enseña a saltear.
 - [🚦💥 El guard da LUZ VERDE justo en su caso de activación](el-guard-falla-abierto-en-su-caso-de-activacion.md) - leé la rama de ERROR.
 - [🚦🌍 Gate cuyo corpus vive FUERA del repo: mide al EQUIPO](un-gate-cuyo-corpus-vive-fuera-del-repo-mide-al-equipo-no-al-commit.md) - y CI lo saltea.
-- [📜 La exención cita una autoridad que NO la ampara](exencion-sin-autoridad.md) - 34 exentos citaban un acta de 2 casos. Contá.
+- 📜 La EXENCIÓN y su reverso: [cita una autoridad que NO la ampara](exencion-sin-autoridad.md) (34 exentos, un acta de 2 casos) · [un despacho de RETIRO la borra creyéndola un resto](un-despacho-de-retiro-no-distingue-el-resto-olvidado-de-la-excepcion-fechada.md)
 - [⚖️🗺️ Al JUEZ también hay que darle el plano](al-juez-tambien-hay-que-darle-el-plano.md) - sin contexto rechaza, y parece prudencia.
 - [🧟🚨 El artefacto del instrumento NO TIENE DUEÑO](el-artefacto-que-genera-el-instrumento-no-tiene-dueno.md) - enciende, no apaga: alarma inmortal.
 - [🧪🔌 Test VERDE y CERO invocadores = el control NO existe](un-control-con-test-verde-y-cero-invocadores.md) - un permiso NO es un disparador. 4ª vez.
