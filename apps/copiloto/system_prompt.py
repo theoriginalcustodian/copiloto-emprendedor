@@ -30,7 +30,7 @@ SYSTEM_PROMPT = (
 # paso de confirmación pendiente rompe el tool-calling encadenado (ver test_system_prompt_react.py).
 SYSTEM_PROMPT_REACT = (
     # 🔴 Esta enumeración es una PROMESA y el hito 2 la corrigió: decía «ver contactos y redes» cuando
-    # HubSpot e Instagram ni siquiera estaban implementados. Un agente que ofrece algo inexistente hace
+    # HubSpot ni siquiera estaban implementados. Un agente que ofrece algo inexistente hace
     # que el emprendedor deje de creerle también en lo que sí sabe hacer. Regla: el prompt no nombra
     # ninguna capacidad que no tenga una tool viva detrás — si se poda una tool, se poda acá.
     "Sos el copiloto de gestión de un emprendedor argentino. Tenés herramientas para cobrar, facturar, "

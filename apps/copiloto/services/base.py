@@ -18,7 +18,7 @@ central → fan-out sin colisión + gating por toolkit. `nombre de archivo` = no
 Los `tool_name` de TOOLS/TOOL_SCHEMAS son `<service>_<op>` (ej `gmail_send`); cada uno mapea a UN `op` que el
 `build(op, entities)` de ESE módulo acepta. Los `properties` de cada schema deben ser los mismos keys que
 `build()` lee de `entities` (copiarlos del código real de `build`, no inventar). Un servicio con el patrón
-`then` de 2 pasos (ej instagram create→publish) se expone como UNA sola tool: el `then` lo resuelve el
+`then` de 2 pasos (ej create→publish) se expone como UNA sola tool: el `then` lo resuelve el
 executor, invisible al LLM.
 """
 from __future__ import annotations
