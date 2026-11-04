@@ -158,7 +158,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-Z3** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de DEVICE del splash: el codigo esta en main y la decision tomada, pero lo tactil no lo acredita ningun test.… |
 | **SM-Z4** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO DEVICE, y la captura tiene que anotar el fontScale del sistema. Re-medido 2026-11-03 por manejo-de-errores @ee86… |
 | **SM-Z5** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de DEVICE de Ajustes ya como lista. Disparador: el telefono. Dueno de la captura: frontend2. |
-| **SM-N57** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N57** | `sin-issue` | ✅ TERMINADO | f76e6751 (PR #1619, ancestro de origin/main) — el adversarial de aislamiento de la memoria CORRE en el gate. El defec… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -3197,7 +3197,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N51 · `sin-issue` — El mapa afirma «lo que anotaste vos» en 7 lugares y no da ningún camino de alta: la incompleta es el MAPA
 
 - **Estado:** TERMINADO
-- **Cierre:** 5071953c @main (#1623): alta «Anotar algo para hoy» + «Agregar» en #tablero del mapa; MEDIDO en navegador (Playwright 390x844, ?ver=tablero): #tablero-alta visible, x16 y382 w384 h151, no tapado, texto correcto
+- **Cierre:** 5071953c @main (#1623): alta «Anotar algo para hoy» + «Agregar» en #tablero del mapa; MEDIDO en navegador (Playwright 390x844, ?ver=tablero): #tablero-alta visible, x16 y382 w384 h151, no tapado, texto correcto · DECISION DEL OPERADOR 2026-11-04 (contrato planificacion CUATRO-DECISIONES, punto 3): opcion (a), el alta se agrega al MAPA y la app no se toca.
 - **Dueño:** operador (decisión de producto — **toca la norma, no sólo el mapa**)
 - **De dónde sale:** entrada **09** del corpus, medida por frontend1 el 2026-11-03 con el par
   mapa/app y **sin tocar código**, como el contrato pedía.
@@ -3556,7 +3556,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N57 · `sin-issue` — El UNICO test adversarial del aislamiento de la MEMORIA no corre en NINGUN gate
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** f76e6751 (PR #1619, ancestro de origin/main) — el adversarial de aislamiento de la memoria CORRE en el gate. El defecto era peor que ADR-013: alla el codigo nunca implemento el guard; aca el test existia, estaba bien escrito y traia su propio control positivo en :88-91 contra un assert vacuo, y lo que faltaba era que ALGO lo llamara. test_memory_isolation_live.py:26 se saltaba salvo que existieran GRAPHITY_BASE_URL y GRAPHITY_API_KEY, y grep -c GRAPHITY daba 0 en los cinco puntos del gate (gate.sh, ci/backend.sh, sync-test-backend.sh, test-db.sh, tests.yml); control positivo: DATABASE_URL aparecia 0/2/5/7/2 en esos mismos cinco archivos, asi que el grep leia y distinguia. La mitad que decidia la gravedad: test_adversarial_multitenant.py tiene 29 tests adversariales y 0 menciones de memoria o grafo. Confirmado por el conteo de SM-N58: con N57 en main, memory_isolation ya corre en el VPS.
 - **Dueño:** backend
 - **De dónde sale:** barrido de los 41 `skipped` de la suite que pidió planificación a manejo-de-errores
   después de `SM-I7`, donde un test existía y se salteaba porque `sync-test-backend.sh` no llevaba

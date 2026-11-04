@@ -176,3 +176,4 @@
 → [HISTORIA.md](HISTORIA.md) - cerrados y bajados. NO se carga; buscable.
 - [🗓️🕳️ `--since=<hoy>` dio CERO con seis commits de hoy](el-filtro-de-fecha-da-cero-en-el-borde-del-dia.md) — el filtro miente en el borde del dia; usa `-N`.
 - [🚧🔧 Un `Falta:` que dice IMPOSIBLE describe el INSTRUMENTO del dia](un-falta-que-dice-imposible-describe-el-instrumento-del-dia.md) — una tenencia nueva destrabo 4 fichas sin tocar codigo.
+- [🚧✂️ Un `Falta:` que no se RECORTA al pagarse fabrica cola inexistente](un-falta-que-no-se-recorta-al-pagarse-fabrica-cola-inexistente.md) — dos clasificadores, el corpus añejo.
