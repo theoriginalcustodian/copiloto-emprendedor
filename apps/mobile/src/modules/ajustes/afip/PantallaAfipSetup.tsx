@@ -31,6 +31,9 @@ import {
   type OpcionSelect,
 } from '../../../theme/glass/campos';
 import { MarcoGlass } from '../../../theme/glass/MarcoGlass';
+
+// Subtítulo del mapa (index.html:2306, §afip). El test lo lee de ahí y lo compara: no copia el literal.
+const SUBTITULO_AFIP = 'Tus datos fiscales y el vínculo con ARCA. Sin esto no se puede facturar.';
 import { useTema } from '../../../theme/ThemeProvider';
 import { pressableStyle } from '../../../theme/glass/presion';
 import { useSession } from '../../auth';
@@ -612,7 +615,24 @@ export function PantallaAfipSetup() {
   // Render.
   // -------------------------------------------------------------------------------------------
   return (
-    <MarcoGlass titulo="Facturación ARCA" icono="perfilFiscal" testID="pantalla-afip-setup">
+    <MarcoGlass
+      titulo="Facturación ARCA"
+      icono="perfilFiscal"
+      testID="pantalla-afip-setup"
+      // SM-L4 entrada 46: el mapa lleva subtítulo bajo el título (index.html:2306). Fijo, fuera del scroll.
+      encabezadoExtra={
+        <Text
+          style={{
+            color: tema.color.textoTenue,
+            fontSize: tema.tipo.base,
+            paddingHorizontal: tema.espacio.lg,
+            paddingBottom: tema.espacio.sm,
+          }}
+        >
+          {SUBTITULO_AFIP}
+        </Text>
+      }
+    >
       <ScrollFormulario
         style={styles.scroll}
         testID="afip-setup-scroll"
