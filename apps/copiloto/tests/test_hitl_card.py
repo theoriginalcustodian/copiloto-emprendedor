@@ -91,7 +91,7 @@ def test_piloto_un_solo_servicio_el_resto_queda_como_estaba():
     """Decisión del contrato C-D3: NO se migran los cinco. Un servicio sin entrada devuelve None y su card
     queda `{kind, service, label}`. Agregar otro es agregar UNA entrada — y cambiar este test a propósito."""
     assert hitl_card.TOOLKITS_CON_DETALLE == frozenset({"gmail"})
-    for toolkit in ("googledocs", "googlesheets", "googlecalendar", "hubspot", "mercadopago", "instagram"):
+    for toolkit in ("googledocs", "googlesheets", "googlecalendar", "hubspot", "mercadopago"):
         assert hitl_card.detalle_de(toolkit, {"recipient_email": "a@b.com"}) is None, toolkit
         assert hitl_card.recibo_de(toolkit, {"recipient_email": "a@b.com"}, _AHORA_UTC) is None, toolkit
 

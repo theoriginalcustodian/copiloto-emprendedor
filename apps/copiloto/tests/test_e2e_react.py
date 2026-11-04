@@ -82,7 +82,7 @@ def _fake_gateway_executor(sent_links: list, sent_mails: list, unexpected: list)
                               observation={"result": "mail enviado"},
                               artifact=Artifact(kind="email_draft", data={"url": "https://mail.google.com/"}))
         # cualquier otra tool del catálogo completo (calendar_book, gmail_fetch, docs_*, drive_*, sheets_*,
-        # hubspot_*, instagram_*): el escenario NO la necesita -- si el modelo la invoca igual (no debería,
+        # hubspot_*): el escenario NO la necesita -- si el modelo la invoca igual (no debería,
         # spike A midió 0/24 llamadas fuera de lo esperado), no se rompe el test: se registra como anomalía
         # y se devuelve un error de negocio (nunca una excepción -- regla PR #114 retry infinito).
         unexpected.append({"name": name, "arguments": arguments, "confirmed": confirmed})

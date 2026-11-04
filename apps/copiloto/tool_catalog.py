@@ -77,7 +77,7 @@ from datos_card import (CONSULTAS as CONSULTAS_NEGOCIO, KIND as KIND_DATOS_NEGOC
 
 def _obs_service(toolkit: str) -> dict:
     """Metadata de servicio para la `observation` del gate `needs_confirmation` (FIX HIGH, review final): el
-    frontend keyea el badge de riesgo (Mercado Pago/Instagram) y el monto por `card.service` (`hitlMapping.ts`
+    frontend keyea el badge de riesgo (Mercado Pago, etc.) y el monto por `card.service` (`hitlMapping.ts`
     lee `message.card.service`); sin esto TODO gate del motor react degradaba a una card genérica sin ícono ni
     riesgo. Mismo shape que `dispatcher_emprendedor._service_card` (reusa `_TOOLKIT_NAMES` vía `_friendly_toolkit`
     para que dispatch/react muestren el mismo nombre humano) — no se importa `_service_card` en sí porque esa
@@ -616,7 +616,7 @@ def _execute_proposal(gateway, comp_uid, out) -> tuple:
         arguments[out.resolve["into"]] = val
     res = gateway.execute(out.slug, user_id=comp_uid, arguments=arguments, confirmed=True)
     ok = bool(res.get("successful", False))
-    if ok and out.then:                               # 2do paso (ej instagram create→publish)
+    if ok and out.then:                               # 2do paso (ej create→publish)
         data = res.get("data") if isinstance(res.get("data"), dict) else {}
         step2_id = data.get(out.then["id_key"])
         if step2_id is None:

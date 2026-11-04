@@ -67,16 +67,16 @@ def test_write_with_confirm_executes_and_returns_artifact():
 
 
 def test_proposal_then_runs_two_executes(monkeypatch):
-    """B2: un Proposal con `.then` (instagram create→publish) dispara DOS gateway.execute (paso 1 + paso 2)."""
+    """B2: un Proposal con `.then` (create→publish) dispara DOS gateway.execute (paso 1 + paso 2)."""
     from services.base import Proposal
-    prop = Proposal(slug="IG_CREATE", arguments={"caption": "x"}, reply_text="publicar?",
-                    then={"slug": "IG_PUBLISH", "id_key": "id", "id_arg": "container_id", "arguments": {}})
-    monkeypatch.setitem(tool_catalog.TOOL_INDEX, "instagram_publish",
+    prop = Proposal(slug="X_CREATE", arguments={"caption": "x"}, reply_text="publicar?",
+                    then={"slug": "X_PUBLISH", "id_key": "id", "id_arg": "container_id", "arguments": {}})
+    monkeypatch.setitem(tool_catalog.TOOL_INDEX, "dospasos_publish",
                         ("service", type("M", (), {"build": staticmethod(lambda op, a, now_iso=None: prop)}), "publish"))
     gw = _FakeGateway({"successful": True, "data": {"id": "CONT1"}})
     ex = tool_catalog.make_tool_executor(gw, now_iso_provider=lambda: "t")
-    ex("instagram_publish", {"caption": "x"}, _Ctx(), confirmed=True, idem_key="k")
-    assert [c[0] for c in gw.calls] == ["IG_CREATE", "IG_PUBLISH"]        # los 2 pasos
+    ex("dospasos_publish", {"caption": "x"}, _Ctx(), confirmed=True, idem_key="k")
+    assert [c[0] for c in gw.calls] == ["X_CREATE", "X_PUBLISH"]        # los 2 pasos
 
 
 def test_proposal_resolve_injects_before_write(monkeypatch):

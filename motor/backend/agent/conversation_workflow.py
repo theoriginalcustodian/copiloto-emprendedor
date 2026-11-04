@@ -696,7 +696,7 @@ class ConversationWorkflow:
                 obs = tr.get("observation") or {}
                 preview = obs.get("preview") or "¿Confirmás esta acción?"
                 # FIX HIGH (review final): la card debe llevar el `service` — el frontend keyea el badge de
-                # riesgo (Mercado Pago/Instagram) y el monto por `card.service` (`hitlMapping.ts`); sin esto
+                # riesgo (Mercado Pago, etc.) y el monto por `card.service` (`hitlMapping.ts`); sin esto
                 # TODO gate react degradaba a card vacía. El motor (capa PLANTILLA, domain-blind) NO conoce
                 # nombres de toolkit: solo re-empaqueta lo que el executor de dominio ya puso en `observation`
                 # (mismo patrón que `DispatchResult.card` en el modo dispatch, cero conocimiento nuevo acá).
