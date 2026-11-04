@@ -7,7 +7,7 @@
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
 
 - **🌐 EL REPO ES PÚBLICO** (2026-08-06). Un `.env` commiteado es público al instante; historia auditada: 0 secretos. `CLAUDE.md` §cabecera.
-- **📊 SPRINT VIGENTE = CORRECCIONES DEL MAPA** (02-11) @`3a393132`: 93 fichas · 63 TERMINADO · 22 DOD-PARCIAL. Lo mide `sprint-estado.py`, nada más.
+- **📊 SPRINT = CORRECCIONES DEL MAPA** (02-11) @`#1615`: 98 fichas · **72 TERMINADO** · 22 DOD-PARCIAL, y las 22 cuelgan de 4 disparadores DEL OPERADOR: 0 ejecutables por una sesión.
 - **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO en los DOS sentidos** — archivos ATRASADOS (commitearlos revierte fixes) y trabajo real sin respaldo; `??` ≠ nuevo. Medí el SIGNO contra main, por archivo.
 - **🚧 Abiertos:** OAuth Google (es de Composio) · clientes por voz · ingesta al grafo: corre VACÍA, falta tráfico. [[copiloto-oauth-google-propio]] · [[copiloto-ingesta-grafo-por-tenant-real-frente-abierto]]
@@ -138,6 +138,7 @@
 - [`>>` a ruta supuesta + `mv` pisa el contrato](append-a-ruta-supuesta-del-buzon-crea-un-stub-y-el-mv-pisa-el-contrato.md) - perdí 4: `find` + `mv -n`.
 - [📱🛑 El TELÉFONO exige dueño único - y ESCRIBE en la base](device-fisico-exige-dueno-unico.md) - dos ADB fabrican evidencia falsa.
 - [📱🍳 Un gate de device se corre con RECETA async](gate-de-device-se-corre-con-receta-no-con-ventana-viva.md) - gestos escritos, no ventana viva.
+- [🍳🕳️ La PREMISA no medida de la receta falla con el recurso COMPROMETIDO](la-premisa-no-medida-de-la-receta-falla-cuando-el-recurso-caro-ya-esta-comprometido.md) - grepeá el testID ANTES del device.
 - [📋🟢 Una receta con PREMISA VENCIDA da un falso VERDE](una-receta-con-premisa-vencida-produce-un-falso-VERDE.md) - el defecto pasa a ser lo esperado; nadie revisa un verde.
 
 
