@@ -8,7 +8,6 @@ import {
   imputacionDeTrabajos,
   leerGraficoCategorias,
   leerGraficoEntroVsSalio,
-  leerGraficoFacturacion,
   leerGraficoMargenTrabajo,
 } from '@copiloto/core';
 
@@ -62,35 +61,6 @@ function useGrafico<R>(leer: () => Promise<R>): R | null {
 
 function Cargando({ testId }: { testId: string }) {
   return <div className="graficos-inteligencia__cargando" data-testid={testId} aria-hidden="true" />;
-}
-
-function TarjetaFacturacion() {
-  const leer = useCallback(() => leerGraficoFacturacion(), []);
-  const res = useGrafico(leer);
-
-  if (res == null) return <Cargando testId="inteligencia-grafico-facturacion-cargando" />;
-  if (res.status !== 'ok' || res.modo !== 'serie') return null;
-
-  return (
-    <Surface variant="card" className="graficos-inteligencia__card" data-testid="inteligencia-grafico-facturacion">
-      <p className="graficos-inteligencia__rotulo">Facturación</p>
-      <div className="graficos-inteligencia__scroll">
-        <GraficoBarras
-          testId="grafico-facturacion"
-          puntos={res.serie.map((p) => p.mes)}
-          series={[
-            {
-              id: 'total',
-              etiqueta: 'Facturado',
-              color: 'var(--core)',
-              valores: res.serie.map((p) => p.total),
-            },
-          ]}
-          epigrafe={res.periodo !== '' ? formatearPeriodo(res.periodo) : undefined}
-        />
-      </div>
-    </Surface>
-  );
 }
 
 function TarjetaEntroVsSalio() {
@@ -209,7 +179,7 @@ function TarjetaMargenTrabajo() {
 export function GraficosInteligencia() {
   return (
     <div className="graficos-inteligencia" data-testid="inteligencia-graficos">
-      <TarjetaFacturacion />
+      {/* SM-N32 (decisión del operador, 2026-11-04): la tarjeta «Facturación» se RETIRA también de la web — el mapa no la dibuja. */}
       <TarjetaEntroVsSalio />
       <TarjetaCategorias />
       <TarjetaMargenTrabajo />
