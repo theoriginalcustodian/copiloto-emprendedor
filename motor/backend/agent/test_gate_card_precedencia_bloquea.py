@@ -100,11 +100,11 @@ async def test_CONTRATO_conexion_primero_sugerencia_despues_gana_conexion():
 async def test_dos_cards_que_bloquean_gana_la_ultima():
     """Sin regla de contrato para desempatar entre dos que bloquean: se mantiene "última gana" (mismo
     criterio que el resto del gate_card), documentado para que no sea un accidente sin test."""
-    conexion_2 = {**CONEXION, "service": "instagram", "label": "Instagram"}
-    r_conexion_2 = ("error", {"error": "servicio no conectado: instagram", "needs_connect": "instagram",
+    conexion_2 = {**CONEXION, "service": "hubspot", "label": "HubSpot"}
+    r_conexion_2 = ("error", {"error": "servicio no conectado: hubspot", "needs_connect": "hubspot",
                               "gate_card": conexion_2})
     enviados = await _correr([R_CONEXION, r_conexion_2], "q-precedencia-con-con")
-    assert enviados[-1]["card"]["service"] == "instagram"
+    assert enviados[-1]["card"]["service"] == "hubspot"
 
 
 @pytest.mark.asyncio

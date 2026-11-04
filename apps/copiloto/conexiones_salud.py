@@ -29,7 +29,7 @@ def composio_caidos(conexiones: Iterable[dict], soportados: frozenset[str] | Non
 
     SM-N18: sólo los que la app SOPORTA (`toolkits_conectables()` salvo que se inyecte `soportados`).
     Composio lista TODO lo que el usuario autorizó alguna vez en su cuenta, también toolkits sin una sola
-    tool acá (medido 2026-11-02: dos cuentas `instagram` EXPIRED); avisar de ellos manda al usuario a
+    tool acá (medido 2026-11-02: dos cuentas de un toolkit sin tool EXPIRED); avisar de ellos manda al usuario a
     «Reconectar» algo que la app no puede usar ni reconectar."""
     soportados = toolkits_conectables() if soportados is None else soportados
     activos, caidos = set(), set()

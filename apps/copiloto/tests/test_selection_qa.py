@@ -22,7 +22,6 @@ CASES = [
     ("armá un documento en docs titulado Informe Q3", "tool_action", "docs", "create_doc"),
     ("agregá a ana@empresa.com como contacto nuevo en el crm", "tool_action", "hubspot", "create_contact"),
     ("escribí una fila con los valores 1, 2, 3 en la planilla id abc123", "tool_action", "sheets", "append_row"),
-    ("mostrame los datos de mi cuenta de instagram", "tool_action", "instagram", "account"),
 ]
 
 

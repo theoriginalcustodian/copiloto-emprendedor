@@ -2,7 +2,7 @@
 MISMO contrato que `context_factory.py` arma en producción. Multitenant-only (Task 8b): `make_dispatcher`
 ya no acepta un fallback single-tenant, así que todo test que ejercite `dispatch(...)` necesita pasar un
 `ctx` real. DRY: un solo lugar en vez de duplicarlo en cada test file de servicio (docs/drive/gmail/hubspot/
-instagram/sheets/dispatcher/e2e*)."""
+sheets/dispatcher/e2e*)."""
 from __future__ import annotations
 
 import sys
