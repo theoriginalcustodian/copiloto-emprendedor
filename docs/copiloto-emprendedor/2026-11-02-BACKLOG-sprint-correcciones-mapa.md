@@ -95,7 +95,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-L1** | `sin-issue` | 🟧 DOD-PARCIAL | Correr el build de release y medir sobre el apk. Por ORDEN DEL OPERADOR (2026-11-02) el build de release corre ULTIMO… |
 | **SM-L2** | `sin-issue` | ✅ TERMINADO | sin-codigo -- lo que faltaba NO era codigo sino voz humana real, y el 2026-11-03 el OPERADOR las declaro CONFORME por… |
 | **SM-L3** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | La anulacion real contra ARCA NO se ejercito en este sprint: las facturas N 10 y N 11 siguen sin anularse y nadie cor… |
-| **SM-L4** | `sin-issue` | 🟧 DOD-PARCIAL | MEDIDO HOY por script, que es lo que el DoD exige: python -I -X utf8 scripts/mapa-51-estado.py sobre origin/main @a2e… |
+| **SM-L4** | `sin-issue` | 🟧 DOD-PARCIAL | REESCRITO 2026-11-03 con la remedicion de auditoria (d0f0e438, PR #1601, @61adbe95): el `Falta` anterior citaba 29/51… |
 | **SM-N1** | `sin-issue` | ✅ TERMINADO | f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs… |
 | **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
 | **SM-N3** | `sin-issue` | ✅ TERMINADO | sha 99097d83 (#1359). Test atado a TOOLS−WRITE_OPS con control positivo en ambas direcciones (VPS 23 passed). Barrido… |
@@ -126,7 +126,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N28** | `sin-issue` | ✅ TERMINADO | 4376027d (#1435, ancestro de origin/main): el avatar de Ajustes sale de Mi dia y queda solo en Funciones. DoD 4 y 5 p… |
 | **SM-N29** | `sin-issue` | 🟧 DOD-PARCIAL | UN punto y es de INSTRUMENTO, no de app: el DoD 1 -- el reveal filmado ENTERO con su animacion de entrada y los 6,8 s… |
 | **SM-N30** | `sin-issue` | ✅ TERMINADO | Codigo: ddccda38, ancestro verificado de origin/main. El lockup del login va DESNUDO a 38, sin tinta ni acento, con l… |
-| **SM-N31** | `sin-issue` | 🟧 DOD-PARCIAL | UN punto, el DoD 4, y NO es de device: las entradas 12 y 13 del corpus tienen que pasar a CONFORME con su cita, y el … |
+| **SM-N31** | `sin-issue` | ✅ TERMINADO | DoD 1-3 ya estaban cerrados (codigo + device 2026-11-03). El DoD 4 -- las entradas 12 y 13 del corpus en CONFORME con… |
 | **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4 incompleto y tres puntos mas sin evidencia (AUDITORIA H14, CONFIRMADO, LOTE 2i). DoD 4 pide cuatro secciones, e… |
 | **SM-N33** | `sin-issue` | ✅ TERMINADO | DoD completo. Codigo: aba185ec (#1480), ancestro de origin/main verificado con merge-base --is-ancestor; CI 6/6 y dep… |
 | **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | 🔴 CORRIJO LO QUE YO MISMO ESCRIBI HOY. El Falta anterior (mio, lote del bloque 1) pedia «el codigo de frontend2 que N… |
@@ -136,7 +136,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N38** | `sin-issue` | 🟧 DOD-PARCIAL | UNA sola cosa, y NO es nuestra: la corrida con el operador mirando, porque los puntos 1 y 6 son de ojo humano sobre l… |
 | **SM-N39** | `sin-issue` | ✅ TERMINADO | DoD completo, las dos mitades. Alcance TypeScript: bc8671a2 (#1474) retira los marcadores vencidos de afip.ts y factu… |
 | **SM-N40** | `sin-issue` | ✅ TERMINADO | Codigo COMPLETO y mergeado: 03370978 (#1486, ancestro de origin/main), CI 6/6, tsc limpio, jest theme 150/150. onKeyP… |
-| **SM-N41** | `sin-issue` | 🟧 DOD-PARCIAL | Los puntos 2 y 3, y el 2 es una DECISION DEL OPERADOR que no se puede sustituir por criterio tecnico: el campo va leg… |
+| **SM-N41** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO DEVICE. Reescrito 2026-11-03 con la medicion de auditoria (d0f0e438, PR #1601): el DoD 2, que era una DECISION D… |
 | **SM-N42** | `sin-issue` | ✅ TERMINADO | 1fc5f281 (#1516, CI 6/6) por frontend2, que cierra el punto 4 -- el unico que faltaba. DOD punto por punto: puntos 1 … |
 | **SM-N43** | `sin-issue` | ✅ TERMINADO | 61ee42ec (#1508, ancestro de origin/main, CI 6/6) por frontend2 + el punto 6 en DEVICE por frontend1, que era el unic… |
 | **SM-N44** | `sin-issue` | ✅ TERMINADO | DoD COMPLETO. (1) endpoint: backend #1510 c8736bff -- cuit_vinculado + test adversarial PG/RLS, suite VPS 2640 passed… |
@@ -148,14 +148,14 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N50** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N51** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N52** | `sin-issue` | ✅ TERMINADO | sha b45ab84f (PR #1590), verificado ancestro de origin/main. CI 6/6. DoD1: los 9 archivos de la Consola corren en Git… |
-| **SM-N53** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N54** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N55** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-N56** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N53** | `sin-issue` | ✅ TERMINADO | cd332c96 (PR #1602) — el interceptor guarda `activity_id`, el workflow lo manda con su propio `workflow.patched`, y `… |
+| **SM-N54** | `sin-issue` | ✅ TERMINADO | 6459a3ac (PR #1600) — `_cuit_del_tenant` con la DB caida responde 503 reintentable CON rastro y tenant, en vez del 40… |
+| **SM-N55** | `sin-issue` | 🟧 DOD-PARCIAL | UN punto, el DoD 3, y es de FRONTEND: la app tiene que tratar `paso=consulta_no_disponible` como «no pude consultar» … |
+| **SM-N56** | `sin-issue` | ✅ TERMINADO | 6459a3ac (PR #1600) — el rastro que escribe `conexiones_salud.py` ahora sale con el `cliente_id` del tenant que lo or… |
 | **SM-Z1** | `sin-issue` | 🟧 DOD-PARCIAL | ACTUALIZADO 2026-11-03 23:50 - el codigo YA ESTA HECHO y desplegado; lo unico que falta es el OAuth del operador en e… |
-| **SM-Z2** | `sin-issue` | ✅ TERMINADO | `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama |
+| **SM-Z2** | `sin-issue` | ✅ TERMINADO | `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama ➕ ANOTACION 2026-11-03 (INFO de au… |
 | **SM-Z3** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-Z4** | `sin-issue` | 🟧 DOD-PARCIAL | Parte 2 (COLOR). La parte 1 (TAMANO) esta HECHA y mergeada: HERO 34 -> 32 en PantallaLogin.tsx:25 citando index.html:… |
+| **SM-Z4** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO DEVICE. Reescrito 2026-11-03 con la medicion de auditoria (d0f0e438, PR #1601): la parte 2 (COLOR) ya no esta bl… |
 | **SM-Z5** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -770,7 +770,7 @@ conectado — que es el estado que esas dos reglas gobiernan a propósito.
 ### SM-K1 · `sin-issue` — Homologación es visible para cualquier usuario
 
 - **Estado:** TERMINADO
-- **Cierre:** 476f508a (#1330) + f5cf69ac (#1333); backend desplegado en 77326ae5, adversarial JWT reales VPS 2663 passed. DEVICE 2026-11-03 (frontend1, Pasada de device del 2026-11-03 por frontend1 (tenedora), cuenta canonica e2e-device, piel clara, SM-M127F RF8T318RN9T 720x1600 (384 dp reales, NO 390), bundle de Metro @ca6cb2c5): Homologacion AUSENTE de la pantalla de ARCA con la cuenta no-admin, medido sobre 392 nodos. Y trae su control: el literal Homologacion SI existe en el bundle, o sea la ausencia es por ROL y no porque el texto no este compilado -- sin ese control, una pantalla sin la palabra no distingue el guard de un bundle que no la tiene. Captura b1-k1k2-arca-1320local-canonico, 13:14 reloj del telefono.
+- **Cierre:** 476f508a (#1330) + f5cf69ac (#1333); backend desplegado en 77326ae5, adversarial JWT reales VPS 2663 passed. DEVICE 2026-11-03 (frontend1, Pasada de device del 2026-11-03 por frontend1 (tenedora), cuenta canonica e2e-device, piel clara, SM-M127F RF8T318RN9T 720x1600 (384 dp reales, NO 390), bundle de Metro @ca6cb2c5): Homologacion AUSENTE de la pantalla de ARCA con la cuenta no-admin, medido sobre 392 nodos. Y trae su control: el literal Homologacion SI existe en el bundle, o sea la ausencia es por ROL y no porque el texto no este compilado -- sin ese control, una pantalla sin la palabra no distingue el guard de un bundle que no la tiene. Captura b1-k1k2-arca-1320local-canonico, 13:14 reloj del telefono. ➕ ANOTACION 2026-11-03 (INFO de auditoria): la mitad "admin SI ve Homologacion" NO esta medida en device -- lo que hay son los controles positivos de backend en 476f508a. SE ACEPTA ASI, y esta es la linea que lo dice: severidad baja, el riesgo de la mitad no medida es que un admin legitimo NO vea algo (falla hacia el cierre, no hacia la fuga), y la mitad que importa para seguridad -- que el no-admin NO lo vea -- si esta ejercitada. Si alguna vez el reclamo es "el admin no ve Homologacion", esta es la ficha y esta es la mitad.
 - **Dueño:** frontend2 (visibilidad) + backend (rechazo)
 - **Medido:** la pantalla `afip` ofrece Homologación sin distinguir rol.
 - **DoD:** visible **sólo para `copiloto_admin`** (D6) **y rechazada por el backend** para el resto —
@@ -930,7 +930,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-L4 · `sin-issue` — El cierre del sprint exige remedir las 51 entradas
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** MEDIDO HOY por script, que es lo que el DoD exige: python -I -X utf8 scripts/mapa-51-estado.py sobre origin/main @a2ec0a02 (lote 13 adentro), exit 0. Cifra (A) VEREDICTOS del corpus: CONFORME 9 + DIFERENTE-A 6 + DIFERENTE-B 20 + NO-VERIFICABLE 16 = 29 de 51 EN CONDICION. Esa cifra responde que decia el corpus la ultima vez que se MIDIO la app, y NO es el 61/83 del registro de fichas: citar una por la otra es el error mas repetido del sprint. EL HALLAZGO, que el control del propio medidor no podia dar (dice 0 entradas divergentes sin ficha, y es cierto): cruzando cobertura contra ESTADO, OCHO entradas no-conformes estan cubiertas UNICAMENTE por fichas en TERMINADO -- 03 ingresar (SM-K6), 06 base (SM-N1), 09 tablero (SM-I1), 17 bi-refresh (SM-N2), 33 comousar (SM-K7), 37 vacio (SM-N5), 41 presu (SM-J1+J2+J4) y 47 apps (SM-K4). Nadie las tiene en cola porque su ficha cerro, y por eso NO DAN SINTOMA: se leen como trabajo hecho mientras el corpus sigue diciendo que la entrada no esta conforme. Es el modo de falla del id que no circula, al revés: aca el id circulo y cerro, y lo que quedo sin circular es la ENTRADA del corpus. Bajado como contrato_ a-todos el 2026-11-03 con reparto por dueno (frontend1: 06, 09, 47 / frontend2: 03, 33, 37, 41 / backend: 17) y DoD binario por entrada, y empujado por SendMessage a las tres sesiones porque un broadcast a-todos no lo persigue nadie. PROHIBIDO marcar una entrada CONFORME porque su ficha esta TERMINADO: eso convierte el corpus en un reflejo del backlog y las dos cifras vuelven a citarse una por la otra, que es justo lo que DEC-18 prohibe. Falta entonces: las 8 remediciones con su cita y su sha, y despues re-correr el medidor. onb-cumplida (20) y vacio-visto (32) NO se fuerzan: necesitan dias de uso reales y el DoD las deja declaradas con su motivo.
+- **Falta:** REESCRITO 2026-11-03 con la remedicion de auditoria (d0f0e438, PR #1601, @61adbe95): el `Falta` anterior citaba 29/51 @a2ec0a02 y esa CIFRA vencio -- hoy el medidor da 34/51. Pero un Falta vencido NO es un DoD cumplido, y por eso esta ficha NO pasa a TERMINADO aunque auditoria la propusiera: su DoD pide las 51 entradas en CONFORME o DIFERENTE-B con cita, y faltan 17. De esas, las entradas 20 y 32 siguen DECLARADAS con su motivo (necesitan dias de uso reales), que es el camino que el propio DoD autoriza. Lo que falta medir es el resto. Un hallazgo nuevo sobre una entrada ya cerrada NO la reabre: va a ficha aparte (DEC-18).
 - **Cierre:** Re-medido 2026-11-03. ENTRADA 41 RESUELTA EN CODIGO: frontend2 #1528 2ab3a02f, CI 6/6, jest 72/72 -- extendio etiquetaEstado con los dias desde Presupuesto.fecha, SIN helper nuevo (el helper duplicado ya se pago en N45) y con tests de las dos mitades. 🔴 Y ME REFUTO POR SEGUNDA VEZ EN LA MISMA ENTRADA, con razon las dos: el prototipo SI muestra los dias por fila (Prototipo frontend/odobi-ui/.../index.html:2083,2088). Yo habia bajado la entrada como «diferencia de forma» ofreciendo dos salidas (chip con dias vs aviso binario suficiente) pero NUNCA MEDI EL PROTOTIPO -- clasifique la entrada sin mirar el lado contra el que se compara, que es la mitad que decide. Las dos equivocaciones mias en esta entrada fueron de instrumento, no de criterio: (1) afirme que el chip NO EXISTIA porque antigued/dias daban 0 con control positivo verde, y existia como etiqueta binaria aportada por resumenEspera.ts:74 (el literal no estaba en su forma real); (2) despues clasifique la diferencia sin medir el prototipo. Registrado en memoria/no-era-que-no-cazaba-el-patron-era-que-no-lo-cazaba-en-su-forma-real.md (refuerzo mergeado en 46af6016, #1529). Acumulado del corpus con los lotes anteriores: 1447fddb (#1497) y 9fa6fef8 (#1494), ancestros verificados con control positivo del propio chequeo de ancestria. ENTRADA 16 DESBLOQUEADA: el tenant de SM-N15 (e2e-vacio@copiloto.test) SIRVE TAL CUAL -- /ingresos 0 vs 8 del canonico, impagos 0 vs 4, resumen 0.00, con control positivo del canonico en cada linea; credencial en .env.e2e, canonico intacto (4f3ecb78).
 - **Dueño:** planificación
 - **Medido:** al 2026-11-02 el mapa está en 7 CONFORME · 31 DIFERENTE·A · 6 DIFERENTE·B · 7
@@ -1473,7 +1473,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N17 · `sin-issue` — FUERA DEL SPRINT: la app avisa que «se cayó la conexión con Instagram», y Instagram no existe como servicio
 
 - **Estado:** TERMINADO
-- **Cierre:** 8378d53d (#1425, ancestro de origin/main): Instagram deja de tener icono en mobile y web, con test rojo si vuelve. FUERA DEL SPRINT (DEC-18): no mueve el denominador del 54. DEVICE 2026-11-03 (frontend1, Pasada de device del 2026-11-03 por frontend1 (tenedora), cuenta canonica e2e-device, piel clara, SM-M127F RF8T318RN9T 720x1600 (384 dp reales, NO 390), bundle de Metro @ca6cb2c5): CERO menciones de Instagram en Mi dia, medido sobre 61 nodos -- el aviso de conexion caida de un servicio que la app no soporta ya no aparece. Captura b1-midia-1418local-canonico, 13:30.
+- **Cierre:** 8378d53d (#1425, ancestro de origin/main): Instagram deja de tener icono en mobile y web, con test rojo si vuelve. FUERA DEL SPRINT (DEC-18): no mueve el denominador del 54. DEVICE 2026-11-03 (frontend1, Pasada de device del 2026-11-03 por frontend1 (tenedora), cuenta canonica e2e-device, piel clara, SM-M127F RF8T318RN9T 720x1600 (384 dp reales, NO 390), bundle de Metro @ca6cb2c5): CERO menciones de Instagram en Mi dia, medido sobre 61 nodos -- el aviso de conexion caida de un servicio que la app no soporta ya no aparece. Captura b1-midia-1418local-canonico, 13:30. ➕ ANOTACION 2026-11-03 (INFO de auditoria, H16 RETRACTADO a INFO): la cita de este Cierre era la cuenta CANONICA, donde el 0 no puede fallar -- un cero medido donde no hay nada que contar no acredita "deja de avisar". La medicion que SI lo acredita ya existia y es ajena a esta ficha: evidencia/SM-N18.md:7, la fila instagram del tenant 48a9d75f pasando a "hecha", en lectura read-only. Queda TERMINADO porque el trabajo esta y la evidencia existe; lo que se corrige es DONDE apunta la cita. Auditoria se retracto de su propio hallazgo al consolidar.
 - **Dueño:** frontend1 (UI) — con una pregunta previa para backend, abajo
 - **De dónde sale:** el **operador**, 2026-11-02, logueado con su cuenta: en Mi Día le aparece un
   aviso de conexión caída de Instagram, y su reacción fue la correcta — «Instagram ya no forma parte
@@ -1615,7 +1615,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N20 · `sin-issue` — FUERA DEL SPRINT: el LLM escribe los importes en formato inglés y agrega frases que no vienen de la observación
 
 - **Estado:** TERMINADO
-- **Cierre:** Cubierta por la sonda de SM-N21: 3b20a1f1 (#1518, desplegado) + a2d07f74 (#1522), ancestros verificados. Lo que SM-N20 heredaba a SM-N21 -- cobro y completar_ingreso sin sonda de LLM real -- quedo resuelto: el cobro se sondeo con LLM real contra el store real (0/3 distinto del literal, con control positivo y negativo) y completar_ingreso quedo declarado NO-ALCANZABLE con su motivo. El residual de las 5 frases que NO mueven plata (1/8) sigue ACEPTADO como estaba. DEVICE: la captura del preview HITL de mp_charge es UNA sola y esta en el Cierre de SM-N21 (bloque 17, 16:34:55) -- se cuenta una vez, no dos: pedir la misma captura por cada ficha seria contar un trabajo por dos, y asi lo decia el Falta de las dos desde el principio.
+- **Cierre:** Cubierta por la sonda de SM-N21: 3b20a1f1 (#1518, desplegado) + a2d07f74 (#1522), ancestros verificados. Lo que SM-N20 heredaba a SM-N21 -- cobro y completar_ingreso sin sonda de LLM real -- quedo resuelto: el cobro se sondeo con LLM real contra el store real (0/3 distinto del literal, con control positivo y negativo) y completar_ingreso quedo declarado NO-ALCANZABLE con su motivo. El residual de las 5 frases que NO mueven plata (1/8) sigue ACEPTADO como estaba. DEVICE: la captura del preview HITL de mp_charge es UNA sola y esta en el Cierre de SM-N21 (bloque 17, 16:34:55) -- se cuenta una vez, no dos: pedir la misma captura por cada ficha seria contar un trabajo por dos, y asi lo decia el Falta de las dos desde el principio. ➕ ANOTACION 2026-11-03 (INFO de auditoria): esta ficha no tiene campo DoD propio, asi que su cierre NO se puede contrastar punto por punto -- se acredita por herencia del de SM-N21 (3b20a1f1 #1518 + a2d07f74 #1522, ancestros verificados), que es un cruce DELIBERADO y queda rotulado como tal. Es el caso que la norma de evidencia versionada llama cruce legitimo: 20 de los 21 shas que no nombran su ficha son de esta forma.
 - **Dueño:** backend
 - **De dónde sale:** lateral que backend destapó midiendo SM-H5/SM-N8, 2026-11-02. Misma clase que
   aquellas dos, pero en tools que ninguna cubría.
@@ -1876,7 +1876,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N26 · `sin-issue` — DENTRO DEL SPRINT: quitar el indicador «Pedir confirmación» de la cabecera del chat
 
 - **Estado:** TERMINADO
-- **Cierre:** Codigo en main: c0b17494 (#1441, ancestro de origin/main) -- retirado el indicador Pedir confirmacion de la cabecera del chat. DEVICE 2026-11-03 (frontend1, Pasada de device del 2026-11-03 por frontend1 (tenedora), cuenta canonica e2e-device, piel clara, SM-M127F RF8T318RN9T 720x1600 (384 dp reales, NO 390), bundle de Metro @ca6cb2c5): 0 nodos de Pedir confirmacion en la cabecera, medido sobre 110 nodos de la pantalla. Con su control, que es lo que lo hace valer: el literal Pedir confirmacion SIGUE en el bundle (lo usa otro componente), asi que el 0 mide la cabecera y no un bundle sin la frase. Captura b1-chat-1420local-canonico, 13:30.
+- **Cierre:** Codigo en main: c0b17494 (#1441, ancestro de origin/main) -- retirado el indicador Pedir confirmacion de la cabecera del chat. DEVICE 2026-11-03 (frontend1, Pasada de device del 2026-11-03 por frontend1 (tenedora), cuenta canonica e2e-device, piel clara, SM-M127F RF8T318RN9T 720x1600 (384 dp reales, NO 390), bundle de Metro @ca6cb2c5): 0 nodos de Pedir confirmacion en la cabecera, medido sobre 110 nodos de la pantalla. Con su control, que es lo que lo hace valer: el literal Pedir confirmacion SIGUE en el bundle (lo usa otro componente), asi que el 0 mide la cabecera y no un bundle sin la frase. Captura b1-chat-1420local-canonico, 13:30. ➕ ANOTACION 2026-11-03 (INFO de auditoria): el DoD 4 de esta ficha -- "que el modo del tenant siga siendo legible en algun lado" -- quedo SIN SUJETO cuando se retiro el indicador por decision del operador. Un punto cuya premisa fue refutada no se cumple ni se incumple: se RETIRA, y se retira acá por escrito en vez de quedar como un punto eternamente abierto. Los puntos 1-3 estan cumplidos con c0b17494 (#1441) + la pasada de device del 2026-11-03.
 - **✅ DESBLOQUEADA el 2026-11-02 — se retira ENTERO.** El bloqueo existió porque el contrapunto de
   abajo no estaba medido; **ahora lo está y se cae**. El texto del contrapunto queda igual a
   propósito: explica qué se pierde y qué hay que reponer cuando el modo sea elegible.
@@ -2140,7 +2140,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N30 · `sin-issue` — DENTRO DEL SPRINT: la pantalla de entrada REAL no es la que dibuja el mapa («Volver a entrar»)
 
 - **Estado:** TERMINADO
-- **Cierre:** Codigo: ddccda38, ancestro verificado de origin/main. El lockup del login va DESNUDO a 38, sin tinta ni acento, con los dos pares literales enumerados, el motivo por par escrito en el codigo y el control positivo de que un tercer par sigue ROJO -- las tres condiciones que planificacion puso al desbloquear el camino A. DEVICE 2026-11-03 17:08:14 por frontend1 (tenedora), captura l17-login-DESPUES-61b684c2.png sobre bundle 61cfcccc (worktree wt-fe1-h5, contiene ddccda38): marca-isotipo con bounds [232,318][303,389] = 71 px ≈ 38 dp, SIN circulo oscuro. Par ANTES/DESPUES contra 16:32:32.
+- **Cierre:** Codigo: ddccda38, ancestro verificado de origin/main. El lockup del login va DESNUDO a 38, sin tinta ni acento, con los dos pares literales enumerados, el motivo por par escrito en el codigo y el control positivo de que un tercer par sigue ROJO -- las tres condiciones que planificacion puso al desbloquear el camino A. DEVICE 2026-11-03 17:08:14 por frontend1 (tenedora), captura l17-login-DESPUES-61b684c2.png sobre bundle 61cfcccc (worktree wt-fe1-h5, contiene ddccda38): marca-isotipo con bounds [232,318][303,389] = 71 px ≈ 38 dp, SIN circulo oscuro. Par ANTES/DESPUES contra 16:32:32. ➕ ANOTACION 2026-11-03 (INFO de auditoria): la evidencia de los puntos del DoD esta en el CUERPO de la ficha y no en esta linea de Cierre. Queda TERMINADO porque la evidencia existe y es verificable; lo que esta anotacion arregla es que se pueda encontrar sin leer la ficha entera, que es justamente lo que el Cierre existe para resolver. Procedencia: ddccda38, ancestro verificado.
 - **Dueño:** frontend2 (va pegada a `SM-N29`: misma pantalla, misma pasada de device)
 - **Reportado por:** el operador, 2026-11-02, sobre el mapa `?ver=volver`: *«la pantalla de entrada es
   diferente a la del mapa; la imagen de "volver a entrar" no es la misma que tiene la app»*.
@@ -2327,10 +2327,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N31 · `sin-issue` — La barra de grabación no ocupa el ancho al pie: `grabando` y `bloqueado`
 
-- **Estado:** DOD-PARCIAL
+- **Estado:** TERMINADO
 - **Dueno-activo:** frontend2
-- **Falta:** UN punto, el DoD 4, y NO es de device: las entradas 12 y 13 del corpus tienen que pasar a CONFORME con su cita, y el veredicto se cambia MIDIENDO LA APP, no por el estado de esta ficha. Eso ultimo es la mitad que se saltea sola: marcar el corpus porque la ficha cerro es exactamente el circulo que DEC-18 prohibe -- el corpus seria entonces un reflejo del backlog y no una medicion independiente, y las dos cifras del sprint volverian a citarse una por la otra. Hoy esas dos entradas estan en NO-VERIFICABLE, que es el estado correcto mientras nadie las mida. Disparador exacto: una corrida de scripts/mapa-51-estado.py (o el medidor vigente) sobre la app desplegada, citando el sha medido. No necesita telefono ni sesion. Dueno: frontend2 (dueña de la ficha).
-- **Cierre:** DoD 1, 2 y 3 CERRADOS. Codigo: la causa medida ya no existe (DockFuncion a DockEntrada, enLugarDelCampo; DockEntrada.test.tsx:108,128). DEVICE 2026-11-03 (frontend1, tenedora, cuenta canonica, en Gastos, SIN voz -- no hace falta audio para ver la pantalla): grabando a las 14:36:52 -- la barra queda AL PIE y REEMPLAZA al campo, con punto rojo, 0:02, el aviso de deslizar para cancelar y la onda en todo el ancho; bloqueado a las 14:37 -- barra de ancho completo con tacho, onda, reloj, pausa y enviar. Los DOS estados, que es lo que el punto 1 pedia. DoD 2, la regresion OBLIGATORIA: cancelar deslizando y descartar con el tacho funcionan los dos y NO se envio nada -- y esto importaba mas que las capturas, porque la ficha MUEVE la zona del gesto y lo que hoy funciona es lo que un cambio de ubicacion rompe callado. DoD 3 con el metodo declarado: adb shell input motionevent DOWN/MOVE, nunca input tap, que no ejercita un Pan de RNGH. Limites escritos por frontend1 y conservados: sin voz real, sin filmar a mas fps, sin comparacion pixel a pixel con el prototipo.
+- **Cierre:** DoD 1-3 ya estaban cerrados (codigo + device 2026-11-03). El DoD 4 -- las entradas 12 y 13 del corpus en CONFORME con su cita, cambiadas MIDIENDO LA APP -- quedo cumplido en e8ed06fb (PR #1548), y su `Falta:` vencio 19 minutos despues de escribirse: lo midio auditoria el 2026-11-03 contra origin/main @61adbe95 y lo dejo escrito en d0f0e438 (PR #1601, Auditorias/2026-11-03-auditoria-DOD-PARCIAL-...md). La clase es la del sprint: el commit que resuelve el Falta CITA el id, pero nadie vuelve a la ficha -- misma forma que J1, H5 y N34.
 - **Dueño:** frontend2
 - **De dónde sale:** del medidor `scripts/mapa-51-estado.py`, que las encontró como **las dos únicas
   entradas divergentes del mapa que NINGUNA ficha del sprint cubría**. No es un hallazgo nuevo: están
@@ -2739,7 +2738,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 - **Estado:** TERMINADO
 - **Dueno-activo:** frontend1
-- **Cierre:** Codigo COMPLETO y mergeado: 03370978 (#1486, ancestro de origin/main), CI 6/6, tsc limpio, jest theme 150/150. onKeyPress en mes y year de CampoFecha: con el segmento VACIO el retroceso devuelve el foco al anterior y le borra el ultimo digito; con el segmento NO vacio borra dentro y NO salta -- el defecto espejo, cubierto. Los 4 tests traen control negativo: SIN el handler fallan los dos de retroceso y pasan los dos de no-salto, asi que el verde no puede ser verde por otra causa. DEVICE 2026-11-03 (frontend1, tenedora, cuenta canonica e2e-device, RF8T318RN9T): con el retroceso del TECLADO EN PANTALLA el foco SI vuelve al segmento anterior y le borra el ultimo digito -- 2do toque: dia 01 -> 0 (el 1ro, sobre el vacio, no cambia valor visible, que es lo esperado). Cero escrituras verificado. 🎯 Y lo que esta ficha deja escrito es la trampa, no el veredicto: con  NO retrocede. Si esa hubiera sido la unica corrida -- y fue la primera -- el veredicto habria sido «el handler no funciona», con el defecto viviendo en el INSTRUMENTO. Es la SEGUNDA ficha del mismo dia falsamente acusada por adb: la otra es SM-K9, donde el DD / 02 / 1120 era adb escribiendo mas rapido que el focus(). Dos fichas, un instrumento, el mismo dia. Para lo tactil de segmentos de fecha, el teclado real no es una mejora de rigor: es la unica medicion valida. Y la PRIMERA corrida tampoco fue inutil: midio el segmento NO vacio, que es el control negativo del fix.
+- **Cierre:** Codigo COMPLETO y mergeado: 03370978 (#1486, ancestro de origin/main), CI 6/6, tsc limpio, jest theme 150/150. onKeyPress en mes y year de CampoFecha: con el segmento VACIO el retroceso devuelve el foco al anterior y le borra el ultimo digito; con el segmento NO vacio borra dentro y NO salta -- el defecto espejo, cubierto. Los 4 tests traen control negativo: SIN el handler fallan los dos de retroceso y pasan los dos de no-salto, asi que el verde no puede ser verde por otra causa. DEVICE 2026-11-03 (frontend1, tenedora, cuenta canonica e2e-device, RF8T318RN9T): con el retroceso del TECLADO EN PANTALLA el foco SI vuelve al segmento anterior y le borra el ultimo digito -- 2do toque: dia 01 -> 0 (el 1ro, sobre el vacio, no cambia valor visible, que es lo esperado). Cero escrituras verificado. 🎯 Y lo que esta ficha deja escrito es la trampa, no el veredicto: con  NO retrocede. Si esa hubiera sido la unica corrida -- y fue la primera -- el veredicto habria sido «el handler no funciona», con el defecto viviendo en el INSTRUMENTO. Es la SEGUNDA ficha del mismo dia falsamente acusada por adb: la otra es SM-K9, donde el DD / 02 / 1120 era adb escribiendo mas rapido que el focus(). Dos fichas, un instrumento, el mismo dia. Para lo tactil de segmentos de fecha, el teclado real no es una mejora de rigor: es la unica medicion valida. Y la PRIMERA corrida tampoco fue inutil: midio el segmento NO vacio, que es el control negativo del fix. ➕ ANOTACION 2026-11-03 (INFO de auditoria): el DoD 4 pedia leer la skill del dominio antes de tocar foco con refs imperativas, y NO quedo rastro de que se leyera. El codigo esta completo y verificado (03370978 #1486, CI 6/6, jest theme 150/150) y los puntos 1-3 cumplidos, asi que no se reabre. Lo que se anota es el limite: un DoD que pide un ACTO del que no queda huella no es verificable por nadie -- ni para confirmarlo ni para refutarlo. Un DoD futuro de esta forma tiene que pedir el EFECTO (que el fix cite el criterio de la skill), no el acto.
 - **Dueño:** frontend2
 - **De dónde sale:** hallazgo de frontend2 al medir `SM-K9` (2026-11-03). **No reabre `SM-K9`**: esa
   ficha preguntaba si la máscara era un defecto y la respuesta fue que no hay máscara. Esto es otra
@@ -2766,7 +2765,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N41 · `sin-issue` — El campo del composer es translúcido y deja leer los mensajes de atrás
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Los puntos 2 y 3, y el 2 es una DECISION DEL OPERADOR que no se puede sustituir por criterio tecnico: el campo va legible (subir el alfa) o translucido a proposito (y entonces la ficha cierra CERRADO-POR-DECISION, sin tocar codigo). El operador pidio conservar «el de dentro» del campo y NO escribio si lo quiere translucido o legible; un alfa es decision de diseno, y subirlo puede romper el cristal que el resto de la cascara sostiene. El punto 3 solo existe si la decision es «legible»: el alfa va parametrizado donde YA vive (ALFA_BASE_CAMPO, Composer.tsx:239 -> conAlfa(tema.color.fondo, ALFA_BASE_CAMPO)), nunca hardcodeado en el JSX, y se mira en las DOS pieles. Dueno del 2: operador (escalado). Dueno del 3 si se decide: frontend2.
+- **Dueno-activo:** frontend2
+- **Falta:** SOLO DEVICE. Reescrito 2026-11-03 con la medicion de auditoria (d0f0e438, PR #1601): el DoD 2, que era una DECISION DEL OPERADOR y era el bloqueo real, YA ESTA -- se decidio «legible», y el DoD 3 esta implementado y mergeado en e213dd47 (PR #1585), con el alfa parametrizado donde ya vivia (`ALFA_BASE_CAMPO = 0.96`, Composer.tsx:302) y no hardcodeado en el JSX. El DoD 1 (captura del caso) se cerro en device el 2026-11-03. Lo unico que queda es mirarlo en LAS DOS PIELES en device, que es lo que el DoD 3 exige al final y lo que ningun gate puede verificar.
 - **Cierre:** DoD 1 CERRADO en device el 2026-11-03 (frontend1, canonica, piel clara): con el CHAT arriba, la burbuja del agente queda bajo el campo «Escribi, o habla...» y su texto se lee como FANTASMA a traves del campo y del mic. Captura b4-n41-p1-chat-burbuja-detras-del-campo-canonico, 14:23. NADIE toco ALFA_BASE_CAMPO: el punto 1 es captura, no fix. 🎯 Y la ficha registra una captura DESCARTADA, porque el descarte es la evidencia de que el criterio se aplico: la primera (14:20) era de MI DIA, no del chat, y frontend1 la retiro por su cuenta antes de que entrara al registro. El DoD 1 pide el sintoma «con el chat arriba, con mensajes detras del campo»; una captura de otra pantalla puede mostrar un campo translucido y no mostrar lo que el punto mide -- texto de BURBUJAS leyendose a traves. Una captura que se parece a la pedida no es la pedida, y el unico modo de distinguirlas es releer el criterio en vez de mirar la imagen.
 - **Dueño:** frontend2
 - **De dónde sale:** observación de **frontend1 en device**, 2026-11-03, reportada sin tocar nada
@@ -3011,7 +3011,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 - **Estado:** TERMINADO
 - **Dueno-activo:** backend
-- **Cierre:** DoD original + el alcance de CLASE, los dos en prod. 83466828 (#1542) y 16d3ecc3 (#1546), CI 6/6, desplegados, durabilidad VERDE, suite 2660 passed. El DoD 2 intacto y verificado con LLM real: >1 candidato PREGUNTA y no aprueba. DoD 5 en el tenant VACIO con presupuestos propios, el N 87 de la canonica intacto en ese momento. DoD 6: SM-H5 liberada y MEDIDA el mismo dia. Alcance de clase: UNA sola _coincide (tool_catalog.py:1302) con CUATRO llamadas -- :1338 facturas, :1401 presupuestos, :1803 y :1830 tarjetas -- con tests de ambas mitades por call-site (rojo a verde). 🎯 Y lo que esta ficha deja escrito vale mas que el fix, porque es lo que el gate NO PODIA VER: (1) cubierto por construccion resulto FALSO A MEDIAS. Habia una sola definicion de _coincide y aun asi el fix no cubria igual a los cuatro llamadores, porque cada uno le pasa otro conjunto de campos -- facturas no matcheaba por importe. O sea que contar DEFINICIONES no alcanzaba: un solo helper no implica un solo comportamiento, y esa es la version fina de la leccion que este repo ya tenia. (2) backend encontro una REGRESION PROPIA de #1542 y la declaro: 42 de la panaderia dejo de matchear 0001-00000042 por el limite de digitos, ~1 h en prod y SOLO en facturas. Paso CI 6/6 y suite verde porque los 8 tests nuevos vivian en el camino de presupuestos y el call-site de facturas no tenia la mitad que la habria cazado. Un fix verificado en un llamador y embarcado para todos es indistinguible de un fix completo hasta que alguien mide los otros. Las tarjetas pasaron sin tocar codigo. ⚠️ SALVEDAD DECLARADA por backend y conservada, no borrada: NO hay prueba en prod con LLM de facturas ni de tarjetas. Lo acreditado ahi son los tests por call-site y la suite; lo verificado en prod con LLM real es el camino de presupuestos.
+- **Cierre:** DoD original + el alcance de CLASE, los dos en prod. 83466828 (#1542) y 16d3ecc3 (#1546), CI 6/6, desplegados, durabilidad VERDE, suite 2660 passed. El DoD 2 intacto y verificado con LLM real: >1 candidato PREGUNTA y no aprueba. DoD 5 en el tenant VACIO con presupuestos propios, el N 87 de la canonica intacto en ese momento. DoD 6: SM-H5 liberada y MEDIDA el mismo dia. Alcance de clase: UNA sola _coincide (tool_catalog.py:1302) con CUATRO llamadas -- :1338 facturas, :1401 presupuestos, :1803 y :1830 tarjetas -- con tests de ambas mitades por call-site (rojo a verde). 🎯 Y lo que esta ficha deja escrito vale mas que el fix, porque es lo que el gate NO PODIA VER: (1) cubierto por construccion resulto FALSO A MEDIAS. Habia una sola definicion de _coincide y aun asi el fix no cubria igual a los cuatro llamadores, porque cada uno le pasa otro conjunto de campos -- facturas no matcheaba por importe. O sea que contar DEFINICIONES no alcanzaba: un solo helper no implica un solo comportamiento, y esa es la version fina de la leccion que este repo ya tenia. (2) backend encontro una REGRESION PROPIA de #1542 y la declaro: 42 de la panaderia dejo de matchear 0001-00000042 por el limite de digitos, ~1 h en prod y SOLO en facturas. Paso CI 6/6 y suite verde porque los 8 tests nuevos vivian en el camino de presupuestos y el call-site de facturas no tenia la mitad que la habria cazado. Un fix verificado en un llamador y embarcado para todos es indistinguible de un fix completo hasta que alguien mide los otros. Las tarjetas pasaron sin tocar codigo. ⚠️ SALVEDAD DECLARADA por backend y conservada, no borrada: NO hay prueba en prod con LLM de facturas ni de tarjetas. Lo acreditado ahi son los tests por call-site y la suite; lo verificado en prod con LLM real es el camino de presupuestos. ➕ ANOTACION 2026-11-03 (INFO de auditoria): el DoD 4 (test adversarial: el actor A no resuelve el presupuesto de B) estaba SIN CITA. Existe y es test_K07B en test_plata_por_voz.py:489, pero con FAKES -- y eso hay que decirlo en vez de dejarlo pasar: CLAUDE.md §Seguridad exige que un control de aislamiento se ejercite contra el camino real, y un adversarial con fakes prueba la rama del codigo, no el aislamiento de la base. El aislamiento de fondo lo da la RLS, que SI tiene adversarial real. Queda TERMINADO con el alcance del DoD 4 rotulado como lo que es.
 - **Dueño:** backend
 - **De dónde sale:** frontend1 en device, 2026-11-03, intentando producir el estado que `SM-H5`
   necesita capturar. Pidió al agente aprobar el presupuesto **N° 87** dos veces y recibió
@@ -3145,7 +3145,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N49 · `sin-issue` — Un gate sin casilla no lo persigue nadie: el ratchet de tenant en el payload de toda activity
 
 - **Estado:** TERMINADO
-- **Cierre:** sha cc4adea8 (PR #1584, verificado ancestro de origin/main) - apps/copiloto/tests/test_ratchet_activity_payload_lleva_tenant.py. DoD1: ci-verde.sh 6/6 (backend/core/web/mobile/lint/drift). DoD2: los cuatro controles del propio gate medidos por manejo-de-errores - excepcion no declarada da rojo, excepcion podrida da rojo, control de ceguera sobre 19 activities (>=10), control positivo. Unica excepcion transcribe_voice, declarada con motivo en el test. DoD3: sha ancestro verificado. La ficha nace TERMINADO a proposito: el trabajo estaba hecho y la casilla faltaba - un gate sin casilla no lo persigue nadie.
+- **Cierre:** sha cc4adea8 (PR #1584, verificado ancestro de origin/main) - apps/copiloto/tests/test_ratchet_activity_payload_lleva_tenant.py. DoD1: ci-verde.sh 6/6 (backend/core/web/mobile/lint/drift). DoD2: los cuatro controles del propio gate medidos por manejo-de-errores - excepcion no declarada da rojo, excepcion podrida da rojo, control de ceguera sobre 19 activities (>=10), control positivo. Unica excepcion transcribe_voice, declarada con motivo en el test. DoD3: sha ancestro verificado. La ficha nace TERMINADO a proposito: el trabajo estaba hecho y la casilla faltaba - un gate sin casilla no lo persigue nadie. ➕ ANOTACION 2026-11-03 (INFO de auditoria): el commit cc4adea8 NO cita SM-N49, contra la regla de atribucion de CLAUDE.md §3.quater.bis punto 2. No es corregible sin reescribir historia, asi que queda ROTULADO acá: el trabajo de cc4adea8 (PR #1584) es el ratchet de tenant sobre las 19 activities del workflow, con transcribe_voice como unica excepcion declarada con motivo. La causa es la misma que en SM-N52: la casilla nacio DESPUES del trabajo, y es mia, no de quien lo hizo.
 - **Dueño:** manejo-de-errores
 - **De dónde sale:** no sale del corpus del mapa. Sale del frente de manejo de errores, y la ficha
   existe por una razón de registro: **un gate que nadie tiene en una casilla no lo persigue nadie**.
@@ -3253,8 +3253,18 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   `memoria/instrumento-que-no-mira-nunca-falla.md`: nadie preguntó cuántos miró.
 - **DoD:**
   1. Los 9 tests de `COPILOTO_CONSOLA_DSN` **corren en GitHub**, no sólo en `gate.sh`.
-  2. **Control binario**, la misma forma que #1589: el `skipped` del job baja **exactamente 9**
-     (80 → 71). Un número distinto significa que el fix tocó otra cosa.
+  2. **Control binario** ~~el `skipped` del job baja **exactamente 9** (80 → 71)~~ — **ENMENDADO
+     2026-11-03, con la medición y no por aproximación:** el `skipped` baja **35**, y la unidad son
+     **tests**. El «9» original salió de contar **lecturas de `environ.get`** en los archivos, que el
+     propio **Medido** de esta ficha declara que **no son tests** — así que el número del DoD medía
+     otra cosa que su propio enunciado. Leído literal daba **rojo** con el fix correcto puesto. Lo
+     medido fue 80 → 42 (**−38**): **−35 atribuible** al cambio por el diferencial del VPS, y **−3**
+     **no atribuible**, porque `main` se movió entre la corrida de referencia y la del PR. Esa
+     separación —lo atribuible de lo que no— es la forma correcta de reportar un control que no da
+     el número exacto; redondear habría convertido un control en una afirmación. La enmienda la
+     funda manejo-de-errores; el texto del DoD era **mío** y por eso lo corrijo acá y no en el
+     `Cierre:` ([[una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta]] — a este número le
+     faltaba la **unidad**).
   3. **Control positivo del propio control:** al menos uno de esos 9 tests da **ROJO** si se le
      quita el aislamiento — si no, lo que se encendió no era el test adversarial.
   4. Los `skipped` restantes quedan **clasificados por motivo** (`-ra`), para que la próxima vez el
@@ -3263,7 +3273,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N53 · `sin-issue` — El trauma de turno FUNDE todos los fallos de activity en UNA fila genérica que encabeza la cola de autosanación y no se puede reparar
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** cd332c96 (PR #1602) — el interceptor guarda `activity_id`, el workflow lo manda con su propio `workflow.patched`, y `registrar_trauma_de_turno` saltea SOLO si ya hay fila del interceptor para ese (workflow_id, activity_id): es la MARCA POSITIVA del DoD, no una enumeracion de tipos. DoD 1: dos fallos distintos de activity dejan 2 filas, no 3, contra la base de tests en el VPS con PG real. DoD 2: control positivo DEPOSITOS=2 conservado. DoD 3 (el que yo habia escrito mal): medido binario, 1 deposito por caso -- NotFound y el timeout start_to_close siguen dejando UNA fila workflow_turno cada uno y no se funden, que es exactamente el caso que habria quedado ciego si el fix enumeraba ApplicationError; `schedule_to_start` quedo retirado del DoD porque no existe en este workflow (el caso lo invente yo). DoD 4: este sha, mas la mutacion -- con el codigo de origin/main caen 3 de los 7 tests y los 4 controles pasan en ambos. tests/test_sm_n53_trauma_de_turno_sin_duplicar.py. CI 6/6, suite del VPS 2724 passed / 42 skipped.
 - **Dueño:** backend
 - **De dónde sale:** `pedido_manejo-de-errores-a-backend` del 2026-11-03, después de que #1587
   cableara «fallo del turno → DLQ». El defecto es **del fix**, no de lo que el fix arregló.
@@ -3283,19 +3294,36 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   la refutación llegó con la medición, no con una opinión.
 - **Cuál sobra, nombrado (no «hay duplicados»):** la fila de `workflow_turno` cuando `exc` es
   `ActivityError` con causa `ApplicationError` — ahí el interceptor ya dejó el rastro bueno.
-- **[NO MEDIDO], y por eso NO se borra sin más:** los casos que el interceptor **no ve**
-  (`schedule_to_start`, `NotFound`). Ahí esa fila puede ser **el único rastro**, así que el fix tiene
-  que ser condicional, no una poda.
+- **~~[NO MEDIDO]~~ → MEDIDO 2026-11-03 por manejo-de-errores, y el resultado CONFIRMA que no se
+  puede podar, pero por un caso distinto del que yo había escrito.** `NotFound` y el timeout
+  `start_to_close` dejan **SÓLO** la fila de turno: ahí es el **único** rastro. `NotFound` llega como
+  `ActivityError ← ApplicationError(type="NotFoundError")` y el interceptor **nunca lo ve**; el
+  timeout llega como `TimeoutError START_TO_CLOSE`.
+- **🔴 Y mi `schedule_to_start` NO EXISTE en el workflow.** Lo escribí en el `[NO MEDIDO]` y en el
+  DoD 3 de esta ficha por analogía con los modos de falla de Temporal, sin medirlo contra **este**
+  workflow. Un caso inventado en un DoD manda a probar algo que nadie midió, y el dueño lo habría
+  cerrado contra un criterio falso. El error es mío y es el mismo de
+  [[el-instrumento-fabrica-una-referencia-que-no-existe]]: un id plausible y uno real no se
+  distinguen al leerlos.
+- **🔴 Lo que esto cambia en la FORMA del fix, y es lo más importante de la medición:** saltear
+  **enumerando tipos** (`si la causa es ApplicationError`) dejaría a `NotFound` **sin ningún rastro**
+  —precisamente porque `NotFound` *es* un `ApplicationError`—. La regla correcta es la **marca
+  positiva**: saltear sólo cuando el interceptor **marcó que ya depositó**. Enumerar lo que hay que
+  ignorar es una lista que envejece; preguntar si el rastro bueno ya existe, no.
 - **DoD:**
   1. Dos fallos distintos de activity dejan **2 filas** (no 3), medido contra la base de **tests**.
   2. **Control positivo que hoy existe y hay que conservar:** `DEPOSITOS=2` antes del fix.
-  3. Un caso del conjunto `[NO MEDIDO]` (`schedule_to_start` o `NotFound`) **sigue dejando rastro**
-     — el test lo ejercita. Sin esto, el fix cambia un defecto por una ceguera.
+  3. **MEDIDO, en forma binaria: 1 depósito por caso.** `NotFound` y el timeout
+     `start_to_close` **siguen dejando rastro** después del fix — el test ejercita los dos. Sin esto,
+     el fix cambia un defecto por una ceguera. (`schedule_to_start` **se retira del DoD**: no existe
+     en este workflow.) El spike que lo mide lo dejó manejo-de-errores en su `dato_` del 2026-11-03,
+     y sirve de base del test.
   4. El `Cierre:` cita un sha **ancestro de `origin/main`** y el par antes/después con sus filas.
 
 ### SM-N54 · `sin-issue` — Si la DB cae al facturar un presupuesto, la app dice «falta el CUIT» y manda al emprendedor a rehacer un perfil fiscal que ya tiene
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** 6459a3ac (PR #1600) — `_cuit_del_tenant` con la DB caida responde 503 reintentable CON rastro y tenant, en vez del 409 «falta el perfil fiscal (CUIT)» que mandaba al emprendedor a rehacer un perfil que ya tenia. DoD 1: la respuesta se distingue en codigo y texto y no instruye a tocar el perfil fiscal. DoD 2: >=1 linea estructurada con el tenant. DoD 3: control positivo conservado -- el tenant que de verdad no tiene CUIT sigue recibiendo su 409. DoD 4: el test ejercita LAS DOS causas (una sola no atribuye). 8 tests, 5 caen con el codigo viejo. Verificado aparte por manejo-de-errores con su propio spike (ROJO a VERDE). CI 6/6.
 - **Dueño:** backend
 - **De dónde sale:** `pedido_manejo-de-errores-a-backend` del 2026-11-03. Backend declaró este punto
   **«sólo LEÍDO»** en su propio cierre; manejo-de-errores lo **ejercitó** y es defecto real.
@@ -3318,7 +3346,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N55 · `sin-issue` — Con Temporal caído, consultar el onboarding devuelve el mismo `None` que «nunca hubo alta», y el alta fallida no se ve como fallida
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Dueno-activo:** frontend1 o frontend2 (DoD 3)
+- **Falta:** UN punto, el DoD 3, y es de FRONTEND: la app tiene que tratar `paso=consulta_no_disponible` como «no pude consultar» y NO como «esta tardando». El backend ya esta hecho y mergeado (6459a3ac, PR #1600): `consultar_onboarding` con Temporal UNAVAILABLE devuelve un valor propio distinto de NOT_FOUND (DoD 1) y deja su linea con el tenant (DoD 2), con el control positivo de NOT_FOUND conservado (DoD 4). Mientras el front no lea ese paso, el defecto que la ficha nombra SIGUE VISIBLE para el emprendedor: un alta fallida se presenta como un alta lenta. No tiene dueno asignado todavia -- es lo unico que separa esta ficha de TERMINADO.
 - **Dueño:** backend
 - **De dónde sale:** el mismo `pedido_` del 2026-11-03. También estaba declarado **«sólo LEÍDO»**
   por backend.
@@ -3337,7 +3367,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N56 · `sin-issue` — El rastro nuevo de Composio caído sale con `cliente_id` NULL: dice que algo falló y no de quién
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** 6459a3ac (PR #1600) — el rastro que escribe `conexiones_salud.py` ahora sale con el `cliente_id` del tenant que lo origino; antes salia null aunque el llamador (`mi_dia_detector.py`) ya tenia el tenant en mano. DoD 1 y 2: el test afirma SOBRE EL VALOR del `cliente_id`, no sobre que la linea exista -- que es la unica forma de ver volver este defecto. Verificado aparte por manejo-de-errores: «el rastro de N56 ahora lleva cliente_id; antes salia null». CI 6/6.
 - **Dueño:** backend
 - **De dónde sale:** `pedido_manejo-de-errores-a-backend` del 2026-11-03, hallado al verificar
   `SM-N50`. Es el **hueco chico del fix que acabamos de cerrar**, no un frente nuevo.
@@ -3384,7 +3415,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-Z2 · `sin-issue` — El reveal pintaba badge de acento y el prototipo lo dibuja DESNUDO
 
 - **Estado:** TERMINADO
-- **Cierre:** `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama
+- **Cierre:** `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama ➕ ANOTACION 2026-11-03 (INFO de auditoria): esta ficha no tiene campo DoD, asi que su TERMINADO se acredita contra el enunciado del titulo y el codigo citado (61b684c2 #1567, ancestro verificado), no contra puntos. Queda rotulado para que nadie lo lea como un DoD cumplido: no habia DoD que cumplir.
   `esReveal` → `<Marca size={LOCKUP_SIMBOLO} tono="desnudo" />`: signo terracota a 54 sin badge,
   alineado a `Prototipo frontend/odobi-ui/prototipo/index.html:2547` (svg width 54). Cerrada por
   frontend2 con **control negativo** (un tercer par queda ROJO) y 66/66 de contraste. El tamaño 54
@@ -3426,7 +3457,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-Z4 · `sin-issue` — El wordmark difiere en TAMAÑO y en COLOR, y sólo el tamaño se corrige sin decidir
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Parte 2 (COLOR). La parte 1 (TAMANO) esta HECHA y mergeada: HERO 34 -> 32 en PantallaLogin.tsx:25 citando index.html:517, con test que lee .ig-marca .w del prototipo y compara contra el fontSize renderizado -- verde 13/13 y control NEGATIVO con HERO=34 en rojo (Expected 32, Received 34). SHA ab3eaf71 (#1572, CI 6/6), ancestro verificado. Falta la decision del operador sobre el color y, si es afirmativa, el par logotipo. MEDIDO por frontend2 y cambia la pregunta: NO son dos decisiones contrarias, es una divergencia que el login no heredo. El reveal tiene la decision ESCRITA -- identidadPalette.ts:13-16, COLOR_PALABRA_MARCA = #DE7250 con el motivo "es el logotipo, no texto de UI"; el login usa acentoTinta desde 810d1dff SIN decision escrita. Asi que la pregunta al operador deja de ser "el wordmark es logotipo exento?" y pasa a ser "el login adopta la misma exencion que el reveal YA tiene escrita?". Si la respuesta es si: agregar el par #de7250 -> #f7f3ec como logotipo para texto, con control positivo. Tambien pendiente de device el tamano real del wordmark en pantalla [ASSUMED_PENDING_VERIFY].
+- **Dueno-activo:** frontend2
+- **Falta:** SOLO DEVICE. Reescrito 2026-11-03 con la medicion de auditoria (d0f0e438, PR #1601): la parte 2 (COLOR) ya no esta bloqueada por el operador -- el wordmark usa `COLOR_PALABRA_MARCA` (PantallaLogin.tsx:150) y el par logotipo tiene su control, resuelto en e213dd47 (PR #1585), que es el sentido en que `RevealEntrada.tsx:146` ya lo habia resuelto y el login no habia heredado. La parte 1 (TAMANO, 34 -> 32) estaba hecha desde antes. Queda el TAMANO REAL EN DEVICE: el test compara el fontSize renderizado contra el prototipo en jsdom, y eso no acredita como se ve en pantalla.
 - **Dueño:** frontend2 (parte 1) · operador (parte 2)
 - **Medido (frontend2, al cerrar la entrada `03 · ingresar`, `809cc1fa`):** mapa **32 px** terracota
   `#DE7250` (`index.html:517`); app **34 px** (`PantallaLogin.tsx:25`) en `acentoTinta #B04A2E`.
