@@ -30,11 +30,31 @@ def set_trauma_de_turno_deps(fabrica: FabricaDeTraumas | None) -> None:
     _fabrica = fabrica
 
 
+def _ya_lo_deposito_el_interceptor(payload: dict[str, Any], cliente_id: str | None) -> bool:
+    """SM-N53: un `ActivityError` del turno que el interceptor YA depositó no se deposita de nuevo.
+
+    Marca positiva, no lista de tipos a ignorar: se saltea sólo si hay una fila del interceptor para
+    ese (workflow_id, activity_id). `NotFoundError` (activity no registrada) y `start_to_close` vencido
+    nunca pasaron por el interceptor, no tienen fila, y se depositan. Si no se pudo mirar → se deposita.
+    """
+    wf, act = payload.get("workflow_id"), payload.get("activity_id")
+    if not (wf and act and cliente_id and _fabrica is not None):
+        return False
+    try:
+        store = _fabrica(cliente_id)
+        return bool(store is not None
+                    and store.ya_deposito_la_activity(workflow_id=wf, activity_id=act) is True)
+    except Exception:  # noqa: BLE001
+        return False
+
+
 @activity.defn
 async def registrar_trauma_de_turno(payload: dict[str, Any]) -> bool:
     """Registra en el log y deposita en la DLQ el fallo de UN turno. Devuelve si depositó."""
     try:
         cliente_id = payload.get("cliente_id") or None
+        if _ya_lo_deposito_el_interceptor(payload, cliente_id):
+            return False
         nodo = str(payload.get("nodo") or "turno")
         error_type = str(payload.get("error_type") or "Exception")
         mensaje = str(payload.get("error_message") or "")

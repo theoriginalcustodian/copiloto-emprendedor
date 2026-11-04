@@ -164,6 +164,41 @@ class TraumaStore:
         return {"dedupe_count": dedupe_count, "insertado": bool(insertado),
                 "inundado": dedupe_count >= flood_threshold()}
 
+    def ya_deposito_la_activity(self, *, workflow_id: str, activity_id: str) -> bool | None:
+        """¿El interceptor de activities ya dejó la fila de ESTA activity de ESTE workflow?
+
+        Es la MARCA POSITIVA de SM-N53: el workflow que ve un `ActivityError` sólo puede saltear su
+        propio depósito si el interceptor dejó rastro de esa activity. Un fallo que el interceptor
+        nunca vio (activity no registrada → `NotFoundError`; `start_to_close` vencido) no tiene fila,
+        y ahí el depósito del workflow es el único que existe.
+
+        Devuelve `None` si no pudo mirar (conexión caída, RLS): "no pude mirar" NO es "no hay fila", y
+        el llamador debe depositar igual — duplicar es el error barato, perder el fallo no.
+        Si dos activities distintas fallan con el MISMO fingerprint, el upsert deja el `activity_id`
+        de la última: la primera se vería "sin fila" y se deposita de más. Sobre-reportar, no perder.
+        """
+        try:
+            conn = self._conn_factory()
+        except Exception:  # noqa: BLE001
+            return None
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""SELECT 1 FROM {TABLA}
+                         WHERE cliente_id = %s AND costura = 'activity_interceptor'
+                           AND contexto ->> 'workflow_id' = %s
+                           AND contexto ->> 'activity_id' = %s
+                         LIMIT 1""",
+                    (self._cid, workflow_id, activity_id))
+                return cur.fetchone() is not None
+        except Exception:  # noqa: BLE001
+            return None
+        finally:
+            try:
+                conn.close()
+            except Exception:  # noqa: BLE001
+                pass
+
     # ------------------------------------------------------- máquina de estados
     def tomar(self, *, limite: int = 10) -> list[dict]:
         """Marca hasta `limite` pendientes como `en_proceso` y los devuelve, en una sola sentencia.
