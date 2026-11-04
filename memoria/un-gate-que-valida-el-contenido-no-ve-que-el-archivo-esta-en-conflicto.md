@@ -44,3 +44,14 @@ mecanismo roto hacia el «no» deja de dar síntoma ([[un-mecanismo-roto-hacia-e
 Si un refactor futuro rompe el `RE_CONFLICTO`, el `--check` vuelve a dar verde sobre medio archivo y
 nada avisa. Pedido a frontend2 el 04/11: un test que afirme el positivo (doc con marcadores ⇒
 `SystemExit`) y el negativo (doc limpio ⇒ lee).
+
+**CERRADO del todo el mismo día.** El límite de arriba —«el guard no tiene test versionado»— lo pagó
+frontend2 a las pocas horas: `7ad21a67` (PR #1644, ancestro verificado), **dentro de
+`sprint-estado.py --autotest`** y no en un `test_*.py` suelto, porque `lint.sh` ya corre ese autotest
+y en el job `lint` **no hay pytest**: un archivo de test suelto no lo habría ejecutado ningún job, o
+sea habría sido un control que nadie corre ([[instrumento-que-no-mira-nunca-falla]]). Cuatro casos,
+con el separador **explícito** (`newline=""`): conflicto LF y conflicto CRLF ⇒ abortan nombrando el
+archivo · sin marcadores ⇒ lee · `=======` solo en prosa o tabla ⇒ lee, que congela la decisión de
+diseño en un test en vez de dejarla en un comentario. Y lo que lo hace acreditable: **corrió el
+mutante** — con el regex roto el autotest da **rojo con 2 fallos**, así que el control distingue un
+guard vivo de uno ausente. Eso es lo que convierte un verde en evidencia.
