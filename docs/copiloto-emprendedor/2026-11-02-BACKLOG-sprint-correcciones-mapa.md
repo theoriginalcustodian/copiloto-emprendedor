@@ -3293,14 +3293,30 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   la refutación llegó con la medición, no con una opinión.
 - **Cuál sobra, nombrado (no «hay duplicados»):** la fila de `workflow_turno` cuando `exc` es
   `ActivityError` con causa `ApplicationError` — ahí el interceptor ya dejó el rastro bueno.
-- **[NO MEDIDO], y por eso NO se borra sin más:** los casos que el interceptor **no ve**
-  (`schedule_to_start`, `NotFound`). Ahí esa fila puede ser **el único rastro**, así que el fix tiene
-  que ser condicional, no una poda.
+- **~~[NO MEDIDO]~~ → MEDIDO 2026-11-03 por manejo-de-errores, y el resultado CONFIRMA que no se
+  puede podar, pero por un caso distinto del que yo había escrito.** `NotFound` y el timeout
+  `start_to_close` dejan **SÓLO** la fila de turno: ahí es el **único** rastro. `NotFound` llega como
+  `ActivityError ← ApplicationError(type="NotFoundError")` y el interceptor **nunca lo ve**; el
+  timeout llega como `TimeoutError START_TO_CLOSE`.
+- **🔴 Y mi `schedule_to_start` NO EXISTE en el workflow.** Lo escribí en el `[NO MEDIDO]` y en el
+  DoD 3 de esta ficha por analogía con los modos de falla de Temporal, sin medirlo contra **este**
+  workflow. Un caso inventado en un DoD manda a probar algo que nadie midió, y el dueño lo habría
+  cerrado contra un criterio falso. El error es mío y es el mismo de
+  [[el-instrumento-fabrica-una-referencia-que-no-existe]]: un id plausible y uno real no se
+  distinguen al leerlos.
+- **🔴 Lo que esto cambia en la FORMA del fix, y es lo más importante de la medición:** saltear
+  **enumerando tipos** (`si la causa es ApplicationError`) dejaría a `NotFound` **sin ningún rastro**
+  —precisamente porque `NotFound` *es* un `ApplicationError`—. La regla correcta es la **marca
+  positiva**: saltear sólo cuando el interceptor **marcó que ya depositó**. Enumerar lo que hay que
+  ignorar es una lista que envejece; preguntar si el rastro bueno ya existe, no.
 - **DoD:**
   1. Dos fallos distintos de activity dejan **2 filas** (no 3), medido contra la base de **tests**.
   2. **Control positivo que hoy existe y hay que conservar:** `DEPOSITOS=2` antes del fix.
-  3. Un caso del conjunto `[NO MEDIDO]` (`schedule_to_start` o `NotFound`) **sigue dejando rastro**
-     — el test lo ejercita. Sin esto, el fix cambia un defecto por una ceguera.
+  3. **MEDIDO, en forma binaria: 1 depósito por caso.** `NotFound` y el timeout
+     `start_to_close` **siguen dejando rastro** después del fix — el test ejercita los dos. Sin esto,
+     el fix cambia un defecto por una ceguera. (`schedule_to_start` **se retira del DoD**: no existe
+     en este workflow.) El spike que lo mide lo dejó manejo-de-errores en su `dato_` del 2026-11-03,
+     y sirve de base del test.
   4. El `Cierre:` cita un sha **ancestro de `origin/main`** y el par antes/después con sus filas.
 
 ### SM-N54 · `sin-issue` — Si la DB cae al facturar un presupuesto, la app dice «falta el CUIT» y manda al emprendedor a rehacer un perfil fiscal que ya tiene
