@@ -755,6 +755,80 @@ describe('PantallaAfipSetup', () => {
   });
 
   // -----------------------------------------------------------------------------------------
+  // SM-N55 -- `paso=consulta_no_disponible`: un alta que NO se pudo consultar no es un alta lenta.
+  // Los dos caminos en el mismo bloque: con uno solo no se distingue "leo el paso nuevo" de
+  // "cambié el texto para todos".
+  // -----------------------------------------------------------------------------------------
+  async function vincularYEsperar(ms: number) {
+    await montar();
+    await avanzarAPaso3();
+    await fireEvent.changeText(screen.getByTestId('afip-arca-usuario-input'), 'ana.emprendedora');
+    await fireEvent.changeText(screen.getByTestId('afip-arca-clave-campo-input'), 'clave123');
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('afip-arca-vincular'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(ms);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  }
+
+  it('SM-N55: con `consulta_no_disponible` corta el polling y dice «no pude consultar», no «está tardando»', async () => {
+    jest.useFakeTimers();
+    try {
+      jest.mocked(conectarArca).mockResolvedValueOnce({ status: 'ok', ok: true, workflowId: 'w1', mensaje: 'ok' });
+      jest
+        .mocked(estadoAfip)
+        .mockResolvedValue(estadoOk({ onboarding: onboardingMock({ paso: 'consulta_no_disponible' }) }));
+
+      await vincularYEsperar(3_000);
+
+      expect(screen.getByTestId('afip-arca-progreso-no-consulta')).toHaveTextContent('No pude consultar', {
+        exact: false,
+      });
+      expect(screen.queryByTestId('afip-arca-progreso-tardando')).toBeNull();
+      expect(screen.getByTestId('afip-arca-reintentar')).toBeTruthy();
+
+      // El polling se detuvo de verdad: pasar los 10 min NO cambia el aviso ni vuelve a consultar.
+      const llamadas = jest.mocked(estadoAfip).mock.calls.length;
+      await act(async () => {
+        jest.advanceTimersByTime(10 * 60 * 1000);
+        await Promise.resolve();
+      });
+      expect(jest.mocked(estadoAfip).mock.calls.length).toBe(llamadas);
+      expect(screen.queryByTestId('afip-arca-progreso-tardando')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('SM-N55 (control positivo): el alta que de verdad está en curso sigue pollenado y termina en «está tardando»', async () => {
+    jest.useFakeTimers();
+    try {
+      jest.mocked(conectarArca).mockResolvedValueOnce({ status: 'ok', ok: true, workflowId: 'w1', mensaje: 'ok' });
+      jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ onboarding: onboardingMock({ paso: 'dando_de_alta' }) }));
+
+      await vincularYEsperar(3_000);
+      // En curso: muestra el paso, NO el aviso de consulta caída.
+      expect(screen.getByTestId('afip-arca-progreso-paso')).toBeTruthy();
+      expect(screen.queryByTestId('afip-arca-progreso-no-consulta')).toBeNull();
+
+      await act(async () => {
+        jest.advanceTimersByTime(10 * 60 * 1000);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.getByTestId('afip-arca-progreso-tardando')).toBeTruthy();
+      expect(screen.queryByTestId('afip-arca-progreso-no-consulta')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  // -----------------------------------------------------------------------------------------
   // Bloque de ambiente -- modo degradado.
   // -----------------------------------------------------------------------------------------
   /**
