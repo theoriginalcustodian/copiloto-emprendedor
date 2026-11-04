@@ -275,6 +275,57 @@ describe('SM-N22 — el asa queda ENCIMA del campo (pieAbajo)', () => {
     expect(within(pie).queryByTestId('panel-pie-scrim', { includeHiddenElements: true })).toBeNull();
   });
 
+  // 🔴 SM-N38b — el arrastre vale en TODA la franja del campo, y el toque sobre el campo sigue abriendo el teclado.
+  // El COMPORTAMIENTO del Pan se mide en device (`adb input motionevent` DOWN/MOVE/UP); acá se asegura el MECANISMO:
+  // el campo vive DENTRO de una superficie con detector propio (antes quedaba afuera y sólo agarraba la línea) y su
+  // toque sigue llegando al `Pressable` de adentro.
+  describe('SM-N38b — el campo (pieAbajo) también agarra el arrastre', () => {
+    async function conCampo(props: Partial<React.ComponentProps<typeof PanelDeslizable>> = {}, alTocar = jest.fn()) {
+      const { Pressable } = require('react-native');
+      await render(
+        <ThemeProvider>
+          <PanelDeslizable
+            fondo={<Text>fondo</Text>}
+            altoPieAbajo={PIE}
+            pieAbajo={
+              <Pressable testID="campo-toque" onPress={alTocar}>
+                <Text>Escribile a Odobi</Text>
+              </Pressable>
+            }
+            {...props}
+          >
+            <Text>chat</Text>
+          </PanelDeslizable>
+        </ThemeProvider>,
+      );
+      return alTocar;
+    }
+
+    it('el campo está dentro de la superficie del detector, no al costado', async () => {
+      await conCampo({ arrancaAbajo: true });
+      const superficie = screen.getByTestId('panel-pie-gesto', { includeHiddenElements: true });
+      expect(within(superficie).getByTestId('campo-toque', { includeHiddenElements: true })).toBeTruthy();
+      // la superficie del detector llena toda la franja del pie (sin esto el agarre quedaba en la línea)
+      expect(StyleSheet.flatten(superficie.props.style).flex).toBe(1);
+    });
+
+    it('con el panel abajo el pie recibe toques ENTEROS (antes `box-none`: sólo sus hijos, el detector no veía nada)', async () => {
+      await conCampo({ arrancaAbajo: true });
+      expect(screen.getByTestId('panel-pie-abajo', { includeHiddenElements: true }).props.pointerEvents).toBe('auto');
+    });
+
+    it('con el panel arriba el pie no recibe nada (el chat manda)', async () => {
+      await conCampo({ arrancaAbajo: false });
+      expect(screen.getByTestId('panel-pie-abajo', { includeHiddenElements: true }).props.pointerEvents).toBe('none');
+    });
+
+    it('🔴 el toque sobre el campo SIGUE llegando a su Pressable — la mitad que un fix apurado rompe', async () => {
+      const alTocar = await conCampo({ arrancaAbajo: true });
+      await fireEvent.press(screen.getByTestId('campo-toque'));
+      expect(alTocar).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('control negativo: sin `pieAbajo` no se monta nada extra', async () => {
     await render(
       <ThemeProvider>

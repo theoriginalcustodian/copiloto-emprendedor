@@ -4972,6 +4972,15 @@
       "id": "panel-pie-abajo",
       "motivo": "SM-N22 (2026-11-02): estructura del panel/escritorio de la app NATIVA (campo de Mi día dentro del panel bajo el asa; reserva de la tira). La web no tiene panel deslizable."
     },
+    "src/shell::panel-pie-gesto": {
+      "en": [
+        "apps/mobile/src/shell/PanelDeslizable.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-03",
+      "id": "panel-pie-gesto",
+      "motivo": "SM-N48 (2026-11-03): superficie del GestureDetector del tirador de abajo (franja completa del pie, no solo la linea) en el panel NATIVO. El arrastre tactil es de la app; la web no tiene panel deslizable."
+    },
     "src/shell::panel-superficie": {
       "en": [
         "apps/mobile/src/shell/PanelDeslizable.tsx"
