@@ -110,6 +110,16 @@ la app es tocar 2 archivos de tokens, no 121 componentes.**
 **El acento no cambia entre claro y oscuro.** Es lo que sostiene la identidad: el terracota es el
 mismo en las tres pieles.
 
+### 2.2.bis El acento como SUPERFICIE con texto — regla del sistema (decisión del operador, 2026-11-04)
+
+**El botón primario, y toda superficie de acento con texto encima, va en `#B04A2E` (`acentoSuperficie`), no en `#DE7250`,
+en las tres pieles y sin invertir por piel.** Motivo: blanco sobre `#DE7250` da 3,17:1 y sobre `#B04A2E` da 5,43:1. El
+primero no llega a 4,5:1. El alto del botón primario es 54 (`ALTO_BOTON`). El `#DE7250` queda para adorno y para tinta sin
+texto encima. **Donde el prototipo pinte `.btn` en `--terracota` con alto 52, gana esta regla: el prototipo se actualiza**
+y el corpus del mapa lo cuenta como DIFERENTE · B. Implementación: `apps/mobile/src/theme/tokens.ts:98-105`
+(`acentoSuperficie`). Antes de esta fecha el argumento vivía sólo en ese comentario y no era decisión: lo decidió el operador
+a raíz de la entrada 03 del relevamiento (SM-L4).
+
 ### 2.3 Aplanado de superficies — la regla, no el caso
 
 Mariposas declara superficies como `rgba(...)` sobre un fondo. Como este sprint va sin translucidez,

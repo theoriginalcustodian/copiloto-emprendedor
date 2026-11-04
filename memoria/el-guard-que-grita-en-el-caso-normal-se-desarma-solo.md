@@ -175,3 +175,23 @@ mismo día, **un modo de supresión nombrado** (acá `VERSION_YA_VERIFICADA=1`) 
 *¿qué tests de OTROS sujetos capturan su salida?* Si no la tenés medida, el guard no está terminado:
 lo vas a descubrir cuando el rojo ajeno le llegue a alguien que no sabe que es tuyo
 (`el-primer-test-rojo-mata-la-suite-y-el-rojo-ajeno-se-vuelve-escudo-del-propio`).
+
+## Refuerzo 2026-11-04 — el gemelo: un guard calibrado contra el EXCESO no mide la CARENCIA
+
+El mismo defecto por el otro extremo, y costó más que el falso positivo. La regla de masa del sprint
+decía «PR por masa ~8 o fin del día», calibrada contra un día de **150 PRs**. Le faltaba el tercer
+caso: **«o no te queda trabajo propio en la mano»**. Con ese hueco, cuatro sesiones se pararon a la
+vez —frontend1 en masa 3, frontend2 en 2, backend en 7 «acumulando por si cae algo más», y yo con 2
+retenidas— y **todas respetaban el ROJO exactamente como se lo había pedido**. El defecto era del
+gate, no de ellas.
+
+Lo que lo hace la misma clase: el guard tiene **una sola señal**, así que su silencio se lee como
+conformidad en los **dos** extremos. Nadie puede distinguir «no disparo porque estás bien» de «no
+disparo porque no mido tu caso». Y el extremo no medido salió más caro: 150 PRs cuestan revisión;
+tres sesiones paradas con 29 fichas abiertas cuestan el sprint. Peor todavía, mis 2 retenidas dejaban
+**`origin/main` mintiendo** —`SM-N55` y `SM-K3` figuraban `DOD-PARCIAL` estando cerradas— con dos
+sesiones a punto de rehacerlas.
+
+**Cómo aplicarlo:** para cada guard, preguntá *¿qué extremo de esta variable NO mido?* y, si el
+silencio del guard es ambiguo entre «conforme» y «fuera de rango medido», hacelo explícito. Un umbral
+contra el exceso necesita su piso declarado, aunque el piso parezca el caso feliz.

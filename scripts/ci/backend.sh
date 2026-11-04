@@ -38,5 +38,22 @@ else
   # no en `lint` porque necesitan pytest (uno es estilo pytest, el otro `unittest`), y `lint` corre
   # python STDLIB. Corridos como script, el primero salía VERDE sin ejecutar ninguna aserción.
   "$PY" -m pytest tests --co -q
-  "$PY" -m pytest tests ../../motor/backend/agent ../../motor/clients/agent ../../deploy/copiloto/test_meclaves_check.py ../../deploy/copiloto/test_caddy_converge.py ../../deploy/copiloto/test_worker_pollers_check.py -q
+  # SM-N58: el conteo de skips sale SIEMPRE al final, con el delta contra la línea base declarada, y
+  # un skip no declarado hace fallar el job. Un `skipped` dentro de un verde se lee como cobertura
+  # (SM-I7), y el conteo leído con `tail` ya mintió una vez (27 en vez de 41). `-rs` deja el motivo
+  # de cada salto en el log; el junit da los nodeids, estables ante ediciones (el `path:línea` no).
+  JUNIT="$(mktemp "${TMPDIR:-/tmp}/uc-backend-junit.XXXXXX.xml")"
+  trap 'rm -f "$JUNIT"' EXIT
+  set +e
+  "$PY" -m pytest tests ../../motor/backend/agent ../../motor/clients/agent ../../deploy/copiloto/test_meclaves_check.py ../../deploy/copiloto/test_caddy_converge.py ../../deploy/copiloto/test_worker_pollers_check.py ../../scripts/ci/test_skips_linea_base.py -q -rs --junitxml="$JUNIT"
+  RC_PYTEST=$?
+  set -e
+  # Sin Postgres los @necesita_pg se saltan por diseño (dev-loop): se informa, no se evalúa.
+  SOLO_INFORMAR=(); [ "${UC_SIN_PG:-0}" = "1" ] && SOLO_INFORMAR=(--solo-informar)
+  set +e
+  "$PY" "$ROOT/scripts/ci/skips_linea_base.py" "$JUNIT" "$ROOT/scripts/ci/skips-linea-base.txt" "${SOLO_INFORMAR[@]}"
+  RC_SKIPS=$?
+  set -e
+  [ "$RC_PYTEST" -ne 0 ] && exit "$RC_PYTEST"
+  exit "$RC_SKIPS"
 fi

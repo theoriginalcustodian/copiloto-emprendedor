@@ -369,9 +369,9 @@
   /* 19 px display bold es el PISO legal sobre #DE7250 (3,17:1 = AA sólo por "texto
      grande", desde 18,66 px). Acá no se baja a 16 como en las tarjetas: este botón
      ejecuta algo real. */
-  .btn{min-height:52px;border-radius:var(--r-pill);display:flex;align-items:center;justify-content:center;
+  .btn{min-height:54px;border-radius:var(--r-pill);display:flex;align-items:center;justify-content:center;
        font-family:var(--display);font-size:var(--fs-btn);line-height:var(--lh-btn);
-       color:var(--blanco);background:var(--terracota);margin-bottom:8px;cursor:pointer;
+       color:var(--blanco);background:var(--terracota-prof);margin-bottom:8px;cursor:pointer;
        box-shadow:0 4px 14px rgba(222,114,80,.35)}
   /* Cancelar pasa de borde a superficie: mismo tamaño de target, cero líneas. */
   .btn2{min-height:var(--tap);border-radius:var(--r-pill);display:flex;align-items:center;justify-content:center;
@@ -2484,6 +2484,10 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
           <p>Si vence, se te cae la facturación entera: no vas a poder emitir hasta renovarlo.</p>
           <span class="accion">Renovarlo</span>
         </span>
+      </div>
+      <div class="ig-campos" id="tablero-alta" style="margin-bottom:var(--s2)">
+        <div><label class="ig-lbl">Anotar algo para hoy</label><div class="ig-campo" style="color:var(--sec)">Llamar al proveedor</div></div>
+        <span class="btn" style="align-self:flex-end;padding:0 20px">Agregar</span>
       </div>
       <div class="segb"><span class="on"><svg width="13" height="13" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Para hoy 3</span><span>Haciendo 1</span><span>Hechas</span></div>
       <div class="fchips"><span class="on"><svg width="13" height="13" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Todo</span><span>Cobros</span><span>ARCA</span><span>Presupuestos</span><span>Tuyas</span></div>

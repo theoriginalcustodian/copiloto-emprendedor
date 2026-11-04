@@ -55,7 +55,3 @@ def test_mercadopago_y_googlecalendar_son_primera_clase_no_services():
     assert {"mercadopago", "googlecalendar"}.issubset(SERVICIOS_CON_TOOL_VIVA)
 
 
-def test_instagram_no_tiene_tool_viva():
-    """La razón de ser de RIESGOPROMESAWEB: instagram no aparece en ningún lado del universo real."""
-    assert "instagram" not in _derivar_universo_real()
-    assert "instagram" not in SERVICIOS_CON_TOOL_VIVA

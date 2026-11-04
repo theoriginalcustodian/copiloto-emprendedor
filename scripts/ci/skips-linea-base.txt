@@ -1,0 +1,66 @@
+# Línea base de skips de la suite backend (SM-N58). Un nodeid por línea; `#` es comentario.
+# La lee scripts/ci/skips_linea_base.py desde scripts/ci/backend.sh: un skip que NO está acá hace fallar el job.
+# Es la UNIÓN de los entornos (gate del VPS y GitHub Actions). Inventario y decisión:
+# docs/copiloto-emprendedor/Auditorias/2026-11-03-SM-N58-skips-por-credencial-de-tercero-inventario-y-decision.md
+# Cobertura [UNVERIFIED] — declarada 2026-11-03, se revisa el 2026-12-03 o antes de abrir la beta a usuarios reales.
+# Agregar una línea acá es DECLARAR que esa pregunta queda sin responder: va con clase, dueño y motivo.
+
+## N57 · dueño backend · SM-N57: aislamiento de memoria entre tenants. Desde #1619 (f76e6751) CORRE en el gate del VPS; acá queda por GitHub, que no tiene Graphity
+apps.copiloto.tests.test_memory_isolation_live::test_recall_isolation_cross_emprendedor
+
+## COSTURA-NUESTRA · dueño manejo-de-errores · pregunta sobre NUESTRO código; ejecutable sin credencial con un LLM grabado
+# (2026-11-04) los 2 de test_autosanacion_cadena_completa ya corren con el LLM grabado: fuera de la línea base.
+# Los 2 de BETA4a siguen: además del LLM exigen graphity-code REAL (resolver_origen contra el grafo).
+apps.copiloto.tests.test_beta4a_soporte_clasificador_cadena::test_BETA4a_ticket_con_simbolo_real_dispara_la_cadena_completa_hasta_veredicto
+apps.copiloto.tests.test_beta4a_soporte_clasificador_cadena::test_BETA4a_ticket_no_tecnico_queda_necesita_humano_sin_tocar_el_forjador
+
+## SPIKE · dueño manejo-de-errores · exploratorio; no es cobertura
+apps.copiloto.tests.test_spike_beta0_forjador_vs_sintomas::test_SPIKE_beta0_ticket_C_con_origen_hand_crafted_que_produce_el_forjador
+apps.copiloto.tests.test_spike_beta0_forjador_vs_sintomas::test_SPIKE_beta0_tickets_A_B_sin_origen_son_rechazados_por_el_gate
+
+## MODELO · dueño backend · calidad del LLM real; se corre a mano al cambiar modelo o prompt
+apps.copiloto.tests.test_e2e_react::test_e2e_react_cobro_mail_confirm_real_llm
+apps.copiloto.tests.test_e2e_react::test_e2e_react_cobro_mail_reject_no_inventa_link
+apps.copiloto.tests.test_llm_openai::test_gpt4o_mini_emits_parseable_json_real
+apps.copiloto.tests.test_selection_qa::test_seleccion_gpt4omini
+
+## MODELO · dueño manejo-de-errores · calidad del LLM real; se corre a mano al cambiar modelo o prompt
+apps.copiloto.tests.test_auditor_parches::test_REAL_el_auditor_no_rechaza_TODO_por_reflejo
+apps.copiloto.tests.test_auditor_parches::test_REAL_gpt4o_rechaza_los_TRES_parches_rotos
+
+## TERCERO · dueño backend · camino del proveedor; se corre a mano en el VPS al cambiar de versión o antes de la beta
+apps.copiloto.tests.test_calendar_gateway::test_slugs_existen_en_composio_real
+apps.copiloto.tests.test_calendar_gateway::test_version_pineada_existe_real
+apps.copiloto.tests.test_docs::test_create_doc_real_y_readback
+apps.copiloto.tests.test_drive::test_create_real_y_readback
+apps.copiloto.tests.test_e2e::test_e2e_agenda_evento
+apps.copiloto.tests.test_e2e_tool_action::test_e2e_tool_action_gmail_send
+apps.copiloto.tests.test_gmail::test_send_real_y_readback
+apps.copiloto.tests.test_orquestador_rag_client_real::test_ANSWERED_real_una_pregunta_del_corpus_trae_contenido
+apps.copiloto.tests.test_orquestador_rag_client_real::test_REFUSED_real_una_pregunta_fuera_de_dominio_no_la_contesta
+apps.copiloto.tests.test_orquestador_rag_client_real::test_UNAVAILABLE_real_token_invalido_degrada_sin_lanzar
+apps.copiloto.tests.test_sheets::test_append_no_pisa_y_update_puntual_real
+
+## ENTORNO · dueño manejo-de-errores · kb-usuario no viaja al stage del VPS; lo corre GitHub
+apps.copiloto.tests.test_arca_sin_afip_visible::test_la_kb_de_usuario_no_dice_AFIP_suelta
+
+## ENTORNO-GITHUB · dueño manejo-de-errores · GoTrue de test: GitHub no la levanta; la corre gate.sh:209 en el VPS
+apps.copiloto.tests.test_alta_email_camino_real::test_SMC2_INVERTIDO_sin_env_del_invite_el_alta_funciona
+apps.copiloto.tests.test_alta_email_camino_real::test_SMC2_INVERTIDO_sin_invite_o_con_uno_equivocado_se_registra_igual[]
+apps.copiloto.tests.test_alta_email_camino_real::test_SMC2_INVERTIDO_sin_invite_o_con_uno_equivocado_se_registra_igual[otro-token]
+apps.copiloto.tests.test_alta_email_camino_real::test_SMC2_alta_por_email_de_punta_a_punta_signup_login_me
+apps.copiloto.tests.test_auth_login_gotrue_real::test_CONTROL_POSITIVO_clave_de_mas_en_el_payload_real_se_detecta
+apps.copiloto.tests.test_auth_login_gotrue_real::test_CONTROL_POSITIVO_clave_faltante_en_la_declaracion_se_detecta
+apps.copiloto.tests.test_auth_login_gotrue_real::test_login_contra_gotrue_real_devuelve_exactamente_CLAVES_LOGIN
+apps.copiloto.tests.test_cambiar_cuenta_gotrue_real::test_ADVERSARIAL_token_de_A_no_cambia_el_email_de_B_contra_gotrue_real
+apps.copiloto.tests.test_cambiar_cuenta_gotrue_real::test_ADVERSARIAL_token_de_A_no_cambia_la_contrasena_de_B_contra_gotrue_real
+apps.copiloto.tests.test_cambiar_cuenta_gotrue_real::test_cambiar_contrasena_ok_contra_gotrue_real
+apps.copiloto.tests.test_cambiar_cuenta_gotrue_real::test_cambiar_email_ok_queda_pendiente_contra_gotrue_real
+apps.copiloto.tests.test_cambiar_cuenta_gotrue_real::test_cambiar_email_ya_en_uso_es_409_contra_gotrue_real
+apps.copiloto.tests.test_cambiar_cuenta_gotrue_real::test_contrasena_actual_incorrecta_es_401_contra_gotrue_real
+apps.copiloto.tests.test_cambiar_cuenta_gotrue_real::test_contrasena_nueva_debil_o_igual_es_422_contra_gotrue_real[abc]
+apps.copiloto.tests.test_cambiar_cuenta_gotrue_real::test_contrasena_nueva_debil_o_igual_es_422_contra_gotrue_real[clave-inicial-1]
+
+## ENTORNO-GITHUB · dueño manejo-de-errores · Temporal no corre en GitHub (127.0.0.1:7233); lo corre el gate del VPS
+apps.copiloto.tests.test_afip_onboarding::test_el_history_del_workflow_no_contiene_la_clave_fiscal
+apps.copiloto.tests.test_afip_onboarding::test_el_workflow_termina_en_fallido_si_el_alta_falla

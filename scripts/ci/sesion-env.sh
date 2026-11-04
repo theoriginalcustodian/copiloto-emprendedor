@@ -47,8 +47,11 @@ case "$UC_SESION" in
   # los puertos de auditoría mientras auditoría trabaja, y deja un recibo que dice que la rama la
   # probó otra sesión. Hoy ya pagamos un recibo mal atribuido (2026-09-22, el pre-squash de #654).
   plan)    _sfx=plan; _port=55437; _gport=9977; _gmport=8977 ;;
+  err|manejo-de-errores)
+           _sfx=err; _port=55438; _gport=9978; _gmport=8978 ;;   # manejo-de-errores (2026-11-04: sin entrada, gate.sh abortaba y la sesion no podia dejar recibo)
+
   "")      _sfx="" ;;
-  *) echo "sesion-env: UC_SESION='$UC_SESION' desconocida (backend|fe1|fe2|aud|plan)" >&2; return 1 2>/dev/null || exit 1 ;;
+  *) echo "sesion-env: UC_SESION='$UC_SESION' desconocida (backend|fe1|fe2|aud|plan|err)" >&2; return 1 2>/dev/null || exit 1 ;;
 esac
 
 if [ -n "$_sfx" ]; then

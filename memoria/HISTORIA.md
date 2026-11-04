@@ -557,3 +557,11 @@ Dos entradas nuevas que sólo importan al tocar animaciones de `apps/mobile`. Se
 - **Prod-beta vivo**, RLS `FORCE` · smoke **39/39 sobre `92fd8a06`** + durabilidad 8/8. [[copiloto-deploy-multitenant-vivo]]
 - **⚠️ El frente de MANEJO DE ERRORES lo destaparon INSTRUMENTOS QUE MENTÍAN, no features** (5 de 35 PRs). [[instrumentos-que-confirman-en-vez-de-verificar]]
 - [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild. **Subida 13-10: device habilitado.**
+
+## Sin pasar por el indice el 2026-11-04 — el indice entraba una sola linea
+
+El margen alcanzaba para UNA entrada y se la quedo la del `Falta:` que no se recorta, porque gobierna
+el cierre del sprint en curso. Esta se busca por tema y sigue citada desde la ficha de la receta.
+
+- [🍳💸 Una premisa no medida de la receta falla cuando el recurso CARO ya esta comprometido](la-premisa-no-medida-de-la-receta-falla-cuando-el-recurso-caro-ya-esta-comprometido.md) — el momento de medirla es ANTES de tomar el device.
+

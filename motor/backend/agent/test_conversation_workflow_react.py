@@ -535,7 +535,7 @@ async def test_react_stale_callback_without_parked_gate_does_not_reach_llm():
 async def test_react_second_turn_sees_prior_turn_history():
     """REGRESIÓN memoria de corto plazo: en 'react' el 2º turno de TEXTO normal (sin gate de por medio) DEBE
     ver el turno anterior. Síntoma real (operador): 'revisá gmail, últimos 100' -> responde; luego 'dame los
-    últimos 100' -> 'no entiendo, ¿a qué te referís? (¿actividades, Instagram, correos?)'. Causa raíz: cada
+    últimos 100' -> 'no entiendo, ¿a qué te referís? (¿actividades, cobros, correos?)'. Causa raíz: cada
     turno react arrancaba el scratchpad con SOLO el mensaje actual (`messages=[user]`), sin inyectar el buffer
     `self._history` — a diferencia de `dispatch`, que pasa `prior[-20:]`. El buffer existía (state durable del
     workflow, persistente por sesión) pero react NO lo consumía para el prompt del LLM. Fix: el turno normal

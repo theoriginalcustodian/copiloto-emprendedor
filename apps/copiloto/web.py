@@ -561,15 +561,17 @@ def make_signal_anulacion(temporal_client) -> Callable:
 def _composio_valid_toolkits() -> frozenset[str]:
     """Toolkits Composio que el usuario puede CONECTAR, DERIVADOS de la policy real: `CALENDAR_POLICY` más los
     módulos de `services/` con acciones (`services.connectable_policy()`). Sin lista literal que pueda driftear.
-    Un servicio sin `TOOLS` (Drive, tras la poda del hito 2) no aparece ni acepta `/composio/connect`.
+    Un servicio es conectable si tiene `TOOLS` **o** está en `ARCHIVADO_SLUGS`: Drive SÍ aparece (SM-Z1, `63b50b8a`)
+    porque archiva facturas aunque el agente no tenga tools de Drive. Lo exige `test_catalog_route.py`; si algún
+    día este docstring y ese test discrepan, manda el test. Lo que no es conectable no acepta `/composio/connect`.
     El worker sigue usando `services.merged_policy()` completo para no romper el archivado de facturas."""
     return toolkits_conectables()      # SM-N18: UNA definición, compartida con el aviso de conexión caída
 
 
 def _composio_known_toolkits() -> frozenset[str]:
     """Toolkits que el sistema CONOCE, conectables o no: la unión completa de policies. Sólo para REVOCAR.
-    Un tenant puede tener hoy una conexión de un servicio que ya no se ofrece (Drive, poda A7); tiene que
-    poder desconectarla, o quedaría atada a una conexión que no puede soltar."""
+    Si un servicio deja de ofrecerse, un tenant puede conservar una conexión suya; tiene que poder
+    desconectarla, o quedaría atada a una conexión que no puede soltar."""
     return frozenset(CALENDAR_POLICY) | frozenset(services.merged_policy())
 
 

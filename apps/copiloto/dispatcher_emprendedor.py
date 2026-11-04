@@ -95,7 +95,7 @@ def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
         deduplica, así que un retry at-least-once de Temporal con el mismo `idem_key` cachea (SELECT)
         antes de volver a llamar a la gateway (POST) — nunca un 2do link para el mismo paso del workflow.
 
-        Soporta tools de 2 pasos vía pending['then'] (patrón create->publish, ej Instagram): tras el paso 1,
+        Soporta tools de 2 pasos vía pending['then'] (patrón create->publish): tras el paso 1,
         extrae un id del resultado (then['id_key']) y ejecuta then['slug'] pasándolo como then['id_arg'].
 
         Soporta un pre-paso vía pending['resolve'] (patrón resolver-luego-escribir, ej nombre real de la hoja de

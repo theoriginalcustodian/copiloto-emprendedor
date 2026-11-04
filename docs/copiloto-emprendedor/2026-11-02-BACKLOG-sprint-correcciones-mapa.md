@@ -95,7 +95,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-L1** | `sin-issue` | 🟧 DOD-PARCIAL | Correr el build de release y medir sobre el apk. Por ORDEN DEL OPERADOR (2026-11-02) el build de release corre ULTIMO… |
 | **SM-L2** | `sin-issue` | ✅ TERMINADO | sin-codigo -- lo que faltaba NO era codigo sino voz humana real, y el 2026-11-03 el OPERADOR las declaro CONFORME por… |
 | **SM-L3** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | La anulacion real contra ARCA NO se ejercito en este sprint: las facturas N 10 y N 11 siguen sin anularse y nadie cor… |
-| **SM-L4** | `sin-issue` | 🟧 DOD-PARCIAL | 14 entradas: 10 de device + la 20 (dias de uso) + 2 de decision del operador (09, y la sombra de la 07: el prototipo … |
+| **SM-L4** | `sin-issue` | 🟧 DOD-PARCIAL | 13 entradas. (a) DEVICE, 11, con receta escrita y corrible por otro: docs/copiloto-emprendedor/Auditorias/2026-11-03-… |
 | **SM-N1** | `sin-issue` | ✅ TERMINADO | f95f4849 (#1353): contexto_cargado en estado del FacturaWorkflow + espera acotada en la tool; causa = carrera tool vs… |
 | **SM-N2** | `sin-issue` | ✅ TERMINADO | sha 1efe5a3e (#1357). Causa: la observación de la tool (R6 + «Pedí SÓLO eso») le gana a la descripción; fix = sacar l… |
 | **SM-N3** | `sin-issue` | ✅ TERMINADO | sha 99097d83 (#1359). Test atado a TOOLS−WRITE_OPS con control positivo en ambas direcciones (VPS 23 passed). Barrido… |
@@ -107,7 +107,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N9** | `sin-issue` | ✅ TERMINADO | 545a5dc7 (#1371) + bfa7b919 (#1376). DoD 1-3: Ajustes lee perfilNegocio.nombreComercial, vacio/blanco/error sin etiqu… |
 | **SM-N10** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). BarraEstado montada en app/_layout.tsx, con test. Device RF8T318RN9… |
 | **SM-N11** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). DetalleComprobante formatea fechaEmision, total y tambien caeVto, q… |
-| **SM-N13** | `sin-issue` | 🟧 DOD-PARCIAL | UN punto: el CONTROL POSITIVO del DoD 1 enmendado — inyectar la consigna en un literal de PRODUCCION y verificar que … |
+| **SM-N13** | `sin-issue` | ✅ TERMINADO | CERRADA ENTERA. DoD 4: 6e69dbdc (PR #1610) — suite completa en el VPS con Postgres real, 2729 passed / 41 skipped, y … |
 | **SM-N14** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). ResumenMes mobile y web usan formatearMesDePeriodo; assert negativo… |
 | **SM-N15** | `sin-issue` | ✅ TERMINADO | 1fe1b83f usuario e2e-vacio no-admin y tenant vacio; adversarial 403 admin y 404 cross-tenant; control positivo canoni… |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | LA DECISION, Y ES DEL OPERADOR -- no de dos sesiones de acuerdo. Intente pasarla a DIFERIDO el 2026-11-03 porque fron… |
@@ -127,7 +127,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N29** | `sin-issue` | 🟧 DOD-PARCIAL | UN punto y es de INSTRUMENTO, no de app: el DoD 1 -- el reveal filmado ENTERO con su animacion de entrada y los 6,8 s… |
 | **SM-N30** | `sin-issue` | ✅ TERMINADO | Codigo: ddccda38, ancestro verificado de origin/main. El lockup del login va DESNUDO a 38, sin tinta ni acento, con l… |
 | **SM-N31** | `sin-issue` | ✅ TERMINADO | DoD 1-3 ya estaban cerrados (codigo + device 2026-11-03). El DoD 4 -- las entradas 12 y 13 del corpus en CONFORME con… |
-| **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | decision del operador: la tarjeta Facturacion se retira o se implementa -- medido que la app la dibuja (GraficosIntel… |
+| **SM-N32** | `sin-issue` | 🟧 DOD-PARCIAL | Solo DEVICE y ya no hay decision pendiente. La tarjeta Facturacion SE RETIRO (decision del operador 2026-11-04; 50719… |
 | **SM-N33** | `sin-issue` | ✅ TERMINADO | DoD completo. Codigo: aba185ec (#1480), ancestro de origin/main verificado con merge-base --is-ancestor; CI 6/6 y dep… |
 | **SM-N34** | `sin-issue` | 🟧 DOD-PARCIAL | 🔴 CORRIJO LO QUE YO MISMO ESCRIBI HOY. El Falta anterior (mio, lote del bloque 1) pedia «el codigo de frontend2 que N… |
 | **SM-N35** | `sin-issue` | ✅ TERMINADO | DoD completo, punto por punto, con la evidencia de device de frontend1 (2026-11-03 12:07-12:10 local, usuario CANONIC… |
@@ -146,17 +146,19 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N48** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 2/3 en DEVICE: par antes/despues con adb input motionevent DOWN/MOVE/UP (tap en el campo sigue abriendo escritura… |
 | **SM-N49** | `sin-issue` | ✅ TERMINADO | sha cc4adea8 (PR #1584, verificado ancestro de origin/main) - apps/copiloto/tests/test_ratchet_activity_payload_lleva… |
 | **SM-N50** | `sin-issue` | ✅ TERMINADO | a8ea35fa (PR #1592, ancestro verificado) — `diagnostico_conexiones` devuelve `(caidos, composio_mirado)` y `avanzar_t… |
-| **SM-N51** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N51** | `sin-issue` | ✅ TERMINADO | 5071953c @main (#1623): alta «Anotar algo para hoy» + «Agregar» en #tablero del mapa; MEDIDO en navegador (Playwright… |
 | **SM-N52** | `sin-issue` | ✅ TERMINADO | sha b45ab84f (PR #1590), verificado ancestro de origin/main. CI 6/6. DoD1: los 9 archivos de la Consola corren en Git… |
 | **SM-N53** | `sin-issue` | ✅ TERMINADO | cd332c96 (PR #1602) — el interceptor guarda `activity_id`, el workflow lo manda con su propio `workflow.patched`, y `… |
 | **SM-N54** | `sin-issue` | ✅ TERMINADO | 6459a3ac (PR #1600) — `_cuit_del_tenant` con la DB caida responde 503 reintentable CON rastro y tenant, en vez del 40… |
 | **SM-N55** | `sin-issue` | ✅ TERMINADO | e74d4913 (#1604, ancestro verificado) — `consultar_onboarding` ya no colapsa UNAVAILABLE en el mismo None de NOT_FOUN… |
 | **SM-N56** | `sin-issue` | ✅ TERMINADO | 6459a3ac (PR #1600) — el rastro que escribe `conexiones_salud.py` ahora sale con el `cliente_id` del tenant que lo or… |
+| **SM-N58** | `sin-issue` | 🟨 EN-CURSO | manejo-de-errores |
 | **SM-Z1** | `sin-issue` | 🟧 DOD-PARCIAL | ACTUALIZADO 2026-11-03 23:50 - el codigo YA ESTA HECHO y desplegado; lo unico que falta es el OAuth del operador en e… |
 | **SM-Z2** | `sin-issue` | ✅ TERMINADO | `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama ➕ ANOTACION 2026-11-03 (INFO de au… |
 | **SM-Z3** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de DEVICE del splash: el codigo esta en main y la decision tomada, pero lo tactil no lo acredita ningun test.… |
 | **SM-Z4** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO DEVICE, y la captura tiene que anotar el fontScale del sistema. Re-medido 2026-11-03 por manejo-de-errores @ee86… |
 | **SM-Z5** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de DEVICE de Ajustes ya como lista. Disparador: el telefono. Dueno de la captura: frontend2. |
+| **SM-N57** | `sin-issue` | ✅ TERMINADO | f76e6751 (PR #1619, ancestro de origin/main) — el adversarial de aislamiento de la memoria CORRE en el gate. El defec… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -931,8 +933,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-L4 · `sin-issue` — El cierre del sprint exige remedir las 51 entradas
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** 14 entradas: 10 de device + la 20 (dias de uso) + 2 de decision del operador (09, y la sombra de la 07: el prototipo es del 19/08 y el DoD que la fija del 05/08 — si gana el mapa, la 07 pasa a A y es ficha de frontend) + 1 pendiente de medir. Disparador principal: el telefono.
-- **Cierre:** 37/51 al 2026-11-04 (fc0449a7, redactadas por auditoria las entradas 16 CONFORME, 32 DIFERENTE-B y 07 DIFERENTE-B). La 32 NO es -dias de uso-: el deep link ya fuerza el estado veterano (index.html:3678), la copia es identica y el retiro es funcion pura de core (calma.ts:14) => B por DEC-10. La unica que depende de dias de uso es la 20. La 07 CAMBIO al medir: titulo, orden, geometria y colores 1:1 con el prototipo, difiere SOLO la sombra, que fija el DoD 2026-08-05 2.4 nivel 2.
+- **Falta:** 13 entradas. (a) DEVICE, 11, con receta escrita y corrible por otro: docs/copiloto-emprendedor/Auditorias/2026-11-03-SM-L4-receta-device-las-11-entradas-del-corpus.md — 05 06 10 15 25 28 30 36 42 47 + la 20, que NO se corre porque exige un tenant nuevo y eso choca con la orden de usuario canonico unico; la 30 y la 36 esperan autorizacion escrita del operador, y la 06, la 10 y la 47 necesitan que reconecten MercadoPago y Calendar. Techo con device: 48/51. (b) DECISION DEL OPERADOR, 2: la entrada 03 (alto del boton 54 contra 52, y color #B04A2E contra #DE7250 — si el boton primario oscuro por contraste es regla del sistema, se declara y la 03 pasa a B) y la entrada 09. Sin telefono el tope medible es 38/51, y ya esta alcanzado.
+- **Cierre:** 38 de 51 entradas del corpus con veredicto (de 37). Shas: fc0449a7 cherry-pickeado como c1f17117, af2ffe81 (#1608) de frontend2, y la re-medicion de auditoria integrada en bb6ac8b2 — su 95d906ec NO se aplico entero a proposito: tambien BORRABA el README de Auditorias (111 lineas -> 0), que 37971a9e ya habia restaurado, asi que el orden invertia el efecto. Entrada 46 -> DIFERENTE B por codigo: el unico faltante sin decision era el subtitulo y ya esta (SUBTITULO_AFIP en PantallaAfipSetup.tsx:36, pintado en :632, literal de index.html:2308); el resto tiene decision escrita (BL-V27, SM-E1). CONTROL NEGATIVO: el mismo literal da 0 hits en af2ffe81^, o sea que el instrumento distingue antes y despues. Entrada 03 -> SIGUE A, y NO por device: el campo paso a CONFORME (alto 52, radio 14, padding 14, fondo blanco, foco #B04A2E con halo de 3px) y el borde en reposo es B por el DoD 2026-08-05 §2.2; lo que queda son DOS DECISIONES DEL OPERADOR sobre los botones — alto 54 (PantallaLogin.tsx:36) contra min-height 52 del prototipo (:372), y fondo #B04A2E contra #DE7250 (:374). Lo segundo es fino y lo aporta auditoria: la razon del #B04A2E vive SOLO en un comentario de codigo (tokens.ts:98-105, contraste 5,43:1 contra 3,17:1), y un comentario que declara el porque es un ARGUMENTO, no una decision — el grep de acentoSuperficie / 5,43 da 0 en el resto del corpus, con lo cual ninguna otra entrada lo acepta como B. Entrada 32 confirmada: NO es 'dias de uso' (el deep link fuerza el estado veterano en index.html:3678, copia identica, funcion pura en calma.ts:14 => B por DEC-10), asi que de esa clase queda solo la 20.
 - **Dueño:** planificación
 - **Medido:** al 2026-11-02 el mapa está en 7 CONFORME · 31 DIFERENTE·A · 6 DIFERENTE·B · 7
   NO-VERIFICABLE.
@@ -1272,9 +1274,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N13 · `sin-issue` — 🚫 FUERA DEL SPRINT — La consigna de N8 sigue viva en DOS observaciones más: el fix existe y no viajó
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** UN punto: el CONTROL POSITIVO del DoD 1 enmendado — inyectar la consigna en un literal de PRODUCCION y verificar que el conteo de lineas NO-comentario pasa a >=1. Hoy el conteo de lineas vivas es 0 (el unico hit es el comentario prescrito de tool_catalog.py:1435), pero sin el control el instrumento podria estar ciego y el 0 no acreditaria nada. Es de backend, cuesta minutos y no necesita device.
-- **Cierre:** DoD 4 CUMPLIDO en 6e69dbdc: suite completa en el VPS con Postgres real, 2729 passed, 41 skipped, y la sonda scripts/probe_n13_eco_consigna.py VERSIONADA (antes vivia solo en un scratchpad efimero, asi que el DoD -la MISMA sonda- era incumplible para cualquier otro): 6/12 -> 0/12. AVISO QUE VA EN LA FICHA Y NO SOLO EN EL DOC DE EVIDENCIA: la sonda ESCRIBE EN PROD y NO es parte del gate — el que lea el DoD no debe correrla dentro del gate. DoD 1 ENMENDADO por mi el 2026-11-04 (ver el punto 1): medía su propia declaracion.
+- **Estado:** TERMINADO
+- **Cierre:** CERRADA ENTERA. DoD 4: 6e69dbdc (PR #1610) — suite completa en el VPS con Postgres real, 2729 passed / 41 skipped, y la sonda scripts/probe_n13_eco_consigna.py VERSIONADA (antes vivia solo en un scratchpad efimero, con lo cual -la MISMA sonda- era incumplible para cualquier otro): 6/12 -> 0/12. DoD 1 ENMENDADO por planificacion el 2026-11-04 en e8e6c0a6 (PR #1612) porque medía su propia declaracion, y CUMPLIDO con su control positivo por backend: instrumento = regex confirm[aa](selo|lo) una linea corta sobre apps/copiloto y motor, sin tests, descartando lineas que empiezan con #; hoy 0 lineas NO-comentario (el unico hit es el comentario prescrito de tool_catalog.py:1435). CONTROL POSITIVO: inyectado _MUTANTE_N13 en tool_catalog.py, el conteo paso a 1 (:2025); restaurado en finally, archivo byte a byte identico, conteo de vuelta a 0 y git status sin diff — o sea que el instrumento NO esta ciego y el 0 acredita. AVISO EN LA FICHA, no solo en el doc de evidencia: la sonda ESCRIBE EN PROD y NO es parte del gate. DoD 2 y 3 ya estaban en 7811aad1. Barrido asociado: los 41 skipped de la suite NO tapan ninguna costura (39 renglones, todos por credencial o entorno externo: GoTrue real, tokens RAG, COMPOSIO/OPENAI, E2E contra el VPS, Graphity vivo); ninguno es por archivo faltante, que era la clase del de SM-I7.
 - **Dueño:** backend
 - **Fuera del denominador, a propósito:** igual que `SM-N12`. El sprint se mide contra el mapa del
   16-10 y esto salió de arreglar `SM-N8` hoy, no del mapa (`DEC-18`: un criterio que crece con cada
@@ -2375,7 +2376,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N32 · `sin-issue` — Inteligencia de Negocio: la pantalla ENTERA difiere del mapa (faltan 4 secciones, sobran 3 elementos)
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** decision del operador: la tarjeta Facturacion se retira o se implementa -- medido que la app la dibuja (GraficosInteligencia.tsx:82, testID inteligencia-grafico-facturacion, con test PantallaInteligencia.test.tsx:348) y el mapa no la trae (11 secciones del DOM ?ver=bi, ninguna es un grafico de facturacion; el acumulado vive dentro de la seccion 10); recomendacion de frontend2: retirarla (decision A del sprint, la app se alinea al mapa).
+- **Falta:** Solo DEVICE y ya no hay decision pendiente. La tarjeta Facturacion SE RETIRO (decision del operador 2026-11-04; 5071953c, #1623: GraficosInteligencia.tsx sin TarjetaFacturacion, tests con control, excepcion de paridad de testID en la web que aun la dibuja). Queda la captura de la pasada: DoD 1 (re-verificacion en device) y las capturas de los DoD 2-6 sobre el binario nuevo, segun la receta 2026-11-04-receta-pasada-de-device-frontend2.md (fila SM-N32). Dueno: frontend1 con el telefono.
 - **Cierre:** DoD 4 (tope): cubierto por SM-N35 (categoria A..K en PantallaAfipSetup.tsx:102 y :192), SM-N36 (contabilidad_web.py:26-30,55-56: tope no nulo solo con categoria y escala vigente; escala vencida da null) y la barra del tope que ya existia en AcumuladoAnual.tsx:80-91 (testID -tope, porcentaje topeado al 100%). DoD 5 (engranaje): es el boton del dev-client, evidencia versionada en 7297415b (#1609). DoD 6 (entrada 42): veredicto de Preguntar B a A medido en codigo, PantallaInteligencia.tsx:49-51 y PantallaInteligencia.test.tsx:314-321. Codigo de las secciones: acdbff54 (#1460) y 5928f837 (#1459).
 - **Dueño:** frontend2
 - **Reportado por:** el operador, 2026-11-03, en tres mensajes: *«siguen figurando dos botones
@@ -3195,7 +3196,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N51 · `sin-issue` — El mapa afirma «lo que anotaste vos» en 7 lugares y no da ningún camino de alta: la incompleta es el MAPA
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** 5071953c @main (#1623): alta «Anotar algo para hoy» + «Agregar» en #tablero del mapa; MEDIDO en navegador (Playwright 390x844, ?ver=tablero): #tablero-alta visible, x16 y382 w384 h151, no tapado, texto correcto · DECISION DEL OPERADOR 2026-11-04 (contrato planificacion CUATRO-DECISIONES, punto 3): opcion (a), el alta se agrega al MAPA y la app no se toca.
 - **Dueño:** operador (decisión de producto — **toca la norma, no sólo el mapa**)
 - **De dónde sale:** entrada **09** del corpus, medida por frontend1 el 2026-11-03 con el par
   mapa/app y **sin tocar código**, como el contrato pedía.
@@ -3393,6 +3395,29 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   2. Un test lo afirma **sobre el valor**, no sobre que la línea exista.
   3. El `Cierre:` cita un sha **ancestro de `origin/main`**.
 
+### SM-N58 · `sin-issue` — El gate no corre NADA que necesite una credencial de tercero, y un `skipped` dentro del verde se leía como cobertura
+
+- **Estado:** EN-CURSO
+- **Dueno-activo:** manejo-de-errores
+- **Dueño:** manejo-de-errores
+- **De dónde sale:** el conteo de los 41 skipped de la suite backend (manejo-de-errores, 2026-11-03), a
+  pedido de planificación. 15 son de GoTrue (los corre `gate.sh`), 1 de `kb-usuario` (lo corre GitHub),
+  1 tapa el aislamiento de memoria (es `SM-N57`, backend) y **24 exigen una credencial de tercero que
+  ningún gate tiene** (grep 0 en los cinco `scripts/ci/*.sh`). Nunca se decidió por escrito: era un hueco.
+- **Por qué es UNA ficha y no varias:** el defecto no es «tal módulo no se testea», es que el gate no
+  corre nada con credencial de tercero. Una ficha por dueño mediría al dueño y dejaría al resto sin
+  nadie. La clase grave (`SM-N57`) va aparte para no diluirse en una lista de 24.
+- **DoD:**
+  1. **Inventario**, no un número: los 24 con archivo, credencial que exige cada uno y **qué pregunta
+     queda sin responder** si no corre (tercero vs costura nuestra). Si aparece otro de la clase de
+     `SM-N57`, se parte en ficha propia.
+  2. **La decisión escrita** sobre la clase: el gate corre con credenciales (y dónde viven y quién las
+     rota), o no las corre y esos 24 quedan `[UNVERIFIED]` con dueño y fecha.
+  3. **El gate deja de contar un `skipped` como verde:** el runner imprime el conteo de skips y el delta
+     contra una línea base declarada, y un skip NUEVO se ve sin que nadie lo busque.
+  4. El `Cierre:` cita un sha **ancestro de `origin/main`**.
+- **Doc:** `Auditorias/2026-11-03-SM-N58-skips-por-credencial-de-tercero-inventario-y-decision.md`
+
 ### SM-Z1 · `sin-issue` — Apps muestra 5 servicios y el mapa dibuja 6: las 5 son CORRECTAS
 
 - **Estado:** DOD-PARCIAL
@@ -3528,3 +3553,59 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   control**: si es A, la entrada del mapa enmendada y la corrida del contraste de veredictos
   re-medida sobre ella; si es B, la grilla convertida con captura de device y los tests de
   `PantallaAjustes` actualizados.
+
+### SM-N57 · `sin-issue` — El UNICO test adversarial del aislamiento de la MEMORIA no corre en NINGUN gate
+
+- **Estado:** TERMINADO
+- **Cierre:** f76e6751 (PR #1619, ancestro de origin/main) — el adversarial de aislamiento de la memoria CORRE en el gate. El defecto era peor que ADR-013: alla el codigo nunca implemento el guard; aca el test existia, estaba bien escrito y traia su propio control positivo en :88-91 contra un assert vacuo, y lo que faltaba era que ALGO lo llamara. test_memory_isolation_live.py:26 se saltaba salvo que existieran GRAPHITY_BASE_URL y GRAPHITY_API_KEY, y grep -c GRAPHITY daba 0 en los cinco puntos del gate (gate.sh, ci/backend.sh, sync-test-backend.sh, test-db.sh, tests.yml); control positivo: DATABASE_URL aparecia 0/2/5/7/2 en esos mismos cinco archivos, asi que el grep leia y distinguia. La mitad que decidia la gravedad: test_adversarial_multitenant.py tiene 29 tests adversariales y 0 menciones de memoria o grafo. Confirmado por el conteo de SM-N58: con N57 en main, memory_isolation ya corre en el VPS.
+- **Dueño:** backend
+- **De dónde sale:** barrido de los 41 `skipped` de la suite que pidió planificación a manejo-de-errores
+  después de `SM-I7`, donde un test existía y se salteaba porque `sync-test-backend.sh` no llevaba
+  `phosphor.ts`. La pregunta era «¿cuál de los 41 tapa una costura?»; éste es el que la tapa.
+- **El hecho, medido (planificación, control positivo incluido):**
+  `apps/copiloto/tests/test_memory_isolation_live.py:26` se saltea entero salvo que existan
+  `GRAPHITY_BASE_URL` **y** `GRAPHITY_API_KEY`. Ningún gate las define: `grep -c GRAPHITY` da **0**
+  en `scripts/gate.sh`, `scripts/ci/backend.sh`, `deploy/copiloto/sync-test-backend.sh`,
+  `deploy/copiloto/test-db.sh` y `.github/workflows/tests.yml`. **Control positivo del grep:**
+  `DATABASE_URL` sí aparece en 4 de esos 5 archivos (2, 5, 7 y 2 veces), con lo cual el grep lee los
+  archivos y distingue — el 0 de `GRAPHITY` no es ceguera del instrumento. Conclusión: el test no
+  corre **en el VPS ni en GitHub**, nunca.
+- **Por qué es la clase grave y no una ficha de cobertura:** su único test,
+  `test_recall_isolation_cross_emprendedor:73`, es el único lugar del repo que ejercita el caso
+  hostil del aislamiento de la memoria (A guarda su término, B el suyo, y se exige que el `recall` de
+  cada uno **no** contenga el del otro). El otro adversarial, `test_adversarial_multitenant.py`, tiene
+  **29** tests y **0** menciones de memoria, grafo o `recall` (medido): cubre credenciales, replies,
+  pagos, `context_factory`, calendario, catálogo, gastos, presupuestos, conceptos — toda la superficie
+  SQL/HTTP, nada del grafo. O sea que el control multitenant de la MEMORIA figura verificado y no se
+  ejercita en ningún lado.
+- **La regla que esto incumple es dura, no una preferencia:** «todo control de acceso/aislamiento que
+  un ADR o el código declare exige un test de integración adversarial que ejercite el caso hostil; sin
+  él, el control queda `[UNVERIFIED]` y bloquea el cierre». El caso raíz del repo es ADR-013 §3.3.4:
+  el guard cross-tenant estaba especificado, el código nunca lo codificó, y el drift vivió ~2 meses en
+  prod porque ningún test probaba «A pide lo de B». **Acá la variante es distinta y más engañosa:** el
+  test existe, está bien escrito y hasta lleva control positivo propio contra el assert vacuo
+  (`:88-91`, «si esto falla, el assert de aislamiento sería vacuo»). Lo que falta es que alguien lo
+  **invoque**. Un test perfecto que ningún gate corre es indistinguible de un test ausente, con el
+  agravante de que su existencia en el árbol hace que la pregunta «¿está verificado?» se responda sola
+  al grepear el nombre del archivo.
+- **DoD (binario):**
+  1. El gate canónico corre ese test contra Graphity real: `GRAPHITY_BASE_URL` y `GRAPHITY_API_KEY`
+     llegan al runner del VPS por el camino de prod, no por un export a mano en una terminal.
+     Evidencia: la línea del runner en `0 skipped` para ese archivo, con el nombre del test visible
+     como `PASSED` y el sha donde corrió.
+  2. **Control positivo obligatorio** (sin esto el DoD 1 no acredita): invertir a propósito el
+     aislamiento — pasarle a los dos emprendedores el mismo `graph_id` — y verificar que el test se
+     pone **ROJO** por el assert de `LEAK`, no por un error de conexión. Un gate que nunca disparó
+     hacia el «no» no está verificado. Restaurar en `finally`.
+  3. Queda declarado en el doc del gate **por qué** este test necesita credenciales que los otros no:
+     es el único que exige el servicio de grafo vivo, así que es el único que un entorno sin Graphity
+     no puede correr — y eso es precisamente lo que lo dejó fuera sin que nadie lo decidiera.
+  4. Si la decisión fuera NO correrlo en el gate (por costo o por depender de un servicio externo),
+     entonces el control de aislamiento de la memoria queda marcado `[UNVERIFIED]` **en el ADR y en
+     `CLAUDE.md`**, con dueño y fecha. Lo que no es aceptable es el estado actual: ni corre ni está
+     declarado como no verificado.
+- **Lo que NO entra acá:** `test_arca_sin_afip_visible.py:74` (kb-usuario) también se saltea en el
+  gate canónico porque el stage del VPS no lleva la carpeta, pero es **contenido**, no una costura de
+  aislamiento — va aparte y no bloquea. Y los otros 38 skips son credenciales de terceros (Composio,
+  OpenAI, RAG, e2e) o los 15 de GoTrue real que `gate.sh:209` sí corre (se saltearon sólo en una
+  corrida con el runner manual). Medido por manejo-de-errores sobre 2729 passed @`dba8aebe`.

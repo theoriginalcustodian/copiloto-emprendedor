@@ -217,12 +217,12 @@ def test_composio_caido_no_trae_desde_aunque_mp_si_lo_tenga_la_clave_es_por_serv
 def test_N18_toolkit_ajeno_expired_no_es_caido_y_uno_soportado_si():
     """LAS DOS mitades: con sólo la primera, «filtra bien» y «no avisa nunca» dan el mismo verde."""
     from conexiones_salud import toolkits_conectables
-    assert "instagram" not in toolkits_conectables() and "gmail" in toolkits_conectables()
-    con = [{"toolkit": "instagram", "status": "EXPIRED"}, {"toolkit": "instagram", "status": "EXPIRED"},
+    assert "toolkitajeno" not in toolkits_conectables() and "gmail" in toolkits_conectables()
+    con = [{"toolkit": "toolkitajeno", "status": "EXPIRED"}, {"toolkit": "toolkitajeno", "status": "EXPIRED"},
            {"toolkit": "gmail", "status": "EXPIRED"}]
     assert composio_caidos(con) == ["gmail"]                          # ajeno fuera, soportado dentro
     assert composio_caidos(con[:2]) == []                             # sólo el ajeno: nada
-    assert composio_caidos(con, soportados=frozenset({"instagram", "gmail"})) == ["gmail", "instagram"]  # control: sin filtro, el defecto reaparece
+    assert composio_caidos(con, soportados=frozenset({"toolkitajeno", "gmail"})) == ["gmail", "toolkitajeno"]  # control: sin filtro, el defecto reaparece
 
 
 def test_N18_la_fuente_es_una_sola_la_misma_que_valida_composio_connect():
@@ -233,16 +233,16 @@ def test_N18_la_fuente_es_una_sola_la_misma_que_valida_composio_connect():
 
 @necesita_pg
 def test_N18_la_tarjeta_ya_persistida_de_un_toolkit_ajeno_se_cierra_sola(conn_de_tenant, tenants):
-    """La del operador: 1 fila `instagram` para_hoy ya guardada. Un filtro que sólo mira hacia adelante la dejaría viva."""
+    """La del operador: 1 fila `toolkitajeno` para_hoy ya guardada. Un filtro que sólo mira hacia adelante la dejaría viva."""
     from mi_dia_tarjeta_store import TarjetaStore
     a, _ = tenants
     TarjetaStore(conn_de_tenant(a), a).crear_si_no_existe(
-        REGLA_CONEXION_CAIDA, "conexion", "instagram", "Se cortó la conexión con instagram.",
-        {"nombre": "instagram", "servicio": "instagram"})
-    ig = lambda: [{"toolkit": "instagram", "status": "EXPIRED"}]
+        REGLA_CONEXION_CAIDA, "conexion", "toolkitajeno", "Se cortó la conexión con toolkitajeno.",
+        {"nombre": "toolkitajeno", "servicio": "toolkitajeno"})
+    ig = lambda: [{"toolkit": "toolkitajeno", "status": "EXPIRED"}]
     tab = avanzar_tablero(conn_de_tenant(a), a, composio_conexiones=ig)
     assert not [x for x in tab["para_hoy"] + tab["haciendo"] if x["regla"] == REGLA_CONEXION_CAIDA]
-    assert [x for x in tab["hecha"] if x["entidad_id"] == "instagram"]          # cerrada por el HECHO
+    assert [x for x in tab["hecha"] if x["entidad_id"] == "toolkitajeno"]          # cerrada por el HECHO
     # y el soportado SÍ crea tarjeta por esta misma ruta (el detector no quedó mudo)
     tab = avanzar_tablero(conn_de_tenant(a), a, composio_conexiones=lambda: [{"toolkit": "gmail", "status": "EXPIRED"}])
     assert [x for x in tab["para_hoy"] if x["entidad_id"] == "gmail"]
@@ -250,16 +250,16 @@ def test_N18_la_tarjeta_ya_persistida_de_un_toolkit_ajeno_se_cierra_sola(conn_de
 
 @necesita_pg
 def test_N18_CANARIO_por_la_ruta_real_el_filtro_es_lo_que_apaga_el_aviso(conn_de_tenant, tenants, monkeypatch):
-    """Atribución, no corroboración: la captura de device «Mi Día sin aviso de Instagram» es compatible con que el
+    """Atribución, no corroboración: la captura de device «Mi Día sin aviso de un toolkit ajeno» es compatible con que el
     filtro no haga nada (Composio podría no listar hoy un caído). Acá se INYECTA el toolkit ajeno `EXPIRED` en la
     forma real de `list_connections` (`{id, toolkit: slug, status}`) y se pasa por `avanzar_tablero`, la misma ruta
-    que cablea serve.py. CON el filtro no hay tarjeta; SIN él (se lo reemplaza por uno que incluye `instagram`)
+    que cablea serve.py. CON el filtro no hay tarjeta; SIN él (se lo reemplaza por uno que incluye `toolkitajeno`)
     sí: si las dos mitades dieran igual, el filtro no discriminaría y N18 no estaría resuelto."""
     import conexiones_salud
     a, _ = tenants
-    ig = lambda: [{"id": "ca_canario", "toolkit": "instagram", "status": "EXPIRED"}]
+    ig = lambda: [{"id": "ca_canario", "toolkit": "toolkitajeno", "status": "EXPIRED"}]
     esta = lambda tab: [x for x in tab["para_hoy"] + tab["haciendo"]
-                        if x["regla"] == REGLA_CONEXION_CAIDA and x["entidad_id"] == "instagram"]
+                        if x["regla"] == REGLA_CONEXION_CAIDA and x["entidad_id"] == "toolkitajeno"]
     assert not esta(avanzar_tablero(conn_de_tenant(a), a, composio_conexiones=ig))            # CON el filtro real
-    monkeypatch.setattr(conexiones_salud, "toolkits_conectables", lambda: frozenset({"instagram"}))
+    monkeypatch.setattr(conexiones_salud, "toolkits_conectables", lambda: frozenset({"toolkitajeno"}))
     assert esta(avanzar_tablero(conn_de_tenant(a), a, composio_conexiones=ig))                # SIN él: el defecto vuelve
