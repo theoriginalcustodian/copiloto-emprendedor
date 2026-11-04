@@ -60,11 +60,12 @@ def test_UNAVAILABLE_real_token_invalido_degrada_sin_lanzar(cliente):
     assert r.outcome == "unavailable"
 
 
-@necesita_rag
-def test_UNAVAILABLE_real_endpoint_inalcanzable_es_el_N1_del_DoD(cliente):
+def test_UNAVAILABLE_real_endpoint_inalcanzable_es_el_N1_del_DoD():
     """N1: "RAG/orquestador apagado a propósito" -- no puedo apagar el servicio de fusion (no es mío),
     así que provoco la falla del lado del AGENTE: apuntar a un puerto cerrado es una conexión que
-    realmente falla, no una que se razona. Mismo comportamiento que el servicio real caído."""
+    realmente falla, no una que se razona. Mismo comportamiento que el servicio real caído.
+    SIN `@necesita_rag` ni fixture `cliente`: usa `token="x"` contra un puerto cerrado, así que no
+    necesita credencial de nadie. Antes llevaba el decorador por herencia y se saltaba en todo gate."""
     c_inalcanzable = OrquestadorRagClient(
         base_url="https://rag-copiloto.89-167-20-226.sslip.io:9999", token="x", namespace="x")
     r = c_inalcanzable.answer("cualquier cosa")

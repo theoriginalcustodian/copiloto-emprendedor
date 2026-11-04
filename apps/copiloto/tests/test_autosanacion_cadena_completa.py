@@ -40,12 +40,13 @@ import uuid
 import pytest
 
 import autosanacion_activities as A
+from _llm_grabado_autosanacion import cliente_llm
 from trauma_store import TABLA, TraumaStore
 
 necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
                                  reason="requiere Postgres real (DATABASE_URL)")
-necesita_llm = pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"),
-                                  reason="la cadena completa necesita el LLM real (OPENAI_API_KEY)")
+#: SM-N58: ya no hay `necesita_llm`. La junta es NUESTRA; sin credencial corre con el LLM grabado
+#: (`_llm_grabado_autosanacion.py`), con credencial con el real.
 
 #: Real, chico, con tests, y **fuera** de los dominios prohibidos. El mismo del banco C0.
 ARCHIVO = "apps/copiloto/fingerprint.py"
@@ -68,11 +69,10 @@ def cadena_lista(conn_de_tenant):
     como las costuras reales escriben, con el tenant declarado.
     """
     import psycopg2
-    from openai import OpenAI
 
     cid = str(uuid.uuid4())
     conn_dlq = lambda: psycopg2.connect(os.environ["COPILOTO_AUTOSANACION_DSN"])  # noqa: E731 — cruda
-    A.set_autosanacion_deps(conn_dlq, llm_client=OpenAI())
+    A.set_autosanacion_deps(conn_dlq, llm_client=cliente_llm())
     yield cid
     conn = conn_de_tenant(cid)()
     with conn.cursor() as cur:
@@ -81,7 +81,6 @@ def cadena_lista(conn_de_tenant):
 
 
 @necesita_pg
-@necesita_llm
 @necesita_rol_dlq
 @pytest.mark.asyncio
 async def test_la_cadena_COMPLETA_de_la_DLQ_al_veredicto(cadena_lista, conn_de_tenant, monkeypatch):
@@ -136,7 +135,6 @@ async def test_la_cadena_COMPLETA_de_la_DLQ_al_veredicto(cadena_lista, conn_de_t
 
 
 @necesita_pg
-@necesita_llm
 @necesita_rol_dlq
 @pytest.mark.asyncio
 async def test_CONTROL_la_cadena_se_CORTA_en_el_dominio_fiscal(cadena_lista, conn_de_tenant):

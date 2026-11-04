@@ -146,7 +146,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N48** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 2/3 en DEVICE: par antes/despues con adb input motionevent DOWN/MOVE/UP (tap en el campo sigue abriendo escritura… |
 | **SM-N49** | `sin-issue` | ✅ TERMINADO | sha cc4adea8 (PR #1584, verificado ancestro de origin/main) - apps/copiloto/tests/test_ratchet_activity_payload_lleva… |
 | **SM-N50** | `sin-issue` | ✅ TERMINADO | a8ea35fa (PR #1592, ancestro verificado) — `diagnostico_conexiones` devuelve `(caidos, composio_mirado)` y `avanzar_t… |
-| **SM-N51** | `sin-issue` | ✅ TERMINADO | 5071953c (#1623, ancestro de origin/main). DECISION DEL OPERADOR 2026-11-04 (contrato planificacion CUATRO-DECISIONES… |
+| **SM-N51** | `sin-issue` | ✅ TERMINADO | 5071953c @main (#1623): alta «Anotar algo para hoy» + «Agregar» en #tablero del mapa; MEDIDO en navegador (Playwright… |
 | **SM-N52** | `sin-issue` | ✅ TERMINADO | sha b45ab84f (PR #1590), verificado ancestro de origin/main. CI 6/6. DoD1: los 9 archivos de la Consola corren en Git… |
 | **SM-N53** | `sin-issue` | ✅ TERMINADO | cd332c96 (PR #1602) — el interceptor guarda `activity_id`, el workflow lo manda con su propio `workflow.patched`, y `… |
 | **SM-N54** | `sin-issue` | ✅ TERMINADO | 6459a3ac (PR #1600) — `_cuit_del_tenant` con la DB caida responde 503 reintentable CON rastro y tenant, en vez del 40… |
@@ -3197,7 +3197,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N51 · `sin-issue` — El mapa afirma «lo que anotaste vos» en 7 lugares y no da ningún camino de alta: la incompleta es el MAPA
 
 - **Estado:** TERMINADO
-- **Cierre:** 5071953c (#1623, ancestro de origin/main). DECISION DEL OPERADOR 2026-11-04 (contrato planificacion CUATRO-DECISIONES, punto 3): opcion (a), el ALTA SE AGREGA AL MAPA y la app no se toca. El tablero del mapa (Prototipo frontend/odobi-ui/prototipo/index.html, bloque #tablero-alta) dibuja ahora 'Anotar algo para hoy' + 'Agregar', espejo de PantallaTuDia.tsx:328-347 (testID midia-alta, test en PantallaTuDia.test.tsx:893). Lectura de codigo y CI 6/6; NO se vio renderizado en navegador. DoD 3 (opcion b) no aplica.
+- **Cierre:** 5071953c @main (#1623): alta «Anotar algo para hoy» + «Agregar» en #tablero del mapa; MEDIDO en navegador (Playwright 390x844, ?ver=tablero): #tablero-alta visible, x16 y382 w384 h151, no tapado, texto correcto · DECISION DEL OPERADOR 2026-11-04 (contrato planificacion CUATRO-DECISIONES, punto 3): opcion (a), el alta se agrega al MAPA y la app no se toca.
 - **Dueño:** operador (decisión de producto — **toca la norma, no sólo el mapa**)
 - **De dónde sale:** entrada **09** del corpus, medida por frontend1 el 2026-11-03 con el par
   mapa/app y **sin tocar código**, como el contrato pedía.

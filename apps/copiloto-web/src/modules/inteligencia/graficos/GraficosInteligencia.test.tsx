@@ -1,11 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { leerGraficoCategorias, leerGraficoEntroVsSalio, leerGraficoFacturacion, leerGraficoMargenTrabajo } =
+const { leerGraficoCategorias, leerGraficoEntroVsSalio, leerGraficoMargenTrabajo } =
   vi.hoisted(() => ({
     leerGraficoCategorias: vi.fn(),
     leerGraficoEntroVsSalio: vi.fn(),
-    leerGraficoFacturacion: vi.fn(),
     leerGraficoMargenTrabajo: vi.fn(),
   }));
 
@@ -13,7 +12,6 @@ vi.mock('@copiloto/core', async (orig) => ({
   ...(await orig<typeof import('@copiloto/core')>()),
   leerGraficoCategorias,
   leerGraficoEntroVsSalio,
-  leerGraficoFacturacion,
   leerGraficoMargenTrabajo,
 }));
 
@@ -40,7 +38,6 @@ const UN_TRABAJO = {
 };
 
 beforeEach(() => {
-  leerGraficoFacturacion.mockResolvedValue({ status: 'no_disponible' });
   leerGraficoEntroVsSalio.mockResolvedValue({ status: 'no_disponible' });
   leerGraficoCategorias.mockResolvedValue({ status: 'no_disponible' });
   leerGraficoMargenTrabajo.mockResolvedValue({
