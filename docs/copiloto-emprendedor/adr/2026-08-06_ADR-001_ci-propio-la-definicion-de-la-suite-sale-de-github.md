@@ -252,3 +252,27 @@ así debe leerse.
 jobs (argumento inválido ⇒ exit 2, ya no un falso «TODOS OK»), y el recibo se **acumula**: `jobs` = último
 resultado y `detalle.<job>` conserva `historial[]` (failed→ok) con el log de cada corrida en
 `.ci-recibos/logs/`. Un reintento no borra el rastro de un fallo previo.
+
+
+## 13. Enmienda 2026-11-04 (SM-N57) — el único test que exige el servicio de grafo corre en el gate, y por qué sólo él necesita credenciales extra
+
+`apps/copiloto/tests/test_memory_isolation_live.py` es el **único** adversarial del aislamiento cross-emprendedor de la
+MEMORIA («A no ve lo que B le contó al agente»). Se saltaba entero salvo que existieran `GRAPHITY_BASE_URL` y
+`GRAPHITY_API_KEY`, y **ningún** gate las definía (`grep -c GRAPHITY` = 0 en `gate.sh`, `ci/backend.sh`,
+`sync-test-backend.sh`, `test-db.sh` y `tests.yml`; control positivo: `DATABASE_URL` sí aparece). Un test perfecto que
+nadie invoca es indistinguible de uno ausente, y su presencia en el árbol respondía «¿está verificado?» sola.
+
+**Por qué éste y no los otros:** es el único que exige el servicio de grafo VIVO (Graphity). Los demás adversariales
+(SQL/HTTP) corren contra la Postgres efímera de `test-db.sh`, que el propio gate provisiona; el grafo no se puede
+levantar efímero, así que cualquier entorno sin Graphity (un clon, GitHub Actions, un dev-loop) **no puede** correrlo — y
+eso fue exactamente lo que lo dejó fuera sin que nadie lo decidiera.
+
+**Cómo corre ahora:** `sync-test-backend.sh` (invocado por `gate.sh`) lee `GRAPHITY_BASE_URL` y `GRAPHITY_API_KEY`
+**del lado del servidor**, de `/etc/unreal-copilot/copiloto.env` (el camino de prod), **sólo esas dos** (el archivo
+entero traería el `DATABASE_URL` de prod y pisaría la base efímera). Nunca pasan por la PC ni por el repo. El test usa un
+namespace propio (`copilototest-<hex>`) y hace `forget` de sus dos user graphs: no toca la memoria de un cliente real.
+Opt-out explícito, y visible en el log (`==> Grafo: OFF`): `UC_TEST_SIN_GRAPHITY=1`.
+
+**Qué NO cubre (declarado, no implícito):** GitHub Actions (`tests.yml`) es respaldo/atestación y no tiene acceso a
+Graphity; ahí el test se sigue saltando. El recibo de `gate.sh` es la fuente de verdad de este control. Una corrida con
+`UC_TEST_SIN_GRAPHITY=1` deja el aislamiento de la memoria `[UNVERIFIED]` en esa corrida.

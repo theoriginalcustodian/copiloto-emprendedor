@@ -83,6 +83,22 @@ else
   GOTRUE_AVISO="OFF — los tests @necesita_gotrue se SALTAN (no están en el número de abajo)"
 fi
 
+# Graphity VIVO para el adversarial de aislamiento de la MEMORIA (SM-N57). Es el ÚNICO test que exige el
+# servicio de grafo, y por eso es el único que un entorno sin Graphity no puede correr: dejó de correr en
+# silencio (`skipif` sobre GRAPHITY_BASE_URL/GRAPHITY_API_KEY, que ningún gate definía) y el control
+# multitenant de la memoria figuraba verificado sin que nada lo ejercitara. Las credenciales llegan por el
+# camino de PROD: se leen SERVER-SIDE de `copiloto.env` — SOLO estas dos, nunca el archivo entero (traería
+# DATABASE_URL de prod y pisaría la base efímera) y nunca pasan por la PC ni por este repo. El test usa un
+# namespace propio (`copilototest-*`) y hace `forget` de sus dos user graphs: no toca memoria de un cliente real.
+# Opt-out explícito `UC_TEST_SIN_GRAPHITY=1` (dev-loop sin red al grafo); el gate canónico NO lo setea.
+if [ "${UC_TEST_SIN_GRAPHITY:-0}" = "1" ]; then
+  GRAFO_PRE=""
+  GRAFO_AVISO="OFF (UC_TEST_SIN_GRAPHITY=1) — test_memory_isolation_live SE SALTA: el aislamiento de la memoria queda [UNVERIFIED] en esta corrida"
+else
+  GRAFO_PRE="for k in GRAPHITY_BASE_URL GRAPHITY_API_KEY; do v=\$(grep -m1 \"^\$k=\" '${UC_ENV_DIR:-/etc/unreal-copilot}/copiloto.env' | cut -d= -f2- | tr -d \"'\\\"\"); [ -n \"\$v\" ] && export \"\$k=\$v\"; done; "
+  GRAFO_AVISO="ON — test_memory_isolation_live CORRE contra Graphity vivo (namespace de test propio)"
+fi
+
 echo "==> sync worktree -> ${HOST}:${STAGE} (clean)"
 # `--exclude __pycache__` no es cosmética: el checkout es COMPARTIDO por varias sesiones, y basta con
 # que otra corra pytest para que se reescriban los `.pyc` mientras este `tar` lee el directorio →
@@ -125,8 +141,9 @@ tar -C "$LOCAL" --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cac
 echo "==> scripts/ci/backend.sh en el venv del VPS${PYTEST_ARGS:+ (args: ${PYTEST_ARGS})}"
 echo "==> Postgres: ${PG_AVISO}"
 echo "==> GoTrue:   ${GOTRUE_AVISO}"
+echo "==> Grafo:    ${GRAFO_AVISO}"
 set +e
-ssh "$HOST" "${PG_ENV}${GOTRUE_ENV}PYTHONPATH='$STAGE/apps/copiloto:$STAGE/$MOTOR' PYTHON_BIN='$VENV/bin/python' \
+ssh "$HOST" "${GRAFO_PRE}${PG_ENV}${GOTRUE_ENV}PYTHONPATH='$STAGE/apps/copiloto:$STAGE/$MOTOR' PYTHON_BIN='$VENV/bin/python' \
   bash '$STAGE/scripts/ci/backend.sh' ${PYTEST_ARGS}"
 RC=$?
 set -e
