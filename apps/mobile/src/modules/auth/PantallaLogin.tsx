@@ -28,6 +28,11 @@ const HERO = 32;
 /** El símbolo del lockup. El wordmark va al lado, no debajo — ver el bloque de marca del render. */
 const LOCKUP_SIMBOLO = 38;
 const ALTO_CAMPO = 52;
+// SM-L4 entrada 03: el campo del mapa es radio 14 (--r-s) y padding 14 (.ig-campo, index.html:526-527), con borde
+// terracota profunda + halo de 3px al 16% en foco (.ig-campo.foco, :529). Antes: radio 22 y padding 16, sin foco.
+const PADDING_CAMPO = 14;
+const HALO = 3;
+const COLOR_HALO = 'rgba(222,114,80,.16)';
 const ALTO_BOTON = 54;
 
 /**
@@ -89,12 +94,23 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
     else setFormState('error-red');
   }
 
+  const [campoEnfocado, setCampoEnfocado] = useState<'email' | 'password' | null>(null);
+  // El halo es un anillo propio (RN no tiene box-shadow con spread en Android): un View de 3px alrededor del campo,
+  // con margen negativo para no mover el layout.
+  const halo = (campo: 'email' | 'password') =>
+    ({
+      borderRadius: tema.radio.sm + HALO,
+      padding: HALO,
+      margin: -HALO,
+      backgroundColor: campoEnfocado === campo ? COLOR_HALO : 'transparent',
+    }) as const;
+
   const estiloCampo = {
     color: tema.color.texto,
     borderColor: tema.color.borde,
     backgroundColor: tema.color.superficieAlta,
-    borderRadius: tema.radio.md,
-    paddingHorizontal: tema.espacio.md,
+    borderRadius: tema.radio.sm,
+    paddingHorizontal: PADDING_CAMPO,
     height: ALTO_CAMPO,
     fontSize: tema.tipo.base,
   } as const;
@@ -167,6 +183,7 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
         <View style={{ gap: tema.espacio.md }}>
           <View style={{ gap: tema.espacio.xs }}>
             <Text style={[styles.etiqueta, { color: tema.color.textoTenue, fontSize: tema.tipo.chico }]}>Mail</Text>
+            <View style={halo('email')}>
             <TextInput
               testID="login-email"
               autoCapitalize="none"
@@ -176,14 +193,18 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
               value={email}
               onChangeText={setEmail}
               placeholderTextColor={tema.color.textoTenue}
-              style={[styles.input, estiloCampo]}
+              onFocus={() => setCampoEnfocado('email')}
+              onBlur={() => setCampoEnfocado(null)}
+              style={[styles.input, estiloCampo, campoEnfocado === 'email' && { borderColor: tema.color.acentoTinta }]}
             />
+            </View>
           </View>
 
           <View style={{ gap: tema.espacio.xs }}>
             <Text style={[styles.etiqueta, { color: tema.color.textoTenue, fontSize: tema.tipo.chico }]}>
               Contraseña
             </Text>
+            <View style={halo('password')}>
             <TextInput
               testID="login-password"
               secureTextEntry
@@ -199,12 +220,17 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
               // input enfocado por sí solo. Al enfocar, scrolleamos al fondo para dejar contraseña +
               // "Entrar" por encima del teclado. El `setTimeout(120)` espera a que el teclado termine
               // de abrir y el layout se reasiente.
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120)}
+              onFocus={() => {
+                setCampoEnfocado('password');
+                setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
+              }}
+              onBlur={() => setCampoEnfocado(null)}
               placeholderTextColor={tema.color.textoTenue}
               // Error de credenciales: el borde del campo de contraseña pasa a terracota PROFUNDA
               // (`.ig-campo.err` → `--terracota-prof`, index.html:542) = `acentoTinta` (#B04A2E en claro).
-              style={[styles.input, estiloCampo, estadoEfectivo === 'error-credenciales' && { borderColor: tema.color.acentoTinta }]}
+              style={[styles.input, estiloCampo, (campoEnfocado === 'password' || estadoEfectivo === 'error-credenciales') && { borderColor: tema.color.acentoTinta }]}
             />
+            </View>
           </View>
 
           {/* `ingresar-error` (BL mapeo 2026-10-13): el error va ENTRE los campos y los botones, como

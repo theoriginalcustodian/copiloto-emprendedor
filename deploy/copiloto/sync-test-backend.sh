@@ -111,10 +111,15 @@ echo "==> sync worktree -> ${HOST}:${STAGE} (clean)"
 # `packages/core/src/chat/__fixtures__/requiere_conexion.cards.json` viaja por lo mismo: es el fixture del
 # PAR de la costura `alcance` (lo consume el lado app y lo ata `tests/test_alcance_condicion.py` con una
 # igualdad contra `requiere_conexion_card`). Sólo ese archivo; si falta, el test falla.
+# `apps/mobile/src/theme/glass/phosphor.ts` viaja por lo mismo (SM-I7): `test_ningun_icono_emitido_esta_fuera_de_PHOSPHOR`
+# lo LEE para cruzar los `icono` que sirve el backend contra los glifos que la app dibuja. Sin él en el stage el test
+# se SALTEABA justo donde corre el gate (medido 2026-11-04: `30 passed, 1 skipped`), y la costura quedaba afirmada
+# por lectura. Sólo ese archivo; si falta, el test falla.
 tar -C "$LOCAL" --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' \
   --exclude='.env' --exclude='.env.*' \
   -czf - apps/copiloto "$MOTOR" deploy/worker deploy/copiloto scripts spikes/afip-emit-pdf/RESULT.md \
   packages/core/src/chat/__fixtures__/requiere_conexion.cards.json \
+  apps/mobile/src/theme/glass/phosphor.ts \
   | ssh "$HOST" "rm -rf '$STAGE' && mkdir -p '$STAGE' && tar -C '$STAGE' -xzf -"
 
 echo "==> scripts/ci/backend.sh en el venv del VPS${PYTEST_ARGS:+ (args: ${PYTEST_ARGS})}"
