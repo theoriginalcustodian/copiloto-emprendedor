@@ -42,7 +42,7 @@ trap 'rm -rf "$TMP"' EXIT
 # realmente corrio. Medido el 2026-10-13: el resumen decia un literal (`14/14`, y yo lo
 # subi a `17/17`) mientras la corrida imprimia 14 de 18 aserciones — un veredicto que no
 # cuenta lo que miro absuelve a un bloque entero que no se ejecuto.
-ASERCIONES_ESPERADAS=18
+ASERCIONES_ESPERADAS=20
 oks=0
 fallos=0
 ok()   { printf '  ✅ %s\n' "$1"; oks=$((oks + 1)); }
@@ -313,6 +313,39 @@ if printf '%s' "$out" | grep -q "SIN DUEÑO: AUDITORIA"; then
   ok "un ROLES: con typo cae al default (un typo no puede apagar el watchdog)"
 else
   fail "un typo en ROLES: apago la alarma ⇒ el padron se vuelve un off-switch accidental. Salida: $out"
+fi
+
+echo "── 6. ACUSE DE ENTREGA DIRECTA (senal e): descarga lo entregado, NO lo posterior ──"
+# Por que este caso va en el fixture y NO se puede medir en vivo: intente los dos controles contra
+# el buzon real y los DOS dieron 0, porque backend estaba commiteando en `backend/lote-...` y la
+# senal (d) le daba vida por su cuenta. Con una segunda causa suficiente activa, el control no
+# ATRIBUYE: el verde no dice que el acuse funcione, dice que algo lo descargo. El fixture aisla
+# ramas (RAMAS_GIT_DIR), slugs (SLUGS_ROOT) y buzon, que es la unica forma de que la asercion
+# mida la senal (e) y nada mas.
+b="$(nuevo_buzon 6)"; r="$(nuevo_slug_root 6)"
+mkdir -p "$b/entregas"
+msg "$b/abierto/2026-11-04_contrato_planificacion-a-backend_contrato-entregado-a-mano.md" 118
+# El acuse es POSTERIOR al contrato: se lo entregue por SendMessage y la sesion respondio.
+printf 'entrega acusada\n' > "$b/entregas/backend"; touch -d "$(hace 60)" "$b/entregas/backend"
+correr "$b" "$r"
+if printf '%s' "$out" | grep -q "SIN DUEÑO: BACKEND"; then
+  fail "el acuse POSTERIOR al contrato no lo descargo: la senal (e) no sirve. Salida: $out"
+else
+  ok "un acuse posterior al contrato lo descarga (la sesion viva e idle deja de parecer ausente)"
+fi
+
+# Y la mitad que impide que esto sea un boton de silencio: un contrato emitido DESPUES del acuse
+# vuelve a quedar huerfano. Sin esta asercion, (e) seria una forma de apagar el watchdog para
+# siempre con un solo archivo — el modo de falla que el propio bloque SIN DUEÑO documenta.
+b="$(nuevo_buzon 7)"; r="$(nuevo_slug_root 7)"
+mkdir -p "$b/entregas"
+printf 'entrega acusada\n' > "$b/entregas/backend"; touch -d "$(hace 120)" "$b/entregas/backend"
+msg "$b/abierto/2026-11-04_contrato_planificacion-a-backend_emitido-DESPUES-del-acuse.md" 60
+correr "$b" "$r"
+if printf '%s' "$out" | grep -q "SIN DUEÑO: BACKEND"; then
+  ok "un contrato POSTERIOR al acuse vuelve a alarmar (el acuse no es un off-switch)"
+else
+  fail "REGRESION: el acuse apago la alarma de un contrato emitido DESPUES. Salida: $out"
 fi
 
 echo
