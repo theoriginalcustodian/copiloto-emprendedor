@@ -72,12 +72,12 @@
 - [🏷️🩸 El marcador de pendencia SOBREVIVE a su refutacion](el-marcador-de-pendencia-sobrevive-a-su-propia-refutacion.md) - y el texto ANTES del marcador es lo HECHO, no el motivo.
 - [🧪💀 Un test que afirma el SÍNTOMA del defecto lo vuelve inmortal](un-test-que-afirma-el-sintoma-del-defecto-lo-vuelve-inmortal.md) — verde POR el bug, 5 días. ¿Sería verde si el mecanismo estuviera roto?
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) - el falso rojo parece prudencia.
+- [⚙️🎭 El rojo del WRAPPER se lee como rojo del GATE](el-script-de-fondo-lee-su-archivo-por-ruta-fija-y-el-primer-plano-lo-pisa.md) - ruta única en background.
 - [🛥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) · [y el que corre tras el guard no llega](un-control-de-ceguera-ubicado-despues-del-guard-que-dispara.md)
 - [🔄↔️ Base rancia: el diff INVIERTE la dirección](base-rancia-invierte-la-direccion-del-diff.md) — lo que main borró parece tu aporte. `git log -S` antes.
 - [🪞 El guard se satisface con su PROPIO comentario](el-guard-se-satisface-con-su-propio-comentario.md) - descartá comentarios al buscar.
 - 🎚️ El gate que NO dispara: [medí si dispara antes de embarcarlo](medir-si-un-gate-dispara-antes-de-embarcarlo.md) · [un umbral del día envejece](un-umbral-calibrado-al-corpus-del-dia-envejece-con-el.md) - un empate no separa.
 - 🏷️ El MAL clasificado: [nada lo cazaba](nada-cazaba-al-mal-clasificado-solo-al-no-clasificado.md) · [corroborar premia al que más cita](un-control-de-corroboracion-premia-al-que-mas-cita.md) - el analítico aprueba.
-- [🎯🔧 Un control positivo con ESPERADO FALSO acusa al script](un-control-positivo-con-esperado-falso-acusa-al-script.md) - ¿lo midió o lo escribió alguien?
 - [🔬⚖️ Lo que se retira es la CAUSA, no la OBSERVACIÓN](una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira.md) - la conclusión sobrevive.
 - [🧪🔀 Comparar ramas con un instrumento VERSIONADO mide DOS variables](el-instrumento-versionado-difiere-por-rama.md) — fijá uno: un archivo que nadie toca.
 - [🎭🚪 Dos causas comparten el CÓDIGO DE SALIDA](dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md) - el falso lleva al `--no-verify`.
