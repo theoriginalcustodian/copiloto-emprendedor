@@ -68,7 +68,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-H2** | `sin-issue` | ✅ TERMINADO | 721cfb5a (#1313): update cancelar + guarda en confirmar + tool cancelar_factura. VPS suite completa 2648 passed/41 sk… |
 | **SM-H3** | `sin-issue` | ✅ TERMINADO | 70e46d9f (#1318) card por tipo en backend; 6db618e4 (#1314) y acc58ccc (#1328) cancelada sin Confirmado tras recargar… |
 | **SM-H4** | `sin-issue` | ✅ TERMINADO | c0219797 (#1343) + cd4041dd (#1340): descripcion de emitir_factura y observacion de faltantes; tope RG 5700/2025 ya e… |
-| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | DOS cosas, y la primera NO necesita device. (1) EL LADO MAPA DEL D5: el mockup `mockups/06-presupuestos/index.html:24… |
+| **SM-H5** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO DEVICE: las capturas de las dos entradas (punto 2). Re-medido 2026-11-04 por manejo-de-errores contra origin/mai… |
 | **SM-H6** | `sin-issue` | ✅ TERMINADO | d7d0a351 (#1354). Device, factura real N° 0006-00000011: cliente y número formateado en la card, y «Mandala por mail»… |
 | **SM-H7** | `sin-issue` | ✅ TERMINADO | 6db618e487b14b82e1efad1d9e99d38a24956a5d (#1314) fix con test rojo primero; acc58cccce18056fe005876a135874ccefc0b9fa … |
 | **SM-I1** | `sin-issue` | ✅ TERMINADO | sha 5814cf08d0144483d5b15d9da7868c6544ef9185 · cabecera, Ahora y Para hoy con Ver tablero en Mi dia; Tu dia propia co… |
@@ -143,7 +143,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N45** | `sin-issue` | ✅ TERMINADO | a6600880 (#1520, CI 6/6) + 3c616615 (#1539, CI 6/6), las dos de frontend2. DoD 1, 3, 4, 5: componente Tarjeta en them… |
 | **SM-N46** | `sin-issue` | ✅ TERMINADO | DoD original + el alcance de CLASE, los dos en prod. 83466828 (#1542) y 16d3ecc3 (#1546), CI 6/6, desplegados, durabi… |
 | **SM-N47** | `sin-issue` | ✅ TERMINADO | sin-codigo: es ficha de ATRIBUCION, y cierra con la SEGUNDA de las dos frases que su DoD 4 permite -- no se pudo atri… |
-| **SM-N48** | `sin-issue` | 🟨 EN-CURSO | ACTUALIZADO 2026-11-03 con la medicion de frontend1, y lo medido CORRIGE lo que yo suponia: el PR #1581 estaba en dra… |
+| **SM-N48** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 2/3 en DEVICE: par antes/despues con adb input motionevent DOWN/MOVE/UP (tap en el campo sigue abriendo escritura… |
 | **SM-N49** | `sin-issue` | ✅ TERMINADO | sha cc4adea8 (PR #1584, verificado ancestro de origin/main) - apps/copiloto/tests/test_ratchet_activity_payload_lleva… |
 | **SM-N50** | `sin-issue` | ✅ TERMINADO | a8ea35fa (PR #1592, ancestro verificado) — `diagnostico_conexiones` devuelve `(caidos, composio_mirado)` y `avanzar_t… |
 | **SM-N51** | `sin-issue` | 🟧 DOD-PARCIAL | DECISION DEL OPERADOR, y es lo unico que falta: (a) agregar al mapa el camino de alta que la app YA tiene, o (b) reti… |
@@ -152,12 +152,13 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N54** | `sin-issue` | ✅ TERMINADO | 6459a3ac (PR #1600) — `_cuit_del_tenant` con la DB caida responde 503 reintentable CON rastro y tenant, en vez del 40… |
 | **SM-N55** | `sin-issue` | ✅ TERMINADO | e74d4913 (#1604, ancestro verificado) — `consultar_onboarding` ya no colapsa UNAVAILABLE en el mismo None de NOT_FOUN… |
 | **SM-N56** | `sin-issue` | ✅ TERMINADO | 6459a3ac (PR #1600) — el rastro que escribe `conexiones_salud.py` ahora sale con el `cliente_id` del tenant que lo or… |
+| **SM-N58** | `sin-issue` | ✅ TERMINADO | b4ffd5e2 (PR #1622, ancestro de origin/main verificado). DoD1: inventario de los 24 skips, una fila por archivo con l… |
 | **SM-Z1** | `sin-issue` | 🟧 DOD-PARCIAL | ACTUALIZADO 2026-11-03 23:50 - el codigo YA ESTA HECHO y desplegado; lo unico que falta es el OAuth del operador en e… |
 | **SM-Z2** | `sin-issue` | ✅ TERMINADO | `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama ➕ ANOTACION 2026-11-03 (INFO de au… |
 | **SM-Z3** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de DEVICE del splash: el codigo esta en main y la decision tomada, pero lo tactil no lo acredita ningun test.… |
-| **SM-Z4** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO DEVICE. Reescrito 2026-11-03 con la medicion de auditoria (d0f0e438, PR #1601): la parte 2 (COLOR) ya no esta bl… |
+| **SM-Z4** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO DEVICE, y la captura tiene que anotar el fontScale del sistema. Re-medido 2026-11-03 por manejo-de-errores @ee86… |
 | **SM-Z5** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de DEVICE de Ajustes ya como lista. Disparador: el telefono. Dueno de la captura: frontend2. |
-| **SM-N57** | `sin-issue` | ✅ TERMINADO | f76e6751 (PR #1619, CI 6/6) por backend. DoD 1: el test corre EN EL GATE y pasa, 'test_recall_isolation_cross_emprend… |
+| **SM-N57** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -464,7 +465,7 @@ tocar el workflow: skills `temporal-developer` y `temporal-ai-patterns` (regla 3
 
 - **Estado:** DOD-PARCIAL
 - **Dueno-activo:** frontend1 (midió el mapa y hace la corrección de una línea) · las capturas, device
-- **Falta:** DOS cosas, y la primera NO necesita device. (1) EL LADO MAPA DEL D5: el mockup `mockups/06-presupuestos/index.html:248` dice «Guardar presupuesto» y la app dice «Guardar el presupuesto» (`FormularioPresupuesto.tsx:420`), con el mismo desfase en el aviso (:243 vs `TarjetaPresupuestoPropuesto.tsx:154`). La linea del mockup esta rotulada «copy LITERAL del repo» y esta desactualizada en UNA palabra, que es peor que no tener rotulo: un rotulo que dice «literal» apaga la verificacion del proximo. El literal del D5 dice «se corrige el mapa», y la app ya esta en produccion con su copy, asi que se corrige el MOCKUP -> una linea. (2) Las capturas de device de las dos entradas. 🔴 RETIRO de este Falta el «0 apariciones de 50.000», que era MIO y era el INSTRUMENTO EQUIVOCADO: frontend1 midio que 50.000 es el dato del tenant canonico EN DEVICE y el mockup es ILUSTRATIVO -- muestra $65.000 (:244) con el mismo separador castellano. Comparar el literal de un dato de device contra un prototipo ilustrativo no mide un rotulo. Lo que el DoD pide del importe es el FORMATO ($50.000 y no $50,000.00), que es otra cosa. Y «Pendiente» SI esta en el mockup (:291) y el chip «Arma la factura» tambien (:287).
+- **Falta:** SOLO DEVICE: las capturas de las dos entradas (punto 2). Re-medido 2026-11-04 por manejo-de-errores contra origin/main @dba8aebe: el punto (1), el lado mapa del D5, YA ESTA -- el mockup 06 dice «Guardar el presupuesto» en :243 y :248 (4c2bd865, #1607, ancestro), igual que la app (FormularioPresupuesto.tsx:420). Un Falta vencido no cierra el DoD: lo que queda es la captura de device de las dos entradas, y del importe se mide el FORMATO ($50.000 y no $50,000.00), no el literal 50.000, porque el mockup es ilustrativo ($65.000, :244). «Pendiente» (:291) y el chip «Arma la factura» (:287) estan en el mockup.
 - **Cierre:** DEVICE 2026-11-03 en la cuenta CANONICA (frontend1, tenedor, RF8T318RN9T), con el fix de SM-N46 ya en prod. ANTES a las 14:54: el presupuesto N 87 de ClienteJ4 figuraba Esperando respuesta. Pedido al agente: aprobar el 87 de ClienteJ4. Respuesta: Marque el presupuesto 87 de ClienteJ4 ($50.000) como aprobado -- y el chip chip-armar-factura-boton con el rotulo Arma la factura aparecio EN EL CHAT a las 14:57:36, que es donde el DoD lo pedia (ListaMensajes.tsx:489) y no en el recibo. El chip NO se toco: la ficha pedia que APAREZCA, y tocarlo habria arrancado otro flujo y ensuciado la evidencia. Importe con separador castellano $50.000 y el estado del presupuesto cambiado, verificado por el par antes/despues. 🎯 Y la pasada dejo un dato de INSTRUMENTO que corrige la receta que yo habia escrito: frontend1 tuvo que tipear aprobar sin tilde porque adb NO puede tipear la a acentuada. O sea que el literal con tilde manda para BUSCAR el chip en el codigo -- la forma sin tilde dio 0 hits y fue mi falso negativo original sobre esta misma ficha -- pero NO para el input, donde el acento es inescribible por el instrumento. Dos literales de la misma palabra con dos reglas opuestas segun si se busca o se escribe, y confundirlas falla en los dos sentidos. ⚠️ Esta corrida aprobo el 87 de la canonica a proposito y con su par antes/despues: era aceptable porque SM-N5 y SM-N25 ya habian cerrado sus puntos con el 87 pendiente. El incidente de pantalla negra de las 14:54 NO se adjudica a esta ficha: tiene id propio, SM-N47. ⚠️⚠️ Y un dato que NO sabia frontend1 cuando midio, aportado por backend despues: su deploy de #1546 reinicio el servicio a las 17:57:16 UTC, o sea VEINTE SEGUNDOS antes de este aprobar el 87 (14:57:36 local = 17:57:36 UTC). La medicion salio bien y por eso el cierre se sostiene -- pero se sostiene por SUERTE, no por diseño: si hubiera fallado, el veredicto habria sido el chip no aparece y el defecto habria quedado atribuido a la app cuando la causa era un servicio recien reiniciado. Dos sesiones tocando el mismo sistema sin avisarse convierten cualquier medicion en una loteria, y la unica razon por la que esto se sabe es que backend lo declaro contra su propio interes. Acordado: en pasadas de device, backend avisa por peer ANTES de desplegar. 🔧 Nota de instrumento de ESTE marcado, porque es la segunda variante del mismo defecto en el dia: escribir el importe como pesos-5-0-punto-0-0-0 dentro de comillas dobles hizo que bash intentara expandir la variable 5. Esta vez el marcado FALLO RUIDOSO y nada se escribio -- set -u aborta ante una variable indefinida. El de los backticks de SM-N21 no fallo: la sustitucion se EJECUTO, devolvio vacio, y el texto quedo mutilado con forma de cita completa. Misma causa raiz (el shell interpreta el argumento), resultados opuestos: un guard caza la referencia INDEFINIDA y no caza la sustitucion exitosa-pero-vacia. Por eso el control de cada marcado pregunta por los literales, no por el exit code.
 - **Dueño:** frontend1
 - **Medido:** `pres-hitl` y `pres-ciclo`: rótulo del botón y del chip distintos del mapa, importe
@@ -3103,9 +3104,10 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N48 · `sin-issue` — El tirador de ABAJO sólo agarra en la línea; el de ARRIBA agarra en toda la franja
 
-- **Estado:** EN-CURSO
+- **Estado:** DOD-PARCIAL
 - **Dueno-activo:** frontend1
-- **Falta:** ACTUALIZADO 2026-11-03 con la medicion de frontend1, y lo medido CORRIGE lo que yo suponia: el PR #1581 estaba en draft con mergeable=UNKNOWN y yo lo habia leido como «falta la captura». NO era eso -- el LINT estaba ROJO por paridad de testID (`panel-pie-gesto`, nuevo y nativo-only). Lo arreglo frontend1 con una excepcion declarada con su motivo (3872e008, `testid_paridad --check` exit 0) y el PR quedo mergeable limpio (merge-tree sin conflicto). Es exactamente la clase que este sprint mide: un bloqueo de CODIGO disfrazado de bloqueo de DEVICE habria esperado el telefono para siempre. QUEDA, y ahora si es solo device: los DoD 2 y 3 piden el arrastre en la franja ejercitado con `adb shell input motionevent` DOWN/MOVE/UP -- NUNCA `input tap`, que no ejercita un Pan de RNGH. El PR se queda en draft a proposito hasta tenerlos. Sigue PENDIENTE y no DOD-PARCIAL porque su codigo NO esta en main: vive en la rama del draft, y DOD-PARCIAL exige codigo mergeado.
+- **Falta:** DoD 2/3 en DEVICE: par antes/despues con adb input motionevent DOWN/MOVE/UP (tap en el campo sigue abriendo escritura), bundle sha declarado
+- **Cierre:** codigo en main a26119fb (#1581): area de activacion del tirador de abajo + test; DoD 1 hecho
 - **Dueño:** frontend1 (dueña del shell)
 - **Reportado por:** el operador, en su device, 2026-11-03: *«el tirador de mi dia sobre el campo de
   ingreso de texto funciona mal....te habia pedido que sea igual el tirador de arriba....el tirador
@@ -3394,6 +3396,30 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   2. Un test lo afirma **sobre el valor**, no sobre que la línea exista.
   3. El `Cierre:` cita un sha **ancestro de `origin/main`**.
 
+### SM-N58 · `sin-issue` — El gate no corre NADA que necesite una credencial de tercero, y un `skipped` dentro del verde se leía como cobertura
+
+- **Estado:** TERMINADO
+- **Dueno-activo:** manejo-de-errores
+- **Cierre:** b4ffd5e2 (PR #1622, ancestro de origin/main verificado). DoD1: inventario de los 24 skips, una fila por archivo con la credencial que exige y la pregunta que deja sin responder — 11 TERCERO, 6 MODELO, 4 COSTURA NUESTRA, 1 REQUISITO FALSO, 2 SPIKE; ninguno de la clase de N57. DoD2: decision escrita — el gate NO corre tests con credenciales de terceros, quedan [UNVERIFIED] con dueno por grupo y revision el 2026-12-03 o antes de abrir la beta; revertirla es MAYOR. DoD3: backend.sh imprime los SKIPS y su delta contra scripts/ci/skips-linea-base.txt (43 nodeids, union VPS+GitHub) y FALLA ante un skip nuevo — control positivo con la linea base vacia: VPS RC=1 con los 26 nombrados y GitHub backend:failure con 17; con la linea base completa @0c2f082b: VPS 2939 passed / 25 skipped, NUEVOS 0 y GitHub 6/6. DoD4: sha en main. ci-verde 6/6 CLEAN.
+- **Dueño:** manejo-de-errores
+- **De dónde sale:** el conteo de los 41 skipped de la suite backend (manejo-de-errores, 2026-11-03), a
+  pedido de planificación. 15 son de GoTrue (los corre `gate.sh`), 1 de `kb-usuario` (lo corre GitHub),
+  1 tapa el aislamiento de memoria (es `SM-N57`, backend) y **24 exigen una credencial de tercero que
+  ningún gate tiene** (grep 0 en los cinco `scripts/ci/*.sh`). Nunca se decidió por escrito: era un hueco.
+- **Por qué es UNA ficha y no varias:** el defecto no es «tal módulo no se testea», es que el gate no
+  corre nada con credencial de tercero. Una ficha por dueño mediría al dueño y dejaría al resto sin
+  nadie. La clase grave (`SM-N57`) va aparte para no diluirse en una lista de 24.
+- **DoD:**
+  1. **Inventario**, no un número: los 24 con archivo, credencial que exige cada uno y **qué pregunta
+     queda sin responder** si no corre (tercero vs costura nuestra). Si aparece otro de la clase de
+     `SM-N57`, se parte en ficha propia.
+  2. **La decisión escrita** sobre la clase: el gate corre con credenciales (y dónde viven y quién las
+     rota), o no las corre y esos 24 quedan `[UNVERIFIED]` con dueño y fecha.
+  3. **El gate deja de contar un `skipped` como verde:** el runner imprime el conteo de skips y el delta
+     contra una línea base declarada, y un skip NUEVO se ve sin que nadie lo busque.
+  4. El `Cierre:` cita un sha **ancestro de `origin/main`**.
+- **Doc:** `Auditorias/2026-11-03-SM-N58-skips-por-credencial-de-tercero-inventario-y-decision.md`
+
 ### SM-Z1 · `sin-issue` — Apps muestra 5 servicios y el mapa dibuja 6: las 5 son CORRECTAS
 
 - **Estado:** DOD-PARCIAL
@@ -3470,7 +3496,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 - **Estado:** DOD-PARCIAL
 - **Dueno-activo:** frontend2
-- **Falta:** SOLO DEVICE. Reescrito 2026-11-03 con la medicion de auditoria (d0f0e438, PR #1601): la parte 2 (COLOR) ya no esta bloqueada por el operador -- el wordmark usa `COLOR_PALABRA_MARCA` (PantallaLogin.tsx:150) y el par logotipo tiene su control, resuelto en e213dd47 (PR #1585), que es el sentido en que `RevealEntrada.tsx:146` ya lo habia resuelto y el login no habia heredado. La parte 1 (TAMANO, 34 -> 32) estaba hecha desde antes. Queda el TAMANO REAL EN DEVICE: el test compara el fontSize renderizado contra el prototipo en jsdom, y eso no acredita como se ve en pantalla.
+- **Falta:** SOLO DEVICE, y la captura tiene que anotar el fontScale del sistema. Re-medido 2026-11-03 por manejo-de-errores @ee8626e7: las partes 1 y 2 estan en codigo (PantallaLogin.tsx:27 HERO = 32; :150 color COLOR_PALABRA_MARCA, e213dd47 #1585), y la frase anterior sigue vigente: falta el TAMANO REAL EN PANTALLA. Lo que esa frase no decia: el test compara la PROP fontSize en jsdom, pero en pantalla el wordmark mide 32 dp x fontScale, y allowFontScaling/maxFontSizeMultiplier tienen 0 apariciones en apps/mobile/src. Asi que con escala de fuente distinta de 1 NO mide 32, y ningun test lo ve. El veredicto, binario: alto del wordmark en px / densidad = 32 dp con fontScale 1.0 anotado en la captura (adb shell settings get system font_scale). Si con otra escala se decide que debe seguir en 32, eso es un fix aparte (allowFontScaling=false en el logotipo), no este cierre.
 - **Dueño:** frontend2 (parte 1) · operador (parte 2)
 - **Medido (frontend2, al cerrar la entrada `03 · ingresar`, `809cc1fa`):** mapa **32 px** terracota
   `#DE7250` (`index.html:517`); app **34 px** (`PantallaLogin.tsx:25`) en `acentoTinta #B04A2E`.
@@ -3532,8 +3558,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N57 · `sin-issue` — El UNICO test adversarial del aislamiento de la MEMORIA no corre en NINGUN gate
 
-- **Estado:** TERMINADO
-- **Cierre:** f76e6751 (PR #1619, CI 6/6) por backend. DoD 1: el test corre EN EL GATE y pasa, 'test_recall_isolation_cross_emprendedor PASSED, 1 passed in 15.77s' con '==> Grafo: ON', en el VPS por el mismo runner de prod (sync-test-backend.sh); las credenciales salen del lado del servidor, de /etc/unreal-copilot/copiloto.env, y SOLO esas dos — no el archivo entero, porque traeria el DATABASE_URL de prod y pisaria la base efimera. Nada pasa por la PC; verificado sin imprimir valores (len 30 y len 37). DoD 2 CONTROL POSITIVO: forzo MemoryProvider._user_id al mismo id para todos (un solo grafo para los dos emprendedores) y el test CAYO en :92 con 'AssertionError: LEAK: A vio el dato de B', y cayo por el assert de LEAK y no por error de conexion porque el control positivo de :88-91 paso antes; restaurado en finally, memory_provider.py byte a byte identico. O sea que el gate dispara hacia el NO. DoD 3: declarado en ADR-001 §13 por que solo este test necesita credenciales extra. DoD 4 NO APLICA: se decidio correrlo. Declarado en el ADR y NO es deuda oculta: tests.yml en GitHub lo sigue salteando porque no alcanza Graphity, asi que la fuente de verdad de este control es el recibo de gate.sh; y una corrida con UC_TEST_SIN_GRAPHITY=1 deja el aislamiento [UNVERIFIED] en esa corrida, avisado en el log con '==> Grafo: OFF'. Evidencia: docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-N57.md
+- **Estado:** PENDIENTE
 - **Dueño:** backend
 - **De dónde sale:** barrido de los 41 `skipped` de la suite que pidió planificación a manejo-de-errores
   después de `SM-I7`, donde un test existía y se salteaba porque `sync-test-backend.sh` no llevaba
