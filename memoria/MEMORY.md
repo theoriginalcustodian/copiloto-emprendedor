@@ -7,7 +7,7 @@
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
 
 - **🌐 EL REPO ES PÚBLICO** (2026-08-06). Un `.env` commiteado es público al instante; historia auditada: 0 secretos. `CLAUDE.md` §cabecera.
-- **📊 SPRINT VIGENTE = CORRECCIONES DEL MAPA** (02-11) @`3a393132`: 93 fichas · 63 TERMINADO · 22 DOD-PARCIAL. Lo mide `sprint-estado.py`, nada más.
+- **📊 SPRINT VIGENTE = CORRECCIONES DEL MAPA** @`eea4b80c`: 99 fichas · 86 TERMINADO · 11 DOD-PARCIAL. Sólo lo mide `sprint-estado.py`.
 - **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO en los DOS sentidos** — archivos ATRASADOS (commitearlos revierte fixes) y trabajo real sin respaldo; `??` ≠ nuevo. Medí el SIGNO contra main, por archivo.
 - **🚧 Abiertos:** clientes por voz · ingesta al grafo: corre VACÍA, falta tráfico. [[copiloto-ingesta-grafo-por-tenant-real-frente-abierto]]
@@ -44,7 +44,6 @@
 - [🚀📱 Entrega progresiva por hito + E2E en device](entrega-progresiva-y-e2e-en-device.md) - no cierra hasta desplegado y probado.
 - [🎓 Cierre del aprendizaje no es opcional](cierre-del-aprendizaje-no-opcional.md) - test *¿puede volver?* Si no, no terminó.
 - [♻️ Cero deuda de MEJORA - implementar TODAS al cerrar](cero-deuda-de-mejora.md) - sólo se difiere no-código + MAYOR.
-- [📋 Lo que NO está en la TABLA DE HITOS no existe](lo-que-no-esta-en-la-tabla-de-hitos-no-existe.md) - cada dueño necesita su renglón.
 - [Propagar el cierre a TODOS los docs maestros](propagar-cierre-a-docs-maestros.md) - al doc-de-registro único.
 
 ### Evidencia: el instrumento antes que el resultado
@@ -97,7 +96,7 @@
 - [🛡️💥 Un guard que grita en el caso NORMAL se desarma](el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md) - el falso positivo enseña a saltear.
 - [🚦💥 El guard da LUZ VERDE justo en su caso de activación](el-guard-falla-abierto-en-su-caso-de-activacion.md) - leé la rama de ERROR.
 - [🚦🌍 Gate cuyo corpus vive FUERA del repo: mide al EQUIPO](un-gate-cuyo-corpus-vive-fuera-del-repo-mide-al-equipo-no-al-commit.md) - y CI lo saltea.
-- [📜 La exención cita una autoridad que NO la ampara](exencion-sin-autoridad.md) - 34 exentos citaban un acta de 2 casos. Contá.
+- 📜 La EXENCIÓN y su reverso: [cita una autoridad que NO la ampara](exencion-sin-autoridad.md) (34 exentos, un acta de 2 casos) · [un despacho de RETIRO la borra creyéndola un resto](un-despacho-de-retiro-no-distingue-el-resto-olvidado-de-la-excepcion-fechada.md)
 - [⚖️🗺️ Al JUEZ también hay que darle el plano](al-juez-tambien-hay-que-darle-el-plano.md) - sin contexto rechaza, y parece prudencia.
 - [🧟🚨 El artefacto del instrumento NO TIENE DUEÑO](el-artefacto-que-genera-el-instrumento-no-tiene-dueno.md) - enciende, no apaga: alarma inmortal.
 - [🧪🔌 Test VERDE y CERO invocadores = el control NO existe](un-control-con-test-verde-y-cero-invocadores.md) - un permiso NO es un disparador. 4ª vez.

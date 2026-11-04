@@ -565,3 +565,4 @@ el cierre del sprint en curso. Esta se busca por tema y sigue citada desde la fi
 
 - [🍳💸 Una premisa no medida de la receta falla cuando el recurso CARO ya esta comprometido](la-premisa-no-medida-de-la-receta-falla-cuando-el-recurso-caro-ya-esta-comprometido.md) — el momento de medirla es ANTES de tomar el device.
 
+- [📋 Lo que NO está en la TABLA DE HITOS no existe](lo-que-no-esta-en-la-tabla-de-hitos-no-existe.md) - cada dueño necesita su renglón. (bajada 2026-11-04: el registro de fichas + `sprint-estado.py --check` la cubren y son mas fuertes)
