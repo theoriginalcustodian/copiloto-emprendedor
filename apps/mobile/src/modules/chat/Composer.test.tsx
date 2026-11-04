@@ -162,9 +162,9 @@ describe('Composer -- SM-N41: la base del campo es LEGIBLE (decidido por el oper
     return Number(m![1]);
   }
 
-  it('la base tapa lo que pasa detrás: alfa >= .95 (con .85 todavía se leía «Editar/Cancelar» a través del campo)', async () => {
+  it('la base tapa lo que pasa detrás: alfa >= .99 (.85 dejaba leer «Editar/Cancelar»; .96 dejaba leer la burbuja en la franja inferior, device 2026-11-04)', async () => {
     await renderComposer();
     await waitFor(() => expect(screen.getByTestId('chat-composer-campo-base')).toBeTruthy());
-    expect(alfaDeLaBase()).toBeGreaterThanOrEqual(0.95);
+    expect(alfaDeLaBase()).toBeGreaterThanOrEqual(0.99);
   });
 });
