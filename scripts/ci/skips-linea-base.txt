@@ -9,8 +9,8 @@
 apps.copiloto.tests.test_memory_isolation_live::test_recall_isolation_cross_emprendedor
 
 ## COSTURA-NUESTRA · dueño manejo-de-errores · pregunta sobre NUESTRO código; ejecutable sin credencial con un LLM grabado
-apps.copiloto.tests.test_autosanacion_cadena_completa::test_CONTROL_la_cadena_se_CORTA_en_el_dominio_fiscal
-apps.copiloto.tests.test_autosanacion_cadena_completa::test_la_cadena_COMPLETA_de_la_DLQ_al_veredicto
+# (2026-11-04) los 2 de test_autosanacion_cadena_completa ya corren con el LLM grabado: fuera de la línea base.
+# Los 2 de BETA4a siguen: además del LLM exigen graphity-code REAL (resolver_origen contra el grafo).
 apps.copiloto.tests.test_beta4a_soporte_clasificador_cadena::test_BETA4a_ticket_con_simbolo_real_dispara_la_cadena_completa_hasta_veredicto
 apps.copiloto.tests.test_beta4a_soporte_clasificador_cadena::test_BETA4a_ticket_no_tecnico_queda_necesita_humano_sin_tocar_el_forjador
 
