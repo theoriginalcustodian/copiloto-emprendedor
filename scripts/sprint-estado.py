@@ -421,6 +421,38 @@ def _autotest_conservacion():
     return len(fallos)
 
 
+def _autotest_conflicto():
+    """Control positivo/negativo del guard de leer(): un guard sin control versionado es indistinguible
+    de uno ausente. Fixtures con el separador EXPLICITO (los .md del repo son CRLF): con LF suelto el caso
+    puede pasar por el motivo equivocado. Devuelve la cantidad de fallos."""
+    partido = "a{n}<<<<<<< HEAD{n}x{n}======={n}y{n}>>>>>>> otra{n}b{n}"
+    casos = [
+        ("conflicto LF", partido.format(n="\n"), True),
+        ("conflicto CRLF", partido.format(n="\r\n"), True),
+        ("sin marcadores", "a\r\nb\r\n", False),
+        ("======= solo (prosa/tabla)", "a\r\n=======\r\n| x | y |\r\n", False),
+    ]
+    fallos = 0
+    for nombre, texto, debe_abortar in casos:
+        fd, ruta = tempfile.mkstemp(suffix=".md", prefix="conf-autotest-")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8", newline="") as fh:
+                fh.write(texto)
+            try:
+                leer(ruta)
+                aborto, nombra = False, False
+            except SystemExit as e:
+                aborto, nombra = True, os.path.basename(ruta) in str(e)
+        finally:
+            os.unlink(ruta)
+        ok = aborto == debe_abortar and (nombra or not debe_abortar)
+        fallos += 0 if ok else 1
+        print("  [%s] %-26s debe_abortar=%s abortó=%s%s" % (
+            "OK   " if ok else "FALLA", nombre, debe_abortar, aborto,
+            "" if not debe_abortar or nombra else " (el mensaje NO nombra el archivo)"))
+    return fallos
+
+
 def autotest():
     """Control POSITIVO y NEGATIVO del gate: un gate que nunca dispara no es un gate."""
     base = "### SM-F9 · `#1` — ficha de prueba\r\n\r\n- **DoD:** algo\r\n"
@@ -465,6 +497,7 @@ def autotest():
     # Arranca con los 3 casos de conservacion de campos: un control que el lint no corre
     # envejece sin avisar, y este cubre un borrado que era SILENCIOSO.
     fallos = _autotest_conservacion()
+    fallos += _autotest_conflicto()
     for nombre, txt, esperado in casos:
         if not parsear(txt):
             print("  [FALLA] %-26s el parser no vio la ficha de prueba" % nombre)
