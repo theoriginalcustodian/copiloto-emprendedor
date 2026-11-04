@@ -298,8 +298,10 @@ const ALTO_BARRA = 52;
 export const ALTO_COMPOSER_REPOSO = 10 + ALTO_BARRA + 18;
 const RADIO_CAMPO = ALTO_BARRA / 2;
 /** Opacidad de la base bajo el vidrio del campo (SM-N25 / SM-N41): que lo que pasa detrás NO se lea. Con .85 todavía se alcanzaba
- *  a leer «Editar/Cancelar» a través del campo (medido en device, 2026-11-03); el operador decidió LEGIBLE: se sube ACÁ, nunca en el JSX. */
-const ALFA_BASE_CAMPO = 0.96;
+ *  a leer «Editar/Cancelar» a través del campo (medido en device, 2026-11-03); el operador decidió LEGIBLE: se sube ACÁ, nunca en el JSX.
+ *  .96 tampoco alcanzó: en device (release, 2026-11-04) el texto de la burbuja se leía en la franja inferior del campo, en las dos pieles. Se filtra (1-alfa) del contraste
+ *  de atrás: a .96 es ~4 %, a .99 ~1 %. 1.0 mata la translucidez por completo: eso lo decide el operador, no este valor. */
+const ALFA_BASE_CAMPO = 0.99;
 
 const styles = StyleSheet.create({
   contenedor: {},
