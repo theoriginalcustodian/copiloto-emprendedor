@@ -371,36 +371,83 @@ soporte técnico los manejan los socios, sin contratar personal.
 | Margen bruto | ~99% | §4 |
 | **Recuperación del costo de adquisición** | **~1,5 meses** | US$47 ÷ US$30 |
 
-### 13.3 Simulación a 12 meses
+### 13.3 Simulación: usuarios de pago, aporte propio y llegada a 5.000
 
-Arranque con 15 testers y US$500 de capital en los meses 1 y 2; bajas 6%/mes; 30% orgánico; costo
-variable US$0,6 por activo; fijos según la trayectoria de §12. Script en el bloque de abajo.
+**Corrección (2026-11-03):** la primera versión de esta sección contaba usuarios "activos" con un plan
+gratis que no existe. El producto tiene sólo **prueba de 15 días** (versión completa, limitada en
+cantidad de acciones) y planes pagos. La simulación cuenta **sólo usuarios de pago**; el costo de las
+pruebas que no convierten (~US$0,2 a 0,3 de LLM cada una) va dentro del costo de adquisición.
+*La prueba de 15 días no se encontró en el código* (`apps/`, `motor/`, `deploy/`; 2026-11-03): es una
+decisión de producto, a implementar o con otro nombre.
 
-| Escenario | Reinversión del neto | Activos mes 6 | Activos mes 12 |
+**Supuestos (no medidos):** arranque con 0 de pago · costo por usuario de pago US$49 (US$7 por
+instalación activada ÷ 15% de conversión + costo de pruebas), que **sube hasta el doble** al acercarse a
+5.000 · ingreso promedio US$30 por usuario de pago (mezcla de planes; no es el máximo de US$50) · bajas
+6%/mes · 30% orgánico · costo variable US$0,6 por usuario · fijos según §12 · **semilla de publicidad de
+US$500/mes en los meses 1 a 3** (incluye el piloto) · el aporte propio cubre lo que el ingreso no alcanza
+(fijos + variables + publicidad).
+
+#### Reinversión del 70% del neto
+
+| Mes | De pago | Ingreso/mes | Publicidad/mes | Aporte propio/mes | Aporte acumulado |
+|---|---|---|---|---|---|
+| 1 | 13 | 0 | 500 | 635 | 635 |
+| 2 | 26 | 398 | 500 | 245 | 880 |
+| 3 | 37 | 771 | 500 | 0 | 880 |
+| 6 | 110 | 2.273 | 1.465 | 0 | 880 |
+| 9 | 336 | 6.936 | 4.663 | 0 | 880 |
+| 12 | 983 | 20.842 | 14.157 | 0 | 880 |
+| 15 | 2.498 | 56.131 | 38.275 | 0 | 880 |
+| **18** | **5.110** | 123.848 | 84.596 | 0 | 880 |
+
+#### Reinversión del 100% del neto
+
+| Mes | De pago | Ingreso/mes | Publicidad/mes | Aporte propio/mes | Aporte acumulado |
+|---|---|---|---|---|---|
+| 1 | 13 | 0 | 500 | 635 | 635 |
+| 2 | 26 | 398 | 500 | 245 | 880 |
+| 3 | 41 | 771 | 621 | 0 | 880 |
+| 6 | 182 | 3.275 | 3.075 | 0 | 880 |
+| 9 | 833 | 15.244 | 14.739 | 0 | 880 |
+| 12 | 3.085 | 62.169 | 60.596 | 0 | 880 |
+| **14** | **~5.000** | | | 0 | 880 |
+
+#### Resumen
+
+| Escenario | Llega a 5.000 de pago | Último mes con aporte propio | Aporte propio total |
 |---|---|---|---|
-| Base (US$7 por activo, 15% paga) | 70% | ~870 | **~7.300**: alcanza la meta |
-| Base | 100% | ~1.600 | ~31.000 (no creíble, ver abajo) |
-| Pesimista (US$10 por activo, 10% paga) | 70% a 100% | ~200 a 260 | **~370 a 780**: no despega |
+| Base, 70% | **mes 18** | mes 2 | **~US$880** |
+| Base, 100% | **mes 14** | mes 2 | **~US$880** |
+| Pesimista (US$100 por usuario de pago), 70% | mes 42 | mes 3 | ~US$1.340 |
+| Pesimista, 100% | mes 29 | mes 3 | ~US$1.340 |
 
-El escenario optimista (US$4, 20%) dio millones de usuarios y se descartó. **El modelo es optimista a
-escala:** asume costo por usuario constante, y en la realidad sube al agotarse el público más barato.
+Con costo por usuario constante (sin saturación) la llegada se adelanta: base 70% → mes 14, base 100% →
+mes 10.
 
-**Conclusión:** lo que decide no es el porcentaje reinvertido sino la **conversión y la activación**.
-En el escenario base, reinvertir el 70% alcanza la meta; en el pesimista el negocio no despega aunque
-se reinvierta todo.
+**Lectura:**
+- **El aporte de bolsillo es chico y sólo al principio:** ~US$880 en el escenario base (la semilla de
+  publicidad + los fijos de los primeros 2 meses). **Desde el mes 3 todo sale de lo que ingresa** en los
+  cuatro escenarios. A eso sumar la reserva de §13.4 (~US$400), que no se gasta.
+- **Lo que cambia entre escenarios no es el bolsillo sino el plazo:** 14 a 18 meses en el base, 29 a 42
+  en el pesimista.
+- **El 100% llega 4 meses antes**, pero implica no retirar nada hasta el mes 14.
+- **La publicidad a escala (~US$85.000/mes en el mes 18 al 70%) es irreal** si el mercado se satura
+  antes: el modelo sólo duplica el costo por usuario hacia 5.000. Más allá de ~5.000 las cifras no son
+  creíbles y se omiten.
 
 ```python
-def sim(cac_activo, conv, arpu, reinv, seed=500, churn=0.06, organico=0.30, meses=12):
-    activos = 15.0; out = []
+def sim(reinv, meses=24, cac0=49, arpu=30, churn=0.06, org=0.30, semilla=500, meses_semilla=3):
+    p = 0.0; acum = 0.0; filas = []
     for m in range(1, meses + 1):
-        n = activos
-        fijo = 135 if n < 500 else 200 if n < 1500 else 330 if n < 3000 else 520
-        neto = n * conv * arpu - n * 0.6 - fijo
-        ads = max(0, neto * reinv) + (seed if m <= 2 else 0)
-        activos = n * (1 - churn) + ads / cac_activo * (1 + organico)
-        out.append((m, round(activos)))
-    return out
-# sim(7, 0.15, 30, 0.7) -> base; sim(10, 0.10, 30, 1.0) -> pesimista
+        fijo = 135 if p < 500 else 200 if p < 1500 else 330 if p < 3000 else 520
+        ingreso = p * arpu; variable = p * 0.6
+        neto = ingreso - variable - fijo
+        ads = max(max(0, neto * reinv), semilla if m <= meses_semilla else 0)
+        aporte = max(0, fijo + variable + ads - ingreso); acum += aporte
+        p = p * (1 - churn) + ads / (cac0 * (1 + p / 5000)) * (1 + org)
+        filas.append((m, round(p), round(ingreso), round(ads), round(aporte), round(acum)))
+    return filas
+# sim(0.7) / sim(1.0) -> base; sim(0.7, meses=48, cac0=100) -> pesimista
 ```
 
 ### 13.4 Regla de reinversión
@@ -426,7 +473,7 @@ bajas, porcentaje orgánico y conversión a pago son supuestos propios, sin fuen
 6 veces más por usuario pero trae intención: usarla con palabras muy específicas.
 
 **Siguiente paso:** piloto de ~US$500 en un mes repartido entre Meta, Google Apps y Google Búsqueda,
-midiendo costo por instalación, activación y conversión a pago. Con eso se recalculan §12.1 y §13.3.
+midiendo costo por instalación, activación y conversión a pago. Con eso se recalculan §12.1 y §13.3 (sobre todo el costo por usuario de pago, que decide el plazo).
 
 ### 13.6 Crowdfunding (investigado, descartado)
 
