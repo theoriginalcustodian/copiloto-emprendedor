@@ -485,6 +485,31 @@ senal_rol() {   # epoch de la señal de vida más nueva del rol; 0 = ninguna
                --format='%(committerdate:unix) %(refname:short)' \
                refs/heads refs/remotes/origin 2>/dev/null | head -40)
   fi
+  # (e) el ACUSE DE ENTREGA DIRECTA. Las cuatro senales de arriba miden PRODUCCION — transcript,
+  # buzon, rama, commit. Ninguna puede ver el tercer estado que el prompt del cron nombra desde el
+  # 2026-11-03: una sesion **viva, idle y sin trabajo empujado**. Esa sesion no commitea ni escribe
+  # en el buzon porque no tiene nada en la mano, asi que las cuatro senales la dan por ausente y el
+  # gate afirma "nadie de ese rol estuvo vivo para leerlo" cuando en realidad esta a un SendMessage
+  # de distancia. Medido el 2026-11-04: tercer ciclo consecutivo acusando a BACKEND y AUDITORIA de
+  # no tener ventana, con las dos vivas — backend respondio identificandose y aceptando el contrato
+  # de masa, auditoria pidio un pedido_ para arrancar. El hecho que el gate medía era cierto; la
+  # causa que sugeria ("no hay ventana") era falsa, y una alarma que acierta el hecho y yerra la
+  # causa manda a arreglar lo que no esta roto. Agravante medido el mismo dia: el padron de
+  # direcciones del prompt erraba 5 de 5, asi que la alarma no era actuable ni queriendo.
+  #
+  # El acuse lo escribe `scripts/acuse-entrega.sh <rol>` DESPUES de un SendMessage exitoso, y es un
+  # hecho verificable, no una promesa: la entrega ocurrio o no. Dos propiedades lo mantienen
+  # honesto, y son la razon de que esto no sea un boton de silencio:
+  #   1. NO afloja el criterio relacional. Un contrato emitido DESPUES del acuse vuelve a quedar
+  #      huerfano, porque se compara igual que cualquier otra senal: mtime contra mtime.
+  #   2. Lo escribe quien ENTREGA, nunca quien recibe. Si falta el acuse, el gate acusa de mas
+  #      (fail-closed): el defecto queda del lado de volver a empujar el trabajo, no del lado de
+  #      dar por leido un contrato que nadie leyo.
+  for _ae in "$BUZON/entregas/$rol" "$BUZON/entregas/$rol.entregado"; do
+    [ -f "$_ae" ] || continue
+    m="$(stat -c %Y "$_ae" 2>/dev/null || echo 0)"
+    [ "$m" -gt "$mejor" ] && mejor="$m"
+  done
   printf '%s' "$mejor"
 }
 
