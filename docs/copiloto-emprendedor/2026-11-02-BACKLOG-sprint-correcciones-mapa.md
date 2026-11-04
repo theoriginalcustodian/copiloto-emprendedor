@@ -146,7 +146,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N48** | `sin-issue` | 🟨 EN-CURSO | ACTUALIZADO 2026-11-03 con la medicion de frontend1, y lo medido CORRIGE lo que yo suponia: el PR #1581 estaba en dra… |
 | **SM-N49** | `sin-issue` | ✅ TERMINADO | sha cc4adea8 (PR #1584, verificado ancestro de origin/main) - apps/copiloto/tests/test_ratchet_activity_payload_lleva… |
 | **SM-N50** | `sin-issue` | ✅ TERMINADO | a8ea35fa (PR #1592, ancestro verificado) — `diagnostico_conexiones` devuelve `(caidos, composio_mirado)` y `avanzar_t… |
-| **SM-N51** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N51** | `sin-issue` | 🟧 DOD-PARCIAL | DECISION DEL OPERADOR, y es lo unico que falta: (a) agregar al mapa el camino de alta que la app YA tiene, o (b) reti… |
 | **SM-N52** | `sin-issue` | ✅ TERMINADO | sha b45ab84f (PR #1590), verificado ancestro de origin/main. CI 6/6. DoD1: los 9 archivos de la Consola corren en Git… |
 | **SM-N53** | `sin-issue` | ✅ TERMINADO | cd332c96 (PR #1602) — el interceptor guarda `activity_id`, el workflow lo manda con su propio `workflow.patched`, y `… |
 | **SM-N54** | `sin-issue` | ✅ TERMINADO | 6459a3ac (PR #1600) — `_cuit_del_tenant` con la DB caida responde 503 reintentable CON rastro y tenant, en vez del 40… |
@@ -3194,7 +3194,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N51 · `sin-issue` — El mapa afirma «lo que anotaste vos» en 7 lugares y no da ningún camino de alta: la incompleta es el MAPA
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** DECISION DEL OPERADOR, y es lo unico que falta: (a) agregar al mapa el camino de alta que la app YA tiene, o (b) retirar del mapa las afirmaciones de -lo que anotaste vos-. Ninguna de las dos es codigo de app. Sin esa decision la ficha no puede cerrar, y no la decide ni frontend1 ni planificacion.
+- **Cierre:** MEDIDA por frontend1 el 2026-11-04 contra Prototipo frontend/odobi-ui/prototipo/index.html, y el veredicto es el que la ficha anticipaba: EL QUE MIENTE POR OMISION ES EL MAPA, no la app. (1) La app SI tiene camino de alta: PantallaTuDia.tsx:328-345 (testID midia-alta, campo -Anotar algo para hoy-, boton -Agregar-, midia-alta-enviar), cubierto por el test SM-I1 en PantallaTuDia.test.tsx:893. (2) El mapa tiene CERO ocurrencias de -Anotar algo para hoy-; en el tablero la unica alta es -Nuevo evento- (:2511) y ninguna para anotar algo a mano (si hay altas de otras entidades: :2254, :1926, :2266). (3) El conteo -7-: son 7 LINEAS con -anotaste vos- pero 8 OCURRENCIAS (764 y 925 son comentarios HTML, invisibles; 2493 la trae dos veces), asi que contando lo visible son 6 lineas / 7 ocurrencias. Lineas: 764, 925, 1703, 2477, 2493 x2, 2495, 2539. (4) CORREGIDA la cita de esta ficha: decia ~1311-1443 para el tablero y esta VIEJA — hoy el tablero arranca en :2471. Es correccion de MAPA, no trabajo de frontend: no se toca la app ni se retira el alta.
 - **Dueño:** operador (decisión de producto — **toca la norma, no sólo el mapa**)
 - **De dónde sale:** entrada **09** del corpus, medida por frontend1 el 2026-11-03 con el par
   mapa/app y **sin tocar código**, como el contrato pedía.
