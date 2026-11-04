@@ -629,3 +629,53 @@ midiendo costo por instalación, activación y conversión a pago. Con eso se re
   tracción no es viable; reconsiderar sólo con métricas de la beta.
 - **Preventa a los primeros usuarios** (plan anual de socio fundador por MercadoPago): encaja con la
   estrategia de autofinanciamiento y valida la disposición a pagar.
+
+## 14. Mercado alcanzable: el segmento objetivo (agregado 2026-11-03)
+
+Segmento: emprendedores y pymes que usan Gmail o Drive, aceptan trabajar chateando con una app y
+pueden pagar US$20 a 50 por mes. **Sólo el primer escalón está medido**; los siguientes son supuestos
+razonados, porque no hay fuente pública que los cubra.
+
+| Escalón (Argentina) | Cantidad | Origen |
+|---|---|---|
+| Monotributistas + autónomos registrados | ~2,5 M | **Medido.** Secretaría de Trabajo (SIPA): 2,2 M monotributistas a jun-2026; 2,5 M con autónomos |
+| + pymes empleadoras | ~0,5 M | **Medido.** UCEMA (SIPA): 515 a 523 mil en 2025 |
+| **Universo formal** | **~3,0 M** | suma |
+| Pueden pagar US$20 a 50/mes | ~1,0 a 1,5 M | **Supuesto.** La categoría A era ~60% del padrón en 2023 y factura poco; cuento la mayoría de las pymes y 25 a 40% de los independientes |
+| Trabajan con Gmail/Drive | ~0,5 a 1,0 M | **Supuesto.** Gmail tenía ~46% de las direcciones en 2020 (dato viejo); uso 50 a 70% |
+| Adoptarían un asistente de IA por chat | **~150 a 350 mil** | **Supuesto.** 41,6% de las pymes ya usa alguna IA (nadIA/Observatorio PyME 2025); para independientes, 20 a 40% |
+
+**Qué implica:**
+
+- **5.000 usuarios de pago son ~2% del segmento** (rango 1,4 a 3,3%). Alcanzable, pero no es un rincón
+  chico del mercado.
+- **Crecer 10% por mes desde 5.000** da ~15.700 a los 12 meses (~6% del segmento) y ~49.000 a los 24
+  (~20%). Lo segundo no es creíble sólo en Argentina: la penetración típica de un SaaS sobre su mercado
+  alcanzable en los primeros años es de 1 a 5%.
+- **El público no se "satura" en 5.000** (corrección a lo dicho antes): lo que sube es el costo por
+  usuario de pago a medida que se agotan los más fáciles. El modelo de §13.3 ya lo supone duplicado
+  hacia 5.000; pasar del 3 a 5% del segmento probablemente lo triplica.
+- **Más allá hace falta otro país.** Latinoamérica tiene ~48 M de trabajadores por cuenta propia y ~7 M
+  de empresas de hasta 5 personas (OIT); el segmento hispanohablante sería del orden de 8 a 10 veces
+  el argentino. Pero la facturación fiscal es distinta en cada país (en Argentina, ARCA): cada país es
+  trabajo de producto, no sólo de publicidad.
+
+**Cómo medirlo de verdad:**
+
+1. **Meta Ads Manager:** tamaño estimado de audiencia en Argentina, 25 a 55 años, intereses
+   emprendimiento, pymes y Google Workspace. Gratis; da el techo del canal pago.
+2. **Piloto de ~US$500** (§13.5): costo real por usuario de pago, y cómo sube al duplicar la inversión.
+   Esa curva es el techo real.
+3. **Una pregunta en el alta de la prueba de 15 días** («¿qué correo usás para tu negocio?», «¿cuánto
+   facturás por mes?»): convierte los supuestos en datos propios.
+
+Fuentes: [iProfesional](https://www.iprofesional.com/management/464370-solo-crecen-monotributo-y-empleo-informal-en-argentina) ·
+[Contexto Tucumán](https://www.contextotucuman.com/nota/417931/en-casi-15-anos-aumento-70_por_ciento-el-numero-de-monotributistas.html) ·
+[Secretaría de Trabajo](https://www.argentina.gob.ar/sites/default/files/trabajoregistrado_2505_informe.pdf) ·
+[Cronista](https://www.cronista.com/economia-politica/el-gobierno-dio-de-baja-a-400000-monotributistas-por-no-cumplir-con-un-requisito) ·
+[UCEMA 05/2026](https://ucema.edu.ar/sites/default/files/2026-05/IndicadoresUCEMA_PyMEs052026.pdf) ·
+[UCEMA 09/2025](https://ucema.edu.ar/sites/default/files/2025-09/IndicadoresUCEMA_PyMEs092025.pdf) ·
+[Perfil](https://www.perfil.com/noticias/economia/cuatro-de-cada-diez-pymes-argentinas-ya-usan-ia-pero-pocas-miden-su-impacto-a40.phtml) ·
+[RealSender](https://realsender.com/email-trends/2020-email-providers) ·
+[OIT vía Accounter](https://accounter.co/noticias/actualidad/el-empleo-a-medias-se-apodera-de-la-region) ·
+[SEGIB](https://www.segib.org/wp-content/uploads/Encuesta-Iberoamericana-de-la-Mipyme-2022.pdf)
