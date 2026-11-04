@@ -652,14 +652,13 @@ Ponen ~US$899 entre los dos (US$450 cada uno), sólo en los meses 1 y 2. Del mes
 | 11 | 816 → 1.097 | US$24.485 | US$1.445 | US$200 | US$500 | US$14.460 | US$6.197 | — | US$2.478 | cobran |
 | 12 | 1.097 → 1.426 | US$32.910 | US$2.178 | US$200 | US$2.350 | US$18.143 | US$7.776 | — | US$3.110 | cobran |
 
-| Costo de conseguir un usuario de pago | Ponen entre los dos | Último mes que ponen | Primer mes que cobran | Llegan a 5.000 |
+| Costo de conseguir un usuario de pago | Cuánto ponen entre los dos | Hasta qué mes ponen | Cuándo empiezan a cobrar | Cuándo llegan a 5.000 usuarios |
 |---|---|---|---|---|
-| la mitad (US$25) | US$635 | mes 1 | mes 8 | mes 8 |
 | el previsto (US$49) | US$899 | mes 2 | mes 9 | mes 18 |
 | ×1,5 (US$74) | US$1.179 | mes 3 | mes 9 | mes 30 |
 | el doble (US$98) | US$1.360 | mes 3 | mes 9 | mes 46 |
 
-Resultado del mes antes de Ganancias; lo que cobra cada socio, después de Ganancias (14%, con quebranto) y del 7%. Hasta el mes 8 el 100% del neto va a publicidad, desde el 9 el 70%. Una publicidad más cara casi no cambia lo que se pone: atrasa la llegada a la meta.
+Resultado del mes antes de Ganancias; lo que cobra cada socio, después de Ganancias (14%, con quebranto) y del 7%. Hasta el mes 8 el 100% del neto va a publicidad, desde el 9 el 70%. Una publicidad más cara casi no cambia lo que se pone: atrasa la llegada a 5.000 usuarios. No se muestra un costo menor al previsto.
 
 #### Mes a mes
 
