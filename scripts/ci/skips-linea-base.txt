@@ -46,3 +46,24 @@ apps.copiloto.tests.test_sheets::test_append_no_pisa_y_update_puntual_real
 
 ## ENTORNO · dueño manejo-de-errores · kb-usuario no viaja al stage del VPS; lo corre GitHub
 apps.copiloto.tests.test_arca_sin_afip_visible::test_la_kb_de_usuario_no_dice_AFIP_suelta
+
+## ENTORNO-GITHUB · dueño manejo-de-errores · GoTrue de test: GitHub no la levanta; la corre gate.sh:209 en el VPS
+apps.copiloto.tests.test_alta_email_camino_real::test_SMC2_INVERTIDO_sin_env_del_invite_el_alta_funciona
+apps.copiloto.tests.test_alta_email_camino_real::test_SMC2_INVERTIDO_sin_invite_o_con_uno_equivocado_se_registra_igual[]
+apps.copiloto.tests.test_alta_email_camino_real::test_SMC2_INVERTIDO_sin_invite_o_con_uno_equivocado_se_registra_igual[otro-token]
+apps.copiloto.tests.test_alta_email_camino_real::test_SMC2_alta_por_email_de_punta_a_punta_signup_login_me
+apps.copiloto.tests.test_auth_login_gotrue_real::test_CONTROL_POSITIVO_clave_de_mas_en_el_payload_real_se_detecta
+apps.copiloto.tests.test_auth_login_gotrue_real::test_CONTROL_POSITIVO_clave_faltante_en_la_declaracion_se_detecta
+apps.copiloto.tests.test_auth_login_gotrue_real::test_login_contra_gotrue_real_devuelve_exactamente_CLAVES_LOGIN
+apps.copiloto.tests.test_cambiar_cuenta_gotrue_real::test_ADVERSARIAL_token_de_A_no_cambia_el_email_de_B_contra_gotrue_real
+apps.copiloto.tests.test_cambiar_cuenta_gotrue_real::test_ADVERSARIAL_token_de_A_no_cambia_la_contrasena_de_B_contra_gotrue_real
+apps.copiloto.tests.test_cambiar_cuenta_gotrue_real::test_cambiar_contrasena_ok_contra_gotrue_real
+apps.copiloto.tests.test_cambiar_cuenta_gotrue_real::test_cambiar_email_ok_queda_pendiente_contra_gotrue_real
+apps.copiloto.tests.test_cambiar_cuenta_gotrue_real::test_cambiar_email_ya_en_uso_es_409_contra_gotrue_real
+apps.copiloto.tests.test_cambiar_cuenta_gotrue_real::test_contrasena_actual_incorrecta_es_401_contra_gotrue_real
+apps.copiloto.tests.test_cambiar_cuenta_gotrue_real::test_contrasena_nueva_debil_o_igual_es_422_contra_gotrue_real[abc]
+apps.copiloto.tests.test_cambiar_cuenta_gotrue_real::test_contrasena_nueva_debil_o_igual_es_422_contra_gotrue_real[clave-inicial-1]
+
+## ENTORNO-GITHUB · dueño manejo-de-errores · Temporal no corre en GitHub (127.0.0.1:7233); lo corre el gate del VPS
+apps.copiloto.tests.test_afip_onboarding::test_el_history_del_workflow_no_contiene_la_clave_fiscal
+apps.copiloto.tests.test_afip_onboarding::test_el_workflow_termina_en_fallido_si_el_alta_falla

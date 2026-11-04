@@ -36,7 +36,7 @@ def _junit(tmp_path: Path) -> Path:
 
 
 def _correr(junit: Path, base: Path, *extra: str) -> subprocess.CompletedProcess:
-    return subprocess.run([sys.executable, "-I", str(SCRIPT), str(junit), str(base), *extra],
+    return subprocess.run([sys.executable, "-I", "-X", "utf8", str(SCRIPT), str(junit), str(base), *extra],
                           capture_output=True, text=True, encoding="utf-8")
 
 

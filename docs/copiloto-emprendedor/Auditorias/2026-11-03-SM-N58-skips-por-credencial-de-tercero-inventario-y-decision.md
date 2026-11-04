@@ -109,6 +109,20 @@ La línea base usa **nodeids** (del junit), no `path:línea`: la línea se corre
 volvería inestable. Es la **unión** de los entornos donde corre la suite (VPS y GitHub): un declarado que
 en un entorno no ocurre se informa («no ocurrió», que suele ser buena noticia) y no falla.
 
+**Medido con la línea base vacía (control positivo del gate):**
+
+| Entorno | Resultado | SKIPS | Qué faltaba declarar |
+|---|---|---|---|
+| VPS (Postgres + GoTrue de test) | `2938 passed, 26 skipped`, job RC=1 | 26 nuevos | los 24 de esta ficha + `SM-N57` + `kb-usuario` |
+| GitHub Actions (run `41763399631`) | `2922 passed, 42 skipped`, job `backend: failure` | 17 nuevos, 1 declarado que no ocurrió | 15 de GoTrue (GitHub no la levanta) + 2 de `test_afip_onboarding.py` (GitHub no tiene Temporal); el que no ocurrió es `kb-usuario`, que GitHub sí corre |
+
+Línea base resultante: **43 nodeids** (26 + 17), y los nodeids coinciden entre los dos entornos.
+
+Una observación lateral: `test_afip_onboarding.py::test_el_history_del_workflow_no_contiene_la_clave_fiscal`
+**sólo** corre en el VPS. Está bien porque el gate canónico es el del VPS (ADR-001), pero quiere decir que
+un verde de GitHub **no** acredita que la clave fiscal quede fuera del history de Temporal. Ahora el
+conteo lo dice; antes no lo decía nadie.
+
 Fundamento: es la misma clase vista dos veces. En SM-I7 el único test que cruzaba catálogo↔íconos daba
 `1 skipped` justo donde corre el gate; y el conteo de esta ficha salió 27 cuando eran 41 porque el runner
 se leía con `tail -30`. Con el conteo al final, un `tail` ya no puede recortarlo.
