@@ -14,9 +14,6 @@ apps.copiloto.tests.test_autosanacion_cadena_completa::test_la_cadena_COMPLETA_d
 apps.copiloto.tests.test_beta4a_soporte_clasificador_cadena::test_BETA4a_ticket_con_simbolo_real_dispara_la_cadena_completa_hasta_veredicto
 apps.copiloto.tests.test_beta4a_soporte_clasificador_cadena::test_BETA4a_ticket_no_tecnico_queda_necesita_humano_sin_tocar_el_forjador
 
-## REQUISITO-FALSO · dueño backend · usa token='x' contra un puerto cerrado: el token no interviene
-apps.copiloto.tests.test_orquestador_rag_client_real::test_UNAVAILABLE_real_endpoint_inalcanzable_es_el_N1_del_DoD
-
 ## SPIKE · dueño manejo-de-errores · exploratorio; no es cobertura
 apps.copiloto.tests.test_spike_beta0_forjador_vs_sintomas::test_SPIKE_beta0_ticket_C_con_origen_hand_crafted_que_produce_el_forjador
 apps.copiloto.tests.test_spike_beta0_forjador_vs_sintomas::test_SPIKE_beta0_tickets_A_B_sin_origen_son_rechazados_por_el_gate
