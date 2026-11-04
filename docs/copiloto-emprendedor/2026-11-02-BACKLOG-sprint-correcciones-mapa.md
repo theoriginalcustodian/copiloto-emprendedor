@@ -152,6 +152,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N54** | `sin-issue` | ✅ TERMINADO | 6459a3ac (PR #1600) — `_cuit_del_tenant` con la DB caida responde 503 reintentable CON rastro y tenant, en vez del 40… |
 | **SM-N55** | `sin-issue` | ✅ TERMINADO | e74d4913 (#1604, ancestro verificado) — `consultar_onboarding` ya no colapsa UNAVAILABLE en el mismo None de NOT_FOUN… |
 | **SM-N56** | `sin-issue` | ✅ TERMINADO | 6459a3ac (PR #1600) — el rastro que escribe `conexiones_salud.py` ahora sale con el `cliente_id` del tenant que lo or… |
+| **SM-N58** | `sin-issue` | 🟨 EN-CURSO | manejo-de-errores |
 | **SM-Z1** | `sin-issue` | 🟧 DOD-PARCIAL | ACTUALIZADO 2026-11-03 23:50 - el codigo YA ESTA HECHO y desplegado; lo unico que falta es el OAuth del operador en e… |
 | **SM-Z2** | `sin-issue` | ✅ TERMINADO | `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama ➕ ANOTACION 2026-11-03 (INFO de au… |
 | **SM-Z3** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de DEVICE del splash: el codigo esta en main y la decision tomada, pero lo tactil no lo acredita ningun test.… |
@@ -3394,6 +3395,29 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   1. La línea sale con el `cliente_id` del tenant que la originó.
   2. Un test lo afirma **sobre el valor**, no sobre que la línea exista.
   3. El `Cierre:` cita un sha **ancestro de `origin/main`**.
+
+### SM-N58 · `sin-issue` — El gate no corre NADA que necesite una credencial de tercero, y un `skipped` dentro del verde se leía como cobertura
+
+- **Estado:** EN-CURSO
+- **Dueno-activo:** manejo-de-errores
+- **Dueño:** manejo-de-errores
+- **De dónde sale:** el conteo de los 41 skipped de la suite backend (manejo-de-errores, 2026-11-03), a
+  pedido de planificación. 15 son de GoTrue (los corre `gate.sh`), 1 de `kb-usuario` (lo corre GitHub),
+  1 tapa el aislamiento de memoria (es `SM-N57`, backend) y **24 exigen una credencial de tercero que
+  ningún gate tiene** (grep 0 en los cinco `scripts/ci/*.sh`). Nunca se decidió por escrito: era un hueco.
+- **Por qué es UNA ficha y no varias:** el defecto no es «tal módulo no se testea», es que el gate no
+  corre nada con credencial de tercero. Una ficha por dueño mediría al dueño y dejaría al resto sin
+  nadie. La clase grave (`SM-N57`) va aparte para no diluirse en una lista de 24.
+- **DoD:**
+  1. **Inventario**, no un número: los 24 con archivo, credencial que exige cada uno y **qué pregunta
+     queda sin responder** si no corre (tercero vs costura nuestra). Si aparece otro de la clase de
+     `SM-N57`, se parte en ficha propia.
+  2. **La decisión escrita** sobre la clase: el gate corre con credenciales (y dónde viven y quién las
+     rota), o no las corre y esos 24 quedan `[UNVERIFIED]` con dueño y fecha.
+  3. **El gate deja de contar un `skipped` como verde:** el runner imprime el conteo de skips y el delta
+     contra una línea base declarada, y un skip NUEVO se ve sin que nadie lo busque.
+  4. El `Cierre:` cita un sha **ancestro de `origin/main`**.
+- **Doc:** `Auditorias/2026-11-03-SM-N58-skips-por-credencial-de-tercero-inventario-y-decision.md`
 
 ### SM-Z1 · `sin-issue` — Apps muestra 5 servicios y el mapa dibuja 6: las 5 son CORRECTAS
 
