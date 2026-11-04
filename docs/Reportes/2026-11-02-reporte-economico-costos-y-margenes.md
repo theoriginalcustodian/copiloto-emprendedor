@@ -11,20 +11,31 @@
 
 ## 1. Resumen ejecutivo
 
+> **Corregido 2026-11-04.** Hasta acá este resumen daba márgenes de 91% a 99%: sólo restaba el costo técnico y US$5.850 de
+> fijos, sin IVA, Ingresos Brutos, MercadoPago, Ganancias ni la publicidad que exige sostener 5.000 de pago. Las cifras de
+> abajo son las realistas, sobre el mismo modelo que §13 a §15.
+
 | Concepto | Valor |
 |---|---|
-| Costo total mensual, 5.000 usuarios intensivos (caso típico) | **US$2.080 a 3.820** |
-| Costo total, caso pesimista del LLM | ~US$6.300 |
-| Costo por usuario intensivo | **US$0,42 a 0,76** |
-| Margen bruto, plan Intensivo (US$50) | **98,5% a 99,2%** |
-| Margen bruto, plan Intermedio (US$35) | **99,0% a 99,5%** |
-| Margen bruto, plan Base (US$20) | **99,1% a 99,6%** |
+| Costo técnico por usuario (LLM, voz, Composio, Graphity, servidores) | US$0,09 a 0,76 según el plan (~2,3% de lo cobrado) |
+| **Costo total por usuario de pago, todo incluido** (5.000 de pago, US$30 promedio con IVA) | **~US$19,3 de cada US$30 (64,4%)** |
+| de eso, al Estado (IVA a pagar, Ingresos Brutos, Ganancias) | US$9,78 |
+| de eso, publicidad de mantenimiento (reponer bajas + crecer 2%) | US$6,15 |
+| de eso, soporte, community manager y servidores | US$1,54 |
+| de eso, MercadoPago y costo técnico | US$1,84 |
+| **Queda a los socios por usuario** | **~US$10,7 (35,6%)** |
+| Queda a los socios, plan Intensivo (US$50) | **US$20,9 por usuario · 41,9%** |
+| Queda a los socios, plan Intermedio (US$35) | **US$13,5 por usuario · 38,5%** |
+| Queda a los socios, plan Base (US$20) | **US$5,9 por usuario · 29,4%** |
+| Con 5.000 de pago sostenidos, a los socios (después de Ganancias, antes del 7%) | ~US$53.424/mes · ~US$641 mil/año |
+| Con el régimen de Economía del Conocimiento (Ganancias 14%) | ~US$848 mil/año |
 
 Conclusiones:
 
-1. **El LLM es el costo que importa:** ~85% a 90% del total. Infra con espejo pesa 5% a 12%; Graphity, menos del 5%.
-2. **El costo por usuario es el 1% a 2% del precio del plan más bajo.** El precio se decide por lo que el mercado paga, no por el costo.
-3. **La incertidumbre grande es de uso, no de precios:** los turnos por día por plan son supuestos. Se miden en la beta con el metering de tokens.
+1. **El costo técnico no es el costo:** ~US$0,70 por usuario. Lo caro es el Estado (US$9,78) y la publicidad (US$6,15).
+2. **El plan Base deja 29,4% contra 41,9% del Intensivo:** conseguir un usuario de US$20 cuesta lo mismo que uno de US$50 (la publicidad es 30,8% de su precio). El precio promedio decide el negocio.
+3. **La incertidumbre grande es el costo de conseguir cada usuario de pago**, no el de los modelos: lo mide el piloto de §13.5. El uso por plan lo mide la beta con el metering de tokens.
+4. **Economía del Conocimiento es la palanca impositiva más grande** (§15): Ganancias baja de 35% a 14% mientras sea micro o pequeña.
 
 ---
 
@@ -97,23 +108,28 @@ Con el LLM pesimista (~5.700) el total llega a ~US$6.300.
 
 ## 4. Costo por usuario y margen por plan
 
-El costo de cada plan suma la parte variable (LLM, voz, Composio y Graphity, escalada por el uso) más
-la infra repartida entre los 5.000 usuarios (US$0,03 a 0,09, que no baja con el uso).
+> **Corregido 2026-11-04:** antes esta sección daba sólo el margen bruto técnico (98% a 99%). Ahora es todo incluido.
 
-| Plan | Precio | Costo/usuario/mes | Costo como % del precio | Margen bruto |
-|---|---|---|---|---|
-| Intensivo | US$50 | US$0,42 a 0,76 | 0,8% a 1,5% | 98,5% a 99,2% |
-| Intermedio | US$35 | US$0,19 a 0,36 | 0,5% a 1,0% | 99,0% a 99,5% |
-| Base | US$20 | US$0,09 a 0,19 | 0,5% a 1,0% | 99,1% a 99,6% |
+US$ por usuario y mes con 5.000 de pago (el mes de la meta). Técnico: LLM, voz, Composio, Graphity y su parte de servidores
+(rango de §3; el cálculo usa el punto medio). Equipo y publicidad: soporte y community manager (US$1,44) y publicidad de
+mantenimiento (US$6,15), repartidos parejo entre planes. IVA como saldo; Ingresos Brutos ~0,9% y MercadoPago ~5% de la
+venta sin IVA; Ganancias 35% del beneficio.
 
-### 4.1 Escenarios a 5.000 usuarios
+| Plan | Precio (con IVA) | Técnico | IVA, IIBB y MP | Equipo y publicidad | Ganancias | Queda a los socios |
+|---|---|---|---|---|---|---|
+| Intensivo | US$50 | 0,42 a 0,76 | 9,59 | 7,59 | 11,28 | **20,95 · 41,9%** |
+| Intermedio | US$35 | 0,19 a 0,36 | 6,41 | 7,59 | 7,25 | **13,47 · 38,5%** |
+| Base | US$20 | 0,09 a 0,19 | 3,21 | 7,59 | 3,17 | **5,89 · 29,4%** |
 
-| Escenario | Ingreso/mes | Costo/mes | Margen |
-|---|---|---|---|
-| Todos Intensivos, caso típico | 250.000 | 2.080 a 3.820 | 98,5% a 99,2% |
-| Todos Intensivos, LLM pesimista | 250.000 | ~6.300 | ~97,5% |
-| Todos en Base (US$20) con uso Intensivo (peor uso, precio más bajo) | 100.000 | 2.080 a 3.820 | 96% a 98% |
-| Mezcla ilustrativa: 20% Intensivo, 40% Intermedio, 40% Base | 160.000 | 960 a 1.880 | 98,8% a 99,4% |
+### 4.1 Escenarios a 5.000 usuarios de pago (US$/mes)
+
+| Escenario | Cobrado | Al Estado | Costos y publicidad | Queda a los socios | Margen para los socios |
+|---|---|---|---|---|---|
+| Todos Intensivos, caso típico | 250.000 | 94.005 | 51.250 | 104.746 | 41,9% |
+| Todos Intensivos, LLM pesimista | 250.000 | 92.454 | 54.600 | 102.946 | 41,2% |
+| Mezcla de ejemplo: 20% Intensivo, 40% Intermedio, 40% Base | 160.000 | 54.346 | 46.001 | 59.654 | 37,3% |
+| Todos en Base, con uso de Base | 100.000 | 27.768 | 42.801 | 29.431 | 29,4% |
+| Todos en Base, con uso Intensivo (peor caso) | 100.000 | 26.727 | 45.051 | 28.222 | 28,2% |
 
 La mezcla es un ejemplo inventado para ilustrar, no una proyección de demanda.
 
@@ -203,42 +219,43 @@ Fuentes: [Lindy pricing (Zapier)](https://www.zapier.com/blog/lindy-pricing/) ·
 
 ---
 
-## 10. Resultado neto con equipo y marketing (agregado 2026-11-03)
+## 10. Resultado neto con equipo y marketing (agregado 2026-11-03, corregido 2026-11-04)
 
-Se suman tres costos fijos mensuales a la ganancia bruta de la sección 4 (punto medio del costo):
+> **Corregido 2026-11-04.** La versión anterior sumaba tres fijos de ejemplo (equipo US$3.000, community manager US$850,
+> publicidad US$2.000 = US$5.850) al margen bruto y daba 91% a 97% y US$1,1 a 2,9 millones por año. Le faltaban IVA,
+> Ingresos Brutos, MercadoPago y Ganancias, y la publicidad real para sostener 5.000 de pago es ~15 veces la supuesta.
 
-| Costo fijo (US$/mes) | Bajo | Base | Conservador | Supuesto |
+| Costo mensual con 5.000 de pago (US$) | Monto | Supuesto |
+|---|---|---|
+| Soporte técnico | 6.000 | 1 persona de 8 h (US$3.000, dato del operador) cada 2.500 de pago |
+| Community manager | 1.200 | Freelance semi senior en Argentina; **inferencia**, no promedio verificado |
+| Servidores y servicios | 520 | §12, con espejo |
+| Publicidad de mantenimiento | 30.769 | Reponer el 6% de bajas y crecer 2%/mes, a ~US$98 por usuario de pago |
+| **Total** | **38.489** | |
+
+**Sensibilidad al costo por usuario de pago** (US$/año a los socios · margen sobre lo cobrado):
+
+| Costo por usuario de pago | Publicidad/usuario/mes | Todos Intensivos | Mezcla de ejemplo | Todos en Base |
 |---|---|---|---|---|
-| Equipo técnico | 1.500 | 3.000 | 6.000 | US$3.000 por persona de 8 h (dato del operador): media jornada, una completa, dos completas |
-| Community manager | 500 | 850 | 1.200 | Freelance junior a semi senior en Argentina; **inferencia**, no promedio verificado |
-| Publicidad en Instagram | 1.000 | 2.000 | 5.000 | Presupuesto de ejemplo, no derivado del costo; CPC de LATAM US$0,20 a 1,50 (orientativo) |
-| **Total fijo** | **3.000** | **5.850** | **12.200** | |
+| Mitad del costo por usuario de pago | 3 | 1.356.123 · 45,2% | 815.016 · 42,4% | 452.344 · 37,7% |
+| Base del modelo | 6 | 1.256.950 · 41,9% | 715.843 · 37,3% | 353.171 · 29,4% |
+| Doble (curva pesimista) | 12 | 1.058.605 · 35,3% | 517.497 · 27,0% | 154.825 · 12,9% |
 
-| Ganancia neta/mes (US$) y margen | Fijos bajos | Fijos base | Fijos conservadores |
-|---|---|---|---|
-| Todos Intensivos (ingreso 250.000; bruta 247.050) | 244.050 · 97,6% | 241.200 · 96,5% | 234.850 · 93,9% |
-| Mezcla de ejemplo (ingreso 160.000; bruta 158.580) | 155.580 · 97,2% | 152.730 · 95,5% | 146.380 · 91,5% |
-| Todos en Base (ingreso 100.000; bruta 99.300) | 96.300 · 96,3% | 93.450 · 93,5% | 87.100 · 87,1% |
-
-- Con la mezcla de ejemplo y fijos base, ~US$152.730 al mes (~US$1,83 millones al año).
-- Unos 200 usuarios de pago de la mezcla cubren los fijos base y los servidores.
-- **Supuesto más débil:** la publicidad. El presupuesto para llegar a 5.000 clientes depende de la conversión de clics a pago, que no está medida.
-- **Sin estimar todavía:** impuestos, soporte humano ante incidentes fuera de lo que cubre el autohealing y herramientas de automatización de marketing.
+- **Supuesto más débil:** el costo de conseguir cada usuario de pago. Lo mide el piloto de §13.5.
+- **Sin estimar todavía:** contador y sociedad, soporte humano ante incidentes fuera de lo que cubre el autohealing.
 - Fuentes orientativas (blogs, no coinciden entre sí): [NovoAds](https://novoads.ai/es/blog/cuanto-cuesta-publicidad-en-meta) · [TopGrowth](https://topgrowthmarketing.com/instagram-ads-cost/) · [Coderhouse](https://www.coderhouse.com/ar/sueldos/sueldo-community-manager-argentina-2025) · [Aprender21](https://www.aprender21.com/blog/salario-community-manager).
 
-### 10.1 Ganancia neta anual (costos fijos base, operativo al punto medio)
+### 10.1 Lo que queda a los socios por año (5.000 de pago sostenidos)
 
-Las secciones 3 y 4 muestran el margen **bruto** (solo costo operativo); **el resultado con todos los costos es el de esta sección**.
+Después de Ganancias y antes del 7% del dividendo. Es el régimen sostenido en la meta, no el año 1 (el año a año está en §13.3 y §14.1).
 
-| Escenario | Neta/mes | Margen neto | Neta/año | Rango anual (conservador a bajo) |
-|---|---|---|---|---|
-| Todos Intensivos, típico | 241.200 | 96,5% | 2.894.400 | 2.818.200 a 2.928.600 |
-| Todos Intensivos, LLM pesimista | 237.850 | 95,1% | 2.854.200 | 2.778.000 a 2.888.400 |
-| Mezcla de ejemplo | 152.730 | 95,5% | 1.832.760 | 1.756.560 a 1.866.960 |
-| Todos en Base, uso de Base | 93.450 | 93,5% | 1.121.400 | 1.045.200 a 1.155.600 |
-| Todos en Base, uso Intensivo | 91.200 | 91,2% | 1.094.400 | 1.018.200 a 1.128.600 |
-
-Margen neto por plan (fijos repartidos a US$1,17 por usuario): Intensivo 96,1% a 96,8%, Intermedio 95,6% a 96,1%, Base 93,2% a 93,7%.
+| Escenario | A los socios/mes | Margen para los socios | A los socios/año |
+|---|---|---|---|
+| Todos Intensivos, caso típico | 104.746 | 41,9% | 1.256.950 |
+| Todos Intensivos, LLM pesimista | 102.946 | 41,2% | 1.235.355 |
+| Mezcla de ejemplo: 20% Intensivo, 40% Intermedio, 40% Base | 59.654 | 37,3% | 715.843 |
+| Todos en Base, con uso de Base | 29.431 | 29,4% | 353.171 |
+| Todos en Base, con uso Intensivo (peor caso) | 28.222 | 28,2% | 338.667 |
 
 ## 11. Costos fijos de servicios digitales, año 1 (agregado 2026-11-03)
 
@@ -358,7 +375,7 @@ MercadoPago. **Validar con un piloto de ~US$500** comparando Meta, Google Apps y
 
 **El negocio se autofinancia:** lo que pagan los usuarios se reinvierte en publicidad hasta alcanzar
 el equilibrio. Los socios aceptan no retirar beneficios durante ese período. Marketing, publicidad y
-soporte técnico los manejan los socios, sin contratar personal.
+soporte técnico los manejan los socios **hasta los umbrales de contratación de §13.3** (community manager desde ~300 usuarios de pago, soporte desde ~1.000).
 
 ### 13.2 Por qué funciona (si se cumplen los supuestos)
 
@@ -366,50 +383,116 @@ soporte técnico los manejan los socios, sin contratar personal.
 |---|---|---|
 | Costo por usuario activo | ~US$7 (rango 4 a 10) | Instalación ~US$2 (dato) ÷ 30 a 50% de activación (supuesto) |
 | Conversión a pago | 15% | Supuesto |
-| Costo por usuario de pago | ~US$47 | US$7 ÷ 15% |
-| Ingreso por usuario de pago | ~US$30/mes | Promedio de planes US$20 / 35 / 50 (§4) |
-| Margen bruto | ~99% | §4 |
-| **Recuperación del costo de adquisición** | **~1,5 meses** | US$47 ÷ US$30 |
+| Costo por usuario de pago | ~US$47 (~US$39 neto del IVA recuperado) | US$7 ÷ 15%; la publicidad trae IVA computable |
+| Ingreso por usuario de pago | ~US$30/mes cobrado (IVA incluido); **~US$23,6 neto** | Promedio de planes US$20 / 35 / 50 (§4), menos IVA a pagar (cobrado − el de compras), MercadoPago ~5% e Ingresos Brutos ~0,9% |
+| Margen bruto técnico | ~98% | §4: sólo el costo técnico; con todo incluido quedan ~36% a los socios (§1) |
+| **Recuperación del costo de adquisición** | **~1,8 meses** | US$39 ÷ US$23,0 (neto menos variable) |
 
-### 13.3 Simulación a 12 meses
+### 13.3 Simulación: usuarios de pago, aporte propio y llegada a 5.000
 
-Arranque con 15 testers y US$500 de capital en los meses 1 y 2; bajas 6%/mes; 30% orgánico; costo
-variable US$0,6 por activo; fijos según la trayectoria de §12. Script en el bloque de abajo.
+**Recalculado el 2026-11-03 con el IVA como saldo y Ganancias sobre el beneficio.** El precio al usuario es **US$30 con IVA 21% incluido** y MercadoPago cobra **~5%** (supuesto). Como Responsable Inscripto no se paga todo el IVA cobrado (débito): se le resta el IVA de lo que pagamos con factura (crédito) — publicidad, comisión de MercadoPago, IA/voz/Composio y servidores (supuesto: todo con IVA computable; el personal, monotributista, no da crédito). Si el crédito supera al débito, el saldo a favor pasa al mes siguiente. Ganancias es el 35% (supuesto) del **beneficio** —lo cobrado sin IVA menos todos los costos sin su IVA— y las pérdidas de los primeros meses se compensan contra los beneficios siguientes. Con eso la meta llega en el **mes 18** (contando el IVA entero como costo era el 22) y el acumulado al mes 24 es **~US$674.000** (antes ~US$345.000). En la meta, de US$26.033 de IVA cobrado se pagan US$19.113 por mes (12,7% de lo cobrado, no 17,4%).
 
-| Escenario | Reinversión del neto | Activos mes 6 | Activos mes 12 |
+El producto tiene sólo **prueba de 15 días** (versión completa, limitada en acciones) y planes pagos: se cuentan **sólo usuarios de pago**, y el costo de las pruebas que no convierten va dentro del costo de adquisición. *La prueba de 15 días no está en el código* (`apps/`, `motor/`, `deploy/`; 2026-11-03).
+
+**Supuestos (no medidos):** arranque con 0 de pago · costo por usuario de pago US$49, que sube hasta el doble al acercarse a 5.000 · precio promedio US$30 con IVA · bajas 6%/mes · 30% orgánico · variable US$0,6 por usuario · servidores según §12 · personal por umbral (tabla abajo) · semilla de publicidad US$500/mes en los meses 1 a 3 · al llegar a 5.000 la publicidad pasa a **mantenimiento** (reponer bajas + 2% por mes) · el mes de llegada compra sólo lo que falta.
+
+#### Comparación de esquemas de reinversión (con personal, escenario base, US$)
+
+| Esquema | Llega a 5.000 | Aporte propio | Beneficio año 1 | Beneficio año 2 | Acumulado mes 24 | Acumulado mes 36 | Publicidad máxima/mes |
+|---|---|---|---|---|---|---|---|
+| 70% siempre | mes 21 | ~899 | ~13.000 | ~456.000 | ~468.000 | ~1.628.000 | ~70.000 |
+| 100% × 6 meses, luego 70% | mes 19 | ~899 | ~19.000 | ~571.000 | ~590.000 | ~1.792.000 | ~63.000 |
+| **100% × 8 meses, luego 70% (plan vigente)** | **mes 18** | ~899 | ~21.000 | ~653.000 | ~674.000 | ~1.897.000 | ~64.000 |
+| 100% × 12 meses, luego 70% | mes 16 | ~899 | −~900 | ~819.000 | ~818.000 | ~2.084.000 | ~63.000 |
+| 100% siempre | mes 15 | ~899 | −~900 | ~860.000 | ~859.000 | ~2.147.000 | ~88.000 |
+
+Pesimista (US$100 por usuario de pago): 70% siempre llega en el mes 51, el plan en el 48 y 100% siempre en el 31; aporte propio ~US$1.371. Beneficio = neto − personal − servidores − publicidad, antes de Ganancias, contador y reserva.
+
+#### Desarrollo del plan vigente: 100% × 8 meses, luego 70%, con personal (US$ por mes)
+
+| Mes | De pago (inicio → fin) | Cobrado (con IVA) | IVA cobrado | IVA a pagar (débito − crédito) | Personal | Publicidad | Beneficio antes de Ganancias | Ganancias | Después de Ganancias | Acumulado | Hito |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 0 → 13 | 0 | 0 | 0 | 0 | 500 | -635 | 0 | -635 | -635 |  |
+| 2 | 13 → 26 | 398 | 69 | 0 | 0 | 500 | -264 | 0 | -264 | -899 |  |
+| 3 | 26 → 40 | 771 | 134 | 0 | 0 | 583 | 0 | 0 | 0 | -899 |  |
+| 6 | 101 → 165 | 3.039 | 527 | 0 | 0 | 2.695 | 0 | 0 | 0 | -899 |  |
+| 8 | 271 → 441 | 8.115 | 1.408 | 0 | 0 | 7.422 | 0 | 0 | 0 | -899 |  |
+| 9 | 441 → 603 | 13.233 | 2.297 | 663 | 500 | 7.717 | 3.307 | 843 | 2.465 | 2.408 | entra CM medio tiempo · pasa a 70% |
+| 10 | 603 → 816 | 18.083 | 3.138 | 1.082 | 500 | 10.540 | 4.517 | 1.581 | 2.936 | 6.925 |  |
+| 12 | 1.097 → 1.426 | 32.910 | 5.712 | 2.178 | 2.350 | 18.143 | 7.776 | 2.721 | 5.054 | 20.898 | soporte media jornada · CM base |
+| 14 | 1.840 → 2.344 | 55.188 | 9.578 | 3.432 | 2.350 | 31.697 | 13.584 | 4.755 | 8.830 | 44.847 |  |
+| 16 | 2.943 → 3.610 | 88.296 | 15.324 | 5.564 | 4.200 | 50.491 | 21.639 | 7.574 | 14.065 | 84.041 | soporte jornada completa · CM completo |
+| 17 | 3.610 → 4.358 | 108.295 | 18.795 | 6.686 | 4.200 | 62.610 | 26.833 | 9.391 | 17.441 | 110.873 |  |
+| **18** | 4.358 → 5.000 | 130.736 | 22.690 | 10.145 | 4.200 | 63.743 | 43.138 | 15.098 | 28.040 | 154.012 | llega a 5.000 |
+| 19 | 5.000 → 5.100 | 150.000 | 26.033 | 19.113 | 7.200 | 30.154 | 82.699 | 28.945 | 53.754 | 236.711 | 2.ª persona de soporte |
+| 20 | 5.100 → 5.202 | 153.000 | 26.554 | 19.444 | 7.200 | 31.064 | 84.251 | 29.488 | 54.763 | 320.962 |  |
+| 24 | 5.520 → 5.631 | 165.612 | 28.743 | 20.811 | 7.200 | 35.025 | 90.669 | 31.734 | 58.935 | 673.907 |  |
+| 30 | 6.217 → 6.341 | 186.506 | 32.369 | 22.995 | 7.200 | 42.055 | 100.912 | 35.319 | 65.593 | 1.253.415 |  |
+| 36 | 7.001 → 7.141 | 210.036 | 36.453 | 25.333 | 7.200 | 50.672 | 111.869 | 39.154 | 72.715 | 1.896.902 |  |
+
+#### Contratación de personal
+
+Se contrata por **usuarios de pago**, no por mes; el costo se descuenta antes del neto (achica la publicidad, no el aporte propio).
+
+| Desde (usuarios de pago) | Soporte técnico | Community manager | Personal US$/mes |
 |---|---|---|---|
-| Base (US$7 por activo, 15% paga) | 70% | ~870 | **~7.300**: alcanza la meta |
-| Base | 100% | ~1.600 | ~31.000 (no creíble, ver abajo) |
-| Pesimista (US$10 por activo, 10% paga) | 70% a 100% | ~200 a 260 | **~370 a 780**: no despega |
+| 0 | socios | socios | 0 |
+| 300 | socios | medio tiempo (500) | 500 |
+| 1.000 | media jornada (1.500) | base (850) | 2.350 |
+| 2.500 | jornada completa (3.000) | completo (1.200) | 4.200 |
+| 5.000 | 2 personas (6.000) | completo (1.200) | 7.200 |
 
-El escenario optimista (US$4, 20%) dio millones de usuarios y se descartó. **El modelo es optimista a
-escala:** asume costo por usuario constante, y en la realidad sube al agotarse el público más barato.
+Soporte a US$3.000 por persona de 8 h (dato del operador); community manager según §10 (inferencia). El disparador real es el tiempo de los socios y los tickets que escalan a humano, que se miden desde la beta.
 
-**Conclusión:** lo que decide no es el porcentaje reinvertido sino la **conversión y la activación**.
-En el escenario base, reinvertir el 70% alcanza la meta; en el pesimista el negocio no despega aunque
-se reinvierta todo.
+#### Tope fijo de publicidad: no sirve si es bajo
+
+| Estrategia (plan vigente) | Llega a 5.000 | De pago al mes 36 | Beneficio mes 24 | Beneficio mes 36 | Acumulado mes 36 |
+|---|---|---|---|---|---|
+| tope de US$15.000/mes | nunca (se estanca) | 3.522 | 50.805 | 63.588 | ~1.171.000 |
+| tope de US$30.000/mes | mes 27 | 5.975 | 77.047 | 95.699 | ~1.652.000 |
+| sin tope, mantenimiento al llegar | mes 18 | 7.141 | 90.669 | 111.869 | ~1.897.000 |
+
+Con 6% de bajas, 5.000 usuarios pierden ~300 por mes y reponerlos cuesta **~US$23.000 por mes**; un tope menor compra menos de lo que se pierde. Con 3% de bajas cuesta la mitad: **la palanca mayor son las bajas**, y se bajan con producto, no con publicidad.
+
+**Lectura:**
+
+- **Aporte propio ~US$899, sólo en los meses 1 a 3** (semilla de publicidad + fijos). Desde el mes 4 todo sale de lo que ingresa. A eso sumar la reserva de §13.4, que no se gasta.
+- **La meta llega en el mes 18** (con el IVA entero como costo era el 22). El año 1 deja poco (~US$21.000 antes de Ganancias); el negocio deja plata en serio en el año 2 (~US$653.000).
+- **Mientras se reinvierte el 100%, casi no se paga IVA:** el IVA de la publicidad cubre el IVA cobrado. El crédito fiscal financia más publicidad, y por eso la meta se adelanta.
+- **Contrapunto al plan vigente:** con ingreso neto conviene estirar el 100%. **100% × 12 meses** llega en el mes 16 (2 antes) y acumula ~US$188.000 más al mes 36; lo que se resigna es el beneficio del año 1 (~US$21.000). 100% siempre llega en el mes 15 pero exige ~US$88.000 de publicidad en un mes. **Decisión del operador.**
+- Costo por usuario de pago al inicio, neto del IVA recuperado: recuperación en ~1,8 meses.
+- Lo que decide el plazo es el costo de conseguir cada usuario de pago, y eso sólo lo mide el piloto (§13.5).
 
 ```python
-def sim(cac_activo, conv, arpu, reinv, seed=500, churn=0.06, organico=0.30, meses=12):
-    activos = 15.0; out = []
+# Núcleo del modelo (cifras de arriba). ARPU_NETO = 30 / 1,21 * 0,95; K = 0,21 / 1,21; personal(p) según la tabla de personal.
+# IVA a pagar = débito − crédito (el saldo a favor se arrastra); Ganancias 35% del beneficio con quebranto acumulado.
+def sim(n100=8, despues=0.7, meses=24, tope_ads=None, post_crec=0.02):
+    p = acc = 0.0; ll = None
     for m in range(1, meses + 1):
-        n = activos
-        fijo = 135 if n < 500 else 200 if n < 1500 else 330 if n < 3000 else 520
-        neto = n * conv * arpu - n * 0.6 - fijo
-        ads = max(0, neto * reinv) + (seed if m <= 2 else 0)
-        activos = n * (1 - churn) + ads / cac_activo * (1 + organico)
-        out.append((m, round(activos)))
-    return out
-# sim(7, 0.15, 30, 0.7) -> base; sim(10, 0.10, 30, 1.0) -> pesimista
+        fijo = servidores(p) + sum(personal(p))
+        cac = 49 * (1 + p / 5000)
+        # neto = p * ARPU_NETO - p * 0.6 - fijo + crédito usable; crédito = K * (MP + variable + servidores + publicidad)
+        # el IVA de la propia publicidad también es crédito: punto fijo (más publicidad → más crédito → más publicidad)
+        if ll is None:
+            ads = max(max(0, neto * (1.0 if m <= n100 else despues)), 500 if m <= 3 else 0)
+            if tope_ads: ads = min(ads, tope_ads)
+            ads = min(ads, max(0, (5000 - p * 0.94) * cac / 1.3))   # el mes de llegada compra sólo lo que falta
+        else:
+            ads = min(max(0, neto) * 0.7, p * (0.06 + post_crec) / 1.3 * cac)   # mantenimiento
+        lim = neto - ads; acc += lim; gan = 0.35 * max(0, lim - quebranto)
+        p = p * 0.94 + ads / cac * 1.3
+        if ll is None and p >= 4999.5: ll = m
 ```
 
 ### 13.4 Regla de reinversión
 
 1. Reservar ~3 meses de costos fijos (~US$400 al inicio, ~US$1.500 al final).
-2. Reinvertir **70 a 100% del neto restante** mientras cada usuario de pago recupere su costo en
-   **3 meses o menos**.
-3. Si la recuperación pasa de 3 a 4 meses: bajar la inversión y corregir onboarding o precio antes
-   de seguir gastando.
+2. Reinvertir **el 100% del neto los primeros 8 meses y el 70% después** (plan vigente de §13.3; el
+   contrapunto de 12 meses está ahí), y pasar a presupuesto de mantenimiento al llegar a 5.000, mientras
+   **cada usuario de pago deje al menos 3 veces lo que costó conseguirlo** (con 6% de bajas: recuperar su
+   costo en **5,5 meses o menos**; hoy se estima ~1,7, neto del IVA de la publicidad).
+3. Si la recuperación pasa de 5,5 meses: bajar la inversión y corregir incorporación, bajas o precio antes
+   de seguir gastando. Es el mismo umbral que fija el tope de §14.1.
 
 **Capital inicial necesario:** el piloto más US$500 a 1.000.
 
@@ -426,7 +509,7 @@ bajas, porcentaje orgánico y conversión a pago son supuestos propios, sin fuen
 6 veces más por usuario pero trae intención: usarla con palabras muy específicas.
 
 **Siguiente paso:** piloto de ~US$500 en un mes repartido entre Meta, Google Apps y Google Búsqueda,
-midiendo costo por instalación, activación y conversión a pago. Con eso se recalculan §12.1 y §13.3.
+midiendo costo por instalación, activación y conversión a pago. Con eso se recalculan §12.1 y §13.3 (sobre todo el costo por usuario de pago, que decide el plazo).
 
 ### 13.6 Crowdfunding (investigado, descartado)
 
@@ -438,3 +521,197 @@ midiendo costo por instalación, activación y conversión a pago. Con eso se re
   tracción no es viable; reconsiderar sólo con métricas de la beta.
 - **Preventa a los primeros usuarios** (plan anual de socio fundador por MercadoPago): encaja con la
   estrategia de autofinanciamiento y valida la disposición a pagar.
+
+## 14. Mercado alcanzable: el segmento objetivo (agregado 2026-11-03)
+
+Segmento: emprendedores y pymes que usan Gmail o Drive, aceptan trabajar chateando con una app y
+pueden pagar US$20 a 50 por mes. **Sólo el primer escalón está medido**; los siguientes son supuestos
+razonados, porque no hay fuente pública que los cubra.
+
+| Escalón (Argentina) | Cantidad | Origen |
+|---|---|---|
+| Monotributistas + autónomos registrados | ~2,5 M | **Medido.** Secretaría de Trabajo (SIPA): 2,2 M monotributistas a jun-2026; 2,5 M con autónomos |
+| + pymes empleadoras | ~0,5 M | **Medido.** UCEMA (SIPA): 515 a 523 mil en 2025 |
+| **Universo formal** | **~3,0 M** | suma |
+| Pueden pagar US$20 a 50/mes | ~1,0 a 1,5 M | **Supuesto.** La categoría A era ~60% del padrón en 2023 y factura poco; cuento la mayoría de las pymes y 25 a 40% de los independientes |
+| Trabajan con Gmail/Drive | ~0,5 a 1,0 M | **Supuesto.** Gmail tenía ~46% de las direcciones en 2020 (dato viejo); uso 50 a 70% |
+| Adoptarían un asistente de IA por chat | **~150 a 350 mil** | **Supuesto.** 41,6% de las pymes ya usa alguna IA (nadIA/Observatorio PyME 2025); para independientes, 20 a 40% |
+
+**Qué implica:**
+
+- **5.000 usuarios de pago son ~2% del segmento** (rango 1,4 a 3,3%). Alcanzable, pero no es un rincón
+  chico del mercado.
+- **Crecer 10% por mes desde 5.000** da ~15.700 a los 12 meses (~6% del segmento) y ~49.000 a los 24
+  (~20%). Lo segundo no es creíble sólo en Argentina: la penetración típica de un SaaS sobre su mercado
+  alcanzable en los primeros años es de 1 a 5%.
+- **El público no se "satura" en 5.000** (corrección a lo dicho antes): lo que sube es el costo por
+  usuario de pago a medida que se agotan los más fáciles. El modelo de §13.3 ya lo supone duplicado
+  hacia 5.000; pasar del 3 a 5% del segmento probablemente lo triplica.
+- **Más allá hace falta otro país.** Latinoamérica tiene ~48 M de trabajadores por cuenta propia y ~7 M
+  de empresas de hasta 5 personas (OIT); el segmento hispanohablante sería del orden de 8 a 10 veces
+  el argentino. Pero la facturación fiscal es distinta en cada país (en Argentina, ARCA): cada país es
+  trabajo de producto, no sólo de publicidad.
+
+**Cómo medirlo de verdad:**
+
+1. **Meta Ads Manager:** tamaño estimado de audiencia en Argentina, 25 a 55 años, intereses
+   emprendimiento, pymes y Google Workspace. Gratis; da el techo del canal pago.
+2. **Piloto de ~US$500** (§13.5): costo real por usuario de pago, y cómo sube al duplicar la inversión.
+   Esa curva es el techo real.
+3. **Una pregunta en el alta de la prueba de 15 días** («¿qué correo usás para tu negocio?», «¿cuánto
+   facturás por mes?»): convierte los supuestos en datos propios.
+
+Fuentes: [iProfesional](https://www.iprofesional.com/management/464370-solo-crecen-monotributo-y-empleo-informal-en-argentina) ·
+[Contexto Tucumán](https://www.contextotucuman.com/nota/417931/en-casi-15-anos-aumento-70_por_ciento-el-numero-de-monotributistas.html) ·
+[Secretaría de Trabajo](https://www.argentina.gob.ar/sites/default/files/trabajoregistrado_2505_informe.pdf) ·
+[Cronista](https://www.cronista.com/economia-politica/el-gobierno-dio-de-baja-a-400000-monotributistas-por-no-cumplir-con-un-requisito) ·
+[UCEMA 05/2026](https://ucema.edu.ar/sites/default/files/2026-05/IndicadoresUCEMA_PyMEs052026.pdf) ·
+[UCEMA 09/2025](https://ucema.edu.ar/sites/default/files/2025-09/IndicadoresUCEMA_PyMEs092025.pdf) ·
+[Perfil](https://www.perfil.com/noticias/economia/cuatro-de-cada-diez-pymes-argentinas-ya-usan-ia-pero-pocas-miden-su-impacto-a40.phtml) ·
+[RealSender](https://realsender.com/email-trends/2020-email-providers) ·
+[OIT vía Accounter](https://accounter.co/noticias/actualidad/el-empleo-a-medias-se-apodera-de-la-region) ·
+[SEGIB](https://www.segib.org/wp-content/uploads/Encuesta-Iberoamericana-de-la-Mipyme-2022.pdf)
+
+### 14.1 Después de 5.000: crecimiento de 2% mensual, tope y punto antieconómico (agregado 2026-11-03)
+
+**Cifras realistas, recalculadas el 2026-11-03 con el IVA como saldo:** el precio de US$30 **incluye IVA 21%**; como Responsable Inscripto se paga el IVA cobrado **menos** el de nuestras compras (MercadoPago ~5%, IA/voz/Composio, servidores y publicidad: supuesto, todo con IVA computable; el personal no da crédito). Arriba de 5.000 el IVA cobrado siempre supera al de las compras, así que ese crédito se recupera entero. Ganancias es el **35% del beneficio** (lo cobrado sin IVA menos todos los costos sin su IVA), no del ingreso. Comisión y alícuota son supuestos: confirmarlos con el contador. Así cada usuario de pago deja **~US$23,0 por mes** y con 6% de bajas su valor de vida es **~US$384**; el costo de conseguirlo se compara **neto del IVA de la publicidad** (21/121 menos). Arriba de 5.000: soporte 1 persona (US$3.000) cada 2.500 de pago, community manager US$1.200 (US$2.400 desde 10.000) y servidores US$520 cada 5.000. El costo por usuario de pago sube con la escala (doble a 5.000) y además al agotar el segmento de §14. Curva pesimista: se duplica cada 5.000 más.
+
+Con cifras realistas, el techo lo pone el costo de conseguir usuarios: **~8.100 a 10.200 de pago**, que con 2% mensual se alcanzan entre los meses 44 y 56 (la meta de 5.000 llega en el mes 18). Ahí el negocio deja **~US$101.000 por mes después de Ganancias** en la curva base.
+
+**Los tres umbrales** (usuarios de pago):
+
+| Umbral | Curva base | Curva pesimista | Qué significa |
+|---|---|---|---|
+| **Tope recomendado: valor de vida = 3 × costo** | ~10.200 | ~8.100 | Estándar de SaaS sano; deja margen para errores de estimación |
+| Máximo beneficio total | ~22.500 | ~9.900 | Más allá, cada usuario extra baja el beneficio total |
+| **Antieconómico: valor de vida = costo** | ~35.700 | ~15.800 | Cada usuario nuevo cuesta más de lo que va a dejar |
+| Techo de mercado (5% del segmento) | ~12.500 | ~12.500 | Más allá, otro país |
+
+Entre el tope recomendado y el máximo hay una **zona gris**: cada usuario nuevo todavía suma, pero poco, y cualquier error en el costo por usuario la vuelve pérdida. Sólo se entra con el costo medido.
+
+**Beneficio mensual sosteniendo cada tamaño** (curva base; la publicidad sólo repone bajas, US$):
+
+| De pago | Costo por usuario (con IVA) | Valor de vida / costo neto | Publicidad | Beneficio antes de Ganancias | Después de Ganancias |
+|---|---|---|---|---|---|
+| 5.000 | 100 | 4,6 | 23.077 | 88.548 | 57.556 |
+| 7.500 | 126 | 3,7 | 43.715 | 125.686 | 81.696 |
+| 10.000 | 153 | 3,0 | 70.673 | 156.832 | 101.941 |
+| 12.500 | 181 | 2,6 | 104.150 | 183.360 | 119.184 |
+
+En la curva pesimista, 10.000 deja 137.362 y 12.500 **baja** a 130.317: crecer resta.
+
+**Trayectoria con 2% mensual desde 5.000 (mes 18, §13.3) hasta el tope recomendado** (curva base, US$ por mes):
+
+| Mes | De pago | Ingreso (con IVA) | Publicidad | Beneficio antes de Ganancias | Después de Ganancias |
+|---|---|---|---|---|---|
+| 19 | 5.000 | 150.000 | 30.769 | 82.190 | 53.424 |
+| 30 | 6.217 | 186.506 | 43.127 | 96.596 | 62.787 |
+| 36 | 7.001 | 210.036 | 52.132 | 107.233 | 69.701 |
+| 42 | 7.884 | 236.535 | 63.260 | 115.396 | 75.007 |
+| 50 | 9.238 | 277.138 | 82.366 | 130.803 | 85.022 |
+| **56 (tope)** | **10.200** | 306.000 | 73.109 | 155.999 | **101.399** |
+
+| Año | Después de Ganancias | Margen sobre lo que paga el cliente |
+|---|---|---|
+| 3 | ~761.000 | 34% |
+| 4 | ~914.000 | 32% |
+| 5 | ~1.130.000 | 32% |
+
+Con la curva pesimista el tope llega antes (8.100, mes 44) y ahí deja ~US$81.000 por mes después de Ganancias.
+
+**Lectura:**
+
+- **El techo lo pone el costo de conseguir usuarios: ~8.100 a 10.200 de pago**, cerca del techo de mercado (~12.500). La meta de 5.000 llega en el mes 18 (§13.3) y con 2% mensual el tope en los meses 44 a 56.
+- **El IVA recuperado sube el tope:** la publicidad cuesta 21/121 menos de lo que se paga, así que cada usuario rinde más veces su costo. Antes, contando el IVA entero como costo, el tope era ~6.800 a 7.700.
+- **La palanca son las bajas.** Con 3% en vez de 6%, el tope recomendado sube a ~13.000 a 23.700 (el mercado lo corta en ~12.500): valor de vida doble con la misma publicidad.
+- Supuestos no medidos: costo por usuario de pago, su curva con la escala, bajas, comisión de MercadoPago, IVA computable de los proveedores del exterior y alícuota efectiva. El piloto de §13.5 mide el primero; las bajas, la beta; lo impositivo, el contador.
+
+<!-- SOCIOS:INI -->
+### 14.2 Cuánto cobra cada socio (agregado 2026-11-03)
+
+#### Arranque: cuánto ponemos y cuándo cobramos
+
+Ponen ~US$899 entre los dos (US$450 cada uno), sólo en los meses 1 y 2. Del mes 3 al 8 el negocio se paga solo y todo lo que deja va a publicidad: no ponen ni sacan. En el mes 9 empiezan a cobrar (~US$1.381 cada uno) y ese mismo mes ya recuperaron lo puesto.
+
+- **Ponen:** ~US$899 entre los dos (US$450 cada uno), en los meses 1 y 2: US$270 de servidores y US$1.000 de publicidad semilla, menos US$398 de los primeros cobros.
+- **Dejan de poner:** desde el mes 3. Hasta el mes 8 todo lo que deja el negocio va a publicidad.
+- **Empiezan a cobrar:** en el mes 9 (~US$1.381 por socio); mes 12 ~US$3.110; mes 17 más de US$10 mil. Lo puesto se recupera en el mes 9.
+
+| Mes | Usuarios de pago (inicio → fin) | Cobrado (con IVA) | IVA a pagar | Servidores | Soporte y community manager | Publicidad | Resultado del mes | Pone cada socio | Cobra cada socio | Estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 0 → 13 | US$0 | US$0 | US$135 | US$0 | US$500 | −US$635 | US$318 | — | ponen |
+| 2 | 13 → 26 | US$398 | US$0 | US$135 | US$0 | US$500 | −US$264 | US$132 | — | ponen |
+| 3 | 26 → 40 | US$771 | US$0 | US$135 | US$0 | US$583 | US$0 | — | — | todo a publicidad |
+| 4 | 40 → 63 | US$1.186 | US$0 | US$135 | US$0 | US$970 | US$0 | — | — | todo a publicidad |
+| 5 | 63 → 101 | US$1.881 | US$0 | US$135 | US$0 | US$1.617 | US$0 | — | — | todo a publicidad |
+| 6 | 101 → 165 | US$3.039 | US$0 | US$135 | US$0 | US$2.695 | US$0 | — | — | todo a publicidad |
+| 7 | 165 → 271 | US$4.959 | US$0 | US$135 | US$0 | US$4.483 | US$0 | — | — | todo a publicidad |
+| 8 | 271 → 441 | US$8.115 | US$0 | US$135 | US$0 | US$7.422 | US$0 | — | — | todo a publicidad |
+| 9 | 441 → 603 | US$13.233 | US$663 | US$135 | US$500 | US$7.717 | US$3.307 | — | US$1.381 | cobran |
+| 10 | 603 → 816 | US$18.083 | US$1.082 | US$200 | US$500 | US$10.540 | US$4.517 | — | US$1.806 | cobran |
+| 11 | 816 → 1.097 | US$24.485 | US$1.445 | US$200 | US$500 | US$14.460 | US$6.197 | — | US$2.478 | cobran |
+| 12 | 1.097 → 1.426 | US$32.910 | US$2.178 | US$200 | US$2.350 | US$18.143 | US$7.776 | — | US$3.110 | cobran |
+
+| Costo de conseguir un usuario de pago | Cuánto ponen entre los dos | Hasta qué mes ponen | Cuándo empiezan a cobrar | Cuándo llegan a 5.000 usuarios |
+|---|---|---|---|---|
+| el previsto (US$49) | US$899 | mes 2 | mes 9 | mes 18 |
+| ×1,5 (US$74) | US$1.179 | mes 3 | mes 9 | mes 30 |
+| el doble (US$98) | US$1.360 | mes 3 | mes 9 | mes 46 |
+
+Resultado del mes antes de Ganancias; lo que cobra cada socio, después de Ganancias (14%, con quebranto) y del 7%. Hasta el mes 8 el 100% del neto va a publicidad, desde el 9 el 70%. Una publicidad más cara casi no cambia lo que se pone: atrasa la llegada a 5.000 usuarios. No se muestra un costo menor al previsto.
+
+**Cuánto conviene tener disponible:** El modelo pide ~US$450 por socio y empiezan a cobrar en el mes 9, pero no incluye crear la empresa (SAS) y el contador, el tiempo de trabajo de los socios (que no se cobra) ni un colchón por si la publicidad arranca peor de lo previsto (si la publicidad cuesta el doble, el aporte sube a ~US$680 por socio). Para estar cubiertos conviene tener **US$1.000 a US$1.500 por socio** disponibles. Ese rango es una estimación propia: el costo de crear la SAS y del contador no está verificado.
+
+#### Mes a mes
+
+Hasta el mes 8 todo el neto va a publicidad. Cada socio pasa los **US$10 mil por mes en el mes 17**, cobra ~US$32.868 por mes al llegar a la meta (mes 19) y junta **US$1 M sin vender en el mes 44** (vendiendo, en el mes 22).
+
+| Mes | Neto por socio en el mes | Acumulado por socio | Hito |
+|---|---|---|---|
+| 8 | US$0 | −US$450 | último mes con 100% del neto a publicidad; el acumulado negativo es el aporte propio del arranque |
+| 9 | US$1.381 | US$931 |  |
+| 12 | US$3.110 | US$8.326 |  |
+| 15 | US$7.020 | US$24.923 |  |
+| 17 | US$10.731 | US$44.307 | pasa US$10 mil por mes |
+| 18 | US$17.251 | US$61.558 |  |
+| 19 | US$32.868 | US$94.425 | primer mes completo en la meta: la publicidad baja a mantenimiento |
+| 22 | US$33.351 | US$192.608 | vendiendo acá, ~US$1 M por socio |
+| 24 | US$34.625 | US$261.218 |  |
+| 30 | US$38.629 | US$482.854 |  |
+| 36 | US$42.882 | US$729.400 |  |
+| 44 | US$36.031 | US$1.004.372 | US$1 M acumulado sin vender |
+| 48 | US$38.362 | US$1.154.313 |  |
+| 60 | US$47.151 | US$1.679.686 |  |
+
+Neto después de Ganancias (14% con el régimen mientras rige, 35% después, con quebranto) y del 7% del dividendo; dos socios en partes iguales. La baja del mes 37 es el vencimiento del régimen. Venta en el mes 22: ~US$2,14 M a 4,5× el beneficio de 12 meses, 15% cedular; un comprador con 4 meses de historia en la meta puede pagar menos. Sin expansión internacional.
+<!-- SOCIOS:FIN -->
+
+## 15. Impuestos: régimen de Economía del Conocimiento (agregado 2026-11-04)
+
+**Inscribirse en el régimen de la Ley 27.506 (modificada por la 27.570) baja Ganancias de 35% a 14%** mientras la empresa sea micro o pequeña, y a 21% como mediana. Hasta el bolsillo de los socios la carga pasa de 39,6% (35% + 7% del dividendo) a 20,0%. En los 3 años que rige son **~US$356k más**, sin salir de Argentina; si se prorroga más allá de 2029, ~US$857k en 5 años. Rinde más que operar desde Estonia mientras los socios vivan acá (el art. 130 de Ganancias atribuye igual el beneficio a los socios argentinos).
+
+**La categoría la dan las ventas, no los empleados:** promedio de los ejercicios cerrados (hasta tres) sin IVA contra los topes de servicios de la Res. 1/2026 (micro $374M, pequeña $2.255M, mediana tramo 1 $18.665M), con el dólar a $1.550 (supuesto). Año 1 = 2027 (supuesto).
+
+| Año | Ventas sin IVA ($M) | Promedio de ejercicios cerrados ($M) | Categoría | Ganancias | Hoy (35% + 7%) | Con el régimen | Diferencia |
+|---|---|---|---|---|---|---|---|
+| 1 (2027) | 140 | 140 | Micro | 14% | 12.570 | 16.651 | +4.081 |
+| 2 (2028) | 1.847 | 140 | Micro | 14% | 382.279 | 505.784 | +123.505 |
+| 3 (2029) | 2.902 | 993 | Pequeña | 14% | 707.718 | 936.365 | +228.647 |
+| 4 (2030) | 3.681 | 1.630 | Pequeña | 35% (vencido) | 849.826 | 849.826 | +0 |
+| 5 (2031) | 4.547 | 2.810 | Mediana tramo 1 | 35% (vencido) | 1.050.746 | 1.050.746 | +0 |
+
+US$ por año al bolsillo de los socios, sobre la misma serie mensual de §13.3 y §14.1 (control: sin el 7% reproduce los años 3 a 5 de §14.1). Se tomó la alícuota de 35%; con la escala 25/30/35 el resultado es algo mejor. Si el peso se devalúa más rápido de lo que se actualizan los topes, el salto a mediana llega antes.
+
+**Requisitos:**
+
+- **70% de la facturación** en actividades promovidas: un SaaS es software. Se puede inscribir antes de facturar acreditando la actividad.
+- **Microempresa de menos de 3 años:** no acredita requisitos extra por 4 años o hasta dejar de ser micro (acá, el año 2).
+- **Desde entonces, 2 de 3:** calidad (mejora continua o certificación tipo ISO 9001) · I+D de 2% de la facturación (la capacitación no sirve sin empleados) · exportaciones de 10% de la facturación.
+- **Vender afuera ayuda dos veces:** cumple la condición de exportaciones y libera de retenciones y percepciones de IVA.
+- **Inscribirse temprano:** rige hasta el 31/12/2029; cada año fuera es uno perdido.
+
+**Ingresos Brutos:** ~0,9% de la venta sin IVA, ya restado en todo el reporte. Por el Convenio Multilateral la base se reparte mitad por dónde están los clientes y mitad por dónde están los gastos; la parte de Santa Fe queda exenta con el régimen (Ley 14.025, art. 54, con inscripción en el Registro Provincial ante API). Buenos Aires exime 100% a la micro y 80% a la pyme (Ley 15.339), Córdoba exime la producción de software y CABA rebaja la alícuota 50% a 75% (Ley 6.394): cada beneficio se tramita aparte en cada provincia. Sin DReI: es una tasa y sin local en Rosario no hay servicio que retribuir. Sin verificar: las alícuotas del resto del país y si la publicidad pagada al exterior cuenta como gasto en otra provincia. Fuentes: [Ley 14.025 Santa Fe](https://www.santafe.gob.ar/boletinoficial/ver.php?seccion=2021%2F2021-01-21ley14025-2021.html) · [ARBA](https://www.arba.gov.ar/GuiaTramites/TramiteSeleccionado.asp?tramite=771&categ=34) · [Rentas Córdoba](https://www.rentascordoba.gob.ar/cms/exencion-iibb-produccion-de-software/) · [Ley 6.394 CABA](https://boletinoficial.buenosaires.gob.ar/normativaba/norma/539036).
+
+**Sin verificar:** los porcentajes salen de consultoras (otras fuentes dan 15% fijo o 50% para micro): confirmar en el texto de las leyes 27.506 y 27.570 · si el desarrollo subcontratado cuenta como I+D · la tasa de control del régimen (hasta 4%; 0% hasta 2025) · el costo de una certificación de calidad (fuera del modelo) · el bono fiscal (70% de contribuciones patronales) no aplica sin empleados.
+
+Fuentes: [Contablix, Economía del Conocimiento 2026](https://contablix.ar/blog/economia-del-conocimiento-argentina-2026) · [Beccar Varela](https://beccarvarela.com/novedades/regimen-de-promocion-de-la-economia-del-conocimiento/) · [topes MiPyME 2026](https://siap.blogdelcontador.com.ar/novedades/nuevos-topes-mipyme-2026-ventas-empleados-y-activos/) · [argentina.gob.ar, parámetros MiPyME](https://www.argentina.gob.ar/noticias/nuevos-parametros-para-categorizacion-de-mipymes-0). Lo impositivo lo confirma el contador.
