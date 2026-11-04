@@ -450,6 +450,61 @@ def sim(reinv, meses=24, cac0=49, arpu=30, churn=0.06, org=0.30, semilla=500, me
 # sim(0.7) / sim(1.0) -> base; sim(0.7, meses=48, cac0=100) -> pesimista
 ```
 
+#### Beneficio limpio mensual con reinversión del 70%
+
+El beneficio limpio es el 30% del neto que no va a publicidad (antes de impuestos, comisiones de
+MercadoPago, contador y reserva). Escenario base, US$ por mes. El acumulado descuenta los meses con
+aporte propio.
+
+| Mes | De pago (inicio → fin) | Ingreso | Publicidad | Beneficio limpio | Acumulado |
+|---|---|---|---|---|---|
+| 1 | 0 → 13 | 0 | 500 | −635 (aporte propio) | −635 |
+| 2 | 13 → 26 | 398 | 500 | −245 (aporte propio) | −880 |
+| 3 | 26 → 37 | 771 | 500 | 121 | −759 |
+| 6 | 76 → 110 | 2.273 | 1.465 | 628 | 583 |
+| 9 | 231 → 336 | 6.936 | 4.663 | 1.999 | 4.869 |
+| 12 | 695 → 983 | 20.842 | 14.157 | 6.067 | 18.092 |
+| 15 | 1.871 → 2.498 | 56.131 | 38.275 | 16.404 | 55.120 |
+| 18 | 4.128 → 5.110 | 123.848 | 84.596 | 36.255 | 141.844 |
+
+**Año 1: ~US$18.000 de beneficio**, casi todo en los meses 10 a 12. El salto entre los meses 15 y 18
+no es un evento: es el interés compuesto (~30 a 40% de crecimiento mensual sobre una base mayor). Es
+también el tramo menos confiable del modelo: no está verificado que Meta y Google en Argentina absorban
+US$38.000 a 85.000 por mes al costo supuesto.
+
+#### Después de la meta: presupuesto de mantenimiento (decisión 2026-11-03)
+
+Reinvertir el 70% sin freno es una regla que ignora la meta: al llegar a 5.000 seguiría gastando
+US$85.000 o más por mes. **Al llegar, la publicidad pasa a reponer las bajas y sumar un crecimiento
+lento de 2% por mes.**
+
+| Mes | De pago | Publicidad | Beneficio limpio | Acumulado |
+|---|---|---|---|---|
+| 18 (llegada) | 5.110 | 84.596 | 36.255 | 141.844 |
+| 19 | 5.212 | 31.156 | 118.556 | 260.400 |
+| 21 | 5.423 | 33.076 | 122.705 | 503.721 |
+| 24 | 5.755 | 36.208 | 129.140 | 884.650 |
+
+**Un tope fijo de publicidad durante la subida no sirve si es bajo:**
+
+| Estrategia de publicidad | Llega a 5.000 | Beneficio mes 18 | Beneficio mes 24 | Acumulado al mes 24 |
+|---|---|---|---|---|
+| 70% sin tope, mantenimiento al llegar | mes 18 | 36.255 | **129.140** | **~885.000** |
+| 70% con tope de US$30.000/mes | mes 28 | ~60.000 | ~101.000 | ~730.000 |
+| 70% con tope de US$15.000/mes | nunca (se estanca en ~3.300) | ~46.000 | ~68.000 | ~560.000 |
+
+**Por qué el tope bajo se estanca:** con 6% de bajas, 5.000 usuarios pierden ~300 por mes, y reponerlos
+cuesta **~US$23.000 por mes** con el costo por usuario duplicado a esa escala. Un tope menor compra
+menos de lo que se pierde: los usuarios se estabilizan donde lo que entra iguala a lo que se va.
+
+**La palanca mayor son las bajas, no la publicidad:** con 3% de bajas en vez de 6%, el mantenimiento
+de 5.000 cae a ~US$11.000 por mes. Bajarlas se hace con producto (soporte, valor diario percibido,
+plan anual) y no cuesta publicidad. **Medir las bajas desde la beta.**
+
+**Recomendación:** 70% sin tope durante la subida (el pico de US$85.000 dura 2 o 3 meses), presupuesto
+de mantenimiento al llegar, y revisar el costo por usuario de pago entre los meses 9 y 12: si ya sube,
+el salto se achica o se corre.
+
 ### 13.4 Regla de reinversión
 
 1. Reservar ~3 meses de costos fijos (~US$400 al inicio, ~US$1.500 al final).
