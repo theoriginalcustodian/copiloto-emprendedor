@@ -28,3 +28,19 @@ no es una precaución de Windows: acá fue la diferencia entre resolver y creer 
 **integridad del archivo**, y el verde de uno se lee como el verde del otro.
 Relacionado: [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] ·
 [[instrumento-que-no-mira-nunca-falla]] · [[resolver-tomando-un-lado-nunca-converge]].
+
+**TAPADO el mismo día (2026-11-04), por frontend2.** `scripts/sprint-estado.py:103-112` en `main`
+(`c269a8b3`, PR #1643, ancestro verificado): `RE_CONFLICTO = re.compile(r"^(<<<<<<< |>>>>>>> )",
+re.MULTILINE)` y `leer()` aborta con `SystemExit` nombrando el archivo. Vale para `--marcar` y
+`--tabla` también, así que **no se escribe en un doc partido**. Dejó `=======` **fuera a propósito**:
+aparece legítimo en prosa y en tablas markdown, y un guard que grita en el caso normal se desarma
+solo ([[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]). Controles corridos: positivo (doc
+con marcadores → aborta) y negativo (los 4 backlogs reales, 0 marcadores, `--check --sin-git` OK).
+
+**Lo que sigue abierto, y es la mitad que importa: el guard NO tiene test versionado.** Verificado
+contra `origin/main`: `git grep -l sprint-estado -- '*test*'` devuelve **vacío**. O sea que el control
+positivo existió **una vez, a mano, en la sesión que lo escribió** — exactamente la forma en que un
+mecanismo roto hacia el «no» deja de dar síntoma ([[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]).
+Si un refactor futuro rompe el `RE_CONFLICTO`, el `--check` vuelve a dar verde sobre medio archivo y
+nada avisa. Pedido a frontend2 el 04/11: un test que afirme el positivo (doc con marcadores ⇒
+`SystemExit`) y el negativo (doc limpio ⇒ lee).
