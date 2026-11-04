@@ -145,7 +145,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N47** | `sin-issue` | ✅ TERMINADO | sin-codigo: es ficha de ATRIBUCION, y cierra con la SEGUNDA de las dos frases que su DoD 4 permite -- no se pudo atri… |
 | **SM-N48** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N49** | `sin-issue` | ✅ TERMINADO | sha cc4adea8 (PR #1584, verificado ancestro de origin/main) - apps/copiloto/tests/test_ratchet_activity_payload_lleva… |
-| **SM-N50** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N50** | `sin-issue` | ✅ TERMINADO | a8ea35fa (PR #1592, ancestro verificado) — `diagnostico_conexiones` devuelve `(caidos, composio_mirado)` y `avanzar_t… |
 | **SM-N51** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N52** | `sin-issue` | ✅ TERMINADO | sha b45ab84f (PR #1590), verificado ancestro de origin/main. CI 6/6. DoD1: los 9 archivos de la Consola corren en Git… |
 | **SM-N53** | `sin-issue` | ✅ TERMINADO | cd332c96 (PR #1602) — el interceptor guarda `activity_id`, el workflow lo manda con su propio `workflow.patched`, y `… |
@@ -3165,7 +3165,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N50 · `sin-issue` — Con Composio caído, Mi día marca «Reconectá Gmail» como HECHA y la conexión sigue vencida
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** a8ea35fa (PR #1592, ancestro verificado) — `diagnostico_conexiones` devuelve `(caidos, composio_mirado)` y `avanzar_tablero` cierra SOLO lo que pudo mirar (`cerrar_resueltas(..., solo_entidades=)`), asi que con Composio lanzando la tarjeta de reconexion YA NO se cierra. DoD 1: `hechas` no la contiene (`test_HOSTIL_composio_lanza_la_tarjeta_NO_se_cierra`, VPS con PG real y tenant uuid efimero). DoD 2 ROJO->VERDE: el spike de manejo-de-errores quedo versionado y con el orquestador viejo fallan 4 de los tests nuevos, mientras los controles pasan en ambos. DoD 3: contra la base de tests via test-db.sh, rol copiloto_app NOBYPASSRLS, NUNCA el tenant del operador. DoD 4: este sha + el par. Controles conservados: Composio sano con gmail EXPIRED crea y mantiene la tarjeta en 2 pasadas; con la conexion recuperada SI cierra; y MP no queda rehen (el primer diseno de backend bloqueaba toda la regla y rompia un test existente -- se acoto por entidad, `test_MP_recuperado_sigue_cerrando_aunque_Composio_no_se_pueda_mirar`). HALLAZGO del fix: el schedule diario tenia EL MISMO hueco y quedo cubierto (`test_HOSTIL_sin_composio_inyectado_el_schedule_tampoco_cierra`). Verificacion INDEPENDIENTE de manejo-de-errores con su propio spike de Mi dia: verde. CI 6/6, desplegado, suite VPS 2709 passed / 42 skipped. Los otros dos puntos que el cierre de backend lista como «solo LEIDOS» NO son de esta ficha: son SM-N54 y SM-N55, que nacieron por eso.
 - **Dueño:** backend
 - **De dónde sale:** `pedido_manejo-de-errores-a-backend` del 2026-11-03. Es un defecto que **le
   miente al emprendedor sobre un hecho**: la tarjeta que le pide reconectar Gmail se cierra sola
