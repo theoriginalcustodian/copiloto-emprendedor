@@ -49,8 +49,8 @@
 - [Propagar el cierre a TODOS los docs maestros](propagar-cierre-a-docs-maestros.md) - al doc-de-registro único.
 
 ### Evidencia: el instrumento antes que el resultado
-- [🫥 Un escape por una CAPA EXTRA llega como byte INVISIBLE](un-escape-que-pasa-por-una-capa-extra-llega-como-byte-invisible.md) — `\x08`; el visor lo borra.
 - [🔭🎚️ La condición que el instrumento EXIGE para VER cambia lo medido](la-condicion-que-el-instrumento-exige-para-ver-cambia-lo-medido.md) — apagué las animaciones y con eso el tap no abría.
+- [🍳🎟️ Una receta para un recurso ESCASO se verifica premisa por premisa ANTES de pedirlo](la-premisa-no-medida-de-la-receta-falla-cuando-el-recurso-caro-ya-esta-comprometido.md) — y la premisa de la CORRECCIÓN también es premisa.
 - [🎯🏹 El ESCALADOR acusa al destinatario, nunca al emisor que no cumplió el disparador](el-escalador-acusa-al-destinatario-nunca-al-emisor-que-no-cumplio-el-disparador.md)
 - [🔬🎯 El control que mide la PROPIEDAD destapa el defecto AJENO](el-control-que-mide-la-propiedad-destapa-el-defecto-ajeno-el-que-mide-mi-accion-no.md)
 - [🪄💥 Una orden correcta con el COMANDO INCOMPLETO da un éxito falso](una-orden-correcta-con-el-comando-incompleto-produce-un-exito-falso.md) — sin `--base` podó 1 de 21. Tipeá el literal del doc.
@@ -170,7 +170,6 @@
 
 ### Frontend móvil
 - [📱🔀 El device NO corre `main` — corre lo que Metro sirve](el-device-no-corre-main-corre-lo-que-metro-sirve.md) — el binario va ADELANTE de main.
-- [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild. **Subida 13-10: device habilitado.**
 - [Pasada de device: 5 trampas](pasada-device-fe2-trampas-env-gate-y-registro.md) — API_BASE, #dígitos, sorted(), registro del cierre, harness.
 - [📱🔀 El dev-server sirve el CHECKOUT COMPARTIDO](metro-sirve-el-bundle-del-checkout-compartido-no-del-worktree.md) - Metro y vite. Pedile que se identifique.
 - [🧩🔀 Resolver "tomando un lado" NUNCA converge](resolver-tomando-un-lado-nunca-converge.md) - `--ours`/`--theirs` descarta una mitad. Un grep por CADA mitad.

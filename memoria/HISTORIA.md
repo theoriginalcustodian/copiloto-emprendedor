@@ -524,3 +524,14 @@ Y las cinco entradas que no tenian linea en NINGUN indice, o sea invisibles para
 - [🔍 Auditorías van en `docs/copiloto-emprendedor/Auditorias/`](auditorias-van-en-carpeta-auditorias.md) - regla del operador. Nunca sueltas en `docs/`. — BAJADA 2026-11-04: la regla vive textual en `CLAUDE.md §5`
   («TODO lo relacionado con auditorías se guarda ACÁ, nunca suelto en docs/»), así que la
   línea del índice pagaba bytes por una norma que ya se lee en el arranque de cada sesión.
+
+- [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild. **Subida 13-10: device habilitado.** — BAJADA 2026-11-04: la receta vive versionada en
+  `docs/copiloto-emprendedor/2026-10-14-receta-rebuild-dev-client-eas.md` y en las otras 7 recetas de
+  device del repo, que son el lugar donde se la busca. El índice pagaba bytes por un procedimiento
+  operativo duplicado, misma razón medida que [[auditorias-van-en-carpeta-auditorias]].
+
+- [🫥 Un escape por una CAPA EXTRA llega como byte INVISIBLE](un-escape-que-pasa-por-una-capa-extra-llega-como-byte-invisible.md) — `\x08`; el visor lo borra. — BAJADA 2026-11-04: el caso del `\x08` es el MÁS específico del bloque
+  de evidencia (un byte concreto, en una capa concreta, con fix ya en código) y su mecanismo general
+  —lo que el visor te esconde— lo cubren [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] y
+  [[la-capa-de-lectura-normalizo-el-sujeto-antes-de-medirlo]], que siguen en el índice. Se baja el
+  caso, no la clase.

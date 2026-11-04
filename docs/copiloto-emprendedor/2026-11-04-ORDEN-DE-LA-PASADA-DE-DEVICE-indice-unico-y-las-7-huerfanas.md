@@ -55,7 +55,24 @@ código. Un inventario por **cobertura medida** las encuentra; uno por buena vol
 
 1. **Instalar el APK del build `fb0fb9d3`** (EAS preview sobre `1c0584f3`, que incluye `63b50b8a`).
    Sin esto, `Z1` no puede aparecer y `I6`/`L1` no se pueden medir.
-2. **`Z1` primero**, porque es lo que el operador reportó trabado: Apps → conectar Drive/Calendar.
+2. 🔴 **TRES reconexiones OAuth seguidas en Apps, no una.** Medido por backend en el VPS el
+   2026-11-04 03:22 UTC sobre la canónica `e2e-device@copiloto.test` (cliente `4f3ecb78`, sólo
+   lectura, sin imprimir secretos):
+   - **Drive** — es `SM-Z1`, lo que el operador reportó trabado.
+   - **Calendar** — las 3 cuentas `googlecalendar` están **EXPIRED**; `composio_caidos` da
+     `['googlecalendar']`.
+   - **MercadoPago** — 1 fila en `mp_credentials` con `reauth_desde = 2026-09-23 08:17 UTC` y token
+     vencido esa misma mañana: **MP rechazó el refresh hace 6 semanas**.
+
+   Las tres se reconectan sólo con OAuth del operador, y **sin ellas las entradas 06, 10 y 47(2) de
+   la receta fracasan tal como están** — no por defecto de la app, sino porque no hay con qué
+   probarlas. Descubrirlo durante la pasada, con el teléfono en la mano, cuesta la pasada entera; por
+   eso van juntas en el paso 0 y no dispersas en las entradas que las necesitan.
+
+   ⚠️ **Y el dato de noviembre:** no hay NINGÚN movimiento cargado en el mes en curso (1 cobro y 4
+   gastos de 2026-09, 3 gastos de 2026-10, 0 `mp_payments`). El chip «−18 %» de la entrada 06 compara
+   contra el mes en curso, así que se va a ver vacío — y **eso es dato correcto, no bug**. Si se
+   quiere juzgar esa entrada de verdad, hay que cargar un par de movimientos de noviembre ANTES.
 3. **`I6` y `L1`**: medir sobre el release recién instalado (receta `build-release-eas`).
 4. **La receta de frontend2**, de un tirón: J1 J3 J4 K2 N19 N29 N34 N41 Z3 Z4 Z5.
 5. **La receta de las 11 de auditoría** (L4) + N28.
