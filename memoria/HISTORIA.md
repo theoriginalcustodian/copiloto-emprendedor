@@ -503,58 +503,24 @@ slugs son «buscables en memoria/, NO leer por reflejo».
 - [📄🕳️ Un control ARCHIVO no ve la divergencia ADENTRO](un-control-a-nivel-archivo-no-ve-la-divergencia-adentro.md) - `feedback`. Cero ≠ luz verde.
 - [🧹 Barrer llamadores incluye los INSTRUMENTOS](barrer-llamadores-incluye-los-instrumentos-de-verificacion.md) - iba a tumbar el smoke que era su control.
 
-## Bajadas del indice el 2026-10-16 (vencidas por el cierre del sprint mobile)
-- **📱 El sprint MOBILE fue el vigente del 13-10 al 16-10** — cerró 25/25 (alcance vivo) el 16-10 00:0x; «device está DENTRO» valió para ÉL. Bajada porque un índice que nombra un sprint vigente ya cerrado manda a trabajar en lo terminado.
+## Bajadas e indexadas el 2026-11-04
 
-- [Un enum al final del renglón lo borra el que appendea](un-enum-al-final-del-renglon-lo-borra-el-que-appendea.md) - 2 frentes invisibles: va al ÚLTIMO campo.  <!-- bajada del índice 2026-10-16 para hacer lugar -->
+Las dos lineas de estado vivo del sprint **mobile**: quedaron vencidas cuando el sprint en curso
+paso a ser el de **correcciones del mapa** (97 fichas). Se bajan con su texto, no se borran —
+la cifra 53/54 sigue siendo la del sprint mobile y se cita para ESA pregunta, no para esta.
 
-## Bajadas del índice el 2026-10-19 — cupo justo: entra la entrada de los CERO INVOCADORES
+- **📊 2 cifras, 2 medidores (15-10 @`410250ec`): criterio 3 web 54/54 · mobile **53/54** (techo: `(home)` espera OAuth) · 🎯 SPRINT **53/54**=98%, 1 pendiente real `soporte`**. Citar una por otra = el error del día.
+- **📱 SPRINT VIGENTE = MOBILE, y device está DENTRO** (13-10). El de la beta cerró 08/10 (`DEC-14` 7/7 @`92fd8a06`): «al sprint siguiente» YA VENCIÓ — el siguiente es ESTE.
 
-El índice estaba en 23.879 de 24.000 bytes (121 libres) y la entrada nueva pesa más que eso. La baja es la del subsistema que hoy no se toca (ciclo de autosanación, 2026-08-02); **el archivo se conserva y sigue buscable**, y lo citan `GOTCHAS.md` y [[orden-de-merge-por-el-estado-intermedio]], así que bajarlo del índice no rompe ningún link.
+Y las cinco entradas que no tenian linea en NINGUN indice, o sea invisibles para toda sesion
+(una entrada sin linea no existe para la proxima sesion, y se vuelve a escribir desde cero):
 
-- [🚧🔁 El guard se vuelve el CUELLO DE BOTELLA](el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege.md) - declará si el rechazo es permanente.
+- [El gate de paridad no veia la forma config-object, y el core viejo por junction da rojos falsos](el-gate-de-paridad-no-veia-la-forma-config-object-y-el-core-viejo-por-junction-da-rojos-falsos.md)
+- [El guard que te acusa de apagar algo suele tener razon](el-guard-que-te-acusa-de-apagar-algo-suele-tener-razon.md)
+- [El mock de Reanimated hace inalcanzable finished=false y el callback del spring](el-mock-de-reanimated-hace-inalcanzable-finished-false-y-el-callback-del-spring.md)
+- [La skill de swmansion dice runOnJS removido y en Reanimated 4.5.0 existe](la-skill-swmansion-dice-runOnJS-removido-y-en-reanimated-4-5-0-existe.md)
+- [Una receta con premisa vencida produce un falso VERDE](una-receta-con-premisa-vencida-produce-un-falso-VERDE.md)
 
-## Sin pasar por el índice el 2026-11-02 — frontend, con el índice a 47 bytes del techo
-
-Dos entradas nuevas que sólo importan al tocar animaciones de `apps/mobile`. Se buscan por tema.
-
-- [🧪🎞️ El mock de Reanimated hace inalcanzable `finished: false`](el-mock-de-reanimated-hace-inalcanzable-finished-false-y-el-callback-del-spring.md) - un fix en esa rama sale verde sin ejercitarse.
-- [📚🔢 La skill dice `runOnJS` removido y en Reanimated 4.5.0 existe](la-skill-swmansion-dice-runOnJS-removido-y-en-reanimated-4-5-0-existe.md) - canónica del dominio, no de la versión instalada.
-- [Relevamiento: pendientes de device](relevamiento-mapa-pendientes-device-plan-guardado.md) - 21 sin medir.  — bajada 2026-11-02: el relevamiento se midió en device y se convirtió en el sprint CORRECCIONES (39 fichas, bloques G a N).
-
-## Movidos del indice el 2026-11-02 (indice en su techo exacto, 24000/24000 B)
-
-> Bajadas con **margen 0**: el indice estaba en 24000 de 24000 bytes y la proxima entrada no
-> entraba. Criterio: principio ya disponible por otra via, no conteo de citas — medido el
-> 2026-11-02, «hoja del grafo» marca lo RECIEN escrito, no lo prescindible.
-
-- [🧠 Trifecta cognitiva - SOTA con 2 lentes](trifecta-sota-lente-lateral-hack.md) - el 2º lente colapsa el problema.
-- [Pasada de device: 5 trampas](pasada-device-fe2-trampas-env-gate-y-registro.md) — API_BASE, #dígitos, sorted(), registro del cierre, harness.
-
-
-## Bajadas del indice el 2026-11-03 (techo de bytes)
-- [🚦📄 Un gate cuyo alcance depende del FORMATO DE SALIDA](un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate.md) - vivía tras el `return --json`.
-- [🧟 Un script que revierte AL FINAL deja el mutante](un-script-que-muta-produccion-y-revierte-al-final-deja-el-mutante.md) - `finally` + backup en disco.
-- [🗂️🕳️ Una sesión en WORKTREE es invisible al monitor](una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd.md) - el buzón manda.
-
-## Bajadas del indice el 2026-11-03 (el indice estaba a 2 bytes del techo de 24.000)
-
-- [🛡️✅ El guard que te acusa de APAGAR algo suele tener razon](el-guard-que-te-acusa-de-apagar-algo-suele-tener-razon.md) - no lo edites: que tu cambio no pueda dejar el conjunto VACIO.
-  - **Por que salio del indice:** redundante en el indice con las otras dos lineas de guards (grita-en-el-caso-normal y falla-abierto-en-su-caso-de-activacion)
-- [🔨🎯 El forjador NO acierta siempre](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) - formato válido ≠ contenido correcto.
-  - **Por que salio del indice:** sin forjador activo en el sprint en curso
-- [🧪 El sujeto de prueba ÚNICO no encarna el estado exigido](sujeto-de-prueba-unico-no-encarna-el-estado-que-exige-el-control.md) — 4 fichas, 1 causa
-  - **Por que salio del indice:** SUPERADA el 2026-11-03: su causa (un solo sujeto de prueba que no podia encarnar el estado exigido) la resolvio la provision de la tenencia e2e-vacio, y la leccion vive ahora en un-falta-que-dice-imposible-describe-el-instrumento-del-dia.md
-- [🔌🕳️ `adb devices` vacío NO acredita que no haya teléfono](adb-devices-vacio-no-acredita-que-no-haya-telefono.md) - el server en frío lista antes de enumerar. `wait-for-device` primero.
-  - **Por que salio del indice:** detalle de arranque ya superado: el device esta habilitado y con dueno unico declarado
-
-## Bajadas del indice el 2026-11-03 (3.a vuelta) - la cifra del sprint ANTERIOR, vencida al abrir el de correcciones del mapa
-
-- **📊 2 cifras, 2 medidores (15-10 @`410250ec`): criterio 3 web 54/54 · mobile **53/54** — bajada al abrir el sprint de correcciones del mapa.
-
-## Bajadas del indice el 2026-11-03 (4.a vuelta) - vencidas por el cierre del sprint anterior y por el frente de errores ya medido en sus 6 patrones
-
-- **Prod-beta vivo**, RLS `FORCE` · smoke **39/39 sobre `92fd8a06`** + durabilidad 8/8. [[copiloto-deploy-multitenant-vivo]]
-- **⚠️ El frente de MANEJO DE ERRORES lo destaparon INSTRUMENTOS QUE MENTÍAN, no features** (5 de 35 PRs). [[instrumentos-que-confirman-en-vez-de-verificar]]
-- [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild. **Subida 13-10: device habilitado.**
-- **Motor en FORK DURO** (bajada del índice 2026-11-04): [motor-fork-duro-fix-buffer-corto.md](motor-fork-duro-fix-buffer-corto.md). Bajada porque su contenido está **duplicado textualmente en `CLAUDE.md §2`**, que es de lectura obligatoria antes de tocar `motor/` — el puntero del índice no agregaba nada que la constitución no diga primero.
+- [🔍 Auditorías van en `docs/copiloto-emprendedor/Auditorias/`](auditorias-van-en-carpeta-auditorias.md) - regla del operador. Nunca sueltas en `docs/`. — BAJADA 2026-11-04: la regla vive textual en `CLAUDE.md §5`
+  («TODO lo relacionado con auditorías se guarda ACÁ, nunca suelto en docs/»), así que la
+  línea del índice pagaba bytes por una norma que ya se lee en el arranque de cada sesión.

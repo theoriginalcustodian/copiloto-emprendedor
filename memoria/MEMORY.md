@@ -7,9 +7,11 @@
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
 
 - **🌐 EL REPO ES PÚBLICO** (2026-08-06). Un `.env` commiteado es público al instante; historia auditada: 0 secretos. `CLAUDE.md` §cabecera.
-- **📊 SPRINT = CORRECCIONES DEL MAPA** (02-11) @`#1615`: 98 fichas · **72 TERMINADO** · 22 DOD-PARCIAL, y las 22 cuelgan de 4 disparadores DEL OPERADOR: 0 ejecutables por una sesión.
+- **🎯 SPRINT VIGENTE = CORRECCIONES DEL MAPA** (97 fichas: 68 TERMINADO · 23 DOD-PARCIAL @`ee8626e7`). Mobile cerró 53/54 → HISTORIA. **18 de 29 abiertas esperan al OPERADOR** (14 device).
 - **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO en los DOS sentidos** — archivos ATRASADOS (commitearlos revierte fixes) y trabajo real sin respaldo; `??` ≠ nuevo. Medí el SIGNO contra main, por archivo.
+- **Prod-beta vivo**, RLS `FORCE` · smoke **39/39 sobre `92fd8a06`** + durabilidad 8/8. [[copiloto-deploy-multitenant-vivo]]
+- **⚠️ El frente de MANEJO DE ERRORES lo destaparon INSTRUMENTOS QUE MENTÍAN, no features** (5 de 35 PRs). [[instrumentos-que-confirman-en-vez-de-verificar]]
 - **🚧 Abiertos:** OAuth Google (es de Composio) · clientes por voz · ingesta al grafo: corre VACÍA, falta tráfico. [[copiloto-oauth-google-propio]] · [[copiloto-ingesta-grafo-por-tenant-real-frente-abierto]]
 - **🔀 Tres sesiones** por buzón · **identidad:** agentes durables (moat = Temporal). [[coordinacion-tres-sesiones-buzon]] · [[copiloto-emprendedor-roadmap]]
 
@@ -25,7 +27,6 @@
 - [documed-front es la app CANÓNICA de UI](consultar-documed-siempre-antes-de-implementar.md) - leerla ANTES de implementar. Portar adaptando, no copiar ciego.
 - [No PR/commit/merge por cada cambio chico](batch-cambios-no-pr-por-tweak.md) - se juntan. Reincidí con 7 PRs en una sesión.
 - [No insistir con rotar keys en dev](no-insistir-rotacion-keys-desarrollo.md) - diferido a prod; sólo no commitear ni pegar en chat.
-- [Nadie apaga la PC; la orden NO se propaga](una-orden-de-apagado-no-se-propaga.md) - vale sólo en su sesión y su trabajo; se consume al usarla.
 
 
 ## 🧭 Cómo trabajo
@@ -33,6 +34,7 @@
 - [🎯📈 Un criterio que CRECE con cada medición no se puede alcanzar](un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar.md) — `DEC-18`: sólo UN lugar mide, y un hallazgo no reabre un ✅.
 - [🗂️🏷️ El registro no se marca si su id NO CIRCULA](el-registro-no-se-marcaba-porque-su-id-no-circulaba.md) — 18/26 fichas jamás nombradas en 460 cierres.
 - [🔁 EL BUCLE CANÓNICO - dos auditorías y el enganche](bucle-canonico-dos-auditorias-y-el-enganche.md) - marco de todo sprint.
+- [⏱️📤 El disparador del push lo fijaba el CRON, no el criterio de lote](el-disparador-del-push-lo-fijaba-el-cron-no-el-criterio-de-lote.md) — 54 PRs mios de 150. Gate de masa, no promesa.
 - [🤞🚫 PROMETER no es ejecutar - y el gate medía la PALABRA](prometer-no-es-ejecutar-el-gate-media-la-palabra.md) - hacela antes de escribirla.
 - [🛑💤 Detectar la parálisis y sólo reportarla es ocio PASIVO](deteccion-de-paralisis-sin-resolucion-es-ocio-pasivo.md) - el blocker es tuyo.
 - [🚦 Ejecutar la COLA acordada no es decisión de scope](ejecutar-la-cola-acordada-no-es-una-decision-de-scope.md) - contratado = ejecución.
@@ -50,7 +52,6 @@
 - [🫥 Un escape por una CAPA EXTRA llega como byte INVISIBLE](un-escape-que-pasa-por-una-capa-extra-llega-como-byte-invisible.md) — `\x08`; el visor lo borra.
 - [🔭🎚️ La condición que el instrumento EXIGE para VER cambia lo medido](la-condicion-que-el-instrumento-exige-para-ver-cambia-lo-medido.md) — apagué las animaciones y con eso el tap no abría.
 - [🎯🏹 El ESCALADOR acusa al destinatario, nunca al emisor que no cumplió el disparador](el-escalador-acusa-al-destinatario-nunca-al-emisor-que-no-cumplio-el-disparador.md)
-- [🎨 Verificar una PROPIEDAD de la capa no verifica que SOBRE](verificar-una-propiedad-de-la-capa-no-verifica-que-la-capa-sobre.md) — 3 verdes, 3 propiedades. Diffeá contra X.
 - [🔬🎯 El control que mide la PROPIEDAD destapa el defecto AJENO](el-control-que-mide-la-propiedad-destapa-el-defecto-ajeno-el-que-mide-mi-accion-no.md)
 - [🪄💥 Una orden correcta con el COMANDO INCOMPLETO da un éxito falso](una-orden-correcta-con-el-comando-incompleto-produce-un-exito-falso.md) — sin `--base` podó 1 de 21. Tipeá el literal del doc.
 - [🔍🎭 No era «no caza X»: era en su FORMA real](no-era-que-no-cazaba-el-patron-era-que-no-lo-cazaba-en-su-forma-real.md) — el contraste mueve UNA variable.
@@ -64,8 +65,6 @@
 - 📬 [Un `cierre_` ajeno puede traer tu cola hecha](un-cierre-dirigido-a-otra-sesion-puede-contener-exactamente-tu-cola.md) · [una NORMA no tiene estado terminal](una-norma-no-tiene-estado-terminal-en-un-buzon-de-entregables.md)
 - [🧮🕳️ Un ref que NO EXISTE da vacío = `0`](medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero.md) - omite E INVENTA; medí el efecto.
 - [🧟🔗 La cita «medido @ sha» MUERE en el squash-merge](la-cita-de-procedencia-muere-en-el-merge.md) — 26% muere en un clon. Procedencia = merge commit.
-- [⏱️🔀 Dos mediciones CONTRADICTORIAS pueden ser ambas ciertas: el sujeto cambió](dos-mediciones-contradictorias-pueden-ser-ambas-ciertas-el-sujeto-cambio.md) — su 5 y mi 6, con 33 min de diferencia.
-- [⏱️🔀 Dos mediciones CONTRADICTORIAS pueden ser ambas ciertas: el sujeto CAMBIÓ](dos-mediciones-contradictorias-pueden-ser-ambas-ciertas-el-sujeto-cambio.md) — su 5 y mi 6, 33 min aparte.
 - [📏🏷️ Una cifra SIN UNIDAD se cita para cualquier pregunta](una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta.md) — 3 a la vez; ganó la más alta.
 - [📐🫥 La capa de LECTURA normalizó el sujeto antes de medirlo](la-capa-de-lectura-normalizo-el-sujeto-antes-de-medirlo.md) — bytes de una repr. ya transformada.
 
@@ -75,8 +74,10 @@
 - [🛥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) · [y el que corre tras el guard no llega](un-control-de-ceguera-ubicado-despues-del-guard-que-dispara.md)
 - [🔄↔️ Base rancia: el diff INVIERTE la dirección](base-rancia-invierte-la-direccion-del-diff.md) — lo que main borró parece tu aporte. `git log -S` antes.
 - [🪞 El guard se satisface con su PROPIO comentario](el-guard-se-satisface-con-su-propio-comentario.md) - descartá comentarios al buscar.
+- [🚦📄 Un gate cuyo alcance depende del FORMATO DE SALIDA](un-gate-cuyo-alcance-depende-del-formato-de-salida-no-es-un-gate.md) - vivía tras el `return --json`.
 - 🎚️ El gate que NO dispara: [medí si dispara antes de embarcarlo](medir-si-un-gate-dispara-antes-de-embarcarlo.md) · [un umbral del día envejece](un-umbral-calibrado-al-corpus-del-dia-envejece-con-el.md) - un empate no separa.
 - 🏷️ El MAL clasificado: [nada lo cazaba](nada-cazaba-al-mal-clasificado-solo-al-no-clasificado.md) · [corroborar premia al que más cita](un-control-de-corroboracion-premia-al-que-mas-cita.md) - el analítico aprueba.
+- [🗂️🕳️ Una sesión en WORKTREE es invisible al monitor](una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd.md) - el buzón manda.
 - [🎯🔧 Un control positivo con ESPERADO FALSO acusa al script](un-control-positivo-con-esperado-falso-acusa-al-script.md) - ¿lo midió o lo escribió alguien?
 - [🔬⚖️ Lo que se retira es la CAUSA, no la OBSERVACIÓN](una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira.md) - la conclusión sobrevive.
 - [🧪🔀 Comparar ramas con un instrumento VERSIONADO mide DOS variables](el-instrumento-versionado-difiere-por-rama.md) — fijá uno: un archivo que nadie toca.
@@ -88,8 +89,10 @@
 - [📉🫥 El dato DEGENERADO imita la AUSENCIA del mecanismo](dato-degenerado-imita-ausencia-del-mecanismo.md) - N=1 se lee como N=0.
 - [🩹🎭 Un degradado PRUDENTE al caso benigno envenena la medición](un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion.md) - grepá «ante la duda».
 - [🎲 Un instrumento INTERMITENTE fabrica una excusa](un-instrumento-compartido-intermitente-fabrica-una-excusa-lista.md) - «es el flake» lava la próxima.
+- [Un enum al final del renglón lo borra el que appendea](un-enum-al-final-del-renglon-lo-borra-el-que-appendea.md) - 2 frentes invisibles: va al ÚLTIMO campo.
 - [🐕‍🦺 El watchdog ve al que LLEGA TARDE, nunca al que NO VINO](el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino.md) - medí contra lo esperado.
 - [✂️ Pipear por `tail` BORRA la evidencia](pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo.md) - la verde tapa la roja: archivo COMPLETO.
+- [🧟 Un script que revierte AL FINAL deja el mutante](un-script-que-muta-produccion-y-revierte-al-final-deja-el-mutante.md) - `finally` + backup en disco.
 - [⏰🔕 Un disparador CUMPLIDO no avisa a nadie](un-disparador-cumplido-no-avisa-a-nadie.md) - vive en 2 lugares y uno no se mira. Cerralo con instrumento.
 
 ### Guards, gates y jueces
@@ -98,8 +101,9 @@
 - [🚦🌍 Gate cuyo corpus vive FUERA del repo: mide al EQUIPO](un-gate-cuyo-corpus-vive-fuera-del-repo-mide-al-equipo-no-al-commit.md) - y CI lo saltea.
 - [📜 La exención cita una autoridad que NO la ampara](exencion-sin-autoridad.md) - 34 exentos citaban un acta de 2 casos. Contá.
 - [⚖️🗺️ Al JUEZ también hay que darle el plano](al-juez-tambien-hay-que-darle-el-plano.md) - sin contexto rechaza, y parece prudencia.
+- [🔨🎯 El forjador NO acierta siempre](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) - formato válido ≠ contenido correcto.
 - [🧟🚨 El artefacto del instrumento NO TIENE DUEÑO](el-artefacto-que-genera-el-instrumento-no-tiene-dueno.md) - enciende, no apaga: alarma inmortal.
-- [🧪🔌 Test VERDE y CERO invocadores = el control NO existe](un-control-con-test-verde-y-cero-invocadores.md) - un permiso NO es un disparador. 4ª vez.
+- [🚧🔁 El guard se vuelve el CUELLO DE BOTELLA](el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege.md) - declará si el rechazo es permanente.
 - [🔗🛡️ El 1er test rojo MATA la suite: el ajeno escuda](el-primer-test-rojo-mata-la-suite-y-el-rojo-ajeno-se-vuelve-escudo-del-propio.md) - corrieron 8 de 47.
 - [🔀🕳️ Dos decisiones correctas que se cruzan en un AGUJERO](dos-decisiones-correctas-que-se-cruzan-en-un-agujero.md) - el hueco vive en el par.
 
@@ -111,6 +115,7 @@
 ### Diseño y arquitectura
 - [🧭🪣 Elegí la unidad de trabajo por dónde vivía el DATO](elegi-la-unidad-de-trabajo-por-donde-vivia-el-dato.md) - el ACCESO elige la arquitectura.
 - [🧩🏷️ Una fila por VALOR de una variable no es una fila](una-fila-por-valor-de-una-variable-no-es-una-fila.md) - el id es plantilla: ¿qué MIDE?
+- [🧠 Trifecta cognitiva - SOTA con 2 lentes](trifecta-sota-lente-lateral-hack.md) - el 2º lente colapsa el problema.
 - [♻️🙈 Idempotente ≠ CONVERGENTE](idempotente-no-es-convergente.md) - *¿si cambio el valor, cambia el recurso?*
 - [🔁 "Si ya existe, devolvelo" NO es idempotencia - es una ventana](idempotencia-con-un-if-tiene-ventana.md) - medí el EFECTO.
 - [🧩 El fix YA existe en otro call-site - propagar, no diseñar](el-fix-ya-existe-en-otro-call-site.md) - grepeá el patrón del FIX.
@@ -122,7 +127,7 @@
 - [✏️ Definición delgada de UX = decisión abierta](definicion-delgada-de-ux-se-llena-con-el-port-del-canonico.md) - "portar" importa la ajena.
 
 ### Delegación, contexto y herramientas
-- [🖥️🎚️ Headless con TECHO: 3/sesión, contexto cero](subagentes-van-headless-no-inline-en-la-terminal.md) — 02/11; el veto era a N sin techo.
+- [🖥️🚫 Sub-agentes: CERO — agotan la RAM del operador](subagentes-van-headless-no-inline-en-la-terminal.md) — 13/10 revocó headless. Script-first.
 - [🔬 Loop auditoría Fable → análisis Opus → contratos → E2E](loop-auditoria-fable-analisis-opus-contratos-e2e.md) - loop reutilizable.
 - [📏➕ Un REFUERZO va adentro, no pide línea](el-refuerzo-va-adentro-no-pide-linea.md) - índice en su techo (55% = slug dos veces). Un refuerzo cuesta 0.
 - [🧠🔁 Memoria repo vs slug divergen — `seed-memory.sh` es SEGURO (`--update`)](memoria-repo-vs-slug-drift.md) — NO correrlo es lo que las diverge.
@@ -138,12 +143,9 @@
 - [`>>` a ruta supuesta + `mv` pisa el contrato](append-a-ruta-supuesta-del-buzon-crea-un-stub-y-el-mv-pisa-el-contrato.md) - perdí 4: `find` + `mv -n`.
 - [📱🛑 El TELÉFONO exige dueño único - y ESCRIBE en la base](device-fisico-exige-dueno-unico.md) - dos ADB fabrican evidencia falsa.
 - [📱🍳 Un gate de device se corre con RECETA async](gate-de-device-se-corre-con-receta-no-con-ventana-viva.md) - gestos escritos, no ventana viva.
-- [🍳🕳️ La PREMISA no medida de la receta falla con el recurso COMPROMETIDO](la-premisa-no-medida-de-la-receta-falla-cuando-el-recurso-caro-ya-esta-comprometido.md) - grepeá el testID ANTES del device.
-- [📋🟢 Una receta con PREMISA VENCIDA da un falso VERDE](una-receta-con-premisa-vencida-produce-un-falso-VERDE.md) - el defecto pasa a ser lo esperado; nadie revisa un verde.
 
 
 ### Git, deploy y checkout compartido
-- [🗂️💥 `Set-Location` NO mueve el cwd de .NET: el path relativo escribe en OTRO repo](set-location-no-mueve-el-cwd-de-dotnet-y-el-path-relativo-escribe-en-otro-repo.md) — dejó el índice del compartido en 0 líneas.
 - [💾💥 `open(path,"w")` TRUNCA al abrir](open-w-trunca-al-abrir-y-una-excepcion-en-el-write-destruye-el-archivo.md) — deja 0 bytes: tmp + `os.replace`.
 - [🩹 `--amend`/rebase en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) - commit `docs:` nuevo.
 - [💥 `git checkout <ref> -- .` PISA lo del working tree](checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree.md) - usá `merge-base`.
@@ -155,24 +157,24 @@
 - [🔀📤 El squash-merge toma el HEAD REMOTO, no tu fix local](push-es-el-ultimo-paso-no-el-primero.md) - repushear y comparar con `ls-remote` antes.
 - [🚪📤 Una orden de «no publicar» NO protege un archivo VERSIONADO](una-orden-de-no-publicar-no-protege-un-archivo-ya-versionado.md) — el PR iba por otra cosa.
 
-
 ## 🏭 El producto - LEER antes de tocar
+- [🔱 Motor en FORK DURO + fix del buffer de corto plazo](motor-fork-duro-fix-buffer-corto.md) - **antes de tocar `motor/`.** `sync-motor.sh` retirado.
 - [🔐 Auth = GoTrue DEDICADA (cutover vivo)](copiloto-gotrue-dedicada-cutover.md) - **al tocar auth/OAuth.** Google OAuth LIVE. Deuda: passwords temporales.
 - [🧠🧱 MemoryProvider - memoria conversacional CABLEADA](copiloto-memoria-provider-ladrillo.md) - **al tocar la memoria.** warm+recall+remember, gate `config`.
 - [🎙️🃏 Mecanismo canónico de las cards por voz](mecanismo-canonico-de-las-cards-por-voz.md) - nunca se pregunta 2 veces; a la 2ª manda la card.
 - [⚠️ El MCP de Composio da acceso TOTAL al Gmail del operador](composio-mcp-gmail-acceso-completo.md) - incluye borrado. No heredarlo a agentes autónomos.
-- [🕸️ Grafo: tenant dedicado + structured 0-LLM + ontología scoped](graphity-tenant-dedicado-y-ontologia-scoped.md) - instancia COMPARTIDA ⇒ `graph_ids` o fuga. · [sync: costo FIJO](el-costo-del-sync-del-grafo-es-fijo-no-de-ingesta.md)
+- [🕸️ Grafo: tenant dedicado + structured 0-LLM + ontología scoped](graphity-tenant-dedicado-y-ontologia-scoped.md) - instancia COMPARTIDA ⇒ `graph_ids` o fuga.
 - [🔑🚪 La tabla que RESUELVE el control no puede estar sujeta al control](la-tabla-que-resuelve-el-control-no-puede-estar-sujeta-al-control.md)
 - [🧪 DESPLEGADO ≠ con clientes - los datos se fabrican](desplegado-no-significa-con-clientes.md) - cero usuarios; "prod-beta" desvía a migraciones defensivas.
 - [🔐 Deuda de secretos a rotar (pre-prod)](deuda-secretos-rotar.md) - keys que pasaron por chat. grep-first + restart al rotar.
 
 ### Frontend móvil
 - [📱🔀 El device NO corre `main` — corre lo que Metro sirve](el-device-no-corre-main-corre-lo-que-metro-sirve.md) — el binario va ADELANTE de main.
-- [🔍 Auditorías van en `docs/copiloto-emprendedor/Auditorias/`](auditorias-van-en-carpeta-auditorias.md) - regla del operador. Nunca sueltas en `docs/`.
+- [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild. **Subida 13-10: device habilitado.**
+- [Pasada de device: 5 trampas](pasada-device-fe2-trampas-env-gate-y-registro.md) — API_BASE, #dígitos, sorted(), registro del cierre, harness.
 - [📱🔀 El dev-server sirve el CHECKOUT COMPARTIDO](metro-sirve-el-bundle-del-checkout-compartido-no-del-worktree.md) - Metro y vite. Pedile que se identifique.
 - [🧩🔀 Resolver "tomando un lado" NUNCA converge](resolver-tomando-un-lado-nunca-converge.md) - `--ours`/`--theirs` descarta una mitad. Un grep por CADA mitad.
 
 ## 🗄️ Historia
 → [HISTORIA.md](HISTORIA.md) - cerrados y bajados. NO se carga; buscable.
-- [🗓️🕳️ `--since=<hoy>` dio CERO con seis commits de hoy](el-filtro-de-fecha-da-cero-en-el-borde-del-dia.md) — el filtro miente en el borde del dia; usa `-N`.
-- [🚧🔧 Un `Falta:` que dice IMPOSIBLE describe el INSTRUMENTO del dia](un-falta-que-dice-imposible-describe-el-instrumento-del-dia.md) — una tenencia nueva destrabo 4 fichas sin tocar codigo.
+- [📋🧟 Un `Falta:` que no se recorta al pagarse fabrica cola INEXISTENTE](un-falta-que-no-se-recorta-al-pagarse-fabrica-cola-inexistente.md) — 2 clasificadores, ninguno roto: el corpus mentía.
