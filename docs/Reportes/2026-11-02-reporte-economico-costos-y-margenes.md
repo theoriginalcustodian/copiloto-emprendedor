@@ -610,3 +610,30 @@ Con la curva pesimista el tope llega antes (8.200, mes 44) y ahí deja ~US$83.00
 - **La palanca son las bajas.** Con 3% en vez de 6%, el tope recomendado sube a ~13.000 a 23.900 (el mercado lo corta en ~12.500): valor de vida doble con la misma publicidad.
 - Supuestos no medidos: costo por usuario de pago, su curva con la escala, bajas, comisión de MercadoPago, IVA computable de los proveedores del exterior y alícuota efectiva. El piloto de §13.5 mide el primero; las bajas, la beta; lo impositivo, el contador.
 
+## 15. Impuestos: régimen de Economía del Conocimiento (agregado 2026-11-04)
+
+**Inscribirse en el régimen de la Ley 27.506 (modificada por la 27.570) baja Ganancias de 35% a 14%** mientras la empresa sea micro o pequeña, y a 21% como mediana. Hasta el bolsillo de los socios la carga pasa de 39,6% (35% + 7% del dividendo) a 20,0%. En los 3 años que rige son **~US$364k más**, sin salir de Argentina; si se prorroga más allá de 2029, ~US$872k en 5 años. Rinde más que operar desde Estonia mientras los socios vivan acá (el art. 130 de Ganancias atribuye igual el beneficio a los socios argentinos).
+
+**La categoría la dan las ventas, no los empleados:** promedio de los ejercicios cerrados (hasta tres) sin IVA contra los topes de servicios de la Res. 1/2026 (micro $374M, pequeña $2.255M, mediana tramo 1 $18.665M), con el dólar a $1.550 (supuesto). Año 1 = 2027 (supuesto).
+
+| Año | Ventas sin IVA ($M) | Promedio de ejercicios cerrados ($M) | Categoría | Ganancias | Hoy (35% + 7%) | Con el régimen | Diferencia |
+|---|---|---|---|---|---|---|---|
+| 1 (2027) | 143 | 143 | Micro | 14% | 13.111 | 17.367 | +4.256 |
+| 2 (2028) | 1.869 | 143 | Micro | 14% | 396.390 | 524.454 | +128.064 |
+| 3 (2029) | 2.902 | 1.006 | Pequeña | 14% | 717.904 | 949.842 | +231.938 |
+| 4 (2030) | 3.681 | 1.638 | Pequeña | 35% (vencido) | 862.746 | 862.746 | +0 |
+| 5 (2031) | 4.586 | 2.817 | Mediana tramo 1 | 35% (vencido) | 1.062.652 | 1.062.652 | +0 |
+
+US$ por año al bolsillo de los socios, sobre la misma serie mensual de §13.3 y §14.1 (control: sin el 7% reproduce los años 3 a 5 de §14.1). Se tomó la alícuota de 35%; con la escala 25/30/35 el resultado es algo mejor. Si el peso se devalúa más rápido de lo que se actualizan los topes, el salto a mediana llega antes.
+
+**Requisitos:**
+
+- **70% de la facturación** en actividades promovidas: un SaaS es software. Se puede inscribir antes de facturar acreditando la actividad.
+- **Microempresa de menos de 3 años:** no acredita requisitos extra por 4 años o hasta dejar de ser micro (acá, el año 2).
+- **Desde entonces, 2 de 3:** calidad (mejora continua o certificación tipo ISO 9001) · I+D de 2% de la facturación (la capacitación no sirve sin empleados) · exportaciones de 10% de la facturación.
+- **Vender afuera ayuda dos veces:** cumple la condición de exportaciones y libera de retenciones y percepciones de IVA.
+- **Inscribirse temprano:** rige hasta el 31/12/2029; cada año fuera es uno perdido.
+
+**Sin verificar:** los porcentajes salen de consultoras (otras fuentes dan 15% fijo o 50% para micro): confirmar en el texto de las leyes 27.506 y 27.570 · si el desarrollo subcontratado cuenta como I+D · la tasa de control del régimen (hasta 4%; 0% hasta 2025) · el costo de una certificación de calidad (fuera del modelo) · el bono fiscal (70% de contribuciones patronales) no aplica sin empleados.
+
+Fuentes: [Contablix, Economía del Conocimiento 2026](https://contablix.ar/blog/economia-del-conocimiento-argentina-2026) · [Beccar Varela](https://beccarvarela.com/novedades/regimen-de-promocion-de-la-economia-del-conocimiento/) · [topes MiPyME 2026](https://siap.blogdelcontador.com.ar/novedades/nuevos-topes-mipyme-2026-ventas-empleados-y-activos/) · [argentina.gob.ar, parámetros MiPyME](https://www.argentina.gob.ar/noticias/nuevos-parametros-para-categorizacion-de-mipymes-0). Lo impositivo lo confirma el contador.
