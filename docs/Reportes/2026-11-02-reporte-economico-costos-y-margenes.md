@@ -660,6 +660,8 @@ Ponen ~US$899 entre los dos (US$450 cada uno), sólo en los meses 1 y 2. Del mes
 
 Resultado del mes antes de Ganancias; lo que cobra cada socio, después de Ganancias (14%, con quebranto) y del 7%. Hasta el mes 8 el 100% del neto va a publicidad, desde el 9 el 70%. Una publicidad más cara casi no cambia lo que se pone: atrasa la llegada a 5.000 usuarios. No se muestra un costo menor al previsto.
 
+**Cuánto conviene tener disponible:** El modelo pide ~US$450 por socio y empiezan a cobrar en el mes 9, pero no incluye crear la empresa (SAS) y el contador, el tiempo de trabajo de los socios (que no se cobra) ni un colchón por si la publicidad arranca peor de lo previsto (si la publicidad cuesta el doble, el aporte sube a ~US$680 por socio). Para estar cubiertos conviene tener **US$1.000 a US$1.500 por socio** disponibles. Ese rango es una estimación propia: el costo de crear la SAS y del contador no está verificado.
+
 #### Mes a mes
 
 Hasta el mes 8 todo el neto va a publicidad. Cada socio pasa los **US$10 mil por mes en el mes 17**, cobra ~US$32.868 por mes al llegar a la meta (mes 19) y junta **US$1 M sin vender en el mes 44** (vendiendo, en el mes 22).
