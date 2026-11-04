@@ -155,7 +155,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-Z1** | `sin-issue` | 🟧 DOD-PARCIAL | ACTUALIZADO 2026-11-03 23:50 - el codigo YA ESTA HECHO y desplegado; lo unico que falta es el OAuth del operador en e… |
 | **SM-Z2** | `sin-issue` | ✅ TERMINADO | `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama ➕ ANOTACION 2026-11-03 (INFO de au… |
 | **SM-Z3** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-Z4** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO DEVICE. Reescrito 2026-11-03 con la medicion de auditoria (d0f0e438, PR #1601): la parte 2 (COLOR) ya no esta bl… |
+| **SM-Z4** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO DEVICE, y la captura tiene que anotar el fontScale del sistema. Re-medido 2026-11-03 por manejo-de-errores @ee86… |
 | **SM-Z5** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -3467,7 +3467,7 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 - **Estado:** DOD-PARCIAL
 - **Dueno-activo:** frontend2
-- **Falta:** SOLO DEVICE. Reescrito 2026-11-03 con la medicion de auditoria (d0f0e438, PR #1601): la parte 2 (COLOR) ya no esta bloqueada por el operador -- el wordmark usa `COLOR_PALABRA_MARCA` (PantallaLogin.tsx:150) y el par logotipo tiene su control, resuelto en e213dd47 (PR #1585), que es el sentido en que `RevealEntrada.tsx:146` ya lo habia resuelto y el login no habia heredado. La parte 1 (TAMANO, 34 -> 32) estaba hecha desde antes. Queda el TAMANO REAL EN DEVICE: el test compara el fontSize renderizado contra el prototipo en jsdom, y eso no acredita como se ve en pantalla.
+- **Falta:** SOLO DEVICE, y la captura tiene que anotar el fontScale del sistema. Re-medido 2026-11-03 por manejo-de-errores @ee8626e7: las partes 1 y 2 estan en codigo (PantallaLogin.tsx:27 HERO = 32; :150 color COLOR_PALABRA_MARCA, e213dd47 #1585), y la frase anterior sigue vigente: falta el TAMANO REAL EN PANTALLA. Lo que esa frase no decia: el test compara la PROP fontSize en jsdom, pero en pantalla el wordmark mide 32 dp x fontScale, y allowFontScaling/maxFontSizeMultiplier tienen 0 apariciones en apps/mobile/src. Asi que con escala de fuente distinta de 1 NO mide 32, y ningun test lo ve. El veredicto, binario: alto del wordmark en px / densidad = 32 dp con fontScale 1.0 anotado en la captura (adb shell settings get system font_scale). Si con otra escala se decide que debe seguir en 32, eso es un fix aparte (allowFontScaling=false en el logotipo), no este cierre.
 - **Dueño:** frontend2 (parte 1) · operador (parte 2)
 - **Medido (frontend2, al cerrar la entrada `03 · ingresar`, `809cc1fa`):** mapa **32 px** terracota
   `#DE7250` (`index.html:517`); app **34 px** (`PantallaLogin.tsx:25`) en `acentoTinta #B04A2E`.
