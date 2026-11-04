@@ -3253,8 +3253,18 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   `memoria/instrumento-que-no-mira-nunca-falla.md`: nadie preguntó cuántos miró.
 - **DoD:**
   1. Los 9 tests de `COPILOTO_CONSOLA_DSN` **corren en GitHub**, no sólo en `gate.sh`.
-  2. **Control binario**, la misma forma que #1589: el `skipped` del job baja **exactamente 9**
-     (80 → 71). Un número distinto significa que el fix tocó otra cosa.
+  2. **Control binario** ~~el `skipped` del job baja **exactamente 9** (80 → 71)~~ — **ENMENDADO
+     2026-11-03, con la medición y no por aproximación:** el `skipped` baja **35**, y la unidad son
+     **tests**. El «9» original salió de contar **lecturas de `environ.get`** en los archivos, que el
+     propio **Medido** de esta ficha declara que **no son tests** — así que el número del DoD medía
+     otra cosa que su propio enunciado. Leído literal daba **rojo** con el fix correcto puesto. Lo
+     medido fue 80 → 42 (**−38**): **−35 atribuible** al cambio por el diferencial del VPS, y **−3**
+     **no atribuible**, porque `main` se movió entre la corrida de referencia y la del PR. Esa
+     separación —lo atribuible de lo que no— es la forma correcta de reportar un control que no da
+     el número exacto; redondear habría convertido un control en una afirmación. La enmienda la
+     funda manejo-de-errores; el texto del DoD era **mío** y por eso lo corrijo acá y no en el
+     `Cierre:` ([[una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta]] — a este número le
+     faltaba la **unidad**).
   3. **Control positivo del propio control:** al menos uno de esos 9 tests da **ROJO** si se le
      quita el aislamiento — si no, lo que se encendió no era el test adversarial.
   4. Los `skipped` restantes quedan **clasificados por motivo** (`-ra`), para que la próxima vez el
