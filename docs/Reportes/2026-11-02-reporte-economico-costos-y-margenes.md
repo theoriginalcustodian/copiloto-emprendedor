@@ -358,7 +358,7 @@ MercadoPago. **Validar con un piloto de ~US$500** comparando Meta, Google Apps y
 
 **El negocio se autofinancia:** lo que pagan los usuarios se reinvierte en publicidad hasta alcanzar
 el equilibrio. Los socios aceptan no retirar beneficios durante ese período. Marketing, publicidad y
-soporte técnico los manejan los socios, sin contratar personal.
+soporte técnico los manejan los socios **hasta los umbrales de contratación de §13.3** (community manager desde ~300 usuarios de pago, soporte desde ~1.000).
 
 ### 13.2 Por qué funciona (si se cumplen los supuestos)
 
@@ -541,6 +541,58 @@ pasa a mantenimiento (bajas + 2% por mes).
 - **Ventaja operativa:** en los meses 1 a 8 la publicidad es de US$500 a 9.000 por mes. Es el momento de
   medir el costo real por usuario de pago antes de que la inversión sea grande.
 - El pico de publicidad sigue en ~US$87.000 por mes durante 1 o 2 meses. Mismos supuestos, no medidos.
+
+#### Contratación de personal (agregado 2026-11-03)
+
+Hasta acá la simulación sólo tenía servidores y servicios digitales: **no incluía soporte técnico ni
+community manager**. Se contratan por **usuarios de pago**, no por mes, y su costo se descuenta antes
+de calcular el neto (achica la publicidad, no el aporte propio).
+
+| Desde (usuarios de pago) | Soporte técnico | Community manager | Personal US$/mes |
+|---|---|---|---|
+| 0 a 300 | socios | socios | 0 |
+| 300 | socios | medio tiempo (500) | 500 |
+| 1.000 | media jornada (1.500) | base (850) | 2.350 |
+| 2.500 | jornada completa (3.000) | completo (1.200) | 4.200 |
+| 5.000 | 2 personas (6.000) | completo (1.200) | 7.200 |
+
+Soporte a US$3.000 por persona de 8 h (dato del operador); community manager según §10 (inferencia).
+Criterio de los umbrales: con el autohealing y el agente de soporte el volumen humano es bajo, así que
+el primer contratado es el que más libera a los socios (contenido y publicidad, que hacen todos los
+días); soporte entra cuando hay ~1.000 usuarios y los incidentes fuera del autohealing dejan de ser
+ocasionales. **Supuestos, sin medir:** el disparador real es el tiempo de los socios y la cantidad de
+tickets que escalan a humano, que se miden desde la beta.
+
+**Esquema recomendado con personal** (US$ por mes; el mes de llegada compra sólo lo que falta para 5.000):
+
+| Mes | De pago (inicio → fin) | Ingreso | Personal | Publicidad | Beneficio limpio | Acumulado | Hito |
+|---|---|---|---|---|---|---|---|
+| 1 | 0 → 13 | 0 | 0 | 500 | -635 | -635 |  |
+| 2 | 13 → 26 | 398 | 0 | 500 | -245 | -880 |  |
+| 3 | 26 → 41 | 771 | 0 | 621 | 0 | -880 |  |
+| 6 | 109 → 182 | 3.275 | 0 | 3.075 | 0 | -880 |  |
+| 8 | 305 → 496 | 9.161 | 500 | 8.342 | 0 | -880 | entra CM medio tiempo |
+| 9 | 496 → 701 | 14.869 | 500 | 9.755 | 4.181 | 3.301 |  |
+| 11 | 984 → 1.363 | 29.512 | 500 | 19.755 | 8.466 | 17.743 |  |
+| 12 | 1.363 → 1.828 | 40.879 | 2.350 | 26.258 | 11.254 | 28.997 | soporte media jornada · CM base |
+| 14 | 2.413 → 3.123 | 72.395 | 2.350 | 47.787 | 20.480 | 64.799 |  |
+| 15 | 3.123 → 3.932 | 93.705 | 4.200 | 60.977 | 26.133 | 90.932 | soporte jornada completa · CM completo |
+| 16 | 3.932 → 4.849 | 117.954 | 4.200 | 77.613 | 33.263 | 124.195 |  |
+| 17 | 4.849 → 5.000 | 145.458 | 4.200 | 32.840 | 104.989 | 229.183 | llega a 5.000 |
+| 18 | 5.000 → 5.100 | 150.000 | 7.200 | 30.154 | 109.126 | 338.309 | 2.ª persona de soporte |
+| 24 | 5.631 → 5.743 | 168.924 | 7.200 | 36.100 | 121.726 | 1.036.670 |  |
+
+| | Sin personal | Con personal |
+|---|---|---|
+| Llega a 5.000 | mes 16 | **mes 17** |
+| Aporte propio | ~US$880 | ~US$880 |
+| Beneficio año 1 | ~31.400 | ~29.000 |
+| Acumulado al mes 24 | ~1.144.000 | **~1.037.000** |
+| Publicidad máxima | ~70.000 | ~78.000 |
+
+El personal **retrasa la meta un mes** y cuesta ~US$107.000 de acumulado al mes 24 (−9%). No cambia el
+aporte propio: el primer sueldo (mes 8) ya lo paga el ingreso. *Nota: con la regla del mes de llegada
+el esquema sin personal acumula ~US$1.144.000, ~2% menos que la tabla anterior, que se pasaba de 5.000.*
 
 ### 13.4 Regla de reinversión
 
