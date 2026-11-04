@@ -171,6 +171,9 @@ class _CapturaInbound(ActivityInboundInterceptor):
                   error_type=type(exc).__name__, cliente_id=cliente_id,
                   costura="activity_interceptor",
                   contexto={"categoria": categoria, "workflow_id": info.workflow_id,
+                            # Con `workflow_id` es la clave de la marca positiva de SM-N53: el workflow
+                            # pregunta "¿ya dejé la fila de esta activity?" antes de duplicarla.
+                            "activity_id": info.activity_id,
                             "attempt": info.attempt,
                             # Sin archivo:línea el trauma es contable pero no reparable — el ciclo de
                             # la Fase 3 lee de la DLQ, no del journal donde vive el traceback.
