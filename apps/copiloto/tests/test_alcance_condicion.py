@@ -204,7 +204,7 @@ def test_CONTROL_un_icono_en_PRESENTATION_aparece_y_una_fila_nueva_sin_icono_tam
     assert "icono" not in gmail["alcance_items"][1] and gmail["alcance_items"][1]["texto"] == "Otra"
 
 
-@pytest.mark.skipif(not _PHOSPHOR_TS.exists(), reason="el árbol de la app no está en este checkout")
+# Sin `skipif`: la costura se afirma o falla. Un salto acá dejó el test mudo en el VPS (el sync no llevaba el archivo).
 def test_ningun_icono_emitido_esta_fuera_de_PHOSPHOR():
     """El backend nunca manda un nombre que la app no dibuje (DoD 2 del contrato SM-I7)."""
     glifos = _glifos_de_la_app()

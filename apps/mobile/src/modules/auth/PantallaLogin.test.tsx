@@ -262,4 +262,39 @@ describe('PantallaLogin', () => {
     expect(api.login).not.toHaveBeenCalled();
     expect(screen.queryByTestId('login-alert')).toBeNull();
   });
+
+  // SM-L4 entrada 03: el campo del login se mide contra `.ig-campo` del prototipo, leído de la fuente.
+  describe('campo del login vs `.ig-campo` del prototipo (SM-L4 entrada 03)', () => {
+    const html = readFileSync(join(__dirname, '../../../../../Prototipo frontend/odobi-ui/prototipo/index.html'), 'utf8');
+    const regla = /\.ig-campo\{[^}]*\}/.exec(html);
+    const radioToken = /--r-s:(\d+)px/.exec(html);
+
+    it('control de ceguera: las reglas del prototipo se encontraron', () => {
+      expect(regla).not.toBeNull();
+      expect(radioToken).not.toBeNull();
+      expect(/\.ig-campo\.foco\{[^}]*box-shadow:0 0 0 (\d+)px/.exec(html)).not.toBeNull();
+    });
+
+    it('radio y padding del campo son los del mapa', async () => {
+      const padding = /padding:0 (\d+)px/.exec(regla![0]);
+      expect(padding).not.toBeNull();
+      await montar();
+      const campo = StyleSheet.flatten(screen.getByTestId('login-email').props.style);
+      expect(campo.borderRadius).toBe(Number(radioToken![1]));
+      expect(campo.paddingHorizontal).toBe(Number(padding![1]));
+    });
+
+    it('en foco el borde pasa a terracota profunda y aparece el halo; al salir vuelve', async () => {
+      await montar();
+      const antes = StyleSheet.flatten(screen.getByTestId('login-email').props.style);
+      await fireEvent(screen.getByTestId('login-email'), 'focus');
+      const foco = StyleSheet.flatten(screen.getByTestId('login-email').props.style);
+      expect(foco.borderColor).not.toBe(antes.borderColor);
+      const halo = screen.getByTestId('login-email').parent!;
+      expect(StyleSheet.flatten(halo.props.style).backgroundColor).toBe('rgba(222,114,80,.16)');
+      await fireEvent(screen.getByTestId('login-email'), 'blur');
+      expect(StyleSheet.flatten(screen.getByTestId('login-email').props.style).borderColor).toBe(antes.borderColor);
+      expect(StyleSheet.flatten(screen.getByTestId('login-email').parent!.props.style).backgroundColor).toBe('transparent');
+    });
+  });
 });
