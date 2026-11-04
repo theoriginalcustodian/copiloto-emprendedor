@@ -110,7 +110,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N13** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4 sin evidencia: AUDITORIA (H8, CONFIRMADO, LOTE 2f) midio que el DoD 4 pide -corrido en el VPS, con el conteo pe… |
 | **SM-N14** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). ResumenMes mobile y web usan formatearMesDePeriodo; assert negativo… |
 | **SM-N15** | `sin-issue` | ✅ TERMINADO | 1fe1b83f usuario e2e-vacio no-admin y tenant vacio; adversarial 403 admin y 404 cross-tenant; control positivo canoni… |
-| **SM-N12** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N12** | `sin-issue` | ⬜ PENDIENTE | LA DECISION, Y ES DEL OPERADOR -- no de dos sesiones de acuerdo. Intente pasarla a DIFERIDO el 2026-11-03 porque fron… |
 | **SM-N16** | `sin-issue` | ✅ TERMINADO | b64856dc (#1401) el acceso a Ajustes desde el escritorio, mas 4376027d (#1435) que es la ATRIBUCION que esta ficha es… |
 | **SM-N17** | `sin-issue` | ✅ TERMINADO | 8378d53d (#1425, ancestro de origin/main): Instagram deja de tener icono en mobile y web, con test rojo si vuelve. FU… |
 | **SM-N18** | `sin-issue` | ✅ TERMINADO | 0046ded4 filtro por toolkits_conectables (fuente unica, tests 2 mitades, VPS 2566 passed) + captura de device archiva… |
@@ -1379,6 +1379,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N12 · `sin-issue` — FUERA DEL SPRINT: el toque de un botón dentro de la tarjeta dispara también el toque de la tarjeta
 
 - **Estado:** PENDIENTE
+- **Dueno-activo:** frontend1 (post-sprint) · la decisión de diferirla es del operador
+- **Falta:** LA DECISION, Y ES DEL OPERADOR -- no de dos sesiones de acuerdo. Intente pasarla a DIFERIDO el 2026-11-03 porque frontend1 (duena) y yo coincidiamos en el motivo, y `sprint-estado.py` lo RECHAZO sin escribir: un DIFERIDO exige QUIEN (operador) + DONDE (un doc versionado), y `coordinacion/` no esta versionada. El gate tenia razon y yo no: sacar una ficha del sprint es MAYOR, y dos agentes de acuerdo no son el operador. Esto es ademas el control POSITIVO de ese gate -- es la primera vez que lo vi rechazar, y un gate que nunca rechazo es indistinguible de uno roto. EL MOTIVO, para que el operador decida con el a la vista: la ficha nace rotulada FUERA DEL SPRINT en su propio titulo; NO es una divergencia mapa<->app (que es el sujeto de este sprint) y viene de antes del relevamiento, asi que por DEC-18 no entra por la ventana. Frontend1 la toma post-sprint con la skill `swmansion-rn-gestures`. Mientras siga PENDIENTE se cuenta como deuda de un sprint al que no pertenece.
 - **Dueño:** frontend1 (**después** del sprint)
 - **De dónde sale:** frontend1, cuarto hallazgo al capturar `SM-I1`: tocar `Revisarla` o `Borrar`
   dentro de la tarjeta también activa el gesto de la tarjeta, y al volver queda cerrada.
