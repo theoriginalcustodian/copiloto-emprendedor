@@ -629,6 +629,40 @@ Con la curva pesimista el tope llega antes (8.100, mes 44) y ahí deja ~US$81.00
 <!-- SOCIOS:INI -->
 ### 14.2 Cuánto cobra cada socio (agregado 2026-11-03)
 
+#### Arranque: cuánto ponemos y cuándo cobramos
+
+Ponen ~US$899 entre los dos (US$450 cada uno), sólo en los meses 1 y 2. Del mes 3 al 8 el negocio se paga solo y todo lo que deja va a publicidad: no ponen ni sacan. En el mes 9 empiezan a cobrar (~US$1.381 cada uno) y ese mismo mes ya recuperaron lo puesto.
+
+- **Ponen:** ~US$899 entre los dos (US$450 cada uno), en los meses 1 y 2: US$270 de servidores y US$1.000 de publicidad semilla, menos US$398 de los primeros cobros.
+- **Dejan de poner:** desde el mes 3. Hasta el mes 8 todo lo que deja el negocio va a publicidad.
+- **Empiezan a cobrar:** en el mes 9 (~US$1.381 por socio); mes 12 ~US$3.110; mes 17 más de US$10 mil. Lo puesto se recupera en el mes 9.
+
+| Mes | Usuarios de pago (inicio → fin) | Cobrado (con IVA) | IVA a pagar | Servidores | Soporte y community manager | Publicidad | Resultado del mes | Pone cada socio | Cobra cada socio | Estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 0 → 13 | US$0 | US$0 | US$135 | US$0 | US$500 | −US$635 | US$318 | — | ponen |
+| 2 | 13 → 26 | US$398 | US$0 | US$135 | US$0 | US$500 | −US$264 | US$132 | — | ponen |
+| 3 | 26 → 40 | US$771 | US$0 | US$135 | US$0 | US$583 | US$0 | — | — | todo a publicidad |
+| 4 | 40 → 63 | US$1.186 | US$0 | US$135 | US$0 | US$970 | US$0 | — | — | todo a publicidad |
+| 5 | 63 → 101 | US$1.881 | US$0 | US$135 | US$0 | US$1.617 | US$0 | — | — | todo a publicidad |
+| 6 | 101 → 165 | US$3.039 | US$0 | US$135 | US$0 | US$2.695 | US$0 | — | — | todo a publicidad |
+| 7 | 165 → 271 | US$4.959 | US$0 | US$135 | US$0 | US$4.483 | US$0 | — | — | todo a publicidad |
+| 8 | 271 → 441 | US$8.115 | US$0 | US$135 | US$0 | US$7.422 | US$0 | — | — | todo a publicidad |
+| 9 | 441 → 603 | US$13.233 | US$663 | US$135 | US$500 | US$7.717 | US$3.307 | — | US$1.381 | cobran |
+| 10 | 603 → 816 | US$18.083 | US$1.082 | US$200 | US$500 | US$10.540 | US$4.517 | — | US$1.806 | cobran |
+| 11 | 816 → 1.097 | US$24.485 | US$1.445 | US$200 | US$500 | US$14.460 | US$6.197 | — | US$2.478 | cobran |
+| 12 | 1.097 → 1.426 | US$32.910 | US$2.178 | US$200 | US$2.350 | US$18.143 | US$7.776 | — | US$3.110 | cobran |
+
+| Costo de conseguir un usuario de pago | Ponen entre los dos | Último mes que ponen | Primer mes que cobran | Llegan a 5.000 |
+|---|---|---|---|---|
+| la mitad (US$25) | US$635 | mes 1 | mes 8 | mes 8 |
+| el previsto (US$49) | US$899 | mes 2 | mes 9 | mes 18 |
+| ×1,5 (US$74) | US$1.179 | mes 3 | mes 9 | mes 30 |
+| el doble (US$98) | US$1.360 | mes 3 | mes 9 | mes 46 |
+
+Resultado del mes antes de Ganancias; lo que cobra cada socio, después de Ganancias (14%, con quebranto) y del 7%. Hasta el mes 8 el 100% del neto va a publicidad, desde el 9 el 70%. Una publicidad más cara casi no cambia lo que se pone: atrasa la llegada a la meta.
+
+#### Mes a mes
+
 Hasta el mes 8 todo el neto va a publicidad. Cada socio pasa los **US$10 mil por mes en el mes 17**, cobra ~US$32.868 por mes al llegar a la meta (mes 19) y junta **US$1 M sin vender en el mes 44** (vendiendo, en el mes 22).
 
 | Mes | Neto por socio en el mes | Acumulado por socio | Hito |
