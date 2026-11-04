@@ -505,10 +505,47 @@ plan anual) y no cuesta publicidad. **Medir las bajas desde la beta.**
 de mantenimiento al llegar, y revisar el costo por usuario de pago entre los meses 9 y 12: si ya sube,
 el salto se achica o se corre.
 
+#### Esquema recomendado: 100% los primeros 8 meses, luego 70% (decisión 2026-11-03)
+
+El 100% de los primeros meses actúa sobre una base chica que después se multiplica: se llega antes
+**y** se gana más que con 70% desde el principio. En todos los casos, al llegar a 5.000 la publicidad
+pasa a mantenimiento (bajas + 2% por mes).
+
+| Esquema | Llega a 5.000 | Aporte propio | Beneficio año 1 | Beneficio mes 18 | Acumulado al mes 24 |
+|---|---|---|---|---|---|
+| 70% siempre | mes 18 | ~US$880 | ~18.000 | 36.255 | ~885.000 |
+| 100% × 6 meses, luego 70% | mes 17 | ~US$880 | ~28.000 | 126.144 | ~1.084.000 |
+| **100% × 8 meses, luego 70%** | **mes 16** | **~US$880** | **~31.000** | **123.277** | **~1.168.000** |
+| 100% siempre | mes 14 | ~US$880 | 0 | 141.629 | ~1.452.000 |
+
+**Desarrollo del esquema recomendado** (escenario base, US$ por mes):
+
+| Mes | De pago (inicio → fin) | Ingreso | Publicidad | Beneficio limpio | Acumulado |
+|---|---|---|---|---|---|
+| 1 | 0 → 13 | 0 | 500 | −635 (aporte propio) | −635 |
+| 2 | 13 → 26 | 398 | 500 | −245 (aporte propio) | −880 |
+| 3 | 26 → 41 | 771 | 621 | 0 | −880 |
+| 6 | 109 → 182 | 3.275 | 3.075 | 0 | −880 |
+| 8 | 305 → 508 | 9.161 | 8.842 | 0 | −880 |
+| 9 (pasa a 70%) | 508 → 726 | 15.244 | 10.317 | 4.422 | 3.542 |
+| 12 | 1.425 → 1.943 | 42.765 | 29.197 | 12.513 | 31.384 |
+| 14 | 2.586 → 3.357 | 77.570 | 52.982 | 22.707 | 71.126 |
+| **16 (llega)** | 4.246 → 5.240 | 127.394 | 87.029 | 37.298 | 137.877 |
+| 17 (mantenimiento) | 5.240 → 5.345 | 157.207 | 32.362 | 121.181 | 259.058 |
+| 24 | 6.019 → 6.140 | 180.581 | 40.002 | 136.448 | 1.167.602 |
+
+- **Costo:** cero beneficio hasta el mes 9. El aporte propio no cambia: ~US$880 en los meses 1 y 2.
+- **Ganancia frente a 70% siempre:** 2 meses antes y ~US$280.000 más acumulados al mes 24.
+- **Por qué no 100% siempre:** llega en el mes 14 y acumula más, pero no deja retirar nada hasta
+  entonces y la publicidad llega a ~US$128.000 por mes, que el mercado probablemente no absorbe.
+- **Ventaja operativa:** en los meses 1 a 8 la publicidad es de US$500 a 9.000 por mes. Es el momento de
+  medir el costo real por usuario de pago antes de que la inversión sea grande.
+- El pico de publicidad sigue en ~US$87.000 por mes durante 1 o 2 meses. Mismos supuestos, no medidos.
+
 ### 13.4 Regla de reinversión
 
 1. Reservar ~3 meses de costos fijos (~US$400 al inicio, ~US$1.500 al final).
-2. Reinvertir **70 a 100% del neto restante** mientras cada usuario de pago recupere su costo en
+2. Reinvertir **el 100% del neto los primeros 8 meses y el 70% después** (esquema recomendado de §13.3), y pasar a presupuesto de mantenimiento al llegar a 5.000, mientras cada usuario de pago recupere su costo en
    **3 meses o menos**.
 3. Si la recuperación pasa de 3 a 4 meses: bajar la inversión y corregir onboarding o precio antes
    de seguir gastando.
