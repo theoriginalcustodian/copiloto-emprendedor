@@ -8,7 +8,8 @@
  * Cero-hex: color por `useTema().glass`.
  */
 import type { PropsWithChildren } from 'react';
-import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import { Pressable as PressableRN, StyleSheet, View, type ViewStyle } from 'react-native';
+import { Pressable as PressableGH } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTema } from '../ThemeProvider';
@@ -20,11 +21,19 @@ export interface RowProps extends PropsWithChildren {
   style?: ViewStyle | ViewStyle[];
   testID?: string;
   accessibilityLabel?: string;
+  /**
+   * SM-N12: la fila que CONTIENE botones de Gesture Handler (la tarjeta de Mi día, con `Revisarla`/`Borrar`) tiene
+   * que ser ella también de Gesture Handler. Un `Pressable` de RN como padre y uno de RNGH como hijo son DOS
+   * sistemas de toque: el hijo lo resuelve RNGH nativo, pero el responder de RN del padre también recibe el mismo
+   * toque, y los dos disparan (skill `swmansion-rn-gestures`: «nunca mezclar»). Por defecto sigue siendo RN.
+   */
+  gestual?: boolean;
 }
 
-export function Row({ onPress, style, testID, accessibilityLabel, children }: RowProps) {
+export function Row({ onPress, style, testID, accessibilityLabel, children, gestual = false }: RowProps) {
   const tema = useTema();
   const g = tema.glass;
+  const Pressable = gestual ? PressableGH : PressableRN;
 
   return (
     <Pressable

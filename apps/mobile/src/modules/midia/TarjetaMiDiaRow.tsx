@@ -139,6 +139,7 @@ export function TarjetaMiDiaRow({
 
   const fila = (
       <Row
+        gestual
         onPress={onPress}
         testID={`midia-tarjeta-${tarjeta.id}`}
         accessibilityLabel={expandida ? `${tarjeta.texto}, contraer` : `${tarjeta.texto}, expandir`}
