@@ -77,7 +77,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-I4** | `sin-issue` | 🟧 DOD-PARCIAL | RETIRO EL PUNTO (a) -- era MIO y era FALSO, y lo retiro con la medicion a la vista. Yo habia escrito que «el bloque s… |
 | **SM-I5** | `sin-issue` | ✅ TERMINADO | Codigo: dd16179b18e7fa4aaf58a3d2e36d62f8200511f4 (#1404) mas 2e3eb8a616793bf59726f67c908568069485becd (#1574, captura… |
 | **SM-I6** | `sin-issue` | 🟧 DOD-PARCIAL | Medir en release. 🔴 EL DISPARADOR ESTABA ESCRITO DENTRO DE UNA FICHA CERRADA, y por eso no circulaba: este Falta deci… |
-| **SM-I7** | `sin-issue` | 🟧 DOD-PARCIAL | LA PREMISA VENCIO, y lo que queda NO es ni captura ni app. Medido por manejo-de-errores en el VPS el 2026-11-04 (~00:… |
+| **SM-I7** | `sin-issue` | ✅ TERMINADO | 6e69dbdc (PR #1610, CI 6/6, ancestro de origin/main verificado). La costura backend<->app queda cubierta por test, no… |
 | **SM-J1** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO DEVICE, y el D4 YA ESTA. Frontend1 cerro la mitad D4 en b9b67667 (PR #1605, ancestro verificado): `mapa-pantalla… |
 | **SM-J2** | `sin-issue` | ✅ TERMINADO | sin-codigo — PREMISA REFUTADA (medido 2026-11-02): los chips existen en TarjetaCliente.tsx y los dos reclamados estan… |
 | **SM-J3** | `sin-issue` | 🟧 DOD-PARCIAL | UNO de los tres estados que pide el DoD, y es el que estaba bloqueado: frontend1 capturo el 2026-11-03 a las 15:00 en… |
@@ -107,14 +107,14 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N9** | `sin-issue` | ✅ TERMINADO | 545a5dc7 (#1371) + bfa7b919 (#1376). DoD 1-3: Ajustes lee perfilNegocio.nombreComercial, vacio/blanco/error sin etiqu… |
 | **SM-N10** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). BarraEstado montada en app/_layout.tsx, con test. Device RF8T318RN9… |
 | **SM-N11** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). DetalleComprobante formatea fechaEmision, total y tambien caeVto, q… |
-| **SM-N13** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 4 sin evidencia: AUDITORIA (H8, CONFIRMADO, LOTE 2f) midio que el DoD 4 pide -corrido en el VPS, con el conteo pe… |
+| **SM-N13** | `sin-issue` | 🟧 DOD-PARCIAL | UN punto: el CONTROL POSITIVO del DoD 1 enmendado — inyectar la consigna en un literal de PRODUCCION y verificar que … |
 | **SM-N14** | `sin-issue` | ✅ TERMINADO | 21cebf5a96614d0dc4f791bb51fb0a6e47c0a44c (#1390). ResumenMes mobile y web usan formatearMesDePeriodo; assert negativo… |
 | **SM-N15** | `sin-issue` | ✅ TERMINADO | 1fe1b83f usuario e2e-vacio no-admin y tenant vacio; adversarial 403 admin y 404 cross-tenant; control positivo canoni… |
 | **SM-N12** | `sin-issue` | ⬜ PENDIENTE | LA DECISION, Y ES DEL OPERADOR -- no de dos sesiones de acuerdo. Intente pasarla a DIFERIDO el 2026-11-03 porque fron… |
 | **SM-N16** | `sin-issue` | ✅ TERMINADO | b64856dc (#1401) el acceso a Ajustes desde el escritorio, mas 4376027d (#1435) que es la ATRIBUCION que esta ficha es… |
 | **SM-N17** | `sin-issue` | ✅ TERMINADO | 8378d53d (#1425, ancestro de origin/main): Instagram deja de tener icono en mobile y web, con test rojo si vuelve. FU… |
 | **SM-N18** | `sin-issue` | ✅ TERMINADO | 0046ded4 filtro por toolkits_conectables (fuente unica, tests 2 mitades, VPS 2566 passed) + captura de device archiva… |
-| **SM-N19** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 3 y DoD 4, los dos (AUDITORIA H10, CONFIRMADO, LOTE 2g). DoD 4: pide dictar -> card -> CORREGIR -> confirmar, y -… |
+| **SM-N19** | `sin-issue` | 🟧 DOD-PARCIAL | UN punto: DoD 4, la corrida en DEVICE — dictar un presupuesto, VER la card, corregir algo en ella y recien ahi confir… |
 | **SM-N20** | `sin-issue` | ✅ TERMINADO | Cubierta por la sonda de SM-N21: 3b20a1f1 (#1518, desplegado) + a2d07f74 (#1522), ancestros verificados. Lo que SM-N2… |
 | **SM-N21** | `sin-issue` | ✅ TERMINADO | Codigo: 3b20a1f1 (#1518, desplegado) + a2d07f74 (#1522) + el barrido (#1526) + el gate con canario propio fd89f3a5 (#… |
 | **SM-N22** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO que EL OPERADOR lo vea, y eso NO es una formalidad: fue el quien refuto el cierre anterior en device, asi que la… |
@@ -596,10 +596,9 @@ Skills **antes** de escribir: `swmansion-react-native-best-practices`, `swmansio
 
 ### SM-I7 · `sin-issue` — La pantalla de permisos no dice qué capacidad concede cada ítem
 
-- **Estado:** DOD-PARCIAL
+- **Estado:** TERMINADO
 - **Dueno-activo:** backend + frontend1 (la costura)
-- **Falta:** LA PREMISA VENCIO, y lo que queda NO es ni captura ni app. Medido por manejo-de-errores en el VPS el 2026-11-04 (~00:42 UTC): el `catalog.py` desplegado YA tiene `icono` y el servicio reinicio, asi que la frase «deploy FRENADO» que este Falta arrastraba esta VENCIDA. Auditoria lo habia marcado como sospecha sin verificarlo («no lo verifique en el VPS», d0f0e438) y manejo-de-errores lo cerro midiendo. La captura TAMPOCO falta. Lo que queda es de CONTRATO con backend: que el campo que la app consume y el que el servicio sirve sean el mismo, afirmado por un test de la costura y no por lectura. Ese punto NO necesita telefono. Es la segunda ficha de hoy donde «falta device» tapaba otra cosa -- la primera fue SM-N48, cuyo draft era un lint rojo.
-- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401). Un icono por fila segun la condicion que manda el backend y aviso de continuacion con glifo. El icono dice el tipo de capacidad, no los especificos del mockup: uno por capacidad exige un campo icono en el contrato. mobile.sh 1530 verdes en el worktree y 6/6 jobs en CI (#1401).
+- **Cierre:** 6e69dbdc (PR #1610, CI 6/6, ancestro de origin/main verificado). La costura backend<->app queda cubierta por test, no por lectura: test_alcance_condicion.py::test_ningun_icono_emitido_esta_fuera_de_PHOSPHOR. HALLAZGO que vale mas que el fix: el test YA EXISTIA y se SALTEABA en el VPS (30 passed, 1 skipped) porque sync-test-backend.sh no llevaba phosphor.ts al stage — un skipped en verde se lee como cobertura. Ahora viaja y falla si el archivo falta: 31 passed, 0 skipped. Control positivo: mutar coins por un glifo inexistente lo pone rojo. Evidencia: docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-I7.md. Premisa -deploy FRENADO- vencida, medida en el VPS por manejo-de-errores el 2026-11-04 00:42 UTC.
 - **Dueño:** frontend1
 - **Medido:** `consent` sin íconos por capacidad y sin el banner de continuación del mapa.
 - **DoD:** un ícono por capacidad y el banner de continuación. Captura de device.
@@ -1274,8 +1273,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N13 · `sin-issue` — 🚫 FUERA DEL SPRINT — La consigna de N8 sigue viva en DOS observaciones más: el fix existe y no viajó
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** DoD 4 sin evidencia: AUDITORIA (H8, CONFIRMADO, LOTE 2f) midio que el DoD 4 pide -corrido en el VPS, con el conteo pegado en el cierre_- y NO hay conteo en ningun lado: ni en el Cierre, ni en el commit 7811aad1, ni en el cierre_ del buzon (que trae los puntos 1-3 y ningun punto 4). -Durabilidad VERDE- es el smoke del deploy, no la suite. Control del instrumento: el mismo grep SI encuentra los -93 passed- de SM-N8, asi que el vacio no es ceguera. Disparador: correr la suite en el VPS y pegar el conteo. Agravante de clase H9: probe_n13.py no esta versionado, y el DoD exige la MISMA sonda.
-- **Cierre:** 7811aad1 consigna fuera de las 6 observaciones restantes; test AST; sonda Mi dia N=12 6/12 -> 0/12 (desplegado)
+- **Falta:** UN punto: el CONTROL POSITIVO del DoD 1 enmendado — inyectar la consigna en un literal de PRODUCCION y verificar que el conteo de lineas NO-comentario pasa a >=1. Hoy el conteo de lineas vivas es 0 (el unico hit es el comentario prescrito de tool_catalog.py:1435), pero sin el control el instrumento podria estar ciego y el 0 no acreditaria nada. Es de backend, cuesta minutos y no necesita device.
+- **Cierre:** DoD 4 CUMPLIDO en 6e69dbdc: suite completa en el VPS con Postgres real, 2729 passed, 41 skipped, y la sonda scripts/probe_n13_eco_consigna.py VERSIONADA (antes vivia solo en un scratchpad efimero, asi que el DoD -la MISMA sonda- era incumplible para cualquier otro): 6/12 -> 0/12. AVISO QUE VA EN LA FICHA Y NO SOLO EN EL DOC DE EVIDENCIA: la sonda ESCRIBE EN PROD y NO es parte del gate — el que lea el DoD no debe correrla dentro del gate. DoD 1 ENMENDADO por mi el 2026-11-04 (ver el punto 1): medía su propia declaracion.
 - **Dueño:** backend
 - **Fuera del denominador, a propósito:** igual que `SM-N12`. El sprint se mide contra el mapa del
   16-10 y esto salió de arreglar `SM-N8` hoy, no del mapa (`DEC-18`: un criterio que crece con cada
@@ -1573,8 +1572,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 ### SM-N19 · `sin-issue` — FUERA DEL SPRINT: el presupuesto se guardó SIN mostrar la card, sin chance de corregir
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** DoD 3 y DoD 4, los dos (AUDITORIA H10, CONFIRMADO, LOTE 2g). DoD 4: pide dictar -> card -> CORREGIR -> confirmar, y -la parte de corregir es la que el operador nombro-; la corrida de evidencia/SM-N19.md es OTRA (card pedida por TEXTO, -no se guardo nada-, termina en Descartar), asi que acredita un camino distinto del exigido. DoD 3: no hay test del gate - grep SM-N19 en apps y packages da 0, con control positivo (SM-N5 si aparece), y el commit b64856dc es de otras fichas. Atenuante declarada: la premisa de la ficha quedo refutada (era ADB), lo que vuelve discutibles el DoD 2 y el 3 - si se retiran, se retiran EXPLICITAMENTE, nunca en silencio (la distincion que ya se pago en SM-L3). Eso NO toca el DoD 4, que sigue exigible. Disparador: la corrida con el paso de CORREGIR, en device, con su captura.
-- **Cierre:** b64856dc356dc89984d5a259a8ff90a691966013 (#1401, SM-N5): la card guardada deja el id y relee importe y cliente al rehidratar. Premisa refutada: el presupuesto 4 lo guardo frontend1 por ADB a las 21:02:08 UTC, y N 2 y N 3 tambien fueron pruebas por ADB. La card sin resolver no desaparece: chatMachine.ts:410 la escribe, useChat.ts:119 la persiste entera y useChat.ts:272-276 la rehidrata; intacta tras salir y volver, HOME y force-stop con pid nuevo (device 2026-11-02, cuenta del operador). Lo que vio el operador, un recibo con solo el N 4, es el mensaje del N 4 guardado antes de #1401, sin id; la captura con importe y cliente de uno nuevo queda en la Falta de SM-N5. Evidencia: 2026-11-02-sprint-correcciones-evidencia/SM-N19.md.
+- **Falta:** UN punto: DoD 4, la corrida en DEVICE — dictar un presupuesto, VER la card, corregir algo en ella y recien ahi confirmar. No es backend ni planificacion; dueno de la captura: frontend2. Disparador: el telefono.
+- **Cierre:** DoD 3 CUMPLIDO en 6e69dbdc (PR #1610, ancestro verificado): tests/test_sm_n19_presupuesto_no_se_persiste_sin_confirmar.py, 4 passed en el VPS — proponer deja 0 filas y no llama al store; la MISMA card por POST /presupuestos deja 1; barrido AST con control de que no esta ciego. Mutacion con un camino nuevo que cree presupuestos: cae. Antes de esto el gate no tenia test (grep SM-N19 = 0 con control positivo). DoD 2 RESUELTO POR REFUTACION, decision de registro de planificacion (2026-11-04): el punto pedia que -el camino que escribia sin card deje de hacerlo-, y el barrido AST midio que ESE CAMINO NO EXISTE — el unico creador en produccion es el POST, que ya pasa por la card. Un punto cuya premisa quedo refutada se cierra con la medicion que la refuta; dejarlo abierto esperando el retiro de algo inexistente es un Falta que nadie puede cumplir, y esos son los que envejecen y despues se citan como si fueran deuda real.
 - **Dueño:** backend (la medición primero) — frontend1 queda a la espera, ver abajo
 - **De dónde sale:** el **operador**, 2026-11-02, usando la app con su cuenta: «nunca se mostró la
   card del presupuesto... se generó directamente sin posibilidad de corregir ni agregar nada...
