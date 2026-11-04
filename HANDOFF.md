@@ -9,8 +9,8 @@
 ## 0. Qué es (30 segundos)
 
 **Copiloto del Emprendedor** = un **agente conversacional durable multi-tenant** para emprendedores: chatea por
-web/PWA (y voz), conecta sus servicios (MercadoPago, Gmail, Google Calendar/Sheets/Docs/Drive, HubSpot,
-Instagram…) vía gateways, y ejecuta tareas concatenadas con confirmación humana (HITL) sobre un motor **ReAct**
+web/PWA (y voz), conecta sus servicios (MercadoPago, Gmail, Google Calendar/Sheets/Docs/Drive,
+HubSpot) vía gateways, y ejecuta tareas concatenadas con confirmación humana (HITL) sobre un motor **ReAct**
 corriendo en **Temporal** (durable: sobrevive cortes, reintenta, no pierde estado). Tiene memoria conversacional
 (Graphity), auth propia (GoTrue dedicada) y BI básica de pagos.
 
