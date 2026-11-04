@@ -279,13 +279,18 @@ class ConversationWorkflow:
         Best-effort: si la activity no existe en el worker o falla, se traga -- registrar no puede
         matar la sesión."""
         try:
+            # SM-N53: si el fallo es de una activity, la activity de registro puede saber si el
+            # interceptor ya lo depositó (misma activity_id) y no duplicar la fila.
+            # Dict literal en la llamada: el ratchet de tenant-en-el-payload lo lee por AST.
+            con_id = workflow.patched("trauma-de-turno-sin-duplicar") and isinstance(exc, ActivityError)
             await workflow.execute_activity(
                 "registrar_trauma_de_turno",
                 {"cliente_id": cliente_id,
                  "nodo": "turno_react" if config.get("engine_mode") == "react" else "turno_dispatch",
                  "error_type": type(exc).__name__, "error_message": str(exc)[:200],
                  "payload_shape": type(exc).__name__,
-                 "workflow_id": workflow.info().workflow_id},
+                 "workflow_id": workflow.info().workflow_id,
+                 **({"activity_id": exc.activity_id} if con_id else {})},
                 start_to_close_timeout=ACTIVITY_TIMEOUT,
                 retry_policy=RetryPolicy(maximum_attempts=1))
         except Exception as e:  # noqa: BLE001
