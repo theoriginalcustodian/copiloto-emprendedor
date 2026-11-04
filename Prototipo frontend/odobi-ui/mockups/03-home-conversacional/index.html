@@ -109,7 +109,7 @@
   .hitl-scope{display:flex;gap:var(--s1);align-items:center;padding:2px 2px 0;font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec);align-items:center}
   .hitl-scope svg{flex-shrink:0;stroke:var(--terracota-prof);color:var(--terracota-prof);margin-top:1px}
   .hitl-actions{display:flex;flex-direction:column;gap:var(--s1);padding:var(--s2) 0 0}
-  .btn-confirm{min-height:52px;background:var(--terracota);color:var(--blanco);border-radius:var(--r-pill);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:var(--fs-btn);line-height:var(--lh-btn);box-shadow:0 4px 14px rgba(222,114,80,.35)} /* regla 28/07 v2 (Martin): fill #DE7250 suave + label display 19 Bold blanco = texto grande AA (3.17:1 ≥ 3:1 ✅). Con Inter 16px fallaría. Nunca negro s/terracota */
+  .btn-confirm{min-height:54px;background:var(--terracota-prof);color:var(--blanco);border-radius:var(--r-pill);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:var(--fs-btn);line-height:var(--lh-btn);box-shadow:0 4px 14px rgba(222,114,80,.35)} /* SUPERADA 2026-11-04 (DoD §2.2.bis): fill #B04A2E, alto 54, blanco 5,43:1; lo siguiente es historico: regla 28/07 v2 (Martin): fill #DE7250 suave + label display 19 Bold blanco = texto grande AA (3.17:1 ≥ 3:1 ✅). Con Inter 16px fallaría. Nunca negro s/terracota */
   .btn-cancel{min-height:var(--tap);background:var(--arena-30);color:var(--negro);border-radius:var(--r-pill);display:flex;align-items:center;justify-content:center;font-size:var(--fs-body);font-weight:500}
 
   /* Card de datos = variante compacta de la portada del 09 (resuelve M2):
@@ -168,7 +168,7 @@
      ya está resuelto y probado en device. Solo se les aplica nuestra regla de color. */
   .controles{display:flex;align-items:center;gap:var(--s1);margin-top:var(--s2)}
   .btn-ghost{min-height:52px;padding:0 var(--s3);background:var(--arena-30);border-radius:var(--r-pill);display:flex;align-items:center;font-size:var(--fs-body);font-weight:500;color:var(--negro);background:var(--blanco)}
-  .btn-enviar{min-height:52px;padding:0 26px;border-radius:var(--r-pill);background:var(--terracota);display:flex;align-items:center;gap:var(--s1);font-family:var(--font-display);font-size:var(--fs-btn);line-height:var(--lh-btn);color:var(--blanco);box-shadow:0 4px 14px rgba(222,114,80,.35)} /* regla 28/07 v2: fill #DE7250 + display 19 Bold blanco = 3.17:1 ≥ 3:1 AA grande ✅ */
+  .btn-enviar{min-height:54px;padding:0 26px;border-radius:var(--r-pill);background:var(--terracota-prof);display:flex;align-items:center;gap:var(--s1);font-family:var(--font-display);font-size:var(--fs-btn);line-height:var(--lh-btn);color:var(--blanco);box-shadow:0 4px 14px rgba(222,114,80,.35)} /* SUPERADA 2026-11-04 (DoD §2.2.bis): fill #B04A2E, alto 54, blanco 5,43:1; lo siguiente es historico: regla 28/07 v2: fill #DE7250 + display 19 Bold blanco = 3.17:1 ≥ 3:1 AA grande ✅ */
   .btn-enviar svg{stroke:var(--blanco);color:var(--blanco)}
   .btn-eliminar{min-height:var(--tap);display:flex;align-items:center;font-size:var(--fs-body);font-weight:500;color:var(--terracota-prof)} /* 4.53:1 s/velo ✅ · tocable → terracota (Decisión B) */
   /* Lo que queda VISIBLE debajo del velo, atenuado. En la app real es el contenido
