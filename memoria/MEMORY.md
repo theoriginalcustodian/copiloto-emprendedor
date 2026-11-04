@@ -65,7 +65,6 @@
 - [🧮🕳️ Un ref que NO EXISTE da vacío = `0`](medir-contra-un-ref-que-no-existe-da-vacio-y-vacio-se-parsea-como-cero.md) - omite E INVENTA; medí el efecto.
 - [🧟🔗 La cita «medido @ sha» MUERE en el squash-merge](la-cita-de-procedencia-muere-en-el-merge.md) — 26% muere en un clon. Procedencia = merge commit.
 - [⏱️🔀 Dos mediciones CONTRADICTORIAS pueden ser ambas ciertas: el sujeto cambió](dos-mediciones-contradictorias-pueden-ser-ambas-ciertas-el-sujeto-cambio.md) — su 5 y mi 6, con 33 min de diferencia.
-- [⏱️🔀 Dos mediciones CONTRADICTORIAS pueden ser ambas ciertas: el sujeto CAMBIÓ](dos-mediciones-contradictorias-pueden-ser-ambas-ciertas-el-sujeto-cambio.md) — su 5 y mi 6, 33 min aparte.
 - [📏🏷️ Una cifra SIN UNIDAD se cita para cualquier pregunta](una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta.md) — 3 a la vez; ganó la más alta.
 - [📐🫥 La capa de LECTURA normalizó el sujeto antes de medirlo](la-capa-de-lectura-normalizo-el-sujeto-antes-de-medirlo.md) — bytes de una repr. ya transformada.
 
@@ -82,6 +81,7 @@
 - [🧪🔀 Comparar ramas con un instrumento VERSIONADO mide DOS variables](el-instrumento-versionado-difiere-por-rama.md) — fijá uno: un archivo que nadie toca.
 - [🎭🚪 Dos causas comparten el CÓDIGO DE SALIDA](dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md) - el falso lleva al `--no-verify`.
 - [🔇🚫 Un mecanismo roto hacia el "NO" no da síntoma](un-mecanismo-roto-hacia-el-no-no-da-sintoma.md) - todo gate necesita control POSITIVO.
+- [🚦🧩 Un gate que valida el CONTENIDO no ve que el archivo esta en CONFLICTO](un-gate-que-valida-el-contenido-no-ve-que-el-archivo-esta-en-conflicto.md) - CHECK-OK con 6 marcadores vivos.
 - [🔌🙈 El test que no usa el camino de prod no lo ve fallar](el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md) - composition root.
 - [🔀🧬 Dos clientes gemelos: el fix llega a UNO](dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una.md) - contá definiciones, no usos.
 - [🎯 Un supuesto cuya falla parece LEGÍTIMA es pregunta](supuesto-cuya-falla-parece-un-estado-legitimo.md) - *¿cómo se vería si fuera falso?*
