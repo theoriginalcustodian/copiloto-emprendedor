@@ -347,7 +347,7 @@ describe('PantallaInteligencia — SM-N32: sin selector «Resumen»/«Preguntar�
     await waitFor(() => expect(screen.getByTestId('inteligencia-graficos-seccion')).toBeTruthy());
     // El mock de arriba devuelve la serie `ok`: que la tarjeta no esté es retiro, no falta de dato.
     expect(screen.queryByTestId('inteligencia-grafico-facturacion')).toBeNull();
-    expect(screen.getByTestId('inteligencia-grafico-entro-vs-salio')).toBeTruthy();
+    expect(facturacionMock).not.toHaveBeenCalled(); // ni siquiera se pide el endpoint
   });
 });
 
