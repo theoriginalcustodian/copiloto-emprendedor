@@ -74,6 +74,7 @@ def _reg(nombre):
 REGISTROS = (
     _reg("2026-10-11-BACKLOG-sprint-mobile-beta.md"),
     _reg("2026-11-02-BACKLOG-sprint-correcciones-mapa.md"),
+    _reg("2026-11-04-BACKLOG-sprint-pulido-final.md"),
 )
 # Compat: el vigente es el ultimo. El autotest y cualquier llamador viejo lo siguen usando.
 BACKLOG = REGISTROS[-1]
