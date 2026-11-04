@@ -1,6 +1,8 @@
 """Siembra datos REALES minimos para que `mi_dia_orquestador.avanzar_tablero` genere al menos una
 tarjeta de cada una de las 8 reglas de `mi_dia_detector.py`, en el tenant CANONICO de pruebas
-`e2e-device@copiloto.test` — nunca otro (regla dura R-9). No inventa una tabla nueva ni toca
+`e2e-device@copiloto.test` — nunca otro (regla dura R-9), salvo `--email <x>@copiloto.test` EXPLÍCITO
+(tercer tenant sintético de SM-L4 entrada 20, autorizado por el operador 2026-11-04). Sólo se acepta el
+dominio sintético `@copiloto.test`: jamás una cuenta real. No inventa una tabla nueva ni toca
 "mi_dia_tarjetas" a mano: reusa los stores de produccion (PresupuestoStore, AfipComprobanteStore,
 CobroStore, GastoStore, TrabajoStore, MpCredentialStore, AfipCredentialStore) para que el detector
 real encuentre los datos reales, y despues llama al orquestador real para que las tarjetas nazcan
@@ -26,6 +28,7 @@ import sys
 import time
 
 EMAIL_CANONICO = "e2e-device@copiloto.test"
+DOMINIO_SINTETICO = "@copiloto.test"
 UNIT = "uc-copiloto-web.service"
 CUIT_SEED = "20111111112"
 PUNTO_VENTA_SEED = 9
@@ -194,6 +197,13 @@ def sembrar(conn_factory, cid: str) -> None:
 
 def main() -> int:
     ejecutar = "--ejecutar" in sys.argv
+    email = EMAIL_CANONICO
+    if "--email" in sys.argv:
+        i = sys.argv.index("--email")
+        email = sys.argv[i + 1] if i + 1 < len(sys.argv) else ""
+        if not email.endswith(DOMINIO_SINTETICO):
+            print(f"ABORT: --email debe terminar en {DOMINIO_SINTETICO} (jamás una cuenta real)")
+            return 2
     _heredar_env_del_proceso(UNIT)
 
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "apps", "copiloto"))
@@ -208,13 +218,13 @@ def main() -> int:
     conn = conn_factory()
     conn.autocommit = True
     with conn.cursor() as cur:
-        cur.execute("SELECT cliente_id::text FROM uc_factory.tenants WHERE email = %s", (EMAIL_CANONICO,))
+        cur.execute("SELECT cliente_id::text FROM uc_factory.tenants WHERE email = %s", (email,))
         filas = cur.fetchall()
     if len(filas) != 1:
-        print(f"ABORT: {EMAIL_CANONICO} resuelve {len(filas)} fila(s), esperaba 1")
+        print(f"ABORT: {email} resuelve {len(filas)} fila(s), esperaba 1")
         return 2
     cid = filas[0][0]
-    print(f"{EMAIL_CANONICO} cliente_id resuelto (1 fila confirmada)")
+    print(f"{email} cliente_id resuelto (1 fila confirmada)")
 
     if not ejecutar:
         print("dry-run: no se sembro nada (usar --ejecutar). Dominios a sembrar: 8 "
