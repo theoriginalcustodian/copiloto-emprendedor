@@ -557,3 +557,4 @@ Dos entradas nuevas que sólo importan al tocar animaciones de `apps/mobile`. Se
 - **Prod-beta vivo**, RLS `FORCE` · smoke **39/39 sobre `92fd8a06`** + durabilidad 8/8. [[copiloto-deploy-multitenant-vivo]]
 - **⚠️ El frente de MANEJO DE ERRORES lo destaparon INSTRUMENTOS QUE MENTÍAN, no features** (5 de 35 PRs). [[instrumentos-que-confirman-en-vez-de-verificar]]
 - [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild. **Subida 13-10: device habilitado.**
+- **Motor en FORK DURO** (bajada del índice 2026-11-04): [motor-fork-duro-fix-buffer-corto.md](motor-fork-duro-fix-buffer-corto.md). Bajada porque su contenido está **duplicado textualmente en `CLAUDE.md §2`**, que es de lectura obligatoria antes de tocar `motor/` — el puntero del índice no agregaba nada que la constitución no diga primero.

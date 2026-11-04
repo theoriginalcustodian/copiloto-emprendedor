@@ -157,7 +157,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-Z3** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de DEVICE del splash: el codigo esta en main y la decision tomada, pero lo tactil no lo acredita ningun test.… |
 | **SM-Z4** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO DEVICE. Reescrito 2026-11-03 con la medicion de auditoria (d0f0e438, PR #1601): la parte 2 (COLOR) ya no esta bl… |
 | **SM-Z5** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de DEVICE de Ajustes ya como lista. Disparador: el telefono. Dueno de la captura: frontend2. |
-| **SM-N57** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-N57** | `sin-issue` | ✅ TERMINADO | f76e6751 (PR #1619, CI 6/6) por backend. DoD 1: el test corre EN EL GATE y pasa, 'test_recall_isolation_cross_emprend… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -3532,7 +3532,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N57 · `sin-issue` — El UNICO test adversarial del aislamiento de la MEMORIA no corre en NINGUN gate
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Cierre:** f76e6751 (PR #1619, CI 6/6) por backend. DoD 1: el test corre EN EL GATE y pasa, 'test_recall_isolation_cross_emprendedor PASSED, 1 passed in 15.77s' con '==> Grafo: ON', en el VPS por el mismo runner de prod (sync-test-backend.sh); las credenciales salen del lado del servidor, de /etc/unreal-copilot/copiloto.env, y SOLO esas dos — no el archivo entero, porque traeria el DATABASE_URL de prod y pisaria la base efimera. Nada pasa por la PC; verificado sin imprimir valores (len 30 y len 37). DoD 2 CONTROL POSITIVO: forzo MemoryProvider._user_id al mismo id para todos (un solo grafo para los dos emprendedores) y el test CAYO en :92 con 'AssertionError: LEAK: A vio el dato de B', y cayo por el assert de LEAK y no por error de conexion porque el control positivo de :88-91 paso antes; restaurado en finally, memory_provider.py byte a byte identico. O sea que el gate dispara hacia el NO. DoD 3: declarado en ADR-001 §13 por que solo este test necesita credenciales extra. DoD 4 NO APLICA: se decidio correrlo. Declarado en el ADR y NO es deuda oculta: tests.yml en GitHub lo sigue salteando porque no alcanza Graphity, asi que la fuente de verdad de este control es el recibo de gate.sh; y una corrida con UC_TEST_SIN_GRAPHITY=1 deja el aislamiento [UNVERIFIED] en esa corrida, avisado en el log con '==> Grafo: OFF'. Evidencia: docs/copiloto-emprendedor/2026-11-02-sprint-correcciones-evidencia/SM-N57.md
 - **Dueño:** backend
 - **De dónde sale:** barrido de los 41 `skipped` de la suite que pidió planificación a manejo-de-errores
   después de `SM-I7`, donde un test existía y se salteaba porque `sync-test-backend.sh` no llevaba

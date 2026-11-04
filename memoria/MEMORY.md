@@ -157,7 +157,6 @@
 
 
 ## 🏭 El producto - LEER antes de tocar
-- [🔱 Motor en FORK DURO + fix del buffer de corto plazo](motor-fork-duro-fix-buffer-corto.md) - **antes de tocar `motor/`.** `sync-motor.sh` retirado.
 - [🔐 Auth = GoTrue DEDICADA (cutover vivo)](copiloto-gotrue-dedicada-cutover.md) - **al tocar auth/OAuth.** Google OAuth LIVE. Deuda: passwords temporales.
 - [🧠🧱 MemoryProvider - memoria conversacional CABLEADA](copiloto-memoria-provider-ladrillo.md) - **al tocar la memoria.** warm+recall+remember, gate `config`.
 - [🎙️🃏 Mecanismo canónico de las cards por voz](mecanismo-canonico-de-las-cards-por-voz.md) - nunca se pregunta 2 veces; a la 2ª manda la card.
