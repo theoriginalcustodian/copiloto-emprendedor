@@ -152,7 +152,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N54** | `sin-issue` | ✅ TERMINADO | 6459a3ac (PR #1600) — `_cuit_del_tenant` con la DB caida responde 503 reintentable CON rastro y tenant, en vez del 40… |
 | **SM-N55** | `sin-issue` | ✅ TERMINADO | e74d4913 (#1604, ancestro verificado) — `consultar_onboarding` ya no colapsa UNAVAILABLE en el mismo None de NOT_FOUN… |
 | **SM-N56** | `sin-issue` | ✅ TERMINADO | 6459a3ac (PR #1600) — el rastro que escribe `conexiones_salud.py` ahora sale con el `cliente_id` del tenant que lo or… |
-| **SM-N58** | `sin-issue` | 🟨 EN-CURSO | manejo-de-errores |
+| **SM-N58** | `sin-issue` | ✅ TERMINADO | b4ffd5e2 + ea3ef4b3 (receta cd2e66fb), los 3 ancestros de origin/main con control negativo deadbeef NO. DoD1: inventa… |
 | **SM-Z1** | `sin-issue` | 🟧 DOD-PARCIAL | ACTUALIZADO 2026-11-03 23:50 - el codigo YA ESTA HECHO y desplegado; lo unico que falta es el OAuth del operador en e… |
 | **SM-Z2** | `sin-issue` | ✅ TERMINADO | `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama ➕ ANOTACION 2026-11-03 (INFO de au… |
 | **SM-Z3** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de DEVICE del splash: el codigo esta en main y la decision tomada, pero lo tactil no lo acredita ningun test.… |
@@ -3397,8 +3397,9 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N58 · `sin-issue` — El gate no corre NADA que necesite una credencial de tercero, y un `skipped` dentro del verde se leía como cobertura
 
-- **Estado:** EN-CURSO
+- **Estado:** TERMINADO
 - **Dueno-activo:** manejo-de-errores
+- **Cierre:** b4ffd5e2 + ea3ef4b3 (receta cd2e66fb), los 3 ancestros de origin/main con control negativo deadbeef NO. DoD1: inventario de 25 nodeids con archivo y credencial en Auditorias/2026-11-03-SM-N58-skips-por-credencial-de-tercero-inventario-y-decision.md. DoD2: decision escrita con UNVERIFIED, dueno y fecha. DoD3: scripts/ci/skips_linea_base.py + skips-linea-base.txt invocados desde scripts/ci/backend.sh:54 con su propio test_skips_linea_base.py en la suite, fail-closed ante junit ilegible (exit 2)
 - **Dueño:** manejo-de-errores
 - **De dónde sale:** el conteo de los 41 skipped de la suite backend (manejo-de-errores, 2026-11-03), a
   pedido de planificación. 15 son de GoTrue (los corre `gate.sh`), 1 de `kb-usuario` (lo corre GitHub),
