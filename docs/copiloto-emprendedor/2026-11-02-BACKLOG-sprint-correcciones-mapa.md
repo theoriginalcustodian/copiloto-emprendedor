@@ -120,7 +120,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N22** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO que EL OPERADOR lo vea, y eso NO es una formalidad: fue el quien refuto el cierre anterior en device, asi que la… |
 | **SM-N23** | `sin-issue` | ✅ TERMINADO | 2d257f95 (#1432) + 988ba029 (#1443, ancestro de origin/main). DoD 5/5 completo, acreditado en device por frontend1 co… |
 | **SM-N24** | `sin-issue` | ✅ TERMINADO | 32a0d66e (#1430, ancestro de origin/main): el chat ya no pinta el boton de camara -- ChatView no pasa onFoto; test Ch… |
-| **SM-N25** | `sin-issue` | ✅ TERMINADO | a6600880 es la procedencia del codigo (ancestro de origin/main verificado); ef9c716b, que el primer intento de marcad… |
+| **SM-N25** | `sin-issue` | 🟧 DOD-PARCIAL | AUDITORIA H15, CONFIRMADO (LOTE 2j): el Cierre cita como procedencia del codigo a6600880, que es el commit de OTRA fi… |
 | **SM-N26** | `sin-issue` | ✅ TERMINADO | Codigo en main: c0b17494 (#1441, ancestro de origin/main) -- retirado el indicador Pedir confirmacion de la cabecera … |
 | **SM-N27** | `sin-issue` | ✅ TERMINADO | c62cec5f (#1433) la puerta recuerda que ruta la cerro -- el destino-lanzador ya no reabre al llegar -- mas 3c741ff3 (… |
 | **SM-N28** | `sin-issue` | ✅ TERMINADO | 4376027d (#1435, ancestro de origin/main): el avatar de Ajustes sale de Mi dia y queda solo en Funciones. DoD 4 y 5 p… |
@@ -148,6 +148,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-N50** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N51** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-N52** | `sin-issue` | ✅ TERMINADO | sha b45ab84f (PR #1590), verificado ancestro de origin/main. CI 6/6. DoD1: los 9 archivos de la Consola corren en Git… |
+| **SM-N53** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-Z1** | `sin-issue` | 🟧 DOD-PARCIAL | ACTUALIZADO 2026-11-03 23:50 - el codigo YA ESTA HECHO y desplegado; lo unico que falta es el OAuth del operador en e… |
 | **SM-Z2** | `sin-issue` | ✅ TERMINADO | `61b684c2` (#1567, ancestro verificado de `origin/main`). `RevealEntrada.tsx` rama |
 | **SM-Z3** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -1828,7 +1829,8 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
 
 ### SM-N25 · `sin-issue` — DENTRO DEL SPRINT: el campo de texto y el mic deben FLOTAR sobre el chat, no tener fondo pleno
 
-- **Estado:** TERMINADO
+- **Estado:** DOD-PARCIAL
+- **Falta:** AUDITORIA H15, CONFIRMADO (LOTE 2j): el Cierre cita como procedencia del codigo a6600880, que es el commit de OTRA ficha (SM-N45, cards de Inteligencia). El codigo SI esta en main - los commits reales son 6335f883 (#1440) y fafd7cdb (#1444), ambos ancestros - asi que lo que esta mal es la CITA, no el trabajo. Faltan ademas las evidencias de los DoD 1 y 2 (el par ANTES/DESPUES y el scroll). Disparador: corregir la cita a los dos shas reales y adjuntar las dos evidencias. 🔴 Y esto expone un limite de MI gate, que es mio y no de la ficha: sprint-estado.py --check mide ANCESTRIA, no PERTINENCIA, asi que un sha de otra ficha pasa el control. Barrido de la clase por auditoria: de 92 shas ancestros citados, 21 no nombran su ficha (casi todos cruzados y rotulados a proposito), hay 4 fichas sin ningun sha propio y la unica real es esta (L2 y Z2 estan bien, N49 es INFO de atribucion). Refuerzo escrito en la norma de evidencia versionada.
 - **Cierre:** a6600880 es la procedencia del codigo (ancestro de origin/main verificado); ef9c716b, que el primer intento de marcado citaba, es el BUNDLE de la rama de frontend1 y no existe en main -- el gate lo rechazo y no escribio, que es exactamente para lo que esta. DoD 3 CERRADO en device el 2026-11-03 (frontend1) con una card CLARA pasando POR DEBAJO del campo -- la mitad que el verde del caso normal NO acreditaba: se ve su pie 50.000 ClienteJ4 cortado en el borde superior y el campo y el mic siguen legibles y tocables sobre ella. Captura b3-n25-card-clara-bajo-composer-canonico, 13:55, bundle @ef9c716b que SI contiene a6600880 (verificado antes de capturar). DoD 5 CERRADO el 2026-11-03 (frontend1, bloque 10, cuenta canonica, piel clara, SM-M127F 720x1600, chat abierto sobre Mi dia) y era el ultimo punto abierto: el fondo pleno de ARRIBA queda identificado con path:linea REAL y no con -toque hasta que se fue-. Es la capa panel-superficie, PanelDeslizable.tsx:573-576 (testID panel-superficie, backgroundColor tema.color.fondo) con opacidad 1 en :446 (1 - opacidadRotuloAbajo). El arbol de uiautomator la muestra cubriendo TODA la pantalla [0,0][720,1465] con pantalla-midia montada debajo [0,68][720,1465] pero no visible. Y lo PLENO se establece por pixel, no por inspeccion de capas: la franja de arriba (20,50), (600,50) y (20,70) da RGB (247,243,236) IDENTICO al fondo del chat (700,600) y (20,1000) -- color pleno, cero transparencia. El historial SI corre por debajo del scrim superior (chat-scrim-superior, y=92-144): el texto -estar incompleto. Reconectalo- se ve desvaneciendose bajo el asa, no cortado en seco. CONSECUENCIA que la medicion deja escrita para quien decida el cambio: hacer panel-superficie transparente DEJARIA VER Mi dia debajo (esta montada y es de colores distintos -- cabecera blanca mas tarjeta oscura), asi que no es un cambio inocuo. El metodo vale mas que el veredicto: frontend2 habia identificado CristalVidrio y se corrigio solo -- PanelDeslizable tiene UN unico llamador (PantallaPrincipal.tsx:252) que SIEMPRE pasa pieAbajo, asi que sinFondo es constante true y el vidrio ya sale transparente; un parametro con un solo llamador no es una palanca, es una condicion disfrazada de parametro. Limites: medido con cuenta canonica y piel clara, no piel oscura, y solo la franja superior.
 - **Dueño:** frontend1 (dueño del chat)
 - **Decisión del operador, 2026-11-02:** *«el fondo de alrededor del campo de texto y del botón de
@@ -3255,6 +3257,38 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   4. Los `skipped` restantes quedan **clasificados por motivo** (`-ra`), para que la próxima vez el
      hueco no sea invisible.
   5. El `Cierre:` cita un sha **ancestro de `origin/main`** y el par 80→71 medido.
+
+### SM-N53 · `sin-issue` — El trauma de turno FUNDE todos los fallos de activity en UNA fila genérica que encabeza la cola de autosanación y no se puede reparar
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **De dónde sale:** `pedido_manejo-de-errores-a-backend` del 2026-11-03, después de que #1587
+  cableara «fallo del turno → DLQ». El defecto es **del fix**, no de lo que el fix arregló.
+- **Medido (manejo-de-errores, base de **tests**, RLS `FORCE`, sobre `a8ea35fa`):** dos fallos
+  **distintos** de activity dejaron **3 filas**:
+  - **2** de `activity_interceptor`, con fingerprints **distintos** y **con origen** — correctas.
+  - **1** de `workflow_turno`, con fingerprint **fijo**, `dedupe_count=2` y **sin origen**.
+- **🔴 Por qué la fila que sobra es la peor de las dos posibilidades.** Mi hipótesis era que los
+  duplicados **escapaban** al dedup; manejo-de-errores la **refutó midiendo**, y lo que pasa es lo
+  contrario y es peor: el dedup **funde** todos los fallos de activity del tenant en **una sola fila
+  genérica** (`ActivityError: Activity task failed`) que:
+  1. **encabeza la cola de autosanación** por `dedupe_count`, o sea se lleva el «lo que más duele»;
+  2. **no se puede reparar**, porque no nombra ningún defecto concreto ni trae origen;
+  3. **se reabre con cualquier fallo de cualquier activity**, así que nunca se cierra.
+  Es una fila **inmortal en la cabeza de la cola**: el reparador trabaja sobre lo que no puede
+  arreglar, y los traumas reparables quedan detrás. Dejo escrito que **mi punto 3 era falso** —
+  la refutación llegó con la medición, no con una opinión.
+- **Cuál sobra, nombrado (no «hay duplicados»):** la fila de `workflow_turno` cuando `exc` es
+  `ActivityError` con causa `ApplicationError` — ahí el interceptor ya dejó el rastro bueno.
+- **[NO MEDIDO], y por eso NO se borra sin más:** los casos que el interceptor **no ve**
+  (`schedule_to_start`, `NotFound`). Ahí esa fila puede ser **el único rastro**, así que el fix tiene
+  que ser condicional, no una poda.
+- **DoD:**
+  1. Dos fallos distintos de activity dejan **2 filas** (no 3), medido contra la base de **tests**.
+  2. **Control positivo que hoy existe y hay que conservar:** `DEPOSITOS=2` antes del fix.
+  3. Un caso del conjunto `[NO MEDIDO]` (`schedule_to_start` o `NotFound`) **sigue dejando rastro**
+     — el test lo ejercita. Sin esto, el fix cambia un defecto por una ceguera.
+  4. El `Cierre:` cita un sha **ancestro de `origin/main`** y el par antes/después con sus filas.
 
 ### SM-Z1 · `sin-issue` — Apps muestra 5 servicios y el mapa dibuja 6: las 5 son CORRECTAS
 
