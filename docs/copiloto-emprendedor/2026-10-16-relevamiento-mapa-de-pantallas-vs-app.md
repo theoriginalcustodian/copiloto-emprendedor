@@ -360,6 +360,7 @@ mensual… es la respuesta a "en qué se me va la plata"»*).
 montos en **verde/rojo**, paleta que el mockup 12 **derogó explícitamente** (*«traía una paleta
 semántica que el sistema no tiene y competiría con el único acento»*) — fue considerada y rechazada,
 no es un olvido.
+**El «engranaje flotante» (SM-N32 DoD 5) no es de la app:** es el botón flotante nativo del dev-client de Expo. Evidencia: (a) device, frontend1, 2026-10-15 — un toque abre el menú de desarrollo («Reload / Go home / Toggle performance monitor…»); el Ajustes real cuelga del avatar de «Mi día»; (b) código, frontend2, 2026-11-03 — grep -niE "settings|engranaje|gear|ajustes|fab|flotante" sobre `modules/inteligencia/*.tsx` = 0, e `IconoAjustes` no se importa desde ninguna pantalla; (c) ya declarado como artefacto de captura en `2026-10-16-relevamiento-concordancia-prototipo-vs-app-mobile.md` (burbuja «Tools» del dev-client). Nada que retirar.
 → **Ficha `SM-N32`**, dueño frontend2. El lado **app** de esta entrada sigue siendo del 2026-10-16:
 re-verificar en device antes de implementar. El título está suelto con ícono, no dentro de una card blanca con período (mockup 12: «nombre y período en la card blanca»); «Volver» ya va a la izquierda con chevron (N6, decisión 7). La regla del dato faltante sí se cumple: Rentabilidad muestra «—» y la explicación, no «$0» (decisión del mockup 12). 🔴 **Los dos botones «Resumen»/«Preguntar»: esta entrada los clasificó `B` y con eso los
 dio por BUENOS.** Decía *«La pestaña «Preguntar» es una salida al chat (B)»*, y `B` significa «gana
