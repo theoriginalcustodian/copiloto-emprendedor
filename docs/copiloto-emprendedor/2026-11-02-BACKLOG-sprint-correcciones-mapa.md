@@ -157,6 +157,7 @@ La tabla de abajo es **generada**: editarla a mano la desincroniza y el gate la 
 | **SM-Z3** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de DEVICE del splash: el codigo esta en main y la decision tomada, pero lo tactil no lo acredita ningun test.… |
 | **SM-Z4** | `sin-issue` | 🟧 DOD-PARCIAL | SOLO DEVICE. Reescrito 2026-11-03 con la medicion de auditoria (d0f0e438, PR #1601): la parte 2 (COLOR) ya no esta bl… |
 | **SM-Z5** | `sin-issue` | 🟧 DOD-PARCIAL | Captura de DEVICE de Ajustes ya como lista. Disparador: el telefono. Dueno de la captura: frontend2. |
+| **SM-N57** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -3528,3 +3529,58 @@ que dependan de ella quedan `DOD-PARCIAL` con su `Falta:`.
   control**: si es A, la entrada del mapa enmendada y la corrida del contraste de veredictos
   re-medida sobre ella; si es B, la grilla convertida con captura de device y los tests de
   `PantallaAjustes` actualizados.
+
+### SM-N57 · `sin-issue` — El UNICO test adversarial del aislamiento de la MEMORIA no corre en NINGUN gate
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend
+- **De dónde sale:** barrido de los 41 `skipped` de la suite que pidió planificación a manejo-de-errores
+  después de `SM-I7`, donde un test existía y se salteaba porque `sync-test-backend.sh` no llevaba
+  `phosphor.ts`. La pregunta era «¿cuál de los 41 tapa una costura?»; éste es el que la tapa.
+- **El hecho, medido (planificación, control positivo incluido):**
+  `apps/copiloto/tests/test_memory_isolation_live.py:26` se saltea entero salvo que existan
+  `GRAPHITY_BASE_URL` **y** `GRAPHITY_API_KEY`. Ningún gate las define: `grep -c GRAPHITY` da **0**
+  en `scripts/gate.sh`, `scripts/ci/backend.sh`, `deploy/copiloto/sync-test-backend.sh`,
+  `deploy/copiloto/test-db.sh` y `.github/workflows/tests.yml`. **Control positivo del grep:**
+  `DATABASE_URL` sí aparece en 4 de esos 5 archivos (2, 5, 7 y 2 veces), con lo cual el grep lee los
+  archivos y distingue — el 0 de `GRAPHITY` no es ceguera del instrumento. Conclusión: el test no
+  corre **en el VPS ni en GitHub**, nunca.
+- **Por qué es la clase grave y no una ficha de cobertura:** su único test,
+  `test_recall_isolation_cross_emprendedor:73`, es el único lugar del repo que ejercita el caso
+  hostil del aislamiento de la memoria (A guarda su término, B el suyo, y se exige que el `recall` de
+  cada uno **no** contenga el del otro). El otro adversarial, `test_adversarial_multitenant.py`, tiene
+  **29** tests y **0** menciones de memoria, grafo o `recall` (medido): cubre credenciales, replies,
+  pagos, `context_factory`, calendario, catálogo, gastos, presupuestos, conceptos — toda la superficie
+  SQL/HTTP, nada del grafo. O sea que el control multitenant de la MEMORIA figura verificado y no se
+  ejercita en ningún lado.
+- **La regla que esto incumple es dura, no una preferencia:** «todo control de acceso/aislamiento que
+  un ADR o el código declare exige un test de integración adversarial que ejercite el caso hostil; sin
+  él, el control queda `[UNVERIFIED]` y bloquea el cierre». El caso raíz del repo es ADR-013 §3.3.4:
+  el guard cross-tenant estaba especificado, el código nunca lo codificó, y el drift vivió ~2 meses en
+  prod porque ningún test probaba «A pide lo de B». **Acá la variante es distinta y más engañosa:** el
+  test existe, está bien escrito y hasta lleva control positivo propio contra el assert vacuo
+  (`:88-91`, «si esto falla, el assert de aislamiento sería vacuo»). Lo que falta es que alguien lo
+  **invoque**. Un test perfecto que ningún gate corre es indistinguible de un test ausente, con el
+  agravante de que su existencia en el árbol hace que la pregunta «¿está verificado?» se responda sola
+  al grepear el nombre del archivo.
+- **DoD (binario):**
+  1. El gate canónico corre ese test contra Graphity real: `GRAPHITY_BASE_URL` y `GRAPHITY_API_KEY`
+     llegan al runner del VPS por el camino de prod, no por un export a mano en una terminal.
+     Evidencia: la línea del runner en `0 skipped` para ese archivo, con el nombre del test visible
+     como `PASSED` y el sha donde corrió.
+  2. **Control positivo obligatorio** (sin esto el DoD 1 no acredita): invertir a propósito el
+     aislamiento — pasarle a los dos emprendedores el mismo `graph_id` — y verificar que el test se
+     pone **ROJO** por el assert de `LEAK`, no por un error de conexión. Un gate que nunca disparó
+     hacia el «no» no está verificado. Restaurar en `finally`.
+  3. Queda declarado en el doc del gate **por qué** este test necesita credenciales que los otros no:
+     es el único que exige el servicio de grafo vivo, así que es el único que un entorno sin Graphity
+     no puede correr — y eso es precisamente lo que lo dejó fuera sin que nadie lo decidiera.
+  4. Si la decisión fuera NO correrlo en el gate (por costo o por depender de un servicio externo),
+     entonces el control de aislamiento de la memoria queda marcado `[UNVERIFIED]` **en el ADR y en
+     `CLAUDE.md`**, con dueño y fecha. Lo que no es aceptable es el estado actual: ni corre ni está
+     declarado como no verificado.
+- **Lo que NO entra acá:** `test_arca_sin_afip_visible.py:74` (kb-usuario) también se saltea en el
+  gate canónico porque el stage del VPS no lleva la carpeta, pero es **contenido**, no una costura de
+  aislamiento — va aparte y no bloquea. Y los otros 38 skips son credenciales de terceros (Composio,
+  OpenAI, RAG, e2e) o los 15 de GoTrue real que `gate.sh:209` sí corre (se saltearon sólo en una
+  corrida con el runner manual). Medido por manejo-de-errores sobre 2729 passed @`dba8aebe`.
