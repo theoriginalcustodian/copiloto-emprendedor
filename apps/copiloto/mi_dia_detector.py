@@ -444,7 +444,8 @@ def _diagnostico_conexion_caida(conn_factory: Callable, cliente_id: str,
                                 composio_conexiones: Callable | None = None) -> tuple[list[str], bool]:
     """`(caidas, composio_mirado)`: ver `conexiones_salud.diagnostico_conexiones`."""
     from conexiones_salud import diagnostico_conexiones
-    return diagnostico_conexiones(MpCredentialStore(conn_factory, cliente_id, None), composio_conexiones)
+    return diagnostico_conexiones(MpCredentialStore(conn_factory, cliente_id, None), composio_conexiones,
+                                  cliente_id=cliente_id)
 
 
 class VerdadCruda(dict):
