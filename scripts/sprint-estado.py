@@ -100,9 +100,19 @@ RE_CAMPO = re.compile(r"^\s*-\s+\*\*(?P<campo>[^:*]+):?\*\*:?\s*(?P<valor>.*?)\s
 RE_SHA = re.compile(r"\b[0-9a-f]{7,40}\b")
 
 
+RE_CONFLICTO = re.compile(r"^(<<<<<<< |>>>>>>> )", re.MULTILINE)
+
+
 def leer(path):
     with open(path, "r", encoding="utf-8", newline="") as fh:
-        return fh.read()
+        texto = fh.read()
+    # Un doc con marcadores de conflicto vivos esta PARTIDO: parsear lee una mitad y la informa como el
+    # doc entero (CHECK-OK sobre medio archivo). Vacio/parcial = pregunta, no luz verde.
+    if RE_CONFLICTO.search(texto):
+        raise SystemExit("%s tiene marcadores de conflicto de git vivos (<<<<<<< / >>>>>>>): el doc esta partido, "
+                         "no se valida ni se marca. Resolve el conflicto (ver CLAUDE.md 3.quater.bis) y reintenta."
+                         % os.path.basename(path))
+    return texto
 
 
 def escribir_atomico(path, texto):
