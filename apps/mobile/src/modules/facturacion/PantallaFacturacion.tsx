@@ -703,7 +703,7 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
       </ScrollFormulario>
 
       {/* SM-J1: el dock al pie, fuera del scroll. El texto va al chat (propone, nunca emite). */}
-      {gate.tipo === 'listo' && vista === 'listado' && <DockAlChat contexto="factura" origen="Facturación" placeholder="Una factura, o hablá…" />}
+      <DockAlChat contexto="factura" origen="Facturación" placeholder="Una factura, o hablá…" />
 
       {/* 🔴 FUERA del `ScrollFormulario`, a propósito. Un overlay absoluto montado DENTRO del scroll
           se posiciona contra el contenido —miles de píxeles con 20 comprobantes— y aparece centrado

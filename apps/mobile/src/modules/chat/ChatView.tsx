@@ -13,6 +13,7 @@ import {
   type CierreAviso,
 } from '@copiloto/core';
 
+import { registrarDespachoChat } from '../../navegacion/despachoAlChat';
 import { useSession } from '../auth/useSession';
 import { borrarArchivoLocal } from '../voz/borrarArchivoLocal';
 import { DockEntrada } from './DockEntrada';
@@ -175,6 +176,16 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
     ultimoAudio.current = audioEntrante.id;
     void enviarAudio(audioEntrante.audio, audioEntrante.duracionSeg);
   }, [audioEntrante, hidratado, enviarAudio]);
+
+  // Las pantallas de función (y Mi día) despachan ACÁ sin desmontar este chat: ver `despachoAlChat.ts`. Sólo con el
+  // estado hidratado, por la misma razón que arriba: `send`/`enviarAudio` descartan en silencio mientras sea `null`.
+  useEffect(() => {
+    if (!hidratado) return;
+    return registrarDespachoChat({
+      texto: (t) => void send(t, { kind: 'text' }),
+      audio: (a, d) => void enviarAudio(a, d),
+    });
+  }, [hidratado, send, enviarAudio]);
 
   useFocusEffect(
     useCallback(() => {
