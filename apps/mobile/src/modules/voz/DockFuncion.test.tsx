@@ -43,12 +43,12 @@ import { DockFuncion } from './DockFuncion';
 
 const AUDIO = { datos: 'file:///cache/voz.m4a', nombre: 'voz.m4a', tipo: 'audio/mp4' };
 
-async function montar() {
+async function montar(confirmarDictado = false) {
   const onTexto = jest.fn();
   const onError = jest.fn();
   await render(
     <ThemeProvider>
-      <DockFuncion onTexto={onTexto} contexto="gasto" placeholder="Anotá un gasto, o hablá…" onError={onError} />
+      <DockFuncion onTexto={onTexto} contexto="gasto" placeholder="Anotá un gasto, o hablá…" onError={onError} confirmarDictado={confirmarDictado} />
     </ThemeProvider>,
   );
   return { onTexto, onError };
@@ -106,5 +106,50 @@ describe('DockFuncion -- SM-I2: escrito y dictado caen en el mismo camino', () =
     await waitFor(() => expect(onError).toHaveBeenCalledWith('No se entendió el audio. Probá de nuevo.'));
     expect(onTexto).not.toHaveBeenCalled();
     expect(deleteAsync).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('DockFuncion -- SM-P14: mostrar el transcript y confirmar antes de prellenar', () => {
+  it('🔴 adversarial: «El» (ruido transcripto) se MUESTRA y NO llega a onTexto hasta que el usuario lo confirma', async () => {
+    mockTranscribir.mockResolvedValue({ transcript: 'El' });
+    const { onTexto } = await montar(true);
+
+    await fireEvent.press(screen.getByTestId('mock-soltar'));
+
+    await waitFor(() => expect(screen.getByTestId('dock-funcion-confirmar-texto')).toHaveTextContent('Entendí: «El»'));
+    expect(onTexto).not.toHaveBeenCalled();
+  });
+
+  it('Descartar borra la transcripción y nunca entrega texto', async () => {
+    mockTranscribir.mockResolvedValue({ transcript: 'El' });
+    const { onTexto } = await montar(true);
+    await fireEvent.press(screen.getByTestId('mock-soltar'));
+    await waitFor(() => screen.getByTestId('dock-funcion-confirmar'));
+
+    await fireEvent.press(screen.getByTestId('dock-funcion-confirmar-descartar'));
+
+    expect(screen.queryByTestId('dock-funcion-confirmar')).toBeNull();
+    expect(onTexto).not.toHaveBeenCalled();
+  });
+
+  it('control positivo: un dictado completo, confirmado con Enviar, llega a onTexto igual que antes', async () => {
+    mockTranscribir.mockResolvedValue({ transcript: 'Facturale a Cliente Seed un servicio por 5000' });
+    const { onTexto } = await montar(true);
+    await fireEvent.press(screen.getByTestId('mock-soltar'));
+    await waitFor(() => screen.getByTestId('dock-funcion-confirmar'));
+
+    await fireEvent.press(screen.getByTestId('dock-funcion-confirmar-enviar'));
+
+    expect(onTexto).toHaveBeenCalledTimes(1);
+    expect(onTexto).toHaveBeenCalledWith('Facturale a Cliente Seed un servicio por 5000', 'dictado');
+    expect(screen.queryByTestId('dock-funcion-confirmar')).toBeNull();
+  });
+
+  it('sin confirmarDictado el comportamiento de las demás funciones no cambia (llega directo)', async () => {
+    mockTranscribir.mockResolvedValue({ transcript: 'café 1500' });
+    const { onTexto } = await montar(false);
+    await fireEvent.press(screen.getByTestId('mock-soltar'));
+    await waitFor(() => expect(onTexto).toHaveBeenCalledWith('café 1500', 'dictado'));
+    expect(screen.queryByTestId('dock-funcion-confirmar')).toBeNull();
   });
 });
