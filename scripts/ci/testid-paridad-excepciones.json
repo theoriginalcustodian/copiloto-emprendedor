@@ -4527,16 +4527,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/soporte"
     },
-    "modules/soporte::soporte-adjunto-aviso": {
-      "en": [
-        "apps/mobile/src/modules/soporte/TarjetaTicketSoporte.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-10-13",
-      "id": "soporte-adjunto-aviso",
-      "motivo": "PROTO4APP §D/§E (2026-10-13): la tarjeta del ticket dentro del hilo de Soporte es de la APP; la web de Soporte (ComposerSoporte + MiTicketScreen) es un formulario y un hilo aparte, sin tarjeta embebida en el chat. Resultado del último adjunto del clip: la web adjunta desde el formulario del ticket, con su propio aviso. El gemelo web (si el operador lo quiere) es otro contrato, no deuda de este PR.",
-      "pantalla": "modules/soporte"
-    },
     "modules/soporte::soporte-presentacion": {
       "en": [
         "apps/copiloto-web/src/modules/soporte/SoporteScreen.tsx"
