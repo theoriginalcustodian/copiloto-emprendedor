@@ -66,6 +66,18 @@ jest.mock('@copiloto/core', () => {
   };
 });
 
+const mockUseDictado = jest.fn();
+jest.mock('../voz/useDictadoPorFuncion', () => {
+  const actual = jest.requireActual('../voz/useDictadoPorFuncion');
+  return {
+    ...actual,
+    useDictadoPorFuncion: (...args: unknown[]) => {
+      const sobreescrito = mockUseDictado(...args);
+      return sobreescrito !== undefined ? sobreescrito : { ocupado: false, aviso: null, dictar: async () => null };
+    },
+  };
+});
+
 import { router } from 'expo-router';
 
 import {
@@ -910,37 +922,67 @@ describe('PantallaFacturacion (mobile) — idem_key en "Nueva factura" (FACTID)'
   });
 
   /**
-   * SM-J1 + SM-P6/P10 — el dock de Facturación MANDA al chat y recién DESPUÉS vuelve; jamás emite él. La card HITL del
-   * chat sigue siendo el único gate de una emisión. Control negativo: ninguna API de emisión se toca desde acá.
+   * SM-P13 — el dock de Facturación funciona como el de Gastos: dictar abre la card/wizard PRELLENADA con el borrador
+   * que propuso el backend (`dictado:factura`); jamás emite. Dictado incompleto (sin card) → se manda al chat y se vuelve.
    */
-  describe('dock de Facturación → chat (despacha primero, vuelve después)', () => {
+  describe('dock de Facturación → dictado:factura (prellena, no emite)', () => {
     let baja: () => void;
     const despacho = { texto: jest.fn(), audio: jest.fn() };
+    const dictar = jest.fn();
     beforeEach(() => {
       despacho.texto.mockReset();
       despacho.audio.mockReset();
+      dictar.mockReset();
+      mockUseDictado.mockReturnValue({ ocupado: false, aviso: null, dictar });
       baja = registrarDespachoChat(despacho);
     });
-    afterEach(() => baja());
+    afterEach(() => {
+      baja();
+      mockUseDictado.mockReset();
+    });
 
-    it('el texto del dock se MANDA al chat y DESPUÉS se vuelve; NO emite ni crea borrador', async () => {
+    async function conCuit() {
       jest.mocked(almacenClave.leer).mockImplementation(async (clave: string) => (clave === CLAVE_CUIT_AFIP ? '20111222339' : null));
       jest.mocked(estadoAfip).mockResolvedValue(estadoAfipMock());
       jest.mocked(listarComprobantes).mockResolvedValue({ status: 'ok', comprobantes: [] });
       await montar();
       await waitFor(() => expect(screen.getByTestId('dock-funcion')).toBeTruthy());
+    }
 
-      await fireEvent.changeText(screen.getByTestId('chat-composer'), 'Factura a Pérez por 1500');
+    async function escribir(texto: string) {
+      await fireEvent.changeText(screen.getByTestId('chat-composer'), texto);
       await fireEvent.press(screen.getByTestId('chat-enviar'));
+    }
 
-      expect(despacho.texto).toHaveBeenCalledWith('Factura a Pérez por 1500');
+    it('dictado COMPLETO: adopta el borrador propuesto (facturaId) y abre el wizard; NO emite ni crea otro', async () => {
+      dictar.mockResolvedValue({ destino: 'factura', facturaId: 'fac-dictada-1' });
+      jest.mocked(esperarEstadoEstable).mockResolvedValue({ estado: { estado: 'borrador' } } as never);
+      jest.mocked(estadoFactura).mockResolvedValue({ estado: 'borrador' } as never);
+      await conCuit();
+
+      await escribir('Factura a Pérez por 1500');
+
+      expect(mockUseDictado).toHaveBeenCalledWith('factura');
+      expect(dictar).toHaveBeenCalledWith('Factura a Pérez por 1500');
+      // Adoptó el borrador Y cargó su estado (sin esto la pantalla queda muerta: estado null para siempre).
+      await waitFor(() => expect(jest.mocked(esperarEstadoEstable)).toHaveBeenCalledWith('fac-dictada-1'));
+      expect(despacho.texto).not.toHaveBeenCalled();
+      expect(router.back).not.toHaveBeenCalled();
+      expect(crearFactura).not.toHaveBeenCalled();
+      expect(confirmarConTokenFresco).not.toHaveBeenCalled();
+    });
+
+    it('dictado INCOMPLETO (sin card): se MANDA al chat y DESPUÉS se vuelve; no emite ni crea borrador', async () => {
+      dictar.mockResolvedValue(null);
+      await conCuit();
+
+      await escribir('Factura a Pérez');
+
+      await waitFor(() => expect(despacho.texto).toHaveBeenCalledWith('Factura a Pérez'));
       expect(router.back).toHaveBeenCalled();
-      // EL ORDEN es el pedido del operador: primero la acción, después la vuelta.
       expect(despacho.texto.mock.invocationCallOrder[0]!).toBeLessThan(jest.mocked(router.back).mock.invocationCallOrder[0]!);
       expect(crearFactura).not.toHaveBeenCalled();
       expect(confirmarConTokenFresco).not.toHaveBeenCalled();
-      expect(setCliente).not.toHaveBeenCalled();
-      expect(agregarItem).not.toHaveBeenCalled();
     });
 
     it('SM-P6 — el dock está SIEMPRE: aun sin CUIT/gate listo', async () => {
@@ -949,18 +991,14 @@ describe('PantallaFacturacion (mobile) — idem_key en "Nueva factura" (FACTID)'
       await waitFor(() => expect(screen.getByTestId('dock-funcion')).toBeTruthy());
     });
 
-    it('sin chat listo NO navega y lo dice (no se pierde el mensaje en silencio)', async () => {
-      baja(); // nadie registrado: el chat aún no hidrató / el onboarding ocupa su lugar
-      jest.mocked(almacenClave.leer).mockImplementation(async (clave: string) => (clave === CLAVE_CUIT_AFIP ? '20111222339' : null));
-      jest.mocked(estadoAfip).mockResolvedValue(estadoAfipMock());
-      jest.mocked(listarComprobantes).mockResolvedValue({ status: 'ok', comprobantes: [] });
-      await montar();
-      await waitFor(() => expect(screen.getByTestId('dock-funcion')).toBeTruthy());
+    it('incompleto y sin chat listo: NO navega y lo dice (no se pierde el mensaje en silencio)', async () => {
+      baja(); // nadie registrado
+      dictar.mockResolvedValue(null);
+      await conCuit();
 
-      await fireEvent.changeText(screen.getByTestId('chat-composer'), 'Factura a Pérez por 1500');
-      await fireEvent.press(screen.getByTestId('chat-enviar'));
+      await escribir('Factura a Pérez');
 
-      await waitFor(() => expect(screen.getByTestId('dock-alchat-aviso')).toBeTruthy());
+      await waitFor(() => expect(screen.getByTestId('facturacion-mic-error')).toBeTruthy());
       expect(router.back).not.toHaveBeenCalled();
     });
   });

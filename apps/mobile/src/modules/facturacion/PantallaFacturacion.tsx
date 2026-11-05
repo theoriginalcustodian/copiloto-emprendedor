@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 // 🔴 `RefreshControl` de RNGH, no el de `react-native`: el scroll de RNGH espera a ESE handler
@@ -38,7 +38,8 @@ import { useTema } from '../../theme/ThemeProvider';
 // que recibe el foco en vez de dejarlo tapado por el teclado. Ver su docstring y el de `MarcoGlass`.
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
-import { DockAlChat } from '../voz';
+import { despacharTextoAlChat } from '../../navegacion/despachoAlChat';
+import { AvisoDictado, DockFuncion, useDictadoPorFuncion } from '../voz';
 import { generarId } from '../../util/id';
 import { guardarCuitCacheado, leerCuitCacheado } from '../afip/cuitCache';
 import { derivarPasoVisible, type PasoVisible } from './maquinaEstado';
@@ -224,6 +225,8 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
   // temprano cuando `facturaId !== null`, así que esto es todo lo que hace falta para adoptarlo — el
   // polling de estado se encarga de traer sus datos, igual que con un borrador propio.
   const [facturaId, setFacturaId] = useState<string | null>(facturaIdInicial ?? null);
+  // Borrador que llega de AFUERA (presupuesto) o del dictado (SM-P13): dispara la carga de su estado (efecto 2.bis).
+  const [idAdoptado, setIdAdoptado] = useState<string | null>(facturaIdInicial ?? null);
   const [creandoBorrador, setCreandoBorrador] = useState(false);
   const [errorBorrador, setErrorBorrador] = useState(false);
   const [reintentoBorrador, setReintentoBorrador] = useState(0);
@@ -332,12 +335,12 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
   }, [comprobanteIdInicial]);
 
   useEffect(() => {
-    if (facturaIdInicial == null) return;
+    if (idAdoptado == null) return;
     let cancelado = false;
     setCreandoBorrador(true);
     setErrorBorrador(false);
     (async () => {
-      const { estado } = await esperarEstadoEstable(facturaIdInicial);
+      const { estado } = await esperarEstadoEstable(idAdoptado);
       if (cancelado || !vivo.current) return;
       setEstadoFacturaActual(estado);
       if (estado.receptor) setClienteLocal(estado.receptor);
@@ -352,7 +355,7 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
     return () => {
       cancelado = true;
     };
-  }, [facturaIdInicial]);
+  }, [idAdoptado]);
 
   // 3. Gate pasado, vista wizard y sin factura activa -> crear el borrador y esperar a que el estado
   // se estabilice. `vista !== 'wizard'` es el guard de H-A4-5: sin él, este efecto crea un borrador
@@ -581,6 +584,41 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
     setVista('wizard');
   }, []);
 
+  // SM-P13 — el dictado/escrito de Facturación va por el MISMO camino que Gastos/Ingresos/Presupuestos/Clientes
+  // (`dictado:factura`): el backend resuelve `emitir_factura`, que PROPONE un borrador (nunca emite) y devuelve su
+  // `facturaId`. Adoptarlo abre el wizard sobre ESE borrador, igual que `facturaIdInicial`. Emitir sigue detrás de la
+  // confirmación del wizard.
+  const dictado = useDictadoPorFuncion('factura');
+  const [errorMic, setErrorMic] = useState<string | null>(null);
+  const alDictarFactura = useCallback(
+    async (texto: string) => {
+      setErrorMic(null);
+      const propuesta = await dictado.dictar(texto);
+      if (propuesta !== null) {
+        setEstadoFacturaActual(null);
+        setDatosVentaLocal(null);
+        setClienteLocal(null);
+        setPasoEdicion(null);
+        setErrorBorrador(false);
+        setFacturaId(propuesta.facturaId);
+        setIdAdoptado(propuesta.facturaId);
+        setVista('wizard');
+        return;
+      }
+      // Sin card: al faltar datos el backend contesta con una PREGUNTA (dos pasos) y la card llega en el segundo turno
+      // de la misma sesión. Esa conversación es del chat: se le manda lo dicho y se vuelve a él. Sin chat listo no se
+      // navega (perder lo dicho en silencio es peor).
+      if (!despacharTextoAlChat(texto)) {
+        setErrorMic('El chat todavía no está listo. Probá de nuevo en un momento.');
+        return;
+      }
+      router.back();
+    },
+    // `dictado.dictar` es estable (useCallback del hook).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dictado.dictar],
+  );
+
   const cuitConocido = gate.tipo === 'listo' || gate.tipo === 'bloqueado' ? gate.cuit : null;
 
   return (
@@ -703,7 +741,19 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
       </ScrollFormulario>
 
       {/* SM-J1: el dock al pie, fuera del scroll. El texto va al chat (propone, nunca emite). */}
-      <DockAlChat contexto="factura" origen="Facturación" placeholder="Una factura, o hablá…" />
+      {errorMic != null && (
+        <Text testID="facturacion-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico, paddingHorizontal: 18 }}>
+          {errorMic}
+        </Text>
+      )}
+      <AvisoDictado testID="facturacion-dictado" ocupado={dictado.ocupado} aviso={null} />
+      <DockFuncion
+        contexto="factura"
+        placeholder="Una factura, o hablá…"
+        onTexto={(t) => void alDictarFactura(t)}
+        onError={setErrorMic}
+        disabled={dictado.ocupado}
+      />
 
       {/* 🔴 FUERA del `ScrollFormulario`, a propósito. Un overlay absoluto montado DENTRO del scroll
           se posiciona contra el contenido —miles de píxeles con 20 comprobantes— y aparece centrado

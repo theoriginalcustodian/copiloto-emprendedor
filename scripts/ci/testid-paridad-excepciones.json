@@ -2841,6 +2841,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/facturacion"
     },
+    "modules/facturacion::facturacion-dictado": {
+      "en": [
+        "apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-04",
+      "id": "facturacion-dictado",
+      "motivo": "SM-P13: indicador «interpretando» del dock de Facturacion mientras el motor arma la card (dictado:factura). Lo pinta AvisoDictado en mobile; el par web es de frontend2 (su rama frontend2/p13-factura-dictado) y puede usar otro id. Disparador para sacarla: que el lado web de SM-P13 mergee con su par o lo declare no aplicable.",
+      "pantalla": "modules/facturacion"
+    },
     "modules/facturacion::facturacion-error-borrador-botones": {
       "en": [
         "apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx"
@@ -2859,6 +2869,16 @@
       "fecha": "2026-09-22",
       "id": "facturacion-lista",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/facturacion"
+    },
+    "modules/facturacion::facturacion-mic-error": {
+      "en": [
+        "apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-04",
+      "id": "facturacion-mic-error",
+      "motivo": "SM-P13: texto de error del dock de Facturacion (chat no listo al despachar un dictado incompleto, o fallo de transcripcion). El chat-no-listo es del despacho por registro en modulo de la pila de glass mobile; la web no la tiene. Dueno del par web: frontend2. Disparador para sacarla: que el lado web de SM-P13 cierre con su par o lo declare no aplicable.",
       "pantalla": "modules/facturacion"
     },
     "modules/facturacion::facturacion-nueva-factura-fila": {

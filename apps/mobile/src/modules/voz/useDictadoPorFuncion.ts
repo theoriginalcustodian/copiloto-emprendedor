@@ -5,6 +5,7 @@ import {
   dictarPorChat,
   type DatosCliente,
   type DestinoDictado,
+  type FacturaPropuesta,
   type GastoPropuesto,
   type IngresoPropuesto,
   type MotivoSinPropuesta,
@@ -23,6 +24,7 @@ interface PropuestaPorDestino {
   ingreso: IngresoPropuesto;
   presupuesto: PresupuestoPropuesto;
   cliente: DatosCliente;
+  factura: FacturaPropuesta;
 }
 
 /** La propuesta que devuelve el destino `D` (p. ej. `'gasto'` → `GastoPropuesto`). */

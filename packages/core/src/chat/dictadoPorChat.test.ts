@@ -98,6 +98,23 @@ describe('dictarPorChat', () => {
     }
   });
 
+  it('SM-P13 factura: el kind es dictado:factura y devuelve la propuesta con su factura_id (no emite)', async () => {
+    expect(kindDictado('factura')).toBe('dictado:factura');
+    const card = { kind: 'factura_propuesta', data: { factura_id: 'fac-1', faltantes: [], items: [], total: '1500.00' } };
+    const { p, enviar } = puertos([respuesta(6, { id: 6, card })]);
+    const r = await dictarPorChat({ destino: 'factura', texto: 'factura a Pérez por 1500', sessionId: 's' }, p);
+    expect(enviar).toHaveBeenCalledWith(expect.objectContaining({ kind: 'dictado:factura' }));
+    expect(r.status).toBe('ok');
+    if (r.status !== 'ok' || r.resultado.destino !== 'factura') throw new Error('esperaba factura');
+    expect(r.resultado.propuesta.facturaId).toBe('fac-1');
+  });
+
+  it('SM-P13 factura incompleta (pregunta sin card): respuesta_sin_card con su texto — la card llega en el 2º turno', async () => {
+    const { p } = puertos([respuesta(6, { id: 6, text: '¿A quién le facturo?' })]);
+    const r = await dictarPorChat({ destino: 'factura', texto: 'una factura', sessionId: 's' }, p);
+    expect(r).toMatchObject({ status: 'sin_propuesta', motivo: 'respuesta_sin_card', texto: '¿A quién le facturo?' });
+  });
+
   it('una pregunta del backend (texto sin card) vuelve como respuesta_sin_card con su texto', async () => {
     const { p } = puertos([respuesta(6, { id: 6, text: '¿Cuánto fue?' })]);
     const r = await dictarPorChat({ destino: 'gasto', texto: 'x', sessionId: 's' }, p);

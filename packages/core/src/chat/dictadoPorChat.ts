@@ -2,6 +2,7 @@ import type { DatosCliente } from '../api/clientes';
 import type { ContextoTranscripcion } from '../api/transcribir';
 import type { ChatRequest, ChatResponse, KindDictado, ReplyCard, ReplyResponse } from '../api/types';
 import { leerClientePropuesto } from './clientePropuesto';
+import { leerFacturaPropuesta, type FacturaPropuesta } from './facturaPropuesta';
 import { leerGastoPropuesto, type GastoPropuesto } from './gastoPropuesto';
 import { leerIngresoPropuesto, type IngresoPropuesto } from './ingresoPropuesto';
 import { leerPresupuestoPropuesto, type PresupuestoPropuesto } from './presupuestoPropuesto';
@@ -33,8 +34,8 @@ import { leerPresupuestoPropuesto, type PresupuestoPropuesto } from './presupues
  * es exactamente lo que envenena la medición.
  */
 
-/** Los destinos con formulario que prellenar; `factura`/`bi` (SM-J1) son sólo telemetría y van al chat, sin lector. */
-export type DestinoDictado = Exclude<ContextoTranscripcion, 'factura' | 'bi'>;
+/** Los destinos con una propuesta que leer; `bi` (sólo preguntas) va al chat, sin lector. `factura` suma desde SM-P13: el backend lo resuelve a `emitir_factura`, que PROPONE (nunca emite). */
+export type DestinoDictado = Exclude<ContextoTranscripcion, 'bi'>;
 
 export function kindDictado(destino: DestinoDictado): KindDictado {
   return `dictado:${destino}`;
@@ -44,7 +45,8 @@ export type PropuestaDictado =
   | { destino: 'gasto'; propuesta: GastoPropuesto }
   | { destino: 'ingreso'; propuesta: IngresoPropuesto }
   | { destino: 'presupuesto'; propuesta: PresupuestoPropuesto }
-  | { destino: 'cliente'; propuesta: DatosCliente };
+  | { destino: 'cliente'; propuesta: DatosCliente }
+  | { destino: 'factura'; propuesta: FacturaPropuesta };
 
 export type MotivoSinPropuesta =
   /** No se pudo ni enviar (red, 401, 5xx). */
@@ -86,6 +88,7 @@ const LECTORES: { [D in DestinoDictado]: (card: ReplyCard | undefined) => Extrac
   ingreso: leerIngresoPropuesto,
   presupuesto: leerPresupuestoPropuesto,
   cliente: leerClientePropuesto,
+  factura: leerFacturaPropuesta,
 };
 
 function esperarReal(ms: number): Promise<void> {
@@ -111,6 +114,10 @@ function leerCard(destino: DestinoDictado, card: ReplyCard | undefined): Propues
     }
     case 'cliente': {
       const p = LECTORES.cliente(card);
+      return p !== null ? { destino, propuesta: p } : null;
+    }
+    case 'factura': {
+      const p = LECTORES.factura(card);
       return p !== null ? { destino, propuesta: p } : null;
     }
   }
