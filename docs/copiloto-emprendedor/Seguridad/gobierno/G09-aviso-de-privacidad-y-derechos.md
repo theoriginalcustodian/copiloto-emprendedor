@@ -4,7 +4,7 @@
 **Propósito:** operar el copiloto del emprendedor (chat, integraciones, cobros, memoria de actividad).
 **Categorías:** identificación (email), contenido de conversación, datos fiscales (CUIT), datos de las apps conectadas, pagos.
 **Terceros:** G3/G8. **Retención:** G10.
-**Derechos:** acceso, rectificación, supresión, portabilidad. **Mecanismo hoy: manual vía el operador, sin endpoint** (BRECHA SEC-D8). El texto legal se versiona con el ratchet `LEGAL_VERSION`; este borrador no lo reemplaza.
+**Derechos:** acceso, rectificación, supresión, portabilidad. **Mecanismo: autoservicio** — exportación `GET /cuenta/exportar` y supresión `DELETE /cuenta` (confirmación exacta), o por el operador (`POST /admin/tenants/{id}/borrar`). Se conservan, seudonimizados, los comprobantes fiscales emitidos, la auditoría de acciones del operador y los conteos de uso. El texto legal se versiona con el ratchet `LEGAL_VERSION`; este borrador no lo reemplaza.
 **Contacto:** **[PENDIENTE operador]**.
 
 **Pregunta cerrada con el dato (SEC-D10, medido 2026-11-05):** la consola del operador (`copiloto_consola`, SELECT-only) lee `copiloto_mensajes` de **todos** los tenants por diseño. ¿Es ese el alcance deseado y debe decirse en este aviso? Decide el operador.

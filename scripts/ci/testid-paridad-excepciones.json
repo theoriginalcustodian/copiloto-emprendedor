@@ -4727,6 +4727,46 @@
       "motivo": "SM-I2 extrajo el dock (campo + mic chico al pie, D2) en mobile; la web sigue con su composer porque en el sprint de correcciones del mapa manda mobile. Chip «Por voz» del dock de función.",
       "pantalla": "modules/voz"
     },
+    "modules/voz::dock-funcion-confirmar": {
+      "en": [
+        "apps/mobile/src/modules/voz/DockFuncion.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-05",
+      "id": "dock-funcion-confirmar",
+      "motivo": "SM-P14 (2026-11-05): confirmacion del dictado en el dock de funcion, solo mobile. La web no tiene dock de voz con transcript intermedio: dicta con el mismo mic sin paso de confirmacion; llevar el criterio a web es decision de frontend2 (contrato planificacion 2026-11-05, el corte va en la UI). Dueno: frontend1. Disparador: cuando frontend2 tome el mismo criterio en web, sacar estas cuatro.",
+      "pantalla": "modules/voz"
+    },
+    "modules/voz::dock-funcion-confirmar-descartar": {
+      "en": [
+        "apps/mobile/src/modules/voz/DockFuncion.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-05",
+      "id": "dock-funcion-confirmar-descartar",
+      "motivo": "SM-P14 (2026-11-05): confirmacion del dictado en el dock de funcion, solo mobile. La web no tiene dock de voz con transcript intermedio: dicta con el mismo mic sin paso de confirmacion; llevar el criterio a web es decision de frontend2 (contrato planificacion 2026-11-05, el corte va en la UI). Dueno: frontend1. Disparador: cuando frontend2 tome el mismo criterio en web, sacar estas cuatro.",
+      "pantalla": "modules/voz"
+    },
+    "modules/voz::dock-funcion-confirmar-enviar": {
+      "en": [
+        "apps/mobile/src/modules/voz/DockFuncion.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-05",
+      "id": "dock-funcion-confirmar-enviar",
+      "motivo": "SM-P14 (2026-11-05): confirmacion del dictado en el dock de funcion, solo mobile. La web no tiene dock de voz con transcript intermedio: dicta con el mismo mic sin paso de confirmacion; llevar el criterio a web es decision de frontend2 (contrato planificacion 2026-11-05, el corte va en la UI). Dueno: frontend1. Disparador: cuando frontend2 tome el mismo criterio en web, sacar estas cuatro.",
+      "pantalla": "modules/voz"
+    },
+    "modules/voz::dock-funcion-confirmar-texto": {
+      "en": [
+        "apps/mobile/src/modules/voz/DockFuncion.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-05",
+      "id": "dock-funcion-confirmar-texto",
+      "motivo": "SM-P14 (2026-11-05): confirmacion del dictado en el dock de funcion, solo mobile. La web no tiene dock de voz con transcript intermedio: dicta con el mismo mic sin paso de confirmacion; llevar el criterio a web es decision de frontend2 (contrato planificacion 2026-11-05, el corte va en la UI). Dueno: frontend1. Disparador: cuando frontend2 tome el mismo criterio en web, sacar estas cuatro.",
+      "pantalla": "modules/voz"
+    },
     "src/auth::legal-screen-descargo": {
       "en": [
         "apps/copiloto-web/src/auth/LegalScreen.tsx"

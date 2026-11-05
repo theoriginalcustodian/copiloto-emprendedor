@@ -38,6 +38,10 @@ class _CambiarEstadoTenantBody(BaseModel):
     status: str
 
 
+class _BorrarTenantBody(BaseModel):
+    confirmar: str = ""
+
+
 class _ResponderTicketBody(BaseModel):
     texto: str
     cerrar: bool = False
@@ -46,7 +50,8 @@ class _ResponderTicketBody(BaseModel):
 def create_admin_app(*, require_admin: Callable, temporal_client=None,
                      temporal_namespace: str = "default", temporal_task_queue: str = "agent-emprendedor",
                      consola_conn_factory: Callable | None = None,
-                     conn_factory: Callable | None = None) -> FastAPI:
+                     conn_factory: Callable | None = None,
+                     iniciar_borrado: Callable | None = None) -> FastAPI:
     app = FastAPI(title="Copiloto Consola")
 
     @app.get("/admin/salud")
@@ -120,6 +125,23 @@ def create_admin_app(*, require_admin: Callable, temporal_client=None,
                 accion="tenant.estado",
                 detalle={"cliente_id": cliente_id, "de": anterior, "a": body.status})
         return {"cliente_id": cliente_id, "de": anterior, "a": body.status}
+
+    @app.post("/admin/tenants/{cliente_id}/borrar", status_code=202)
+    async def tenants_borrar(cliente_id: str, body: _BorrarTenantBody,
+                             claims: dict = Depends(require_admin)) -> dict:
+        """SEC-D8. Baja DEFINITIVA del tenant (workflow durable). Exige reescribir el `cliente_id` en el
+        body: un POST por error no destruye una cuenta. Se AUDITA ANTES de arrancar (una mutación
+        irreversible sin rastro es lo que CONS1 impide); el recibo de conteos lo escribe el workflow."""
+        if body.confirmar != cliente_id:
+            raise HTTPException(status_code=422, detail="confirmar debe repetir el cliente_id")
+        if iniciar_borrado is None or conn_factory is None:
+            raise HTTPException(status_code=503, detail="borrado de tenant no disponible")
+        with tenant(cliente_id):
+            AuditoriaStore(conn_factory, cliente_id).registrar(
+                admin_user_id=claims["sub"], admin_email=claims.get("email") or "",
+                accion="tenant.borrado.solicitado", detalle={"cliente_id": cliente_id})
+        await iniciar_borrado(cliente_id, claims["sub"], claims.get("email") or "")
+        return {"cliente_id": cliente_id, "estado": "en_curso"}
 
     @app.post("/admin/errores/{trauma_id}/reintentar")
     async def errores_reintentar(trauma_id: int, claims: dict = Depends(require_admin)) -> dict:

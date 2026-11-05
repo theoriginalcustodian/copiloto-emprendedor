@@ -29,6 +29,38 @@ DEFAULT_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
 # más barato y con más cupo por hora, algo menos preciso) — cambiar y volver atrás es editar el env del servicio.
 DEFAULT_MODEL = os.environ.get("GROQ_STT_MODEL") or "whisper-large-v3"
 
+# Defensa A contra la alucinación de Whisper ante audio sin voz (medido en prod 2026-11-05: silencio puro → «Gracias.»
+# 6/6). Se pide `verbose_json` y, si TODOS los segmentos traen `no_speech_prob` por encima del umbral, la transcripción
+# se descarta (devuelve "" — todos los llamadores ya lo traducen a 422 «no se entendió el audio»).
+# `STT_NO_SPEECH_MAX` (default 0,6 = el valor de referencia de Whisper) se lee en cada llamada; fuera de (0,1) desactiva.
+# MEDIDO y límite honesto: sobre silencio Groq dio 0,70 y sobre un tono 0,99 (se descartan), pero sobre hiss y ruido
+# rosa dio 0,03–0,21 CON texto alucinado — `no_speech_prob` no ve ruido real. Eso lo cubre la defensa B
+# (`apps/copiloto/audio_sin_voz.py`, energía + dinámica, antes de llamar al STT). Las dos se necesitan.
+NO_SPEECH_MAX_DEFAULT = 0.6
+_log_stt = logging.getLogger(__name__ + ".sin_voz")
+
+
+def _texto_si_hay_voz(d: dict) -> str:
+    """Texto del STT, o "" si el proveedor declara que ningún segmento tiene voz. Sin `segments` o sin el campo
+    `no_speech_prob` NO se descarta nada: ante lo que no se puede medir, decide el texto."""
+    texto = (d.get("text") or "").strip()
+    segmentos = d.get("segments") or []
+    if not texto or not segmentos:
+        return texto
+    try:
+        maximo = float(os.environ.get("STT_NO_SPEECH_MAX") or NO_SPEECH_MAX_DEFAULT)
+    except ValueError:
+        # env mal tipeado: NO se apaga el guard (sería fail-open por un typo) — vuelve al default, con rastro.
+        _log_stt.warning('{"evento": "stt_env_invalido", "var": "STT_NO_SPEECH_MAX"}')
+        maximo = NO_SPEECH_MAX_DEFAULT
+    if not 0 < maximo < 1:
+        return texto
+    probs = [s.get("no_speech_prob") for s in segmentos]
+    if all(isinstance(p, (int, float)) and p > maximo for p in probs):
+        _log_stt.info('{"evento": "stt_sin_voz", "no_speech_prob_min": %.3f, "umbral": %.2f}', min(probs), maximo)
+        return ""
+    return texto
+
 
 class GroqSTT:
     """Cliente STT con Groq Whisper. `transcribe(audio_bytes)` -> texto plano. Telegram envía `.oga` (OGG/Opus);
@@ -58,7 +90,7 @@ class GroqSTT:
             "Content-Type": f"multipart/form-data; boundary={boundary}",
             "User-Agent": "uc-clinic-agent/1.0"})   # Groq/Cloudflare devuelve 403 al UA por defecto de urllib
         d = self._post(req)
-        return (d.get("text") or "").strip()
+        return _texto_si_hay_voz(d)
 
     def _post(self, req: urllib.request.Request) -> dict:
         """POST con reintento SÓLO ante 429 (rate limit): espera `retry-after` (tope `espera_max_429`, + jitter para
@@ -84,7 +116,7 @@ class GroqSTT:
         nl = b"\r\n"
         b = boundary.encode()
         parts: list[bytes] = []
-        for name, value in (("model", self.model), ("language", self.language), ("response_format", "json")):
+        for name, value in (("model", self.model), ("language", self.language), ("response_format", "verbose_json")):
             parts += [b"--" + b + nl,
                       f'Content-Disposition: form-data; name="{name}"'.encode() + nl + nl,
                       value.encode() + nl]
@@ -127,13 +159,13 @@ class OpenRouterSTT:
         fmt = _OR_FORMATOS.get(ext) or _OR_FORMATOS.get((content_type or "").split("/")[-1].split(";")[0].lower())
         if not fmt:
             raise ValueError(f"formato de audio no soportado por OpenRouter: {filename!r} / {content_type!r}")
-        body = {"model": self.model, "language": self.language,
+        body = {"model": self.model, "language": self.language, "response_format": "verbose_json",
                 "input_audio": {"data": base64.b64encode(audio_bytes).decode(), "format": fmt}}
         req = urllib.request.Request(self._url, data=json.dumps(body).encode(), method="POST", headers={
             "Authorization": f"Bearer {key}", "Content-Type": "application/json", "User-Agent": "uc-clinic-agent/1.0"})
         with urllib.request.urlopen(req, timeout=self._timeout) as resp:
             d = json.loads(resp.read().decode())
-        return (d.get("text") or "").strip()
+        return _texto_si_hay_voz(d)
 
 
 def _es_recuperable(e: BaseException) -> bool:
