@@ -14,21 +14,24 @@ vi.mock('@copiloto/core', async (importOriginal) => {
     esperarEcoDelSignal: vi.fn(),
     esperarEstadoEstable: vi.fn(),
     estadoFactura: vi.fn(),
-    sendChat: vi.fn(),
-    getReply: vi.fn(),
     quitarItem: vi.fn(),
     setCliente: vi.fn(),
     setDatosVenta: vi.fn(),
   };
 });
 
+/** El dictado viaja por la capa de red de la WEB (`lib/api`), no por el core. */
+vi.mock('../../lib/api', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../lib/api')>();
+  return { ...original, api: { ...original.api, sendChat: vi.fn(), getReply: vi.fn() } };
+});
+
+import { api } from '../../lib/api';
 import {
   confirmarConTokenFresco,
   crearFactura,
   estadoAfip,
   esperarEstadoEstable,
-  getReply,
-  sendChat,
   tomarPendiente,
   type EstadoAfip,
   type EstadoFacturaResp,
@@ -39,8 +42,8 @@ import { PantallaFacturacion } from './PantallaFacturacion';
 const mockCrearFactura = vi.mocked(crearFactura);
 const mockEstadoAfip = vi.mocked(estadoAfip);
 const mockEsperarEstadoEstable = vi.mocked(esperarEstadoEstable);
-const mockSendChat = vi.mocked(sendChat);
-const mockGetReply = vi.mocked(getReply);
+const mockSendChat = vi.mocked(api.sendChat);
+const mockGetReply = vi.mocked(api.getReply);
 const mockConfirmar = vi.mocked(confirmarConTokenFresco);
 
 function estadoMock(over: Partial<EstadoFacturaResp> = {}): EstadoFacturaResp {

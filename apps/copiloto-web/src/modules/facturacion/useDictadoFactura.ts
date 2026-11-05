@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import {
-  dictarPorChat,
-  getReply,
-  sendChat,
-  type FacturaPropuesta,
-  type MotivoSinPropuesta,
-  type PuertosDictado,
-} from '@copiloto/core';
+import { dictarPorChat, type FacturaPropuesta, type MotivoSinPropuesta, type PuertosDictado } from '@copiloto/core';
 
+import { api } from '../../lib/api';
 import { generarId } from '../../util/id';
 
 /**
@@ -37,8 +31,8 @@ export const AVISO_DICTADO_FACTURA: Record<MotivoSinPropuesta, string> = {
 };
 
 const PUERTOS_REALES: PuertosDictado = {
-  enviar: (req) => sendChat(req),
-  leer: (sessionId, afterId) => getReply(sessionId, afterId),
+  enviar: (req) => api.sendChat(req),
+  leer: (sessionId, afterId) => api.getReply(sessionId, afterId),
 };
 
 export interface DictadoFactura {
