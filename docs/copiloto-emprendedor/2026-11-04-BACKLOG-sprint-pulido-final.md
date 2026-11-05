@@ -44,12 +44,12 @@ campo»*.
 
 | Ficha | Issue | Estado | Que falta del DoD / evidencia de cierre |
 |---|---|---|---|
-| **SM-P1** | `sin-issue` | 🟧 DOD-PARCIAL | Medido en device el 2026-11-05 (APK ef143e95): los 5 temas de «Como usar» SI llegan al chat como mensaje del usuario … |
+| **SM-P1** | `sin-issue` | 🟧 DOD-PARCIAL | EL FIX YA ESTA: lo que esta Falta pedia (que el dismissAll de PantallaComoUsarLaApp deje el chat ARRIBA) se implement… |
 | **SM-P2** | `sin-issue` | 🟧 DOD-PARCIAL | NO ejercitada en la pasada del 2026-11-05 (frontend1 lo declara explicitamente: sin evidencia propia del isotipo). El… |
 | **SM-P3** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA. La Falta que esta ficha arrastraba («pasada de device, el release fb0fb9d3 no trae estos fixes») era de cuando … |
 | **SM-P4** | `sin-issue` | 🟧 DOD-PARCIAL | NO ejercitada en la pasada del 2026-11-05: la camara de Soporte no se abrio (frontend1 lo declara). El APK ef143e95 (… |
 | **SM-P5** | `sin-issue` | 🟧 DOD-PARCIAL | QUEDA UN SOLO DISPARADOR: build nuevo de main + device. Las dos cosas que ese build destraba, ambas YA en main: (1) e… |
-| **SM-P6** | `sin-issue` | 🟧 DOD-PARCIAL | Medido en device el 2026-11-05: el dock de Facturacion SI se ve con gate «ARCA no configurada» y vista «listado» - es… |
+| **SM-P6** | `sin-issue` | 🟧 DOD-PARCIAL | YA NO DEPENDE DE BACKEND. Medido en device el 2026-11-05: el dock de Facturacion SI se ve con gate «ARCA no configura… |
 | **SM-P7** | `sin-issue` | ✅ TERMINADO | DoD completo, cierre_ de frontend2 (2026-11-05) con los tres campos. Playwright en Gastos 390x844: oscuro blur 16px a… |
 | **SM-P8** | `sin-issue` | ✅ TERMINADO | 82f8451e (#1651). Tabla medida: (a) puente Como usar NO APLICA: la web navega por tabs sin stack, PantallaComoUsarLaA… |
 | **SM-P9** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA de decision: lo que queda es IMPLEMENTACION y vive en otras fichas. SM-P5 (dock unico mobile, Mi dia editable) y… |
@@ -66,7 +66,7 @@ campo»*.
 ### SM-P1 · `sin-issue` — «Cómo usar la app»: tocar una card no llega a destino, vuelve a Ajustes
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Medido en device el 2026-11-05 (APK ef143e95): los 5 temas de «Como usar» SI llegan al chat como mensaje del usuario con su pregunta y reciben respuesta. PERO la pila queda en el escritorio de funciones: el chat queda DETRAS y el usuario tiene que subirlo a mano. La queja original de esta ficha era «tocar una card no llega a destino»; si hay que subir el chat a mano, el destino no se alcanza. DECISION de planificacion 2026-11-05: NO es el comportamiento deseado - el dismissAll de PantallaComoUsarLaApp tiene que dejar el chat ARRIBA. Falta ese fix (dueno frontend1) y volver a verlo en device.
+- **Falta:** EL FIX YA ESTA: lo que esta Falta pedia (que el dismissAll de PantallaComoUsarLaApp deje el chat ARRIBA) se implemento y esta en main -- d9cbb1a6 (#1685), ChatView avisa con onPendienteMandado y PantallaPrincipal cierra el escritorio y sube el chat; ChatView 45/45 con control negativo Y positivo. Verificado por CONTENIDO (git log origin/main -S onPendienteMandado -> d9cbb1a6; control negativo con un identificador inventado -> 0 commits), no por el sha citado en el cierre_, porque la cita bab2217d murio en el squash. Medido en device el 2026-11-05 (APK ef143e95) ANTES del fix: los 5 temas SI llegan al chat con su pregunta y reciben respuesta, pero la pila quedaba en el escritorio con el chat detras. QUEDA SOLO DEVICE con un build que incluya d9cbb1a6: el APK instalado (7d278a2c) es anterior. Mismo disparador que SM-P5 y SM-P12 -- se cierran en la MISMA corrida.
 - **Cierre:** 6a1ae914 (#1650): PantallaComoUsarLaApp deja la pregunta y hace dismissAll al chat, test PantallaComoUsarLaApp.test.tsx. Premisa confirmada por el operador 2026-11-04, textual: 'como el prototipo' (index.html:3614), las 5 cards llevan AL CHAT con la pregunta dicha, no a la funcion.
 - **Dueño:** frontend1
 - **Reportado por el operador (2026-11-04):** «cuando hago click en cualquier opción como cargar un
@@ -192,7 +192,7 @@ campo»*.
 ### SM-P6 · `sin-issue` — El dock de Facturación existe pero no se ve: medir cuál condición lo oculta
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Medido en device el 2026-11-05: el dock de Facturacion SI se ve con gate «ARCA no configurada» y vista «listado» - esa combinacion no lo oculta (captura fac1.png), lo que responde el DoD 9 por la mitad. La otra mitad (gate «listo» + «listado») queda SIN PROBAR porque e2e-device no tiene perfil fiscal ni credencial: depende del tenant sintetico que le toca a backend. Y el DoD pedia comparar «las 5 pieles»: son DOS (ODOBI claro y oscuro) mas «Como el telefono» que es una regla, no una piel (skinsCatalogo.ts:6,17,22; PantallaSkins.tsx:11,138) - el 5 lo puse yo sin instrumento.
+- **Falta:** YA NO DEPENDE DE BACKEND. Medido en device el 2026-11-05: el dock de Facturacion SI se ve con gate «ARCA no configurada» y vista «listado» -- esa combinacion no lo oculta (fac1.png), que responde el DoD 9 por la mitad. La otra mitad (gate «listo» + «listado») quedaba esperando un tenant sintetico que le tocaba a backend, y ESE DISPARADOR YA SE CUMPLIO: backend midio el 2026-11-05 con login real de e2e-device que perfil_completo=true, puede_facturar=true, motivo_no_puede_facturar=null, con CUIT sintetico 20111111112 en homologacion que nunca firma contra ARCA (46 passed en el VPS); no sembro nada, el estado ya existia. Asi que la mitad que falta se mide con el MISMO APK instalado, sin build nuevo y sin backend: reabrir Facturacion con e2e-device. Si sigue apareciendo «ARCA no configurada» el defecto es del lado app (precedente SM-N44: la app reescribia conectado en su cache) y lo que atribuye es el request que la app hace a /afip/estado -- bajado como pedido_ a frontend1. Y el DoD pedia comparar «las 5 pieles»: son DOS (ODOBI claro y oscuro) mas «Como el telefono» que es una regla, no una piel (skinsCatalogo.ts:6,17,22; PantallaSkins.tsx:11,138) -- el 5 lo puse yo sin instrumento.
 - **Cierre:** 0212ba19 (#1653): PantallaFacturacion.tsx:706 monta DockAlChat sin condiciones, mic manda audio al chat (P10 por decision del operador 2026-11-04). Tests PantallaFacturacion.test.tsx: despacha antes de router.back, dock aun sin CUIT, sin chat listo no navega.
 - **Dueño:** frontend1
 - **Medido:** `facturacion/PantallaFacturacion.tsx:706` monta `DockAlChat` **sólo** con
