@@ -1763,16 +1763,6 @@
       "id": "chat-area",
       "motivo": "SM-N25 (2026-11-02): estructura del dock flotante del chat MOBILE (la lista corre bajo el campo y el mic). Es geometria de la app nativa; el chat web no tiene un overlay equivalente que medir con este id."
     },
-    "modules/chat::chat-aviso-voz": {
-      "en": [
-        "apps/mobile/src/modules/chat/ChatView.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-11-05",
-      "id": "chat-aviso-voz",
-      "motivo": "SM-P14 (2026-11-05): aviso bajo el dock del chat cuando el dictado no se entiende o falla la transcripcion; el mic del chat ahora transcribe y pega en el composer. Solo mobile: llevar el criterio a la web es decision de frontend2. Dueno: frontend1. Disparador: cuando frontend2 tome el mismo criterio en web, sacar esta.",
-      "pantalla": "modules/chat"
-    },
     "modules/chat::chat-composer": {
       "en": [
         "apps/mobile/src/modules/chat/Composer.tsx"

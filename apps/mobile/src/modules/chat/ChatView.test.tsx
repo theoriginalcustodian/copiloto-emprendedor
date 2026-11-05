@@ -603,7 +603,7 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
     expect(api.sendAudio).not.toHaveBeenCalled();
   });
 
-  it('🔴 soltar SIN fijar TRANSCRIBE y PEGA el texto en el composer -- no manda nada solo (SM-P14)', async () => {
+  it('🔴 soltar SIN fijar MANDA el audio al chat (como WhatsApp) -- no transcribe ni pega', async () => {
     mockGrabadorVoz.uri = 'file:///cache/voz.m4a';
     await renderChatView();
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
@@ -612,14 +612,14 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
 
     await fireEvent.press(screen.getByTestId('boton-voz-soltar-test'));
 
-    await waitFor(() => expect(screen.getByTestId('chat-composer').props.value).toBe('gasté cuatro mil en nafta'));
-    expect(api.sendAudio).not.toHaveBeenCalled();
-    expect(api.sendChat).not.toHaveBeenCalled();
+    await waitFor(() => expect(api.sendAudio).toHaveBeenCalledTimes(1));
+    expect(transcribir).not.toHaveBeenCalled();
+    expect(screen.getByTestId('chat-composer').props.value).toBe('');
     await waitFor(() => expect(screen.queryByTestId('onda-flotante')).toBeNull());
     expect(screen.queryByTestId('voz-enviar')).toBeNull();
   });
 
-  it('fijado, Enviar -- mismo camino que soltar: transcribe y pega, no manda', async () => {
+  it('fijado, Enviar -- mismo camino que soltar: manda el audio', async () => {
     mockGrabadorVoz.uri = 'file:///cache/voz.m4a';
     await renderChatView();
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
@@ -629,72 +629,9 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
 
     await fireEvent.press(screen.getByTestId('voz-enviar'));
 
-    await waitFor(() => expect(screen.getByTestId('chat-composer').props.value).toBe('gasté cuatro mil en nafta'));
-    expect(api.sendAudio).not.toHaveBeenCalled();
+    await waitFor(() => expect(api.sendAudio).toHaveBeenCalledTimes(1));
+    expect(transcribir).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.queryByTestId('voz-enviar')).toBeNull());
-  });
-
-  // SM-P14 — control adversarial + positivo del pegado. Sin piso de longitud: «Sí» es una confirmación HITL real.
-  it('🔴 una sola palabra («Sí») TAMBIÉN se pega: el chat muestra, no rechaza por longitud', async () => {
-    jest.mocked(transcribir).mockResolvedValue({ transcript: 'Sí' });
-    mockGrabadorVoz.uri = 'file:///cache/voz.m4a';
-    await renderChatView();
-    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
-    await fireEvent.press(screen.getByTestId('boton-voz'));
-    await waitFor(() => expect(screen.getByTestId('onda-flotante')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('boton-voz-soltar-test'));
-
-    await waitFor(() => expect(screen.getByTestId('chat-composer').props.value).toBe('Sí'));
-    expect(api.sendChat).not.toHaveBeenCalled();
-  });
-
-  it('el texto pegado no pisa lo que se escribió mientras se transcribía: queda debajo', async () => {
-    let resolver: (v: { transcript: string }) => void = () => {};
-    jest.mocked(transcribir).mockReturnValue(new Promise((r) => { resolver = r; }));
-    mockGrabadorVoz.uri = 'file:///cache/voz.m4a';
-    await renderChatView();
-    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
-    await fireEvent.press(screen.getByTestId('boton-voz'));
-    await waitFor(() => expect(screen.getByTestId('onda-flotante')).toBeTruthy());
-    await fireEvent.press(screen.getByTestId('boton-voz-soltar-test'));
-    await waitFor(() => expect(transcribir).toHaveBeenCalledTimes(1));
-
-    await fireEvent.changeText(screen.getByTestId('chat-composer'), 'borrador previo');
-    resolver({ transcript: 'gasté cuatro mil en nafta' });
-
-    await waitFor(() => expect(screen.getByTestId('chat-composer').props.value).toBe('gasté cuatro mil en nafta\n\nborrador previo'));
-  });
-
-  it('transcripción vacía: aviso legible, el composer queda vacío y no se manda nada', async () => {
-    jest.mocked(transcribir).mockResolvedValue({ transcript: '   ' });
-    mockGrabadorVoz.uri = 'file:///cache/voz.m4a';
-    await renderChatView();
-    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
-    await fireEvent.press(screen.getByTestId('boton-voz'));
-    await waitFor(() => expect(screen.getByTestId('onda-flotante')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('boton-voz-soltar-test'));
-
-    await waitFor(() => expect(screen.getByTestId('chat-aviso-voz')).toHaveTextContent(/No se entendió el audio/));
-    expect(screen.getByTestId('chat-composer').props.value).toBe('');
-    expect(api.sendChat).not.toHaveBeenCalled();
-    expect(api.sendAudio).not.toHaveBeenCalled();
-  });
-
-  it('transcripción que falla: aviso traducido, sin texto pegado ni envío', async () => {
-    jest.mocked(transcribir).mockRejectedValue(new Error('sin red'));
-    mockGrabadorVoz.uri = 'file:///cache/voz.m4a';
-    await renderChatView();
-    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
-    await fireEvent.press(screen.getByTestId('boton-voz'));
-    await waitFor(() => expect(screen.getByTestId('onda-flotante')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('boton-voz-soltar-test'));
-
-    await waitFor(() => expect(screen.getByTestId('chat-aviso-voz')).toHaveTextContent(/No pudimos transcribir/));
-    expect(screen.getByTestId('chat-composer').props.value).toBe('');
-    expect(api.sendChat).not.toHaveBeenCalled();
   });
 
   it('fijado, Eliminar -- cancela ANTES de transcribir: no se transcribe ni se manda nada (salida de descarte #1)', async () => {
