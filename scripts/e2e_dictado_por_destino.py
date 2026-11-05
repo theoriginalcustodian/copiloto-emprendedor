@@ -8,7 +8,7 @@ la card del destino cuando el scope lo obliga — y el control: la misma frase a
 Qué afirma (binario):
   1. cada uno de los 4 destinos → una reply con `card.kind == <destino>_propuesto` en el session_id
      NAMESPACEADO que devolvió `/chat` (y el reply NO le pregunta «qué querés hacer»);
-  2. un destino fuera de la lista (`dictado:factura`, `dictado:`) → 422 y no se crea ninguna reply;
+  2. un destino fuera de la lista (`dictado:facturas`, `dictado:`) → 422 y no se crea ninguna reply;
   3. el hilo del chat normal no recibe nada del dictado (otro session_id → /reply vacío).
 El control con el chat normal se IMPRIME pero no se afirma: un modelo real es estocástico y «a veces
 también acierta por el camino genérico» es exactamente el caso que el scope vuelve determinista.
@@ -80,7 +80,7 @@ def main() -> int:
         if chat.get("replies"):
             fallos.append(f"{destino}: el dictado dejó replies en el hilo del chat ({sid})")
 
-    for kind in ("dictado:factura", "dictado:", "dictado:GASTO"):
+    for kind in ("dictado:facturas", "dictado:", "dictado:GASTO"):
         r = _post_chat(token, f"e2e-dictado-rechazo-{corrida}", "cinco mil de nafta", kind)
         print(f"[rechazo {kind!r}] POST /chat -> {r.status_code}")
         if r.status_code != 422:
