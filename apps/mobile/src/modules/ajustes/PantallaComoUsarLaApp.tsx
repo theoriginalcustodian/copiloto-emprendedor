@@ -32,7 +32,9 @@ import { useTema } from '../../theme/ThemeProvider';
  * está apilada sobre Ajustes, que está sobre el chat — un `back()` dejaba la pregunta colgada en
  * Ajustes); el chat de abajo la manda al recuperar el foco, **con los datos del emprendedor a
  * mano**, que es lo que una ayuda escrita no puede hacer. Los cinco temas van al chat, igual que
- * en el prototipo (`index.html:3614`, handler único `data-tema`): ninguno abre otro flujo.
+ * en el prototipo (`index.html:3614`, handler único `data-tema`): ninguno abre otro flujo. Confirmado por
+ * el operador el 2026-11-04, textual: *«como el prototipo»* — «emití tu primera factura» te lo explica en el
+ * chat, no abre Facturación.
  *
  * 🔴 **Los ejemplos siguen viniendo de `GET /capacidades`, no escritos acá.** Es la propiedad que
  * hacía valiosa a la pantalla anterior y no se pierde en la fusión: el endpoint publica una capacidad

@@ -44,10 +44,10 @@ campo»*.
 
 | Ficha | Issue | Estado | Que falta del DoD / evidencia de cierre |
 |---|---|---|---|
-| **SM-P1** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-P2** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-P3** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-P4** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-P1** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
+| **SM-P2** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
+| **SM-P3** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
+| **SM-P4** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
 | **SM-P5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-P6** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-P7** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 2 y 3: el aspecto visual (blur sobre el hilo, translucidez y contraste del texto) NO se verifico en navegador por… |
@@ -63,7 +63,9 @@ campo»*.
 
 ### SM-P1 · `sin-issue` — «Cómo usar la app»: tocar una card no llega a destino, vuelve a Ajustes
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes.
+- **Cierre:** 6a1ae914 (#1650): PantallaComoUsarLaApp deja la pregunta y hace dismissAll al chat, test PantallaComoUsarLaApp.test.tsx. Premisa confirmada por el operador 2026-11-04, textual: 'como el prototipo' (index.html:3614), las 5 cards llevan AL CHAT con la pregunta dicha, no a la funcion.
 - **Dueño:** frontend1
 - **Reportado por el operador (2026-11-04):** «cuando hago click en cualquier opción como cargar un
   gasto simplemente vuelve hacia atrás».
@@ -92,7 +94,9 @@ campo»*.
 
 ### SM-P2 · `sin-issue` — El isotipo de mobile sale 4× más fino que el del mapa
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes.
+- **Cierre:** 6a1ae914 (#1650): Marca.tsx corrige el trazo del isotipo (strokeWidth en unidades del viewBox, sin predividir por la escala); Marca.test.tsx.
 - **Dueño:** frontend1
 - **Reportado por el operador (2026-11-04):** «el isologo es diferente, tiene líneas más finas»,
   comparando el mapa de pantallas con el device.
@@ -116,7 +120,9 @@ campo»*.
 
 ### SM-P3 · `sin-issue` — El dictado del chat ENVÍA solo: no hay forma de arrepentirse
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes.
+- **Cierre:** 6a1ae914 (#1650): ChatView.alAudio transcribe sin contexto y pega en el composer sin enviar (semilla), borrarArchivoLocal en finally; tests en ChatView.test.tsx y PantallaPrincipal.dockMiDia.test.tsx.
 - **Dueño:** frontend1 (backend sólo si `SM-P11` resulta necesaria)
 - **Orden del operador (2026-11-04):** «al apretar dictarlo debe aparecer el texto pegado en el
   campo de entrada de texto para enviarlo, no que se envíe directamente, porque no hay forma ahora
@@ -140,7 +146,9 @@ campo»*.
 
 ### SM-P4 · `sin-issue` — Sacar la cámara del composer de Soporte
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes.
+- **Cierre:** 6a1ae914 (#1650): se retira la camara del composer de Soporte (PantallaSoporte.tsx, textosSoporte.ts, TarjetaTicketSoporte, useTicketsSoporte); PantallaSoporte.test.tsx; fila soporte del mapeo corregida.
 - **Dueño:** frontend1
 - **Orden del operador (2026-11-04):** «en soporte técnico hay que sacar la cámara de fotos que
   tiene a la izquierda del campo de ingreso de texto».

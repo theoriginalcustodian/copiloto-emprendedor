@@ -92,7 +92,7 @@ import {
 
 import { almacenClave } from '../../adapters/almacen';
 import { ThemeProvider } from '../../theme/ThemeProvider';
-import { tomarAvisoParaElChat } from '../../navegacion/avisoParaElChat';
+import { registrarDespachoChat } from '../../navegacion/despachoAlChat';
 import { empujarUnaVez } from '../../navegacion/empujarUnaVez';
 import { CLAVE_CUIT_AFIP } from '../afip/cuitCache';
 import { CLAVE_IDEM_STORAGE_KEY, PantallaFacturacion } from './PantallaFacturacion';
@@ -910,25 +910,58 @@ describe('PantallaFacturacion (mobile) — idem_key en "Nueva factura" (FACTID)'
   });
 
   /**
-   * SM-J1 — el dock de Facturación SIEMBRA el chat; jamás emite. Lo escrito llega como aviso al chat (donde la
-   * card HITL pide confirmación) y la pantalla vuelve atrás. Control negativo: ninguna API de emisión se toca.
+   * SM-J1 + SM-P6/P10 — el dock de Facturación MANDA al chat y recién DESPUÉS vuelve; jamás emite él. La card HITL del
+   * chat sigue siendo el único gate de una emisión. Control negativo: ninguna API de emisión se toca desde acá.
    */
-  it('SM-J1 -- el texto del dock va al chat y NO emite ni crea borrador', async () => {
-    jest.mocked(almacenClave.leer).mockImplementation(async (clave: string) => (clave === CLAVE_CUIT_AFIP ? '20111222339' : null));
-    jest.mocked(estadoAfip).mockResolvedValue(estadoAfipMock());
-    jest.mocked(listarComprobantes).mockResolvedValue({ status: 'ok', comprobantes: [] });
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('dock-funcion')).toBeTruthy());
+  describe('dock de Facturación → chat (despacha primero, vuelve después)', () => {
+    let baja: () => void;
+    const despacho = { texto: jest.fn(), audio: jest.fn() };
+    beforeEach(() => {
+      despacho.texto.mockReset();
+      despacho.audio.mockReset();
+      baja = registrarDespachoChat(despacho);
+    });
+    afterEach(() => baja());
 
-    await fireEvent.changeText(screen.getByTestId('chat-composer'), 'Factura a Pérez por 1500');
-    await fireEvent.press(screen.getByTestId('chat-enviar'));
+    it('el texto del dock se MANDA al chat y DESPUÉS se vuelve; NO emite ni crea borrador', async () => {
+      jest.mocked(almacenClave.leer).mockImplementation(async (clave: string) => (clave === CLAVE_CUIT_AFIP ? '20111222339' : null));
+      jest.mocked(estadoAfip).mockResolvedValue(estadoAfipMock());
+      jest.mocked(listarComprobantes).mockResolvedValue({ status: 'ok', comprobantes: [] });
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('dock-funcion')).toBeTruthy());
 
-    const aviso = tomarAvisoParaElChat();
-    expect(aviso).toMatchObject({ texto: 'Factura a Pérez por 1500', contexto: 'Facturación' });
-    expect(router.back).toHaveBeenCalled();
-    expect(crearFactura).not.toHaveBeenCalled();
-    expect(confirmarConTokenFresco).not.toHaveBeenCalled();
-    expect(setCliente).not.toHaveBeenCalled();
-    expect(agregarItem).not.toHaveBeenCalled();
+      await fireEvent.changeText(screen.getByTestId('chat-composer'), 'Factura a Pérez por 1500');
+      await fireEvent.press(screen.getByTestId('chat-enviar'));
+
+      expect(despacho.texto).toHaveBeenCalledWith('Factura a Pérez por 1500');
+      expect(router.back).toHaveBeenCalled();
+      // EL ORDEN es el pedido del operador: primero la acción, después la vuelta.
+      expect(despacho.texto.mock.invocationCallOrder[0]!).toBeLessThan(jest.mocked(router.back).mock.invocationCallOrder[0]!);
+      expect(crearFactura).not.toHaveBeenCalled();
+      expect(confirmarConTokenFresco).not.toHaveBeenCalled();
+      expect(setCliente).not.toHaveBeenCalled();
+      expect(agregarItem).not.toHaveBeenCalled();
+    });
+
+    it('SM-P6 — el dock está SIEMPRE: aun sin CUIT/gate listo', async () => {
+      jest.mocked(almacenClave.leer).mockResolvedValue(null);
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('dock-funcion')).toBeTruthy());
+    });
+
+    it('sin chat listo NO navega y lo dice (no se pierde el mensaje en silencio)', async () => {
+      baja(); // nadie registrado: el chat aún no hidrató / el onboarding ocupa su lugar
+      jest.mocked(almacenClave.leer).mockImplementation(async (clave: string) => (clave === CLAVE_CUIT_AFIP ? '20111222339' : null));
+      jest.mocked(estadoAfip).mockResolvedValue(estadoAfipMock());
+      jest.mocked(listarComprobantes).mockResolvedValue({ status: 'ok', comprobantes: [] });
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('dock-funcion')).toBeTruthy());
+
+      await fireEvent.changeText(screen.getByTestId('chat-composer'), 'Factura a Pérez por 1500');
+      await fireEvent.press(screen.getByTestId('chat-enviar'));
+
+      await waitFor(() => expect(screen.getByTestId('dock-alchat-aviso')).toBeTruthy());
+      expect(router.back).not.toHaveBeenCalled();
+    });
   });
 });

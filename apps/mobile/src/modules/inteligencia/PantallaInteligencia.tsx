@@ -333,7 +333,7 @@ export function PantallaInteligencia() {
         </>
             )}
         {/* SM-J1: el dock al pie, fuera del scroll. El texto es una pregunta sobre los datos: va al chat. */}
-        {estado === 'ok' && <DockAlChat contexto="bi" origen="Inteligencia" placeholder="Preguntame lo que quieras…" />}
+        <DockAlChat contexto="bi" origen="Inteligencia" placeholder="Preguntame lo que quieras…" />
       </View>
     </MarcoGlass>
   );

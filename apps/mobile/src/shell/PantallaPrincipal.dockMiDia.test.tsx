@@ -89,13 +89,14 @@ import { apiReal as api, leerCalendario, leerTablero, listarCatalogo, transcribi
 import { ThemeProvider } from '../theme/ThemeProvider';
 import { PantallaPrincipal } from './PantallaPrincipal';
 
-describe('PantallaPrincipal — SM-I2: el dock de Mi día entra al chat', () => {
-  it('🔴 lo dictado en Mi día se manda UNA vez por el chat (el del chat, en cambio, transcribe y pega), y tocar el campo no manda nada', async () => {
+describe('PantallaPrincipal — SM-I2/SM-P9: el dock de Mi día entra al chat', () => {
+  it('🔴 el campo de Mi día SE EDITA y lo escrito/dictado se MANDA una vez por el chat; el mic del chat transcribe y pega', async () => {
     jest.mocked(leerTablero).mockResolvedValue({ status: 'ok', tablero: { solapas: [] } } as any);
     jest.mocked(leerCalendario).mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
     jest.mocked(listarCatalogo).mockResolvedValue({ status: 'ok', servicios: [] });
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
     jest.mocked(api.sendAudio).mockResolvedValue({ replies: [], next_id: 0 } as any);
+    jest.mocked(api.sendChat).mockResolvedValue({ replies: [], next_id: 0 } as any);
     const audio = { datos: 'file:///cache/voz.m4a', nombre: 'voz.m4a', tipo: 'audio/mp4' };
     mockVoz.tomar.mockReturnValue(audio);
 
@@ -105,32 +106,45 @@ describe('PantallaPrincipal — SM-I2: el dock de Mi día entra al chat', () => 
       </ThemeProvider>,
     );
 
-    // Hay dos docks vivos: el de Mi día es el único con el campo que abre (no editable).
-    await waitFor(() => expect(screen.getByTestId('chat-composer-abrir')).toBeTruthy());
-    await fireEvent.press(screen.getByTestId('chat-composer-abrir'));
+    // 🔴 SM-P9: el campo de Mi día ya NO es un botón «abrir el chat»: es un campo de texto como el de todas las funciones.
+    await waitFor(() => expect(screen.getAllByTestId('chat-composer')).toHaveLength(2));
+    expect(screen.queryByTestId('chat-composer-abrir')).toBeNull();
     expect(api.sendChat).not.toHaveBeenCalled();
     expect(api.sendAudio).not.toHaveBeenCalled();
 
+    // 🔴 El orden del árbol: el PRIMER dock es el del CHAT (`chat-dock-flotante`) y el segundo el de Mi día
+    // (`panel-pie-abajo`). Medido en el árbol, no supuesto: este archivo pulsaba `mics[0]` creyendo que era el de Mi día
+    // y probaba el envío del chat. Además el pie de Mi día tiene `pointerEvents="none"` mientras el chat está arriba, así
+    // que RNTL descarta un evento sobre él; se invoca el handler del host, que es lo que el gesto real haría.
+    const composers = screen.getAllByTestId('chat-composer');
+    expect(composers[1]!.props.editable).not.toBe(false);
+
+    // Escribir NO manda (el envío es el acto): el borrador vive en el campo.
+    await act(async () => {
+      composers[1]!.props.onChangeText('gasté cuatro mil en nafta');
+    });
+    expect(api.sendChat).not.toHaveBeenCalled();
+
+    // Enviar desde Mi día: se MANDA por el chat (una vez) con el texto escrito.
+    await act(async () => {
+      screen.getByTestId('chat-enviar').props.onClick({ nativeEvent: {}, stopPropagation: () => {}, preventDefault: () => {} });
+    });
+    await waitFor(() => expect(api.sendChat).toHaveBeenCalledTimes(1));
+    expect(JSON.stringify(jest.mocked(api.sendChat).mock.calls[0])).toContain('gasté cuatro mil en nafta');
+
+    // Dictar en Mi día MANDA el audio directo, UNA vez, y no transcribe.
     const mics = screen.getAllByTestId('mock-soltar');
     expect(mics).toHaveLength(2);
-    // 🔴 El orden del árbol es el INVERSO al que decía este comentario antes: el PRIMER mic es el del CHAT
-    // (`chat-dock-flotante`) y el segundo el de Mi día (`panel-pie-abajo`). Medido en el árbol, no supuesto: la
-    // versión anterior pulsaba `mics[0]` creyéndolo el de Mi día y en realidad probaba el envío directo del chat.
-    // Además el pie de Mi día tiene `pointerEvents="none"` mientras el chat está arriba, así que RNTL descarta un
-    // `fireEvent.press` sobre él; se invoca su `onPress` (= `onSoltarSinFijar` del dock) a mano, que es lo que
-    // el gesto real haría. Lo que se prueba es la COSTURA: dock de Mi día → `PantallaPrincipal` → `ChatView`.
     await act(async () => {
-      // El host de Pressable expone el toque como onClick.
-      mics[1].props.onClick({ nativeEvent: {}, stopPropagation: () => {}, preventDefault: () => {} });
+      mics[1]!.props.onClick({ nativeEvent: {}, stopPropagation: () => {}, preventDefault: () => {} });
     });
-
-    // Mi día MANDA directo, UNA vez, por el audio del chat (`audioEntrante`), y no transcribe.
     await waitFor(() => expect(api.sendAudio).toHaveBeenCalledTimes(1));
     expect(jest.mocked(api.sendAudio).mock.calls[0]).toContainEqual(audio);
     expect(transcribir).not.toHaveBeenCalled();
 
-    // El dock del CHAT, en cambio, ya NO manda: transcribe y pega (2026-11-04). `sendAudio` sigue en 1.
-    await fireEvent.press(mics[0]);
+    // El dock del CHAT, en cambio, transcribe y pega (2026-11-04). `sendAudio` sigue en 1.
+    await fireEvent.press(mics[0]!);
     await waitFor(() => expect(transcribir).toHaveBeenCalledTimes(1));
-    expect(api.sendAudio).toHaveBeenCalledTimes(1);  });
+    expect(api.sendAudio).toHaveBeenCalledTimes(1);
+  });
 });

@@ -33,6 +33,7 @@ import { destinoDe } from '../modules/actividad/destinoActividad';
 import { ChatView } from '../modules/chat';
 import { ALTO_COMPOSER_REPOSO } from '../modules/chat/Composer';
 import { DockEntrada } from '../modules/chat/DockEntrada';
+import { despacharTextoAlChat } from '../navegacion/despachoAlChat';
 import { EscritorioFunciones, type FuncionKey } from '../modules/escritorio/EscritorioFunciones';
 import { hrefDeRuta } from '../modules/midia/destinoTarjeta';
 import { PantallaMiDia } from '../modules/midia/PantallaMiDia';
@@ -55,9 +56,6 @@ const RUTA_POR_FUNCION: Record<FuncionKey, string> = {
   clientes: '/clientes',
   inteligencia: '/inteligencia',
 };
-
-/** El campo del dock de Mi día no se edita (`onTocarCampo`): no tiene texto que mandar. */
-const sinTexto = () => undefined;
 
 export function PantallaPrincipal() {
   // 🔴 El escritorio es la pantalla LANZADORA: cada vez que recupera el foco —al arrancar y al volver
@@ -191,7 +189,16 @@ export function PantallaPrincipal() {
     setAudioEntrante({ audio, duracionSeg, id: audioSeq.current });
     setSenalSubir((n) => n + 1);
   }, []);
-  const alTocarCampoDeMiDia = useCallback(() => setSenalSubir((n) => n + 1), []);
+  // SM-P9 (decisión del operador, 2026-11-04): el campo de Mi día SE EDITA, igual que en todas las funciones. Al enviar,
+  // el mensaje se manda y recién entonces sube el chat, que llega con la card en camino. Tocar el campo ya no sube nada.
+  const alTextoDesdeMiDia = useCallback(
+    (texto: string) => {
+      // Con el chat listo se despacha directo; si no (aún hidratando) cae al buzón del aviso, que lo siembra al subir.
+      if (!despacharTextoAlChat(texto)) alAvisoAlChat({ tarjetaId: 'midia:campo', texto, contexto: 'Mi día' });
+      else setSenalSubir((n) => n + 1);
+    },
+    [alAvisoAlChat],
+  );
   // SM-I1: el verbo tocado en Tu día (una ruta, sin props hasta acá) llega al volver. El «Volver al tablero»
   // de esa charla baja a Mi día: Tu día ya se cerró.
   useFocusEffect(
@@ -258,7 +265,7 @@ export function PantallaPrincipal() {
       arrancaAbajo
       ocultarTira={progresoFunciones}
       // SM-N22: el asa queda ENCIMA del campo (mapa). El campo vive en el panel, bajo el asa.
-      pieAbajo={<DockEntrada onEnviarTexto={sinTexto} onAudio={alAudioDesdeMiDia} onTocarCampo={alTocarCampoDeMiDia} />}
+      pieAbajo={<DockEntrada onEnviarTexto={alTextoDesdeMiDia} onAudio={alAudioDesdeMiDia} />}
       altoPieAbajo={ALTO_COMPOSER_REPOSO}
       fondo={
         <PanelFunciones
