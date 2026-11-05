@@ -17,6 +17,7 @@ import {
   MARGEN_TIRADOR,
   opacidadRotuloAbajo,
   PanelDeslizable,
+  panelYAlCambiarRecorrido,
   recorridoDesdeAlto,
   translacionPanel,
 } from './PanelDeslizable';
@@ -214,6 +215,39 @@ describe('translacionPanel — la tira se va sólo con el chat abajo', () => {
 
   it('sin recorrido medido no inventa un destino', () => {
     expect(translacionPanel(0, 0, 1, altoTira)).toBe(0);
+  });
+});
+
+/**
+ * SM-P5 (device 2026-11-05): con el teclado abierto el campo de Mi día quedaba debajo del teclado. El teclado
+ * achica la ventana, `recorrido` baja y `panelY` seguía en el valor viejo. Pura porque el mock de Reanimated no
+ * dispara `useAnimatedReaction` con cambios de layout.
+ */
+describe('panelYAlCambiarRecorrido — el panel abajo sigue al techo cuando entra el teclado', () => {
+  it('🔴 abajo y el techo baja (teclado abierto): el panel baja con él, no queda fuera de pantalla', () => {
+    expect(panelYAlCambiarRecorrido(819, 819, 330)).toBe(330);
+  });
+
+  it('abajo y el techo sube (teclado cerrado): el panel vuelve al borde de abajo', () => {
+    expect(panelYAlCambiarRecorrido(330, 330, 819)).toBe(819);
+  });
+
+  it('arriba (chat abierto) no se mueve aunque el techo cambie', () => {
+    expect(panelYAlCambiarRecorrido(0, 819, 330)).toBe(0);
+    expect(panelYAlCambiarRecorrido(0, 330, 819)).toBe(0);
+  });
+
+  it('a mitad de camino sólo se le prohíbe pasar del techo nuevo', () => {
+    expect(panelYAlCambiarRecorrido(500, 819, 330)).toBe(330);
+    expect(panelYAlCambiarRecorrido(200, 819, 330)).toBe(200);
+  });
+
+  it('la primera medida (previo 0) no se toca: la posición inicial la fija el onLayout', () => {
+    expect(panelYAlCambiarRecorrido(0, 0, 819)).toBe(0);
+  });
+
+  it('un techo sin medir no inventa destino', () => {
+    expect(panelYAlCambiarRecorrido(300, 819, 0)).toBe(300);
   });
 });
 
