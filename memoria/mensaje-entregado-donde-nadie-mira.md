@@ -113,3 +113,24 @@ Lo segundo no es redundancia: el titular corregido es el **registro** (lo que le
 y el `dato_` nuevo es la **entrega** (lo único que dispara el watcher). Son dos funciones distintas y ninguna reemplaza a la otra
 — exactamente la distinción que esta entrada ya hacía entre «escribí» y «lo leyeron», ahora del lado de la **edición**.
 Relacionado: [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]] (por qué el titular y no un apéndice).
+
+## Refuerzo 2026-11-04 — el buzón SOLO no entrega: las sesiones no tienen crones
+
+Orden del operador, textual: *«siempre envía mensaje directo por peer aparte del buzón para avisar,
+porque no tiene los crones activados»*.
+
+Un `pedido_` en `coordinacion/abierto/` **no despierta a nadie**. Una sesión de Claude Code termina
+su turno y queda idle para siempre; lo único que la vuelve a invocar es un cron o un mensaje. Con
+los crones apagados —que es el estado real hoy en las tres sesiones— el buzón es un archivo que
+nadie va a abrir, y el trabajo queda parado sin que ningún instrumento lo note: desde afuera se ve
+igual que «todavía no lo tomó».
+
+**Medido el mismo día:** bajé el `pedido_` de SM-L3 a backend a las 20:13 y a las 20:38 seguía sin
+tomar. Mandé el peer directo y backend lo tomó, lo midió en código y bajó su `avance_` **en
+minutos**. El buzón no había fallado como registro; había fallado como **aviso**, que es otra
+función.
+
+**Regla:** el buzón es el **registro** (persistente, auditable, sobrevive a la sesión); el
+`SendMessage` por peer es la **entrega**. Son dos cosas distintas y hacen falta las dos. Bajar un
+`pedido_` sin avisar por peer es dejarlo donde nadie mira — exactamente lo que esta entrada ya
+decía, en la forma que no había previsto.
