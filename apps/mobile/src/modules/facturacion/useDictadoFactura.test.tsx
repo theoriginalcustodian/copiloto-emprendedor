@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react-native';
 
 import type { ChatRequest, ChatResponse, ReplyResponse } from '@copiloto/core';
 
-import { AVISO_DICTADO_FACTURA, AVISO_DICTADO_NO_ENTENDIDO, useDictadoFactura } from './useDictadoFactura';
+import { AVISO_DICTADO_FACTURA, useDictadoFactura } from './useDictadoFactura';
 
 const ACEPTADO = (sid: string): ChatResponse => ({ wf_id: 'wf', accepted: true, session_id: sid });
 const PREGUNTA: ReplyResponse = { next_id: 7, replies: [{ id: 7, text: '¿A quién le facturo?', card: undefined as never }] };
@@ -80,48 +80,10 @@ describe('useDictadoFactura (mobile) — hilo abierto en el dictado incompleto',
     const { result } = await renderHook(() => useDictadoFactura(p));
     let r: unknown = 'pendiente';
     await act(async () => {
-      r = await result.current.dictar('una factura');
+      r = await result.current.dictar('x');
     });
     expect(r).toBeNull();
     expect(result.current.aviso).toBe(AVISO_DICTADO_FACTURA.error_envio);
     expect(result.current.pregunta).toBeNull();
-  });
-});
-
-describe('useDictadoFactura (mobile) — SM-P14 plausibilidad del 1er turno', () => {
-  it.each(['El', '  ', '', 'Gracias.'])('un 1er turno de una palabra o vacío («%s») NO llega al backend: avisa «no te escuché»', async (texto) => {
-    const { p, enviadas } = puertos([CARD]);
-    const { result } = await renderHook(() => useDictadoFactura(p));
-    let r: unknown = 'sin-llamar';
-    await act(async () => {
-      r = await result.current.dictar(texto);
-    });
-    expect(r).toBeNull();
-    expect(enviadas).toHaveLength(0);
-    expect(result.current.aviso).toBe(AVISO_DICTADO_NO_ENTENDIDO);
-    expect(result.current.pregunta).toBeNull();
-  });
-
-  it('control positivo: dos palabras («una factura») SÍ viajan', async () => {
-    const { p, enviadas } = puertos([PREGUNTA]);
-    const { result } = await renderHook(() => useDictadoFactura(p));
-    await act(async () => {
-      await result.current.dictar('una factura');
-    });
-    expect(enviadas).toHaveLength(1);
-    expect(result.current.aviso).toBeNull();
-  });
-
-  it('con el hilo abierto, la respuesta de UNA palabra («5000») es legítima y viaja por el mismo hilo', async () => {
-    const { p, enviadas } = puertos([PREGUNTA, CARD]);
-    const { result } = await renderHook(() => useDictadoFactura(p));
-    await act(async () => {
-      await result.current.dictar('una factura');
-    });
-    await act(async () => {
-      await result.current.dictar('5000');
-    });
-    expect(enviadas).toHaveLength(2);
-    expect(enviadas[1]!.session_id).toBe(enviadas[0]!.session_id);
   });
 });

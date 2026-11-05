@@ -28,13 +28,6 @@ export const AVISO_DICTADO_FACTURA: Record<MotivoSinPropuesta, string> = {
   timeout: 'Tardó demasiado en responder. Probá de nuevo.',
 };
 
-export const AVISO_DICTADO_NO_ENTENDIDO = 'No te escuché bien. Probá de nuevo.';
-
-/** Un dictado de factura que abre hilo necesita al menos dos palabras («una factura»); una sola es ruido o un toque sin querer. */
-export function dictadoPlausible(texto: string): boolean {
-  return texto.trim().split(/\s+/).filter(Boolean).length >= 2;
-}
-
 const PUERTOS_REALES: PuertosDictado = {
   enviar: (req) => api.sendChat(req),
   leer: (sessionId, afterId) => api.getReply(sessionId, afterId),
@@ -68,13 +61,6 @@ export function useDictadoFactura(puertos: PuertosDictado = PUERTOS_REALES): Dic
   const dictar = useCallback(
     async (texto: string): Promise<FacturaPropuesta | null> => {
       if (enVuelo.current) return null;
-      // SM-P14 — plausibilidad del 1er turno: un clip de ruido ambiente que el STT devolvió como UNA palabra («El») llegó a
-      // ser un ítem de factura (1 × 0). Con el hilo abierto la respuesta corta («5000», «Pérez») es legítima; sin hilo no.
-      if (hilo.current === null && !dictadoPlausible(texto)) {
-        setPregunta(null);
-        setAviso(AVISO_DICTADO_NO_ENTENDIDO);
-        return null;
-      }
       enVuelo.current = true;
       setOcupado(true);
       setAviso(null);
