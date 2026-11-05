@@ -142,7 +142,6 @@
 
 
 ### Git, deploy y checkout compartido
-- [🗂️💥 `Set-Location` NO mueve el cwd de .NET: el path relativo escribe en OTRO repo](set-location-no-mueve-el-cwd-de-dotnet-y-el-path-relativo-escribe-en-otro-repo.md) — dejó el índice del compartido en 0 líneas.
 - [💾💥 `open(path,"w")` TRUNCA al abrir](open-w-trunca-al-abrir-y-una-excepcion-en-el-write-destruye-el-archivo.md) — deja 0 bytes: tmp + `os.replace`.
 - [🩹 `--amend`/rebase en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) - commit `docs:` nuevo.
 - [💥 `git checkout <ref> -- .` PISA lo del working tree](checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree.md) - usá `merge-base`.
