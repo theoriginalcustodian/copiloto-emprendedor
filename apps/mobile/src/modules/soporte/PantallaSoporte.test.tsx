@@ -27,7 +27,6 @@ jest.mock('@copiloto/core', () => {
     sendSoporteChat: jest.fn(),
     sendSoporteAudio: jest.fn(),
     listarMisTickets: jest.fn(),
-    adjuntarFotoATicket: jest.fn(),
     apiReal: { ...actual.apiReal, getReply: jest.fn() },
   };
 });
@@ -36,13 +35,6 @@ jest.mock('@copiloto/core', () => {
  *  apenas monta `useVozComando` en la misma sesión. */
 jest.mock('expo-file-system/legacy', () => ({
   deleteAsync: jest.fn().mockResolvedValue(undefined),
-}));
-
-/** El picker nativo (Alert Cámara/Galería + expo-image-picker) no existe en jest: se devuelve el archivo
- *  que cada test fije en `mockElegirFoto`. */
-const mockElegirFoto = jest.fn();
-jest.mock('../chat/useCapturaFoto', () => ({
-  useCapturaFoto: () => ({ elegir: (...a: unknown[]) => mockElegirFoto(...a) }),
 }));
 
 /** `empujarUnaVez` empuja al `router` real de expo-router, ausente en este árbol: se observa la llamada. */
@@ -130,7 +122,6 @@ jest.mock('expo-audio', () => ({
 }));
 
 import {
-  adjuntarFotoATicket,
   apiReal as api,
   listarMisTickets,
   sendSoporteAudio,
@@ -425,14 +416,12 @@ function listaDe(items: ReturnType<typeof ticket>[], total = items.length, respu
   jest.mocked(listarMisTickets).mockResolvedValue({ status: 'ok', items, total, respuestaEstimada } as never);
 }
 
-describe('PantallaSoporte -- tickets propios y adjunto (PROTO4APP §D/§E)', () => {
+describe('PantallaSoporte -- tickets propios (PROTO4APP §D)', () => {
   jest.setTimeout(30000);
 
   beforeEach(() => {
     jest.mocked(api.getReply).mockReset().mockResolvedValue({ replies: [], next_id: 0 });
     jest.mocked(listarMisTickets).mockReset().mockResolvedValue({ status: 'no_disponible' } as never);
-    jest.mocked(adjuntarFotoATicket).mockReset();
-    mockElegirFoto.mockReset();
     mockEmpujarUnaVez.mockReset();
     mockReabrirNavegacion.mockReset();
   });
@@ -511,82 +500,14 @@ describe('PantallaSoporte -- tickets propios y adjunto (PROTO4APP §D/§E)', () 
     expect(screen.queryByTestId('soporte-tickets')).toBeNull();
   });
 
-  it('el clip SIN ticket en curso avisa con el motivo y NO abre el picker (no acepta una foto para perderla)', async () => {
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
-    await renderPantallaSoporte();
-    await waitFor(() => expect(screen.getByTestId('chat-foto')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('chat-foto'));
-
-    expect(alertSpy).toHaveBeenCalledWith('Todavía no hay un ticket abierto', expect.stringContaining('se adjunta a un ticket'));
-    expect(mockElegirFoto).not.toHaveBeenCalled();
-    expect(adjuntarFotoATicket).not.toHaveBeenCalled();
-    alertSpy.mockRestore();
-  });
-
-  it('el clip CON ticket sube la foto a ESE ticket, avisa y borra el archivo local (cero retención)', async () => {
-    const { deleteAsync } = require('expo-file-system/legacy');
-    deleteAsync.mockClear();
+  it('🔴 el composer de Soporte NO tiene cámara (decisión del operador 2026-11-04) -- y Gastos sí (control: `PantallaGastos.test.tsx`, `foto-funcion-boton`)', async () => {
     listaDe([ticket()]);
-    const archivo = { nombre: 'ticket.jpg', mime: 'image/jpeg', datos: 'file:///cache/ticket.jpg' };
-    mockElegirFoto.mockResolvedValue(archivo);
-    jest.mocked(adjuntarFotoATicket).mockResolvedValue({
-      status: 'ok',
-      adjunto: { id: 5, nombre: 'ticket.jpg', tipo: 'image/jpeg', bytes: 10 },
-    } as never);
     await renderPantallaSoporte();
     await waitFor(() => expect(screen.getByTestId('soporte-ticket-card')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('chat-foto'));
-
-    await waitFor(() => expect(adjuntarFotoATicket).toHaveBeenCalledWith(9, archivo));
-    await waitFor(() => expect(screen.getByTestId('soporte-adjunto-aviso')).toBeTruthy());
-    expect(screen.getByTestId('soporte-adjunto-aviso').props.children).toBe('Listo, la foto quedó adjunta al ticket.');
-    expect(deleteAsync).toHaveBeenCalledWith('file:///cache/ticket.jpg', { idempotent: true });
-  });
-
-  it('si el usuario cancela el picker no se sube nada', async () => {
-    listaDe([ticket()]);
-    mockElegirFoto.mockResolvedValue(null);
-    await renderPantallaSoporte();
-    await waitFor(() => expect(screen.getByTestId('soporte-ticket-card')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('chat-foto'));
-
-    await waitFor(() => expect(mockElegirFoto).toHaveBeenCalledTimes(1));
-    expect(adjuntarFotoATicket).not.toHaveBeenCalled();
-  });
-
-  it('un rechazo del backend (413) se dice en palabras y la foto igual se borra', async () => {
-    const { deleteAsync } = require('expo-file-system/legacy');
-    deleteAsync.mockClear();
-    listaDe([ticket()]);
-    mockElegirFoto.mockResolvedValue({ nombre: 'ticket.jpg', mime: 'image/jpeg', datos: 'file:///cache/grande.jpg' });
-    jest.mocked(adjuntarFotoATicket).mockResolvedValue({ status: 'rechazado' } as never);
-    await renderPantallaSoporte();
-    await waitFor(() => expect(screen.getByTestId('soporte-ticket-card')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('chat-foto'));
-
-    await waitFor(() => expect(screen.getByTestId('soporte-adjunto-aviso')).toBeTruthy());
-    expect(String(screen.getByTestId('soporte-adjunto-aviso').props.children)).toMatch(/pesa demasiado/);
-    expect(deleteAsync).toHaveBeenCalledWith('file:///cache/grande.jpg', { idempotent: true });
-  });
-
-  it('un error de red al subir cae en el aviso genérico (no crashea) y también borra el archivo', async () => {
-    const { deleteAsync } = require('expo-file-system/legacy');
-    deleteAsync.mockClear();
-    listaDe([ticket()]);
-    mockElegirFoto.mockResolvedValue({ nombre: 'ticket.jpg', mime: 'image/jpeg', datos: 'file:///cache/x.jpg' });
-    jest.mocked(adjuntarFotoATicket).mockRejectedValue(new Error('red'));
-    await renderPantallaSoporte();
-    await waitFor(() => expect(screen.getByTestId('soporte-ticket-card')).toBeTruthy());
-
-    await fireEvent.press(screen.getByTestId('chat-foto'));
-
-    await waitFor(() => expect(screen.getByTestId('soporte-adjunto-aviso')).toBeTruthy());
-    expect(String(screen.getByTestId('soporte-adjunto-aviso').props.children)).toMatch(/No pudimos subir la foto/);
-    expect(deleteAsync).toHaveBeenCalledWith('file:///cache/x.jpg', { idempotent: true });
+    // El composer SÍ está (si no, la ausencia de `chat-foto` no probaría nada)...
+    expect(screen.getByTestId('chat-composer')).toBeTruthy();
+    // ...y no pinta el botón de cámara, ni siquiera con un ticket vigente (el caso que antes lo habilitaba).
+    expect(screen.queryByTestId('chat-foto')).toBeNull();
   });
 
   it('al terminar un turno del chat vuelve a pedir los tickets (el agente pudo abrir uno)', async () => {

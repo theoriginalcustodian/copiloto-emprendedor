@@ -50,8 +50,13 @@ campo»*.
 | **SM-P4** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-P5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-P6** | `sin-issue` | ⬜ PENDIENTE | — |
+<<<<<<< HEAD
 | **SM-P7** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-P8** | `sin-issue` | ⬜ PENDIENTE | — |
+=======
+| **SM-P7** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 2 y 3: el aspecto visual (blur sobre el hilo, translucidez y contraste del texto) NO se verifico en navegador por… |
+| **SM-P8** | `sin-issue` | ✅ TERMINADO | 82f8451e (#1651). Tabla medida: (a) puente Como usar NO APLICA: la web navega por tabs sin stack, PantallaComoUsarLaA… |
+>>>>>>> origin/main
 | **SM-P9** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-P10** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-P11** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -192,7 +197,12 @@ campo»*.
 
 ### SM-P7 · `sin-issue` — El mismo dock unificado, en la web
 
+<<<<<<< HEAD
 - **Estado:** PENDIENTE
+=======
+- **Estado:** DOD-PARCIAL
+- **Falta:** DoD 2 y 3: el aspecto visual (blur sobre el hilo, translucidez y contraste del texto) NO se verifico en navegador por piel; solo tipos, tests y el gate de hex. Ademas MicFuncion (GastosScreen.tsx:243, IngresosScreen.tsx:177, ClientesScreen.tsx:292, PresupuestosScreen.tsx:290) queda FUERA del dock: es un mic suelto junto a un formulario, no un dock; decision de unificarlo o no es de planificacion. Hallazgo y unificacion estructural hechos en 82f8451e (#1651): el dock web NO estaba unificado (Composer.tsx:79-121 y ComposerSoporte.tsx:57-98 duplicaban JSX; chat.css:649-659 fondo lleno sin backdrop-filter, unico en repo presupuestos.css:415 lo apaga; desktop.css:363-421 pisaba aparte); ahora DockEntrada.tsx unico, envoltorio y blur por tokens en chat.css.
+>>>>>>> origin/main
 - **Dueño:** frontend2
 - **Qué:** mismo criterio que `SM-P5` en `apps/copiloto-web`.
 - **🔴 Antes de implementar:** verificar si en web el dock **está** unificado en un componente como
@@ -205,7 +215,12 @@ campo»*.
 
 ### SM-P8 · `sin-issue` — Paridad web de P1/P3/P4: medir ANTES de portar
 
+<<<<<<< HEAD
 - **Estado:** PENDIENTE
+=======
+- **Estado:** TERMINADO
+- **Cierre:** 82f8451e (#1651). Tabla medida: (a) puente Como usar NO APLICA: la web navega por tabs sin stack, PantallaComoUsarLaApp.tsx:66-69 + AppShell.tsx:224 (changeTab) + ChatScreen.tsx:68-71 (tomarPendiente al montar); (b) dictado que envia solo APLICA: Composer.tsx:98-102 -> useChat.sendAudio (POST /chat/audio), copiado en ComposerSoporte.tsx:85; arreglado: DockEntrada.tsx va por /transcribir y pega en el campo, tests DockEntrada.test.tsx (feliz, agregar al final, descarte por cancelar sin tocar backend, descarte por borrar, error/vacio) vitest chat+soporte 282/282; (c) camara de Soporte NO APLICA: ComposerSoporte.tsx solo tiene textarea+mic+enviar, grep adjunt|foto|file en modules/soporte = 0. packages/core no se toco (transcribir ya existia).
+>>>>>>> origin/main
 - **Dueño:** frontend2
 - **Qué:** para cada uno de `SM-P1` (puente de «Cómo usar la app»), `SM-P3` (dictado que no envía
   solo) y `SM-P4` (cámara de Soporte), **medir si la web tiene el mismo defecto**. La web ya

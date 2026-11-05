@@ -38,6 +38,7 @@ jest.mock('@copiloto/core', () => {
     // El chat real monta acá: su transporte se mockea (nada de red) y se asevera que sembrar NO manda.
     apiReal: { ...actual.apiReal, sendChat: jest.fn(), sendAudio: jest.fn(), sendFoto: jest.fn(), getReply: jest.fn() },
     leerPerfilNegocio: jest.fn().mockResolvedValue({ status: 'no_disponible' }),
+    transcribir: jest.fn().mockResolvedValue({ transcript: 'gasté cuatro mil en nafta' }),
     leerTablero: jest.fn(),
     cambiarEstadoTarjetaMiDia: jest.fn(),
     leerCalendario: jest.fn(),
@@ -81,15 +82,15 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
   return { __esModule: true, default: PassthroughSwipeable };
 });
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
-import { apiReal as api, leerCalendario, leerTablero, listarCatalogo } from '@copiloto/core';
+import { apiReal as api, leerCalendario, leerTablero, listarCatalogo, transcribir } from '@copiloto/core';
 
 import { ThemeProvider } from '../theme/ThemeProvider';
 import { PantallaPrincipal } from './PantallaPrincipal';
 
 describe('PantallaPrincipal — SM-I2: el dock de Mi día entra al chat', () => {
-  it('🔴 lo dictado en Mi día se manda UNA vez por el chat, y tocar el campo no manda nada', async () => {
+  it('🔴 lo dictado en Mi día se manda UNA vez por el chat (el del chat, en cambio, transcribe y pega), y tocar el campo no manda nada', async () => {
     jest.mocked(leerTablero).mockResolvedValue({ status: 'ok', tablero: { solapas: [] } } as any);
     jest.mocked(leerCalendario).mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
     jest.mocked(listarCatalogo).mockResolvedValue({ status: 'ok', servicios: [] });
@@ -112,10 +113,24 @@ describe('PantallaPrincipal — SM-I2: el dock de Mi día entra al chat', () => 
 
     const mics = screen.getAllByTestId('mock-soltar');
     expect(mics).toHaveLength(2);
-    // El orden del árbol es el de `PanelDeslizable`: primero la tira de Mi día, después el chat.
-    await fireEvent.press(mics[0]);
+    // 🔴 El orden del árbol es el INVERSO al que decía este comentario antes: el PRIMER mic es el del CHAT
+    // (`chat-dock-flotante`) y el segundo el de Mi día (`panel-pie-abajo`). Medido en el árbol, no supuesto: la
+    // versión anterior pulsaba `mics[0]` creyéndolo el de Mi día y en realidad probaba el envío directo del chat.
+    // Además el pie de Mi día tiene `pointerEvents="none"` mientras el chat está arriba, así que RNTL descarta un
+    // `fireEvent.press` sobre él; se invoca su `onPress` (= `onSoltarSinFijar` del dock) a mano, que es lo que
+    // el gesto real haría. Lo que se prueba es la COSTURA: dock de Mi día → `PantallaPrincipal` → `ChatView`.
+    await act(async () => {
+      // El host de Pressable expone el toque como onClick.
+      mics[1].props.onClick({ nativeEvent: {}, stopPropagation: () => {}, preventDefault: () => {} });
+    });
 
+    // Mi día MANDA directo, UNA vez, por el audio del chat (`audioEntrante`), y no transcribe.
     await waitFor(() => expect(api.sendAudio).toHaveBeenCalledTimes(1));
     expect(jest.mocked(api.sendAudio).mock.calls[0]).toContainEqual(audio);
-  });
+    expect(transcribir).not.toHaveBeenCalled();
+
+    // El dock del CHAT, en cambio, ya NO manda: transcribe y pega (2026-11-04). `sendAudio` sigue en 1.
+    await fireEvent.press(mics[0]);
+    await waitFor(() => expect(transcribir).toHaveBeenCalledTimes(1));
+    expect(api.sendAudio).toHaveBeenCalledTimes(1);  });
 });

@@ -9,9 +9,9 @@ import { useTema } from './ThemeProvider';
  *
  * Cero assets empaquetados (los 4 trazos van inline por `react-native-svg`, no una imagen que haya
  * que bundlear), cero hex (todo sale de `tema.color`, así que respeta los 5 skins activos). Mismo
- * mecanismo `logoScale` que `modules/chat/BotonVoz.tsx` (ODOBI8 §A): el `stroke-width` se
- * predivide por la escala para que el trazo se vea igual de fino en cualquier tamaño. Reutilizable:
- * login + estado vacío del chat.
+ * mecanismo de escala que `modules/chat/BotonVoz.tsx`: el `stroke-width` va en unidades del viewBox
+ * (24) DENTRO del `<G scale>`, así que el grosor en pantalla es proporcional al tamaño (a 96 px,
+ * 1,3 × 4 = 5,2 px, igual que `prototipo/index.html:1876`). Reutilizable: login + estado vacío del chat.
  *
  * `tono='acento'` (default) pinta el badge con el color de acento y el isotipo con `acentoTexto`.
  * **NO es el login**: la placa de terracota plena del 28/07 se eliminó (`mockups/01-onboarding/index.html:187`,
@@ -32,10 +32,13 @@ const ISOTIPO_VIEWBOX = 24;
  * 1.3 es el grosor del sistema (`odobi-ui`): el isotipo se dibuja igual en la app, en el prototipo y
  * en las piezas de marca. Mobile lo tenía en 1.7 y engordaba el signo.
  *
- * 🔴 **PLANO, un solo valor.** El `LEEME` del sistema define 1.6 en chico / 1.3 en grande; Martin
- * cerró el plano el 2026-09-18. `logoScale` (predividir por la escala, abajo) ya mantiene el trazo
- * ópticamente igual a cualquier tamaño — el segundo valor corregiría algo que la división corrige
- * sola, y dos números obligan a decidir en cada uso dónde está el corte entre "chico" y "grande".
+ * 🔴 **PLANO, un solo valor, EN UNIDADES DEL VIEWBOX.** El `LEEME` del sistema define 1.6 en chico /
+ * 1.3 en grande; Martin cerró el plano el 2026-09-18 con un solo valor.
+ * ⚠️ Antes se predividía por la escala (`1.3 / escala`) creyendo que eso mantenía el trazo
+ * "ópticamente igual": dentro de `<G scale(escala)>` la división se CANCELA y el trazo quedaba en
+ * 1,3 px ABSOLUTOS a cualquier tamaño (4× más fino que el prototipo a 96 px). Mantener el px
+ * absoluto ES el defecto: un isotipo de 24 y uno de 96 no eran el mismo signo escalado.
+ * Control correcto: `modules/splash/EntradaDiaria.tsx` (`strokeWidth={1.3}` sin predividir).
  */
 const ISOTIPO_STROKE_BASE = 1.3;
 const ISOTIPO_TRAZOS = [
@@ -65,7 +68,8 @@ export function Marca({ size = 64, tono = 'acento' }: PropsMarca) {
   // `<svg width="96">` con `stroke:var(--terracota)`): el `size` es el del signo, no el de un tile.
   const isotipoTamano = desnudo ? size : size * ISOTIPO_RATIO;
   const escala = isotipoTamano / ISOTIPO_VIEWBOX;
-  const strokeWidth = ISOTIPO_STROKE_BASE / escala;
+  // Unidades del viewBox: el `scale(escala)` del <G> lo multiplica (NO predividir, se cancelaría).
+  const strokeWidth = ISOTIPO_STROKE_BASE;
   const offset = (size - isotipoTamano) / 2;
 
   return (

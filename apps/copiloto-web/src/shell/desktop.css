@@ -356,12 +356,12 @@
   /* Columna de texto ANCHA y simétrica (pedido operador 2026-07-04, 2ª iter): el scroller ocupa TODO
      el ancho para que la barra de desplazamiento quede pegada al borde derecho de la ventana; el
      contenido (mensajes) se centra con gutters simétricos ~7% (las líneas celestes del pedido). */
-  padding: 32px 0 16px;
+  padding: 32px 0 calc(var(--dock-alto, 96px) + 16px);
   padding-inline: max(24px, 7%);
 }
 
 .desktop-shell__content .composer {
-  width: 100%;
+  width: auto;
   max-width: none;
   margin: 0;
   /* Mismo gutter que los mensajes -> el input queda alineado con la columna de texto. */

@@ -1,10 +1,8 @@
 import { useCallback, useRef } from 'react';
-import { Alert, KeyboardAvoidingView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, StyleSheet, Text, View } from 'react-native';
 import type { FlatList } from 'react-native-gesture-handler';
 
 import {
-  SOPORTE_ADJUNTO_SIN_TICKET,
-  SOPORTE_ADJUNTO_SIN_TICKET_TITULO,
   SOPORTE_PLACEHOLDER,
   SOPORTE_PRESENTACION,
   SOPORTE_QUE_VIAJA,
@@ -16,7 +14,6 @@ import {
 import { useSession } from '../auth/useSession';
 import { DockEntrada } from '../chat/DockEntrada';
 import { ListaMensajes } from '../chat/ListaMensajes';
-import { useCapturaFoto } from '../chat/useCapturaFoto';
 import { empujarUnaVez, reabrirNavegacion } from '../../navegacion/empujarUnaVez';
 import { Marca } from '../../theme/Marca';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -63,7 +60,6 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
   const { me } = useSession();
   const { estado, send, enviarAudio } = useChatSoporte(me?.cliente_id ?? '', funcion);
   const tickets = useTicketsSoporte(estado?.sendStatus ?? 'idle');
-  const captura = useCapturaFoto();
   const scrollRef = useRef<FlatList>(null);
 
   const manejarEnvio = useCallback((text: string) => void send(text, { kind: 'text' }), [send]);
@@ -76,20 +72,9 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
     [send],
   );
 
-  // §E: el clip adjunta a UN ticket (`POST /soporte/tickets/{id}/adjuntos`), no a la conversación. Sin un
-  // ticket en curso no hay a dónde mandar la foto, y aceptarla para perderla sería peor que decirlo.
-  const { vigente, adjuntarFoto, adjuntando } = tickets;
-  const alAdjuntarFoto = useCallback(() => {
-    if (adjuntando) return; // un upload a la vez: el clip sigue visible, sólo no dispara otro
-    if (vigente === null) {
-      Alert.alert(SOPORTE_ADJUNTO_SIN_TICKET_TITULO, SOPORTE_ADJUNTO_SIN_TICKET);
-      return;
-    }
-    void (async () => {
-      const archivo = await captura.elegir();
-      if (archivo !== null) await adjuntarFoto(archivo);
-    })();
-  }, [vigente, captura, adjuntarFoto, adjuntando]);
+  // Sin cámara en el composer de Soporte (decisión del operador, 2026-11-04): el chat general ya no
+  // pasa `onFoto` desde SM-N24 y Soporte queda igual. Con el botón se fue la única vía de adjuntar una
+  // foto a un ticket (`POST /soporte/tickets/{id}/adjuntos`): es decisión tomada, no un bug a re-descubrir.
 
   // Esta pantalla ya fue abierta con `empujarUnaVez` (la puerta quedó cerrada hasta que el lanzador
   // recupere el foco), así que abrir el ticket desde acá la reabre primero: es un toque deliberado
@@ -152,7 +137,6 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
               anteriores={tickets.anteriores}
               cantidadAnteriores={tickets.cantidadAnteriores}
               respuestaEstimada={tickets.respuestaEstimada}
-              aviso={tickets.aviso}
               onAbrirTicket={abrirTicket}
             />
           }
@@ -165,7 +149,6 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
           onAudio={(audio) => void enviarAudio(audio)}
           disabled={estado === null}
           placeholder={SOPORTE_PLACEHOLDER}
-          onFoto={alAdjuntarFoto}
           scrollRef={scrollRef}
         />
       </KeyboardAvoidingView>
