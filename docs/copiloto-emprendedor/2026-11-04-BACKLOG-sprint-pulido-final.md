@@ -50,7 +50,7 @@ campo»*.
 | **SM-P4** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
 | **SM-P5** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test: comparar el dock de cada funcion contra el chat en las… |
 | **SM-P6** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test: comparar el dock de cada funcion contra el chat en las… |
-| **SM-P7** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 2 y 3 (aspecto): el dock quedo en las 5 funciones pero NO se verifico en navegador el aspecto real (blur del cont… |
+| **SM-P7** | `sin-issue` | ✅ TERMINADO | f9c5d98b DoD1: inventario path:linea en la Falta previa (5 funciones, f9c5d98b #1654). DoD2: un solo componente DockE… |
 | **SM-P8** | `sin-issue` | ✅ TERMINADO | 82f8451e (#1651). Tabla medida: (a) puente Como usar NO APLICA: la web navega por tabs sin stack, PantallaComoUsarLaA… |
 | **SM-P9** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA de decision: lo que queda es IMPLEMENTACION y vive en otras fichas. SM-P5 (dock unico mobile, Mi dia editable) y… |
 | **SM-P10** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | La IMPLEMENTACION del dock es de SM-P6 (quitar las dos condiciones de PantallaFacturacion.tsx:706: hecho en 0212ba19 … |
@@ -206,8 +206,8 @@ campo»*.
 
 ### SM-P7 · `sin-issue` — El mismo dock unificado, en la web
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** DoD 2 y 3 (aspecto): el dock quedo en las 5 funciones pero NO se verifico en navegador el aspecto real (blur del contenido que pasa por debajo, translucidez, contraste del texto) por piel ni el anclaje sticky con lista larga; solo tipos, 1435+ tests y el gate de hex. Hecho en f9c5d98b (#1654): DockFuncion.tsx -> DockEntrada (unico), montado en GastosScreen.tsx:273, IngresosScreen.tsx:204, ClientesScreen.tsx:325, PresupuestosScreen.tsx:332, PantallaFacturacion.tsx:571-572 (gate listo Y vista listado, igual que mobile PantallaFacturacion.tsx:706; test de ambos ejes); MicFuncion borrado; onAbrirChat cableado en AppShell/DesktopShell; la accion corre al llegar al chat (dejarPendiente + changeTab + tomarPendiente ChatScreen.tsx:68-71). Premisa 1 del contrato (Facturacion sin dock): en web NO existia dock alguno, no habia condicion que lo ocultara; premisa 2 (Mi dia) es mobile.
+- **Estado:** TERMINADO
+- **Cierre:** f9c5d98b DoD1: inventario path:linea en la Falta previa (5 funciones, f9c5d98b #1654). DoD2: un solo componente DockEntrada, sin hex (gate); pieles medidas en navegador real (Playwright, vite VITE_API_MOCK=1, 390x844, pantalla Gastos 2026-11-04): oscuro blur 16px, fondo alpha 0.74, contraste texto 14.19 y placeholder 5.06; claro blur 16px, fondo alpha 0.74, contraste texto 11.52 y placeholder 4.73 (WCAG, min 4.5). Sticky: con 3000px de relleno y scrollTop 1500/3323 el dock sigue en y 652-734 (position sticky). Alcance: medido en Gastos; las otras 4 funciones montan el mismo DockEntrada, no se midieron una por una. DoD3: mismo componente y tokens del composer del chat web
 - **Dueño:** frontend2
 - **Qué:** mismo criterio que `SM-P5` en `apps/copiloto-web`.
 - **🔴 Antes de implementar:** verificar si en web el dock **está** unificado en un componente como

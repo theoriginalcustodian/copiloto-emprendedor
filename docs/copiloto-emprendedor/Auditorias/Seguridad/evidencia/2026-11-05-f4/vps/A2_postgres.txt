@@ -1,0 +1,58 @@
+-- version
+PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
+-- conexion
+uc_factory | False | False
+-- roles ([ENMASCARADO])
+anon | False | False | False | False | False | nunca
+authenticated | False | False | False | False | False | nunca
+authenticator | True | False | False | False | False | nunca
+copiloto_autosanacion | True | False | True | False | False | nunca
+copiloto_consola | True | False | True | False | False | nunca
+dashboard_user | False | False | False | True | True | nunca
+pgaudit_auditor | False | False | False | False | False | nunca
+pgbouncer | True | False | False | False | False | nunca
+postgres | True | False | True | True | True | nunca
+rag_connector | True | False | False | False | False | nunca
+service_role | False | False | True | False | False | nunca
+supabase_admin | True | True | True | True | True | nunca
+supabase_auth_admin | True | False | False | True | False | nunca
+supabase_etl_admin | True | False | True | False | False | nunca
+supabase_functions_admin | True | False | False | True | False | nunca
+supabase_read_only_user | True | False | True | False | False | nunca
+supabase_realtime_admin | False | False | False | False | False | nunca
+supabase_replication_admin | True | False | False | False | False | nunca
+supabase_storage_admin | True | False | False | True | False | nunca
+uc_factory | True | False | False | False | False | nunca
+-- settings
+listen_addresses | *
+log_connections | off
+log_statement | ddl
+password_encryption | scram-sha-256
+row_security | on
+ssl | off
+-- tablas SIN rls (schema public)
+1 | 7 | 3 | 11
+-- tablas public SIN rls (nombre)
+tasks
+-- tablas con rls pero SIN policy
+-- esquemas
+_realtime
+auth
+documed
+extensions
+graphql
+graphql_public
+net
+pgbouncer
+public
+rag
+realtime
+storage
+supabase_functions
+uc_factory
+vault
+-- hba (si legible)
+Traceback (most recent call last):
+  File "<stdin>", line 16, in <module>
+  File "<stdin>", line 6, in q
+psycopg2.errors.InsufficientPrivilege: permission denied for view pg_hba_file_rules

@@ -1,0 +1,146 @@
+{
+  "puertos_abiertos": [
+    "25",
+    "110",
+    "119",
+    "143",
+    "465",
+    "563",
+    "587",
+    "993",
+    "995"
+  ],
+  "cabeceras": {
+    "copiloto.178-105-191-1.sslip.io": {
+      "presentes": [],
+      "ausentes": [
+        "strict-transport-security",
+        "content-security-policy",
+        "x-frame-options",
+        "x-content-type-options",
+        "referrer-policy",
+        "permissions-policy"
+      ],
+      "server": "uvicorn",
+      "via": "1.1 Caddy"
+    },
+    "copilotoemprendedor.duckdns.org": {
+      "presentes": [
+        "strict-transport-security",
+        "content-security-policy",
+        "x-frame-options",
+        "x-content-type-options",
+        "referrer-policy",
+        "permissions-policy"
+      ],
+      "ausentes": [],
+      "server": null,
+      "via": "1.1 Caddy"
+    },
+    "mp.178-105-191-1.sslip.io": {
+      "presentes": [],
+      "ausentes": [
+        "strict-transport-security",
+        "content-security-policy",
+        "x-frame-options",
+        "x-content-type-options",
+        "referrer-policy",
+        "permissions-policy"
+      ],
+      "server": "uvicorn",
+      "via": "1.1 Caddy"
+    }
+  },
+  "rutas_2xx_no_raiz": {
+    "copilotoemprendedor.duckdns.org": {
+      "/health": "200",
+      "/healthz": "200",
+      "/metrics": "200",
+      "/admin": "200",
+      "/auth/v1/health": "200",
+      "/.env": "200",
+      "/.git/config": "200",
+      "/debug": "200"
+    },
+    "copiloto.178-105-191-1.sslip.io": {
+      "/docs": "200",
+      "/redoc": "200",
+      "/openapi.json": "200",
+      "/docs/oauth2-redirect": "200",
+      "/health": "200",
+      "/healthz": "200",
+      "/metrics": "200",
+      "/admin": "200",
+      "/auth/v1/health": "200",
+      "/.env": "200",
+      "/.git/config": "200",
+      "/debug": "200"
+    },
+    "mp.178-105-191-1.sslip.io": {
+      "/docs": "200",
+      "/redoc": "200",
+      "/openapi.json": "200",
+      "/docs/oauth2-redirect": "200",
+      "/health": "200",
+      "/healthz": "200",
+      "/metrics": "200",
+      "/admin": "200",
+      "/auth/v1/health": "200",
+      "/.env": "200",
+      "/.git/config": "200",
+      "/debug": "200"
+    }
+  },
+  "rutas": {
+    "copilotoemprendedor.duckdns.org": {
+      "/": "200",
+      "/docs": "404",
+      "/redoc": "404",
+      "/openapi.json": "404",
+      "/docs/oauth2-redirect": "404",
+      "/health": "200",
+      "/healthz": "200",
+      "/metrics": "200",
+      "/admin": "200",
+      "/me": "401",
+      "/auth/v1/health": "200",
+      "/.env": "200",
+      "/.git/config": "200",
+      "/debug": "200"
+    },
+    "copiloto.178-105-191-1.sslip.io": {
+      "/": "200",
+      "/docs": "200",
+      "/redoc": "200",
+      "/openapi.json": "200",
+      "/docs/oauth2-redirect": "200",
+      "/health": "200",
+      "/healthz": "200",
+      "/metrics": "200",
+      "/admin": "200",
+      "/me": "401",
+      "/auth/v1/health": "200",
+      "/.env": "200",
+      "/.git/config": "200",
+      "/debug": "200"
+    },
+    "mp.178-105-191-1.sslip.io": {
+      "/": "200",
+      "/docs": "200",
+      "/redoc": "200",
+      "/openapi.json": "200",
+      "/docs/oauth2-redirect": "200",
+      "/health": "200",
+      "/healthz": "200",
+      "/metrics": "200",
+      "/admin": "200",
+      "/me": "401",
+      "/auth/v1/health": "200",
+      "/.env": "200",
+      "/.git/config": "200",
+      "/debug": "200"
+    }
+  },
+  "chequeos_del_instrumento": 3,
+  "fallas_del_instrumento": 1
+}

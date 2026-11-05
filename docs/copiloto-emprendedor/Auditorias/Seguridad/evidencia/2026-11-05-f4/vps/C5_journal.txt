@@ -1,0 +1,3 @@
+Archived and active journals take up 317.4M in the file system.
+SystemMaxUse=500M
+MaxRetentionSec=30day
