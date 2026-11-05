@@ -347,3 +347,53 @@ Lo que lo cazó **no fue la re-medición**: ésa sólo dice «sigue mal», no d�
 Efecto medido: mapeo prototipo→nativo **52 → 53/54 (98%)**, `rc=0` sobre `d8d689e9`. Control negativo:
 `soporte` conserva su símbolo bloqueante (su pendiente es real — espera la decisión A/B/C del
 operador sobre el dictado), así que el cambio no aflojó el instrumento para todos.
+
+## Refuerzo 2026-11-05 — el DUAL, pagado: acá el comentario no satisface al guard, lo ALIMENTA
+
+Mismo archivo, mecanismo invertido. `roles_declarados_en()` (`scripts/lib/buzon-roles.sh`) lee la
+línea `ROLES:` de una ficha para saber a qué roles interpela. Tokenizaba **todo lo que seguía a los
+dos puntos**, prosa incluida:
+
+```
+ROLES: backend — y no auditoria, porque no tiene sesión viva
+  devolvía -> "backend auditoria"
+```
+
+**La oración que EXCLUYE a un rol es lo que lo INCLUYE.** Medido sobre la ficha real del grafo:
+declaraba tres roles y la función devolvía **cinco**, porque la aclaración de por qué `auditoria` y
+`manejo-de-errores` quedaban afuera los nombraba. En la entrada de arriba el guard se conformaba con
+su propio comentario; acá lo come como dato.
+
+### Por qué vivió un mes sin dar síntoma, y es lo transferible
+
+`roles_declarados_en()` **ya tenía tests**, y todos preguntaban lo mismo: **¿la línea se ENCUENTRA?**
+— el ancla, los adornos `_ROLES_:`, los backticks. El archivo **sí** tenía la línea, así que todo
+control de **presencia** salía verde. Lo que estaba mal era el **valor devuelto**, y ningún test lo
+comparaba contra lo que el humano escribió.
+
+> Un parser necesita dos controles distintos: **que encuentre** y **a quién EXCLUYE**. El segundo es
+> el que nadie escribe, porque el caso de uso que uno imagina es el de inclusión.
+
+[[verificar-una-propiedad-de-la-capa-no-verifica-que-la-capa-sobre]] ·
+[[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]] ·
+[[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]
+
+### El arreglo y su efecto colateral bueno
+
+Corte por expansión de parámetro en el primer separador de prosa (`—`, `(`, `.`, ` -- `, ` - `) —
+sin procesos nuevos, porque esta función corre por cada `.md` de un buzón de ~3300 y era el 15% del
+tiempo de `vigilancia-check.sh`. **Fail-open explícito:** si el corte deja el conjunto vacío, se
+devuelve nada, que equivale a «no declara padrón» y hace que el caller use el alcance del nombre —
+escala a **más** roles, no a menos. La salida peligrosa sería tratar un recorte vacío como padrón
+válido: ése es el apagado del escalador contra el que monta guardia el caso 1 de
+`test-escalador-roles-declarados.sh`.
+
+Efecto colateral que vale más que el fix: antes la línea `ROLES:` **no podía llevar explicación**, y
+una línea que no tolera explicación es una que la próxima persona rompe igual. Ahora la tolera.
+
+**Controles:** `scripts/tests/test-roles-declarados-excluye.sh` 8/8 — los 5 separadores excluyendo,
+el rol con guiones internos (`manejo-de-errores`) sobreviviendo al corte, los adornos de markdown, y
+el fail-open. Más 0 rojos en los otros 7 tests que sourcean la lib. El hallazgo del 2026-10-15 había
+dejado escrito exactamente este control («un test que declare `ROLES: backend — y no auditoria` y
+exija que `auditoria` NO esté en la salida») y la deuda vivió **tres semanas** con la receta ya
+escrita: [[un-falta-que-dice-imposible-describe-el-instrumento-del-dia]].
