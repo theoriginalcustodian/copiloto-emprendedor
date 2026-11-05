@@ -266,6 +266,34 @@ describe('ChatView (integración lista+composer+useChat -- cáscara de texto, si
     expect(tomarPendiente()).toBeNull();
   });
 
+  // SM-P1: «Cómo usar» deja la pregunta y cierra su glass; el chat la manda pero quedaba DETRÁS del escritorio. El shell
+  // sólo puede subir el chat si el chat le avisa que acaba de mandar un pendiente.
+  it('SM-P1 (control negativo): sin pendiente en el buzón no avisa al shell', async () => {
+    tomarPendiente();
+    const sinPendiente = jest.fn();
+    await render(
+      <ThemeProvider>
+        <ChatView onPendienteMandado={sinPendiente} />
+      </ThemeProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    expect(sinPendiente).not.toHaveBeenCalled();
+  });
+
+  it('🔴 SM-P1: al mandar un pendiente avisa al shell UNA vez', async () => {
+    tomarPendiente();
+    jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-q', accepted: true });
+    const aviso = jest.fn();
+    dejarPendiente('¿Cómo cargo un gasto hablando?');
+    await render(
+      <ThemeProvider>
+        <ChatView onPendienteMandado={aviso} />
+      </ThemeProvider>,
+    );
+    await waitFor(() => expect(api.sendChat).toHaveBeenCalledTimes(1));
+    expect(aviso).toHaveBeenCalledTimes(1);
+  });
+
   it('una card con kind desconocido en la respuesta del agente no rompe la pantalla', async () => {
     jest.mocked(api.getReply).mockResolvedValueOnce({
       replies: [{ id: 1, text: 'ya lo vi', card: { kind: 'kind_del_futuro' } }],
