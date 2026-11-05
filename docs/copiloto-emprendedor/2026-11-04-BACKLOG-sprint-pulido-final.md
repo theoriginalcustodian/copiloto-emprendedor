@@ -53,8 +53,8 @@ campo»*.
 | **SM-P7** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 2 y 3: el aspecto visual (blur sobre el hilo, translucidez y contraste del texto) NO se verifico en navegador por… |
 | **SM-P8** | `sin-issue` | ✅ TERMINADO | 82f8451e (#1651). Tabla medida: (a) puente Como usar NO APLICA: la web navega por tabs sin stack, PantallaComoUsarLaA… |
 | **SM-P9** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA de decision: lo que queda es IMPLEMENTACION y vive en otras fichas, no aca. SM-P5 (dock unico mobile, Mi dia edi… |
-| **SM-P10** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA de decision; la IMPLEMENTACION es de SM-P6, cuya pregunta cambio: ya no es -medir cual condicion oculta el dock-… |
-| **SM-P11** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-P10** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | La IMPLEMENTACION es de SM-P6 (quitar las dos condiciones de PantallaFacturacion.tsx:706, hecho en 0212ba19) MAS el p… |
+| **SM-P11** | `sin-issue` | 🟨 EN-CURSO | backend (la linea + el test adversarial) -- contrato bajado por planificacion el 2026-11-04 |
 | **SM-P12** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -250,8 +250,8 @@ campo»*.
 ### SM-P10 · `sin-issue` — DECISIÓN DEL OPERADOR: ¿qué hace el mic en Facturación?
 
 - **Estado:** CERRADO-POR-DECISION
-- **Falta:** NADA de decision; la IMPLEMENTACION es de SM-P6, cuya pregunta cambio: ya no es -medir cual condicion oculta el dock- sino -quitar las dos condiciones de PantallaFacturacion.tsx:706 y verificarlo-. Mientras P6 no este TERMINADO con device, Facturacion no esta acreditada con campo y mic para el usuario.
-- **Decision:** RESUELTA por el operador el 2026-11-04, textual: -el mic en facturacion hace lo mismo que en todas las funciones...enviar audio...al ser un copiloto de voz el campo de ingreso de texto y el mic deben estar en todas las funciones, en mi dia y en el chat principal...todos iguales con el mismo diseno...para que el usuario tenga facilidad de uso-. Registrada en este doc versionado docs/copiloto-emprendedor/2026-11-04-BACKLOG-sprint-pulido-final.md. La pregunta queda contestada: el mic hace lo mismo que en cualquier funcion, sin excepcion fiscal, y el campo de texto tambien va. CONSECUENCIA MEDIDA: el dock de Facturacion existia pero condicionado (PantallaFacturacion.tsx:706 lo montaba solo con gate.tipo==listo Y vista==listado) y por decision va SIEMPRE. OJO con el lado backend, que NO cambia: dictado_destinos.py:43 excluye el contexto -factura- a proposito (-emitir es irreversible ante ARCA, asi que la transcripcion cruda no precarga nada-) y web.py:970 IGNORA un contexto desconocido en vez de rechazarlo. Mandar audio desde Facturacion NO precarga una factura: va al chat como cualquier audio, compatible con la decision y con la orden de no emitir facturas. Si alguna vez se quiere que precargue, es otra ficha y otra decision. Implementado por frontend1 en 0212ba19 (#1653).
+- **Falta:** La IMPLEMENTACION es de SM-P6 (quitar las dos condiciones de PantallaFacturacion.tsx:706, hecho en 0212ba19) MAS el prellenado, que es SM-P11 y depende de UNA linea del backend todavia no mergeada. Mientras eso no este, el mic de Facturacion manda al chat en vez de abrir la card prellenada, que NO es lo que el operador decidio al final del dia. Y falta device (SM-P12).
+- **Decision:** RESUELTA por el operador el 2026-11-04 y luego CORREGIDA POR EL EL MISMO DIA; las dos versiones quedan escritas porque la segunda invalida una conclusion que yo ya habia registrado. (A) Primera respuesta, en el hilo de planificacion, textual: -el mic en facturacion hace lo mismo que en todas las funciones...enviar audio...al ser un copiloto de voz el campo de ingreso de texto y el mic deben estar en todas las funciones, en mi dia y en el chat principal...todos iguales con el mismo diseno-. Sobre eso yo concluí que el audio de Facturacion iba al chat como cualquier audio, apoyandome en que dictado_destinos.py:48 excluye el contexto -factura-. (B) Correccion del operador, dada directamente a la sesion frontend1 y relayada por peer: Gastos/Ingresos/Presupuestos/Clientes conservan su PRELLENADO de formulario, y Facturacion debe funcionar IGUAL que esas cuatro -- abrir formulario o card prellenada, NO mandar al chat. Inteligencia si queda enviando al chat porque son solo preguntas. O sea que -igual que todas las funciones- significaba igual en el PRELLENADO, no solo igual en el dock. Mi conclusion (A) era una extension mia de la exclusion del backend, igual que el error que ya habia cometido con SM-L3. PROCEDENCIA de (B): mensaje de la sesion frontend1 (copiloto-emprendedor-6c) a planificacion del 2026-11-04; el operador no la dicto en el hilo de planificacion, asi que si no refleja su orden se corrige y la ficha vuelve a estado anterior. MEDICION que destraba (B) y que contradice el comentario del backend: emitir_factura PROPONE -- devuelve Artifact(kind=factura_propuesta) en tool_catalog.py:1716 y su propia observacion dice -TODAVIA NO esta emitida-; el mapeo de :540 ya la trata como factura_dictado y el comentario de :536 dice que el borrador no emite nada hasta que el usuario toca Emitir (gate token_confirmacion). O sea que el criterio con el que se excluyo factura -- -su tool devuelve una card, no escribe- -- lo CUMPLE emitir_factura: la exclusion protegia de algo que el gate de dominio ya protege. Registrado en docs/copiloto-emprendedor/2026-11-04-BACKLOG-sprint-pulido-final.md; la linea del backend es SM-P11.
 - **Dueño:** **operador**
 - **Contexto medido:** Facturación **ya tiene** dock (ver `SM-P6`) y lo que dicta **se siembra en
   el composer del chat** (`voz/DockAlChat.tsx`), nunca emite. Eso es deliberado:
@@ -264,7 +264,8 @@ campo»*.
 
 ### SM-P11 · `sin-issue` — CONDICIONAL: `contexto` de `/transcribir` para el chat
 
-- **Estado:** PENDIENTE
+- **Estado:** EN-CURSO
+- **Dueno-activo:** backend (la linea + el test adversarial) -- contrato bajado por planificacion el 2026-11-04
 - **Dueño:** backend — **sólo si frontend1 lo pide con la medición de `SM-P3`**
 - **Medido:** `CONTEXTOS_TRANSCRIBIR` (`apps/copiloto/dictado_destinos.py:53`) tiene
   `gasto · ingreso · presupuesto · cliente`; **no tiene `chat`**. Pero `apps/copiloto/web.py:970`
