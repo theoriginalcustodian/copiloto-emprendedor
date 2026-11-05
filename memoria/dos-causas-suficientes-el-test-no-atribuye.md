@@ -69,3 +69,28 @@ Hermana de [[instrumento-que-no-mira-nunca-falla]] y
 observa perfectamente y **no puede atribuir**. Y de
 [[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]], que es su espejo: allá el
 camino era el equivocado, acá hay **dos** caminos correctos y el test no sabe por cuál llegó.
+
+## Refuerzo 2026-11-05 — el canario corrido en una pantalla cuyo CONTEXTO ya determina la respuesta
+
+Mandé a correr un canario de silencio (control positivo del STT) **en el dock de Facturación**. La
+app contestó «¿Qué producto o servicio querés facturar?» y la lectura fue «el STT alucina, el
+instrumento no discrimina». **Ese veredicto no atribuía nada.** Medido en el código:
+`PantallaFacturacion.tsx:596` dicta sin guard de texto vacío y `useDictadoFactura.ts:76-78` pinta la
+pregunta del agente ante `sin_propuesta / respuesta_sin_card`. Entonces **transcripción vacía** y
+**transcripción alucinada** producen la misma pantalla — y «¿Qué producto querés facturar?» es
+exactamente lo que el sistema contesta ante un dictado incompleto **legítimo**.
+
+El error no fue del que lo corrió: fue **elegir la pantalla**. Un dock de formulario tiene un flujo
+que *rescata* cualquier entrada degradada y la convierte en la misma pregunta. En el chat general
+no hay nada que la rescate, y el texto dictado se ve en pantalla.
+
+**La pregunta que lo caza, antes de correr un canario:** ¿esta pantalla puede **distinguir** las dos
+cosas que quiero separar, o su flujo normal produce la misma salida para las dos? Si el contexto ya
+determina la respuesta, el canario no puede fallar de forma informativa.
+
+**Y el remate, que es la parte útil:** cuando backend midió el control que sí aislaba (WAV de
+silencio a `POST /transcribir`, sin device), resultó que el STT **sí** alucinaba — devolvió
+`«Gracias.»` en **6 de 6** corridas. O sea que la conclusión era correcta **y el test seguía sin
+acreditarla**. Un veredicto que acierta por casualidad es indistinguible de uno medido, y éste casi
+bloqueó la pasada entera: con la firma estable ya identificada, el canario volvió a servir sin
+arreglar nada.
