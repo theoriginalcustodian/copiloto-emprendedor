@@ -1,0 +1,2 @@
+smoke rc=0 · 43 PASS · 0 FAIL · /c/gfw-src/wt-seg-f0/_evidencia/2026-11-05/BL-Q2/smoke.txt
+smoke_beta ya estaba OK para 2ca3f7add5d5e9cf450af0c45bae4888020e0ce3 (no se duplica)

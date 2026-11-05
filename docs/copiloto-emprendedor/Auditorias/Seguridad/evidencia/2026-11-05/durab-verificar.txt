@@ -1,0 +1,18 @@
+[e2e-g6-durabilidad] BASE=https://copilotoemprendedor.duckdns.org  session_id=e2e-g6-durabilidad-da4b7108-b4a4-4f73-9f64-5c99f44a98ac  marcador_1=527bee6f  session_id_hitl=e2e-g6-durabilidad-hitl-1a81a55b-cc02-4fa0-b539-5a6322dbfacb
+[e2e-g6-durabilidad] 1) login canónico (e2e-device@copiloto.test)
+[e2e-g6-durabilidad] 2) poll de /reply del turno 1 -- tiene que haber llegado pese al restart en el medio
+[e2e-g6-durabilidad]    turno 1 OK -- 1 fila(s) llegaron después del restart
+[e2e-g6-durabilidad] 3) turno 2 en la MISMA sesión -- prueba continuidad, no sólo recuperación
+[e2e-g6-durabilidad]    /chat accepted=true wf_id=conv-web-4f3ecb78-2e36-4044-a56e-0e7ef6c4a655-e2e-g6-durabilidad-da4b7108-b4a4-4f73-9f64-5c99f44a98ac
+[e2e-g6-durabilidad]    turno 2 OK -- 1 fila(s) nuevas, misma sesión sigue viva post-restart
+[e2e-g6-durabilidad] 4) HITL: reingreso al gate parqueado ANTES del restart (callback POST-restart)
+[e2e-g6-durabilidad]    /chat (callback) accepted=true wf_id=conv-web-4f3ecb78-2e36-4044-a56e-0e7ef6c4a655-e2e-g6-durabilidad-hitl-1a81a55b-cc02-4fa0-b539-5a6322dbfacb
+[e2e-g6-durabilidad]    ℹ la tool confirmada EJECUTÓ y devolvió status='error' (name='calendar_book') — eso NO invalida la durabilidad: prueba que execute_tool corrió tras el callback. Si querés el camino feliz completo, conectá la integración en el tenant e2e.
+[e2e-g6-durabilidad]    HITL OK -- 1 fila(s) nuevas, el gate se resolvió (no repreguntó) -- confirmed_tool={'name': 'calendar_book', 'status': 'error', 'activity': 'execute_tool', 'confirmed': True}
+
+=== RESULTADO: VERDE -- CONVERSACIÓN Y HITL SOBREVIVIERON AL RESTART REAL DEL WORKER ===
+session_id=e2e-g6-durabilidad-da4b7108-b4a4-4f73-9f64-5c99f44a98ac
+turno 1 (mandado antes del restart; prueba CONTINUIDAD, no recuperación en vuelo) -> 1 reply(s)
+turno 2 (post-restart, misma sesión)   -> 1 reply(s)
+session_id_hitl=e2e-g6-durabilidad-hitl-1a81a55b-cc02-4fa0-b539-5a6322dbfacb
+gate HITL (parqueado ANTES del restart, resuelto DESPUÉS -- sobrevive por replay) -> 1 reply(s)
