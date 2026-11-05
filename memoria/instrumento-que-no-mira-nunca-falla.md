@@ -1105,3 +1105,39 @@ distribuciones instaladas» — rojo del WRAPPER leido como rojo del gate
 
 Emparentado: [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] y
 [[el-canario-el-control-positivo-de-lo-que-falla-callado]] — el canario de un canal es un `echo`.
+## Refuerzo 2026-11-05 — el INSTRUMENTO DEL TEST no podia fabricar el eje que el gate mide, y el rojo parecia del fix
+
+Arreglé un falso positivo de `scripts/vigilancia-check.sh`: el bloque SIN DUEÑO derivaba la **emisión**
+de un contrato del `mtime` (`%Y`), así que una enmienda mía a las 13:56 sobre un contrato **nacido** a
+las 13:36 lo movió por delante de la señal de frontend1 de las 13:47 y la acusó de nunca haber leído
+un contrato que había **ejecutado**. El fix correcto es el nacimiento (`%W`), y ya existía en
+`scripts/escaladores-buzon.sh:244-251` por el motivo simétrico — `memoria/el-fix-ya-existe-en-otro-call-site.md`.
+
+**Al poner `%W` el test e2e pasó de 0 a 2 fallos, y la lectura obvia —«el fix está mal»— era falsa.**
+`scripts/tests/test-vigilancia-rol-digitos-extremo-a-extremo.sh:60-63` envejece sus fixtures con
+`touch -d`, que mueve `%Y` y **en Linux no puede mover `%W`**: el nacimiento de un fixture es siempre
+*ahora*. O sea que el test no estaba midiendo el gate — estaba midiendo **lo que su propio instrumento
+sabe fabricar**, y el eje nuevo le quedaba fuera de alcance.
+
+Dos cosas que no se ven de entrada:
+
+1. **El rojo no acusaba al cambio que lo disparó.** Un fallo que aparece justo al cambiar X se lee como
+   «X está mal»; acá X estaba bien y lo que faltaba era capacidad en el medidor. El discriminante fue
+   preguntar *¿puede este test, con las herramientas que usa, producir la condición que ahora mido?* —
+   antes de tocar el fix. Si no hubiera preguntado eso, el camino cómodo era revertir a `%Y` y volver
+   al falso positivo con el test en verde: el gate real degradado y la suite tranquila.
+2. **Mi primer parche sí estaba mal, pero por otra cosa:** puse `%W` en los **dos** usos, y el de
+   GRACIA (¿es demasiado nuevo para juzgarlo?) es un eje distinto del de EMISIÓN (¿existía antes de la
+   señal?). Un fixture envejecido caía dentro de la gracia y **una ausencia real dejaba de escalar** —
+   un fail-open. Se arregló separando los memos: `_MT_MEMO` (`%Y`) para gracia, `_NAC_MEMO` para
+   emisión. Dos preguntas distintas no comparten timestamp.
+
+**La salida no fue tocar el test.** El eje de emisión toma **`min(%W, %Y)`**, cuya frase es «el archivo
+existía, como mínimo, desde el más viejo de los dos»: cubre la enmienda (13:36 gana), el filesystem sin
+`%W` (cae al mtime = comportamiento anterior) y el fixture tocado (120 min ganan) sin ramas especiales,
+y su sesgo es hacia **no** escalar, que es el lado correcto —
+`memoria/el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md`.
+
+**Control:** `0 fallos` con los dos positivos explícitos verdes («SÍ alarma cuando frontend2 realmente
+no dio señal — el fix no apagó el watchdog», «frontend2 … sí aparece muda — no hay fail-open cruzado»),
+y el gate real listando sólo las ausencias genuinas (backend 12:59, frontend2 08:55) sin frontend1.
