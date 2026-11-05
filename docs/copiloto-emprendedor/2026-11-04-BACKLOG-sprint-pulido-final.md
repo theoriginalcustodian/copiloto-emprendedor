@@ -44,10 +44,10 @@ campo»*.
 
 | Ficha | Issue | Estado | Que falta del DoD / evidencia de cierre |
 |---|---|---|---|
-| **SM-P1** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
-| **SM-P2** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
-| **SM-P3** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
-| **SM-P4** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
+| **SM-P1** | `sin-issue` | 🟧 DOD-PARCIAL | pasada de device (SM-P12) con e2e-device@copiloto.test. CORREGIDO 2026-11-05: la Falta anterior citaba el release fb0… |
+| **SM-P2** | `sin-issue` | 🟧 DOD-PARCIAL | pasada de device (SM-P12) con e2e-device@copiloto.test. CORREGIDO 2026-11-05: la Falta anterior citaba el release fb0… |
+| **SM-P3** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA. La Falta que esta ficha arrastraba («pasada de device, el release fb0fb9d3 no trae estos fixes») era de cuando … |
+| **SM-P4** | `sin-issue` | 🟧 DOD-PARCIAL | pasada de device (SM-P12) con e2e-device@copiloto.test. CORREGIDO 2026-11-05: la Falta anterior citaba el release fb0… |
 | **SM-P5** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test: comparar el dock de cada funcion contra el chat en las… |
 | **SM-P6** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test: comparar el dock de cada funcion contra el chat en las… |
 | **SM-P7** | `sin-issue` | ✅ TERMINADO | f9c5d98b DoD1: inventario path:linea en la Falta previa (5 funciones, f9c5d98b #1654). DoD2: un solo componente DockE… |
@@ -65,7 +65,7 @@ campo»*.
 ### SM-P1 · `sin-issue` — «Cómo usar la app»: tocar una card no llega a destino, vuelve a Ajustes
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes.
+- **Falta:** pasada de device (SM-P12) con e2e-device@copiloto.test. CORREGIDO 2026-11-05: la Falta anterior citaba el release fb0fb9d3 «que no trae estos fixes» y eso quedo RANCIO — el APK vigente es ef143e95, construido sobre 7d278a2c, que SI contiene estos fixes (6a1ae914 es ancestro) y ademas #1661/#1662; medido el delta 7d278a2c..origin/main bajo el filtro de rebuild nativo = vacio con control positivo, asi que no hace falta un segundo build. Lo unico que falta es correrla en el telefono.
 - **Cierre:** 6a1ae914 (#1650): PantallaComoUsarLaApp deja la pregunta y hace dismissAll al chat, test PantallaComoUsarLaApp.test.tsx. Premisa confirmada por el operador 2026-11-04, textual: 'como el prototipo' (index.html:3614), las 5 cards llevan AL CHAT con la pregunta dicha, no a la funcion.
 - **Dueño:** frontend1
 - **Reportado por el operador (2026-11-04):** «cuando hago click en cualquier opción como cargar un
@@ -96,7 +96,7 @@ campo»*.
 ### SM-P2 · `sin-issue` — El isotipo de mobile sale 4× más fino que el del mapa
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes.
+- **Falta:** pasada de device (SM-P12) con e2e-device@copiloto.test. CORREGIDO 2026-11-05: la Falta anterior citaba el release fb0fb9d3 «que no trae estos fixes» y eso quedo RANCIO — el APK vigente es ef143e95, construido sobre 7d278a2c, que SI contiene estos fixes (6a1ae914 es ancestro) y ademas #1661/#1662; medido el delta 7d278a2c..origin/main bajo el filtro de rebuild nativo = vacio con control positivo, asi que no hace falta un segundo build. Lo unico que falta es correrla en el telefono.
 - **Cierre:** 6a1ae914 (#1650): Marca.tsx corrige el trazo del isotipo (strokeWidth en unidades del viewBox, sin predividir por la escala); Marca.test.tsx.
 - **Dueño:** frontend1
 - **Reportado por el operador (2026-11-04):** «el isologo es diferente, tiene líneas más finas»,
@@ -122,7 +122,7 @@ campo»*.
 ### SM-P3 · `sin-issue` — El dictado del chat ENVÍA solo: no hay forma de arrepentirse
 
 - **Estado:** CERRADO-POR-DECISION
-- **Falta:** Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes.
+- **Falta:** NADA. La Falta que esta ficha arrastraba («pasada de device, el release fb0fb9d3 no trae estos fixes») era de cuando estaba DOD-PARCIAL y quedo huerfana al cerrarse por decision el 2026-11-04: una ficha cerrada por decision no tiene pendiente de device, y dejarla escrita hacia leer el APK vigente como inservible. El codigo de 6a1ae914 (#1650) se verifica como parte de SM-P12 junto con el resto, no como DoD propio de esta ficha.
 - **Decision:** operador, 2026-11-04, respuesta directa a frontend1 (relayada por planificacion), registrada en docs/copiloto-emprendedor/2026-11-04-BACKLOG-sprint-pulido-final.md: el mic funciona como WhatsApp en toda la app, soltar o Enviar-tras-fijar manda el audio. El codigo de pegar el texto entro en 6a1ae914 (#1650) y se revirtio en #1658.
 - **Cierre:** 6a1ae914 (#1650): ChatView.alAudio transcribe sin contexto y pega en el composer sin enviar (semilla), borrarArchivoLocal en finally; tests en ChatView.test.tsx y PantallaPrincipal.dockMiDia.test.tsx.
 - **Dueño:** frontend1 (backend sólo si `SM-P11` resulta necesaria)
@@ -149,7 +149,7 @@ campo»*.
 ### SM-P4 · `sin-issue` — Sacar la cámara del composer de Soporte
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes.
+- **Falta:** pasada de device (SM-P12) con e2e-device@copiloto.test. CORREGIDO 2026-11-05: la Falta anterior citaba el release fb0fb9d3 «que no trae estos fixes» y eso quedo RANCIO — el APK vigente es ef143e95, construido sobre 7d278a2c, que SI contiene estos fixes (6a1ae914 es ancestro) y ademas #1661/#1662; medido el delta 7d278a2c..origin/main bajo el filtro de rebuild nativo = vacio con control positivo, asi que no hace falta un segundo build. Lo unico que falta es correrla en el telefono.
 - **Cierre:** 6a1ae914 (#1650): se retira la camara del composer de Soporte (PantallaSoporte.tsx, textosSoporte.ts, TarjetaTicketSoporte, useTicketsSoporte); PantallaSoporte.test.tsx; fila soporte del mapeo corregida.
 - **Dueño:** frontend1
 - **Orden del operador (2026-11-04):** «en soporte técnico hay que sacar la cámara de fotos que
