@@ -46,16 +46,17 @@ campo»*.
 |---|---|---|---|
 | **SM-P1** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
 | **SM-P2** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
-| **SM-P3** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
+| **SM-P3** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
 | **SM-P4** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
-| **SM-P5** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-P6** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-P7** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 2 y 3: el aspecto visual (blur sobre el hilo, translucidez y contraste del texto) NO se verifico en navegador por… |
+| **SM-P5** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test: comparar el dock de cada funcion contra el chat en las… |
+| **SM-P6** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test: comparar el dock de cada funcion contra el chat en las… |
+| **SM-P7** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 2 y 3 (aspecto): el dock quedo en las 5 funciones pero NO se verifico en navegador el aspecto real (blur del cont… |
 | **SM-P8** | `sin-issue` | ✅ TERMINADO | 82f8451e (#1651). Tabla medida: (a) puente Como usar NO APLICA: la web navega por tabs sin stack, PantallaComoUsarLaA… |
-| **SM-P9** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA de decision: lo que queda es IMPLEMENTACION y vive en otras fichas, no aca. SM-P5 (dock unico mobile, Mi dia edi… |
-| **SM-P10** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | La IMPLEMENTACION es de SM-P6 (quitar las dos condiciones de PantallaFacturacion.tsx:706, hecho en 0212ba19) MAS el p… |
-| **SM-P11** | `sin-issue` | 🟨 EN-CURSO | backend (la linea + el test adversarial) -- contrato bajado por planificacion el 2026-11-04 |
+| **SM-P9** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA de decision: lo que queda es IMPLEMENTACION y vive en otras fichas. SM-P5 (dock unico mobile, Mi dia editable) y… |
+| **SM-P10** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | La IMPLEMENTACION del dock es de SM-P6 (quitar las dos condiciones de PantallaFacturacion.tsx:706: hecho en 0212ba19 … |
+| **SM-P11** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA: la pregunta de esta ficha se disolvio, no se resolvio. Era condicional a que frontend1 necesitara un contexto n… |
 | **SM-P12** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-P13** | `sin-issue` | 🟧 DOD-PARCIAL | El CABLEADO de los dos frontends y el device. El backend esta HECHO y desplegado (2ca3f7ad, #1660): la linea en _DEST… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -120,8 +121,9 @@ campo»*.
 
 ### SM-P3 · `sin-issue` — El dictado del chat ENVÍA solo: no hay forma de arrepentirse
 
-- **Estado:** DOD-PARCIAL
+- **Estado:** CERRADO-POR-DECISION
 - **Falta:** Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes.
+- **Decision:** operador, 2026-11-04, respuesta directa a frontend1 (relayada por planificacion), registrada en docs/copiloto-emprendedor/2026-11-04-BACKLOG-sprint-pulido-final.md: el mic funciona como WhatsApp en toda la app, soltar o Enviar-tras-fijar manda el audio. El codigo de pegar el texto entro en 6a1ae914 (#1650) y se revirtio en #1658.
 - **Cierre:** 6a1ae914 (#1650): ChatView.alAudio transcribe sin contexto y pega en el composer sin enviar (semilla), borrarArchivoLocal en finally; tests en ChatView.test.tsx y PantallaPrincipal.dockMiDia.test.tsx.
 - **Dueño:** frontend1 (backend sólo si `SM-P11` resulta necesaria)
 - **Orden del operador (2026-11-04):** «al apretar dictarlo debe aparecer el texto pegado en el
@@ -167,7 +169,9 @@ campo»*.
 
 ### SM-P5 · `sin-issue` — Un solo dock en toda la app: sin fondo alrededor, con blur (mobile)
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Falta: pasada de device (SM-P12) con e2e-device@copiloto.test: comparar el dock de cada funcion contra el chat en las 5 pieles y confirmar el despacho bajo la pila real de glass.
+- **Cierre:** 0212ba19 (#1653): despachoAlChat.ts + DockAlChat despachan primero y vuelven despues, dock en las 9 funciones, Mi dia editable. Envoltorio visual unico DockSobreContenido (mismo ScrimDock del chat) en DockFuncion y Soporte, test DockSobreContenido.test.tsx. Inventario path:linea en el cierre_ del buzon.
 - **Dueño:** frontend1
 - **Orden del operador (2026-11-04):** «todos los campos de ingreso de texto y los botones de mic
   deben ser iguales en toda la app... sin color de fondo alrededor, con el blur para el texto que
@@ -186,7 +190,9 @@ campo»*.
 
 ### SM-P6 · `sin-issue` — El dock de Facturación existe pero no se ve: medir cuál condición lo oculta
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** Falta: pasada de device (SM-P12) con e2e-device@copiloto.test: comparar el dock de cada funcion contra el chat en las 5 pieles y confirmar el despacho bajo la pila real de glass.
+- **Cierre:** 0212ba19 (#1653): PantallaFacturacion.tsx:706 monta DockAlChat sin condiciones, mic manda audio al chat (P10 por decision del operador 2026-11-04). Tests PantallaFacturacion.test.tsx: despacha antes de router.back, dock aun sin CUIT, sin chat listo no navega.
 - **Dueño:** frontend1
 - **Medido:** `facturacion/PantallaFacturacion.tsx:706` monta `DockAlChat` **sólo** con
   `gate.tipo === 'listo'` **y** `vista === 'listado'`. El operador reportó que «no está».
@@ -201,7 +207,7 @@ campo»*.
 ### SM-P7 · `sin-issue` — El mismo dock unificado, en la web
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** DoD 2 y 3: el aspecto visual (blur sobre el hilo, translucidez y contraste del texto) NO se verifico en navegador por piel; solo tipos, tests y el gate de hex. Ademas MicFuncion (GastosScreen.tsx:243, IngresosScreen.tsx:177, ClientesScreen.tsx:292, PresupuestosScreen.tsx:290) queda FUERA del dock: es un mic suelto junto a un formulario, no un dock; decision de unificarlo o no es de planificacion. Hallazgo y unificacion estructural hechos en 82f8451e (#1651): el dock web NO estaba unificado (Composer.tsx:79-121 y ComposerSoporte.tsx:57-98 duplicaban JSX; chat.css:649-659 fondo lleno sin backdrop-filter, unico en repo presupuestos.css:415 lo apaga; desktop.css:363-421 pisaba aparte); ahora DockEntrada.tsx unico, envoltorio y blur por tokens en chat.css.
+- **Falta:** DoD 2 y 3 (aspecto): el dock quedo en las 5 funciones pero NO se verifico en navegador el aspecto real (blur del contenido que pasa por debajo, translucidez, contraste del texto) por piel ni el anclaje sticky con lista larga; solo tipos, 1435+ tests y el gate de hex. Hecho en f9c5d98b (#1654): DockFuncion.tsx -> DockEntrada (unico), montado en GastosScreen.tsx:273, IngresosScreen.tsx:204, ClientesScreen.tsx:325, PresupuestosScreen.tsx:332, PantallaFacturacion.tsx:571-572 (gate listo Y vista listado, igual que mobile PantallaFacturacion.tsx:706; test de ambos ejes); MicFuncion borrado; onAbrirChat cableado en AppShell/DesktopShell; la accion corre al llegar al chat (dejarPendiente + changeTab + tomarPendiente ChatScreen.tsx:68-71). Premisa 1 del contrato (Facturacion sin dock): en web NO existia dock alguno, no habia condicion que lo ocultara; premisa 2 (Mi dia) es mobile.
 - **Dueño:** frontend2
 - **Qué:** mismo criterio que `SM-P5` en `apps/copiloto-web`.
 - **🔴 Antes de implementar:** verificar si en web el dock **está** unificado en un componente como
@@ -232,8 +238,8 @@ campo»*.
 ### SM-P9 · `sin-issue` — DECISIÓN DEL OPERADOR: ¿el campo de Mi día se edita o sube el chat?
 
 - **Estado:** CERRADO-POR-DECISION
-- **Falta:** NADA de decision: lo que queda es IMPLEMENTACION y vive en otras fichas, no aca. SM-P5 (dock unico mobile, Mi dia editable) y SM-P6 (Facturacion sin condiciones, accion primero y vuelta al chat despues) tienen el comportamiento; mientras no esten en TERMINADO con device, lo que el operador pidio no esta acreditado en la app. Esta ficha solo acredita que la decision esta tomada.
-- **Decision:** RESUELTA por el operador el 2026-11-04 en el hilo de planificacion, textual: -el campo de ingreso de texto en mi dia debe poder ingresar texto....igual que todos los campos de todas la funciones...la intencion es que el campo de ingreso de texto y el boton del mic esten en todas las funciones...en mi dia y en el chat...asi que solo hay que replicar el mismo campo-. O sea: el campo de Mi dia SE EDITA. Registrada en este doc versionado docs/copiloto-emprendedor/2026-11-04-BACKLOG-sprint-pulido-final.md. Se retira onTocarCampo como -subir el chat- (PantallaPrincipal.tsx:183; el comentario de :59 queda obsoleto). La cita al prototipo index.html:2717 que justificaba el comportamiento anterior NO se retira como observacion -- era real -- pero la decision del operador es posterior y manda. ADEMAS fija el ORDEN, que no estaba en ninguna ficha: -cuando se ingresa texto o se envia un audio se vuelve al chat luego de la accion...pero no antes....siempre despues....al volver al chat la accion se ejecuta y aparece la card correspondiente-. Al momento de la decision DockAlChat hacia dejarAvisoParaElChat + router.back() y el chat ejecutaba al recuperar foco, o sea navegaba ANTES de actuar: el inverso de lo pedido. Implementado por frontend1 en 0212ba19 (#1653); la acreditacion en device es de SM-P12.
+- **Falta:** NADA de decision: lo que queda es IMPLEMENTACION y vive en otras fichas. SM-P5 (dock unico mobile, Mi dia editable) y SM-P6 (Facturacion sin condiciones, accion primero y vuelta al chat despues) tienen el comportamiento y estan en DOD-PARCIAL; mientras no pasen por device (SM-P12), lo que el operador pidio no esta acreditado en la app. Esta ficha solo acredita que la decision esta tomada.
+- **Decision:** RESUELTA por el operador el 2026-11-04 en el hilo de planificacion, textual: -el campo de ingreso de texto en mi dia debe poder ingresar texto....igual que todos los campos de todas la funciones...la intencion es que el campo de ingreso de texto y el boton del mic esten en todas las funciones...en mi dia y en el chat...asi que solo hay que replicar el mismo campo-. O sea: el campo de Mi dia SE EDITA. Registrada en docs/copiloto-emprendedor/2026-11-04-BACKLOG-sprint-pulido-final.md. Se retira onTocarCampo como -subir el chat- (PantallaPrincipal.tsx:183; el comentario de :59 queda obsoleto). La cita al prototipo index.html:2717 que justificaba el comportamiento anterior NO se retira como observacion -- era real -- pero la decision del operador es posterior y manda. ADEMAS fija el ORDEN, que no estaba en ninguna ficha: -cuando se ingresa texto o se envia un audio se vuelve al chat luego de la accion...pero no antes....siempre despues....al volver al chat la accion se ejecuta y aparece la card correspondiente-. Al momento de la decision DockAlChat hacia dejarAvisoParaElChat + router.back() y el chat ejecutaba al recuperar foco, o sea navegaba ANTES de actuar: el inverso de lo pedido. Implementado por frontend1 en 0212ba19 (#1653) y en web por frontend2 en f9c5d98b (#1654); la acreditacion en device es de SM-P12.
 - **Dueño:** **operador** (nadie implementa hasta que decida)
 - **Reportado por el operador (2026-11-04):** «cuando hago click en el campo de ingreso de texto en
   Mi día se va derecho a la pantalla del chat, en vez de habilitar el ingreso de texto... el botón
@@ -250,8 +256,8 @@ campo»*.
 ### SM-P10 · `sin-issue` — DECISIÓN DEL OPERADOR: ¿qué hace el mic en Facturación?
 
 - **Estado:** CERRADO-POR-DECISION
-- **Falta:** La IMPLEMENTACION es de SM-P6 (quitar las dos condiciones de PantallaFacturacion.tsx:706, hecho en 0212ba19) MAS el prellenado, que es SM-P11 y depende de UNA linea del backend todavia no mergeada. Mientras eso no este, el mic de Facturacion manda al chat en vez de abrir la card prellenada, que NO es lo que el operador decidio al final del dia. Y falta device (SM-P12).
-- **Decision:** RESUELTA por el operador el 2026-11-04 y luego CORREGIDA POR EL EL MISMO DIA; las dos versiones quedan escritas porque la segunda invalida una conclusion que yo ya habia registrado. (A) Primera respuesta, en el hilo de planificacion, textual: -el mic en facturacion hace lo mismo que en todas las funciones...enviar audio...al ser un copiloto de voz el campo de ingreso de texto y el mic deben estar en todas las funciones, en mi dia y en el chat principal...todos iguales con el mismo diseno-. Sobre eso yo concluí que el audio de Facturacion iba al chat como cualquier audio, apoyandome en que dictado_destinos.py:48 excluye el contexto -factura-. (B) Correccion del operador, dada directamente a la sesion frontend1 y relayada por peer: Gastos/Ingresos/Presupuestos/Clientes conservan su PRELLENADO de formulario, y Facturacion debe funcionar IGUAL que esas cuatro -- abrir formulario o card prellenada, NO mandar al chat. Inteligencia si queda enviando al chat porque son solo preguntas. O sea que -igual que todas las funciones- significaba igual en el PRELLENADO, no solo igual en el dock. Mi conclusion (A) era una extension mia de la exclusion del backend, igual que el error que ya habia cometido con SM-L3. PROCEDENCIA de (B): mensaje de la sesion frontend1 (copiloto-emprendedor-6c) a planificacion del 2026-11-04; el operador no la dicto en el hilo de planificacion, asi que si no refleja su orden se corrige y la ficha vuelve a estado anterior. MEDICION que destraba (B) y que contradice el comentario del backend: emitir_factura PROPONE -- devuelve Artifact(kind=factura_propuesta) en tool_catalog.py:1716 y su propia observacion dice -TODAVIA NO esta emitida-; el mapeo de :540 ya la trata como factura_dictado y el comentario de :536 dice que el borrador no emite nada hasta que el usuario toca Emitir (gate token_confirmacion). O sea que el criterio con el que se excluyo factura -- -su tool devuelve una card, no escribe- -- lo CUMPLE emitir_factura: la exclusion protegia de algo que el gate de dominio ya protege. Registrado en docs/copiloto-emprendedor/2026-11-04-BACKLOG-sprint-pulido-final.md; la linea del backend es SM-P11.
+- **Falta:** La IMPLEMENTACION del dock es de SM-P6 (quitar las dos condiciones de PantallaFacturacion.tsx:706: hecho en 0212ba19 mobile y acc1d2ec web) y el PRELLENADO es de SM-P13, que esta en DOD-PARCIAL. Mas device (SM-P12). Mientras SM-P13 no cierre, el mic de Facturacion manda al chat en vez de abrir la card prellenada, que NO es lo que el operador decidio al final del dia.
+- **Decision:** RESUELTA por el operador el 2026-11-04 y CORREGIDA POR EL el mismo dia; las dos versiones quedan escritas porque la segunda invalida una conclusion que yo ya habia registrado. (A) Primera respuesta, hilo de planificacion, textual: -el mic en facturacion hace lo mismo que en todas las funciones...enviar audio...al ser un copiloto de voz el campo de ingreso de texto y el mic deben estar en todas las funciones, en mi dia y en el chat principal...todos iguales con el mismo diseno-. Sobre eso yo concluí que el audio de Facturacion iba al chat como cualquier audio, apoyandome en que dictado_destinos.py:48 excluia el contexto -factura-. (B) Correccion del operador, dada directamente a la sesion frontend1 y relayada por peer: Gastos/Ingresos/Presupuestos/Clientes conservan su PRELLENADO de formulario y Facturacion debe funcionar IGUAL que esas cuatro -- abrir formulario o card prellenada, NO mandar al chat; Inteligencia si queda enviando al chat porque son solo preguntas. O sea que -igual que todas las funciones- significaba igual en el PRELLENADO, no solo igual en el dock. Mi conclusion (A) era una extension mia de una exclusion del backend, el mismo error que ya habia cometido con SM-L3 extendiendo -no probamos facturar- a -no probamos anular-. PROCEDENCIA de (B): mensaje de la sesion frontend1 (copiloto-emprendedor-6c) a planificacion del 2026-11-04; el operador no la dicto en el hilo de planificacion, asi que si no refleja su orden se corrige. La implementacion de (B) es SM-P13; el lado backend ya esta en main (2ca3f7ad, #1660) con su test adversarial. Registrada en docs/copiloto-emprendedor/2026-11-04-BACKLOG-sprint-pulido-final.md.
 - **Dueño:** **operador**
 - **Contexto medido:** Facturación **ya tiene** dock (ver `SM-P6`) y lo que dicta **se siembra en
   el composer del chat** (`voz/DockAlChat.tsx`), nunca emite. Eso es deliberado:
@@ -264,8 +270,9 @@ campo»*.
 
 ### SM-P11 · `sin-issue` — CONDICIONAL: `contexto` de `/transcribir` para el chat
 
-- **Estado:** EN-CURSO
-- **Dueno-activo:** backend (la linea + el test adversarial) -- contrato bajado por planificacion el 2026-11-04
+- **Estado:** CERRADO-POR-DECISION
+- **Falta:** NADA: la pregunta de esta ficha se disolvio, no se resolvio. Era condicional a que frontend1 necesitara un contexto nuevo en /transcribir para el chat; con la reversion de SM-P3 el chat ya no usa /transcribir (el mic manda el audio directo, tipo WhatsApp), asi que el consumidor que la habria pedido dejo de existir. La whitelist queda como estaba en cuanto al chat. Lo que SI se agrego a _DESTINOS el mismo dia fue el contexto -factura-, y eso NO es esta ficha: es SM-P13, que nace de la segunda decision del operador. Citar 2ca3f7ad aca seria acreditar esta pregunta con la evidencia de otra.
+- **Decision:** CIERRA SIN CODIGO por como se movieron las otras fichas el 2026-11-04, no por una orden especifica del operador sobre ella. Registrado en docs/copiloto-emprendedor/2026-11-04-BACKLOG-sprint-pulido-final.md. Cadena: (1) el operador decidio que el mic funcione como WhatsApp, IGUAL en toda la app -- soltar o Enviar-tras-fijar MANDA el audio -- lo que REVIRTIO el -pegar el transcript en el campo- de SM-P3 (implementado en 6a1ae914, revertido en d03f170a, #1658); (2) sin ese pegado, el chat no consume POST /transcribir, y esta ficha preguntaba exactamente si habia que agregarle un contexto -chat- a la whitelist para ese consumidor; (3) su propio DoD admitia esta salida: -o la medicion de frontend1 que acredita que no hace falta, o el cambio con su test-, y lo que acredita que no hace falta es que el consumidor ya no existe. Lo que queda VIGENTE de la medicion original, y hay que no perder: web.py:970 IGNORA un contexto desconocido en vez de rechazarlo, o sea que un contexto mal escrito por un cliente falla CALLADO. No es de esta ficha ni se arreglo hoy; queda anotado como hallazgo para quien toque /transcribir.
 - **Dueño:** backend — **sólo si frontend1 lo pide con la medición de `SM-P3`**
 - **Medido:** `CONTEXTOS_TRANSCRIBIR` (`apps/copiloto/dictado_destinos.py:53`) tiene
   `gasto · ingreso · presupuesto · cliente`; **no tiene `chat`**. Pero `apps/copiloto/web.py:970`
@@ -288,3 +295,46 @@ campo»*.
   1. Una corrida, con la lista de fichas ejercitadas y el veredicto de cada una.
   2. Las que fallen vuelven a `DOD-PARCIAL` con su `Falta:`, no se declaran listas.
   3. El apk/binario citado por su id, y el commit de `main` sobre el que se construyó.
+
+### SM-P13 · `sin-issue` — Facturación PRELLENA como las otras cuatro funciones (no manda al chat)
+
+- **Estado:** DOD-PARCIAL
+- **Dueno-activo:** frontend1 (mobile) + frontend2 (web) -- el lado backend ya esta en main
+- **Falta:** El CABLEADO de los dos frontends y el device. El backend esta HECHO y desplegado (2ca3f7ad, #1660): la linea en _DESTINOS, el comentario reescrito y el test adversarial contra el workflow real con control positivo, 48 passed en el VPS. Lo que falta: (1) mobile, Facturacion deja DockAlChat y usa el camino de Gastos pintando la card factura_propuesta; (2) web, lo mismo; (3) el test del caso INCOMPLETO en cada lado, que es el que difiere de Gastos -- el dictado incompleto contesta con una PREGUNTA SIN CARD en el primer turno y la card llega en el segundo; (4) device, dictar una factura y ver la card prellenada sin que se emita nada, con e2e-device@copiloto.test y nunca contra el tenant fiscal del operador.
+- **Dueño:** backend (la línea, HECHA) + frontend1 (cableado mobile) + frontend2 (cableado web)
+- **Por qué es una ficha nueva y no SM-P6 ni SM-P11:** nace de la **segunda** decisión del operador
+  del 2026-11-04, posterior a las dos. SM-P6 ya cerró su pregunta (el dock va siempre, sin
+  condiciones) y SM-P11 preguntaba otra cosa (el `contexto` de `/transcribir` para el chat). Meter
+  esto en cualquiera de las dos sería reusar un id con dos referentes, que es el error que este
+  sprint ya pagó: se prueba A y se concluye B.
+- **La decisión:** Gastos/Ingresos/Presupuestos/Clientes conservan su prellenado de formulario, y
+  **Facturación debe funcionar igual que esas cuatro** — abrir formulario o card prellenada, **no**
+  mandar al chat. Inteligencia sí queda enviando al chat, porque son sólo preguntas. Procedencia:
+  orden dada directamente a la sesión frontend1 y relayada a planificación por peer el 2026-11-04;
+  si no refleja la orden del operador, se corrige y la ficha se retira.
+- **Medido ANTES de pedirlo (planificación, 2026-11-04):** el camino ya existía completo y es el
+  mismo de las otras cuatro — `POST /chat` con `kind="dictado:factura"` → la tool `emitir_factura`
+  **PROPONE**: devuelve `Artifact(kind="factura_propuesta")` con
+  `{factura_id, faltantes, items, cliente{razon_social,cuit,condicion_iva,del_registro}, total,
+  tipo_comprobante}` (`apps/copiloto/tool_catalog.py:1716`). El comentario de
+  `apps/copiloto/dictado_destinos.py:48` excluía `factura` con el criterio «su tool devuelve una
+  card, no escribe» — criterio que `emitir_factura` **cumple**: la emisión vive detrás de
+  `confirmar(token_confirmacion)`. O sea que el comentario declaraba una protección que ya vivía en
+  otra capa, y por eso nadie volvió a mirarlo.
+- **Backend: HECHO y desplegado** — `2ca3f7ad` (#1660, CI 6/6). `"factura": DestinoDictado(
+  emitir_factura, "Facturación")` en `_DESTINOS` (`CONTEXTOS_TRANSCRIBIR` lo hereda), comentario
+  reescrito con el criterio real, y **test adversarial contra el workflow REAL**
+  (`test_dictado_factura_no_emite.py`): dictar → `factura_propuesta`, queda en
+  `esperando_confirmacion`, pasa 1 h y no emite, token inventado no emite, y **control positivo**:
+  confirmar con el token de la card emite una sola vez. 48 passed en el VPS. Nada contra el tenant
+  fiscal del operador; ninguna factura emitida.
+- **Aviso de diseño de backend, que cambia el DoD de frontend:** un dictado de factura **incompleto**
+  responde con una **pregunta sin card** la primera vez (mecanismo de dos pasos de
+  `_run_emitir_factura`); la card llega en el segundo turno de la misma sesión. Eso **difiere** de
+  Gastos, así que «igual que las otras cuatro» no es cierto en el caso incompleto y la UI tiene que
+  preverlo en vez de mostrar una card vacía.
+- **DoD:** (1) mobile: Facturación deja de usar `DockAlChat` y usa el mismo camino que Gastos, con la
+  card `factura_propuesta` pintada; (2) web: lo mismo; (3) un test por lado que ejercite el caso
+  **incompleto** (pregunta sin card en el 1er turno) y el completo; (4) device: dictar una factura
+  desde Facturación y ver la card prellenada **sin que se emita nada**, con el usuario canónico
+  `e2e-device@copiloto.test` y **nunca** contra el tenant fiscal del operador.

@@ -40,13 +40,21 @@ class DestinoDictado:
     pantalla: str   # cómo se llama la función para el usuario (sólo va al prompt del turno)
 
 
-# `factura` NO está, y no es casualidad: emitir es irreversible ante ARCA, así que la transcripción cruda
-# no precarga nada. Las cuatro de acá son las reversibles (su tool devuelve una card, no escribe).
+# Criterio de pertenencia: la tool del destino PROPONE (devuelve una card) y NO escribe ni emite.
+# `factura` entró en SM-P11 (2026-11-04) y esa regla se sigue cumpliendo: `emitir_factura` sólo arma el
+# borrador (señales cargar_datos_venta / agregar_item / cargar_cliente) y devuelve `factura_propuesta`.
+# Antes estaba excluida con el argumento «emitir es irreversible ante ARCA»: cierto del ACTO, pero no de
+# esta tool. LA PROTECCIÓN REAL NO VIVE ACÁ: vive en el workflow (`FacturaWorkflow.confirmar` exige el
+# `token_confirmacion` atado al contenido exacto de la card) y la dispara la persona al tocar Emitir.
+# El dictado jamás manda `confirmar`, y su scope ofrece UNA sola tool. Lo prueba
+# `tests/test_dictado_factura_no_emite.py` contra el workflow real. Si agregás un destino nuevo,
+# la pregunta no es «¿es irreversible el acto?» sino «¿puede ESTA tool ejecutarlo sin un gate humano?».
 _DESTINOS = MappingProxyType({
     "gasto": DestinoDictado(tool="registrar_gasto", pantalla="Gastos"),
     "ingreso": DestinoDictado(tool="registrar_ingreso", pantalla="Ingresos"),
     "presupuesto": DestinoDictado(tool="registrar_presupuesto", pantalla="Presupuestos"),
     "cliente": DestinoDictado(tool="registrar_cliente", pantalla="Clientes"),
+    "factura": DestinoDictado(tool="emitir_factura", pantalla="Facturación"),
 })
 
 DESTINOS_DICTADO = _DESTINOS

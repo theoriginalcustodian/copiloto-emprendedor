@@ -10,7 +10,7 @@ import {
 } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
-import { MicFuncion } from '../voz';
+import { DockFuncion } from '../voz';
 import { DetalleGasto } from './DetalleGasto';
 import { FormularioGasto, type ValoresInicialesGasto } from './FormularioGasto';
 import { FotoFuncion } from './FotoFuncion';
@@ -28,6 +28,8 @@ export interface GastosScreenProps {
    * Mismo criterio que `clienteIdInicial` de `ClientesScreen`: el shell lo resetea a `null` en
    * cada cambio de tab, así que un remount sin id nuevo no reabre el detalle viejo. */
   gastoIdInicial?: number;
+  /** Lleva al chat principal: el dock del pie (SM-P7) deja el texto como pendiente y cambia de tab. */
+  onAbrirChat?: () => void;
 }
 
 /**
@@ -37,7 +39,7 @@ export interface GastosScreenProps {
  * (`@copiloto/core`, sin cambios). Lo que NO se porta 1:1: `RefreshControl` (gesto táctil de "tirar
  * para refrescar") no existe en web — se reemplaza por un botón "Actualizar" explícito.
  */
-export function GastosScreen({ gastoIdInicial }: GastosScreenProps = {}) {
+export function GastosScreen({ gastoIdInicial, onAbrirChat }: GastosScreenProps = {}) {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [total, setTotal] = useState(0);
@@ -45,11 +47,9 @@ export function GastosScreen({ gastoIdInicial }: GastosScreenProps = {}) {
   const [vista, setVista] = useState<Vista>('listado');
   const [actualizando, setActualizando] = useState(false);
   const [detalle, setDetalle] = useState<Gasto | null>(null);
-  // BL-J7/K-10: dictado desde la fila del rótulo (fuera del formulario) — llena `descripcion`, el
-  // campo libre; el monto y el resto los sigue completando el emprendedor a mano, mismo criterio
-  // que `montoSugerido` del OCR (nunca se autocompleta el número solo). `undefined` = alta en blanco.
+  // Valores con los que abre el alta (hoy sólo la lectura de foto, `alLeerFoto`). `undefined` = en blanco.
+  // El dictado ya no pasa por acá: lo hace el dock del pie por el chat (SM-P7, `DockFuncion`).
   const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesGasto | undefined>(undefined);
-  const [errorMic, setErrorMic] = useState<string | null>(null);
   // BL-J7 3er ítem del DoD: `origen` viaja con la card que abrió el formulario — 'foto' sólo cuando
   // `/gastos/leer-foto` devolvió 200, nunca por defecto (ver `FormularioGasto.__origen` que lo pinta).
   const [origenAlta, setOrigenAlta] = useState<'manual' | 'foto'>('manual');
@@ -130,14 +130,6 @@ export function GastosScreen({ gastoIdInicial }: GastosScreenProps = {}) {
     setVista('formulario');
   }
 
-  function alDictarGasto(texto: string) {
-    setErrorMic(null);
-    setInicialesDictado({ descripcion: texto });
-    setOrigenAlta('manual');
-    setErrorFoto(null);
-    setVista('formulario');
-  }
-
   // BL-J7 3er ítem del DoD: 200 → abre el alta con la propuesta del OCR, `origen: 'foto'`.
   function alLeerFoto(iniciales: ValoresInicialesGasto) {
     setErrorFoto(null);
@@ -158,7 +150,7 @@ export function GastosScreen({ gastoIdInicial }: GastosScreenProps = {}) {
   const hayGastos = gastos.length > 0;
 
   return (
-    <div className="gastos-screen" data-testid="pantalla-gastos">
+    <div className="gastos-screen dock-host" data-testid="pantalla-gastos">
       {/* Anatomía de función (Tarea 3, CLAUDE.md §5, 19/08): stack con nombre + período — el
           nombre migra del header a esta card blanca, igual que en el mockup fuente. Web conserva
           su propio chrome (Rail/TabBar) en vez del "Volver ‹" mobile — el contrato dice explícito
@@ -240,7 +232,6 @@ export function GastosScreen({ gastoIdInicial }: GastosScreenProps = {}) {
                 <span className="gastos-screen__lista-lbl">Últimos</span>
                 <div className="gastos-screen__fila-lbl-acciones">
                   <FotoFuncion onLectura={alLeerFoto} onError={alErrorFoto} />
-                  <MicFuncion contexto="gasto" onTranscripcion={alDictarGasto} onError={setErrorMic} />
                   <button
                     type="button"
                     className="gastos-screen__pill-nuevo"
@@ -254,12 +245,6 @@ export function GastosScreen({ gastoIdInicial }: GastosScreenProps = {}) {
                   </button>
                 </div>
               </div>
-
-              {errorMic != null && (
-                <p className="gastos-screen__mic-error" data-testid="gastos-mic-error" role="alert">
-                  {errorMic}
-                </p>
-              )}
 
               {!hayGastos && (
                 <p className="gastos-screen__empty" data-testid="gastos-vacio">
@@ -284,6 +269,8 @@ export function GastosScreen({ gastoIdInicial }: GastosScreenProps = {}) {
       )}
 
       {detalle != null && <DetalleGasto gasto={detalle} onCerrar={() => setDetalle(null)} />}
+
+      {onAbrirChat && <DockFuncion onAbrirChat={onAbrirChat} placeholder="Contale un gasto al copiloto…" />}
     </div>
   );
 }

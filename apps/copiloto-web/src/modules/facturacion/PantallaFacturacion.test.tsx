@@ -24,6 +24,7 @@ import {
   crearFactura,
   estadoAfip,
   esperarEstadoEstable,
+  tomarPendiente,
   type EstadoAfip,
   type EstadoFacturaResp,
 } from '@copiloto/core';
@@ -304,6 +305,51 @@ describe('PantallaFacturacion (web) — idem_key en "Nueva factura" (FACTID)', (
 
     await waitFor(() => expect(mockCrearFactura).toHaveBeenCalledTimes(1));
     expect(mockCrearFactura.mock.calls[0]![1]).not.toBe('clave-vieja-huerfana');
+  });
+});
+
+/**
+ * SM-P7 — el dock del pie va SIEMPRE (decisión del operador 2026-11-04): con el gate bloqueado y con el
+ * wizard abierto también. Antes un test afirmaba lo contrario (gate listo Y vista listado) y estaba
+ * verde POR la condición que había que eliminar.
+ */
+describe('PantallaFacturacion (web) — SM-P7: el dock del pie va siempre', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCrearFactura.mockResolvedValue({ status: 'ok', ok: true, facturaId: 'factura-1' });
+  });
+
+  it('gate listo + listado: hay dock, y enviar deja el pendiente y abre el chat', async () => {
+    mockEstadoAfip.mockResolvedValue(estadoAfipMock());
+    const onAbrirChat = vi.fn();
+    render(<PantallaFacturacion onAbrirChat={onAbrirChat} />);
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeInTheDocument());
+
+    const campo = screen.getByPlaceholderText('Pedile una factura al copiloto…');
+    expect(campo).not.toBeDisabled();
+    fireEvent.change(campo, { target: { value: 'facturale 5000 a Pérez' } });
+    fireEvent.keyDown(campo, { key: 'Enter' });
+
+    expect(onAbrirChat).toHaveBeenCalledTimes(1);
+    expect(tomarPendiente()).toBe('facturale 5000 a Pérez');
+    expect(mockCrearFactura).not.toHaveBeenCalled();
+  });
+
+  it('gate bloqueado: el dock sigue estando', async () => {
+    mockEstadoAfip.mockResolvedValue(estadoAfipMock({ puedeFacturar: false, motivoNoPuedeFacturar: null }));
+    render(<PantallaFacturacion onAbrirChat={vi.fn()} onConfigurar={() => {}} />);
+    await waitFor(() => expect(screen.getByTestId('facturacion-cta-configurar')).toBeInTheDocument());
+
+    expect(screen.getByTestId('dock-funcion')).toBeInTheDocument();
+  });
+
+  it('wizard abierto (borrador externo): el dock sigue estando', async () => {
+    mockEstadoAfip.mockResolvedValue(estadoAfipMock());
+    mockEsperarEstadoEstable.mockResolvedValue({ convergio: true, estado: estadoMock() });
+    render(<PantallaFacturacion facturaIdInicial="factura-1" onAbrirChat={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('facturacion-paso-datos-venta')).toBeInTheDocument());
+
+    expect(screen.getByTestId('dock-funcion')).toBeInTheDocument();
   });
 });
 

@@ -10,6 +10,7 @@ import {
 } from '@copiloto/core';
 
 import { DockEntrada } from '../chat/DockEntrada';
+import { DockSobreContenido } from '../../theme/glass/DockSobreContenido';
 import { useTema } from '../../theme/ThemeProvider';
 import { borrarArchivoLocal } from './borrarArchivoLocal';
 
@@ -25,6 +26,8 @@ export interface DockFuncionProps {
   disabled?: boolean;
   /** Error ya traducido a texto para el usuario; el componente NO decide la copia. */
   onError?: (mensaje: string) => void;
+  /** Si se pasa, el audio NO se transcribe acá: se entrega tal cual (lo manda otro, p. ej. el chat — `DockAlChat`). */
+  onAudioCrudo?: (audio: ArchivoSubida, duracionSeg: number) => void;
 }
 
 /**
@@ -35,12 +38,16 @@ export interface DockFuncionProps {
  * `KeyboardAvoidingView` envuelve SÓLO al dock: sube con el teclado y le achica el lugar al scroll de arriba,
  * que ya maneja su propio teclado (`ScrollFormulario`).
  */
-export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError }: DockFuncionProps) {
+export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError, onAudioCrudo }: DockFuncionProps) {
   const tema = useTema();
   // Duración del último dictado transcripto: alimenta el chip «Por voz · m:ss» (DoD FE1 #5).
   const [ultimaDuracionSeg, setUltimaDuracionSeg] = useState<number | null>(null);
 
   async function alAudio(audio: ArchivoSubida, duracionSeg: number) {
+    if (onAudioCrudo != null) {
+      onAudioCrudo(audio, duracionSeg);
+      return;
+    }
     setUltimaDuracionSeg(null);
     try {
       const res = await transcribir(audio, contexto);
@@ -60,6 +67,7 @@ export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError 
 
   return (
     <KeyboardAvoidingView testID="dock-funcion" behavior="padding">
+      <DockSobreContenido>
       {ultimaDuracionSeg !== null && (
         <Text testID="dock-funcion-chip" style={[styles.chip, { color: tema.color.textoTenue }]}>
           {`Por voz · ${formatearDuracion(ultimaDuracionSeg)}`}
@@ -72,6 +80,7 @@ export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError 
         onSinPermiso={() => onError?.('Activá el permiso de micrófono en Ajustes para dictar por voz.')}
         disabled={disabled}
       />
+      </DockSobreContenido>
     </KeyboardAvoidingView>
   );
 }

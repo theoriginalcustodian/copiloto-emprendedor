@@ -2671,6 +2671,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/clientes"
     },
+    "modules/clientes::clientes-mic-error": {
+      "en": [
+        "apps/mobile/src/modules/clientes/PantallaClientes.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-04",
+      "id": "clientes-mic-error",
+      "motivo": "SM-P7 (2026-11-04): la web unifico el dictado de las funciones en el dock del pie (DockFuncion -> DockEntrada, el mismo del chat); el error de transcripcion se muestra DENTRO del dock (composer__status), ya no hay un aviso suelto bajo el rotulo. Mobile conserva este id en su pantalla por su propio mecanismo de error. Divergencia de diseno, no drift. Dueno: frontend web. Disparador para cerrar: que mobile unifique su aviso de error en el dock o se declare el id en ambas.",
+      "pantalla": "modules/clientes"
+    },
     "modules/clientes::clientes-refresh": {
       "en": [
         "apps/mobile/src/modules/clientes/PantallaClientes.tsx"
@@ -3141,6 +3151,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/gastos"
     },
+    "modules/gastos::gastos-mic-error": {
+      "en": [
+        "apps/mobile/src/modules/gastos/PantallaGastos.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-04",
+      "id": "gastos-mic-error",
+      "motivo": "SM-P7 (2026-11-04): la web unifico el dictado de las funciones en el dock del pie (DockFuncion -> DockEntrada, el mismo del chat); el error de transcripcion se muestra DENTRO del dock (composer__status), ya no hay un aviso suelto bajo el rotulo. Mobile conserva este id en su pantalla por su propio mecanismo de error. Divergencia de diseno, no drift. Dueno: frontend web. Disparador para cerrar: que mobile unifique su aviso de error en el dock o se declare el id en ambas.",
+      "pantalla": "modules/gastos"
+    },
     "modules/gastos::gastos-refresh": {
       "en": [
         "apps/mobile/src/modules/gastos/PantallaGastos.tsx"
@@ -3399,6 +3419,16 @@
       "fecha": "2026-09-22",
       "id": "ingresos-lista",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ingresos"
+    },
+    "modules/ingresos::ingresos-mic-error": {
+      "en": [
+        "apps/mobile/src/modules/ingresos/PantallaIngresos.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-04",
+      "id": "ingresos-mic-error",
+      "motivo": "SM-P7 (2026-11-04): la web unifico el dictado de las funciones en el dock del pie (DockFuncion -> DockEntrada, el mismo del chat); el error de transcripcion se muestra DENTRO del dock (composer__status), ya no hay un aviso suelto bajo el rotulo. Mobile conserva este id en su pantalla por su propio mecanismo de error. Divergencia de diseno, no drift. Dueno: frontend web. Disparador para cerrar: que mobile unifique su aviso de error en el dock o se declare el id en ambas.",
       "pantalla": "modules/ingresos"
     },
     "modules/ingresos::ingresos-refresh": {
@@ -4317,6 +4347,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/presupuestos"
     },
+    "modules/presupuestos::presupuestos-mic-error": {
+      "en": [
+        "apps/mobile/src/modules/presupuestos/PantallaPresupuestos.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-04",
+      "id": "presupuestos-mic-error",
+      "motivo": "SM-P7 (2026-11-04): la web unifico el dictado de las funciones en el dock del pie (DockFuncion -> DockEntrada, el mismo del chat); el error de transcripcion se muestra DENTRO del dock (composer__status), ya no hay un aviso suelto bajo el rotulo. Mobile conserva este id en su pantalla por su propio mecanismo de error. Divergencia de diseno, no drift. Dueno: frontend web. Disparador para cerrar: que mobile unifique su aviso de error en el dock o se declare el id en ambas.",
+      "pantalla": "modules/presupuestos"
+    },
     "modules/presupuestos::presupuestos-refresh": {
       "en": [
         "apps/mobile/src/modules/presupuestos/PantallaPresupuestos.tsx"
@@ -4627,6 +4667,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/soporte"
     },
+    "modules/voz::dock-alchat-aviso": {
+      "en": [
+        "apps/mobile/src/modules/voz/DockAlChat.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-04",
+      "id": "dock-alchat-aviso",
+      "motivo": "SM-P5/P6: aviso mobile cuando el dock de una funcion despacha al chat y el ChatView montado aun no esta listo (onboarding o sin hidratar). Es del despacho por registro en modulo (despachoAlChat.ts), mecanismo propio de la pila de glass de expo-router; la web no tiene pila de modales. Dueno: frontend2, que decide en SM-P7 si el dock web necesita un aviso equivalente. Disparador para sacarla: que SM-P7 cierre con su par o lo declare no aplicable.",
+      "pantalla": "modules/voz"
+    },
     "modules/voz::dock-funcion": {
       "en": [
         "apps/mobile/src/modules/voz/DockFuncion.tsx"
@@ -4645,26 +4695,6 @@
       "fecha": "2026-11-02",
       "id": "dock-funcion-chip",
       "motivo": "SM-I2 extrajo el dock (campo + mic chico al pie, D2) en mobile; la web sigue con su composer porque en el sprint de correcciones del mapa manda mobile. Chip «Por voz» del dock de función.",
-      "pantalla": "modules/voz"
-    },
-    "modules/voz::mic-funcion": {
-      "en": [
-        "apps/copiloto-web/src/modules/voz/MicFuncion.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-11-02",
-      "id": "mic-funcion",
-      "motivo": "SM-J1 (2026-11-02): mobile retiro MicFuncion y migro las funciones a DockFuncion (SM-I2: campo + mic chico, ids propios); la web conserva MicFuncion. Divergencia de diseno declarada por la ficha, no drift. Dueno: frontend web. Disparador para cerrar: el dock de SM-I2 llega a la web.",
-      "pantalla": "modules/voz"
-    },
-    "modules/voz::mic-funcion-chip": {
-      "en": [
-        "apps/copiloto-web/src/modules/voz/MicFuncion.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-11-02",
-      "id": "mic-funcion-chip",
-      "motivo": "SM-J1 (2026-11-02): mobile retiro MicFuncion y migro las funciones a DockFuncion (SM-I2: campo + mic chico, ids propios); la web conserva MicFuncion. Divergencia de diseno declarada por la ficha, no drift. Dueno: frontend web. Disparador para cerrar: el dock de SM-I2 llega a la web.",
       "pantalla": "modules/voz"
     },
     "src/auth::legal-screen-descargo": {

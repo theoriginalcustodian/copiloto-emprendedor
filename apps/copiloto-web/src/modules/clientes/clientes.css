@@ -115,12 +115,6 @@
   gap: 8px;
 }
 
-.clientes-screen__mic-error {
-  color: var(--danger-fg);
-  font-size: 12px;
-  margin: -4px 0 4px;
-}
-
 .clientes-screen__lista-lbl {
   font-family: var(--font-body);
   font-size: 11px;

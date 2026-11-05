@@ -124,9 +124,9 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
               <ChatScreen variant="desktop" onAbrirCliente={abrirCliente} onFacturar={irAFacturar} />
             )}
             {activeTab === 'connections' && <ConnectionsScreen />}
-            {activeTab === 'gastos' && <GastosScreen gastoIdInicial={gastoIdAbierto ?? undefined} />}
-            {activeTab === 'clientes' && <ClientesScreen clienteIdInicial={clienteIdAbierto ?? undefined} />}
-            {activeTab === 'ingresos' && <IngresosScreen />}
+            {activeTab === 'gastos' && <GastosScreen gastoIdInicial={gastoIdAbierto ?? undefined} onAbrirChat={() => setActiveTab('chat')} />}
+            {activeTab === 'clientes' && <ClientesScreen clienteIdInicial={clienteIdAbierto ?? undefined} onAbrirChat={() => setActiveTab('chat')} />}
+            {activeTab === 'ingresos' && <IngresosScreen onAbrirChat={() => setActiveTab('chat')} />}
             {activeTab === 'actividad' && (
               <ActividadScreen
                 onAbrirGasto={abrirGasto}
@@ -134,7 +134,7 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
                 onAbrirTicket={setTicketIdAbierto}
               />
             )}
-            {activeTab === 'presupuestos' && <PresupuestosScreen onFacturar={irAFacturar} />}
+            {activeTab === 'presupuestos' && <PresupuestosScreen onFacturar={irAFacturar} onAbrirChat={() => setActiveTab('chat')} />}
             {activeTab === 'inteligencia' && <InteligenciaScreen onAbrirChat={() => setActiveTab('chat')} />}
             {activeTab === 'midia' && <MidiaScreen onAbrirChat={() => setActiveTab('chat')} />}
             {activeTab === 'escritorio' && (
@@ -160,6 +160,7 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
               <PantallaFacturacion
                 facturaIdInicial={facturaIdDesdePresupuesto}
                 onConfigurar={() => setActiveTab('ajustes')}
+                onAbrirChat={() => setActiveTab('chat')}
               />
             )}
             {/* El `&& esAdmin` no es redundante con esconder el tab: si el claim se pierde (logout y

@@ -636,9 +636,22 @@ a.artifact:focus-visible {
    se pinta es la píldora (`.composer__row`), translúcida y con blur sobre el texto que queda detrás.
    El hilo reserva su alto con `--dock-alto` (lo publica `DockEntrada` en este mismo padre). Todo por
    tokens de la piel: ningún hex. */
-.chat-screen {
+.chat-screen,
+.dock-host {
   --dock-blur: 16px;
   --dock-campo-bg: color-mix(in srgb, var(--input-bg) 74%, transparent);
+}
+
+/* SM-P7 (ampliado) — el MISMO dock al pie de cada función. Esas pantallas scrollean como página (no
+   tienen hilo con alto fijo), así que el dock se pega al borde inferior (`sticky`) en vez de
+   `absolute`: la lista pasa POR DEBAJO de la píldora y se difumina, igual que en el chat. El envoltorio
+   sigue siendo el de arriba (`.composer`): acá sólo cambia el anclaje. */
+.dock-host .composer {
+  position: sticky;
+  left: auto;
+  right: auto;
+  bottom: 0;
+  margin-top: auto;
 }
 
 .chat-screen .chat-messages {

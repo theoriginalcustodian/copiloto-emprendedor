@@ -11,121 +11,76 @@ vi.mock('@copiloto/core', async (importOriginal) => {
     listarGastos: vi.fn(),
     obtenerResumenGastos: vi.fn(),
     crearGasto: vi.fn(),
-    transcribir: vi.fn(),
     leerFotoGasto: vi.fn(),
   };
 });
 
-import { crearGasto, leerFotoGasto, listarGastos, obtenerResumenGastos, transcribir } from '@copiloto/core';
+import { crearGasto, leerFotoGasto, listarGastos, obtenerResumenGastos, tomarPendiente } from '@copiloto/core';
 
 import { GastosScreen } from './GastosScreen';
 
 const mockListar = vi.mocked(listarGastos);
 const mockResumen = vi.mocked(obtenerResumenGastos);
 const mockCrear = vi.mocked(crearGasto);
-const mockTranscribir = vi.mocked(transcribir);
 const mockLeerFoto = vi.mocked(leerFotoGasto);
 
-// BL-J7/K-10: mismo polyfill/mock que `modules/voz/MicFuncion.test.tsx`, ejercitado MONTADO dentro
-// de la pantalla (costura real mic → alta con `descripcion` prellenada), no aislado.
-if (typeof window.PointerEvent === 'undefined') {
-  class PointerEventPolyfill extends MouseEvent {}
-  window.PointerEvent = PointerEventPolyfill as unknown as typeof PointerEvent;
-}
-
-class MockMediaRecorder {
-  static isTypeSupported = vi.fn(() => true);
-  state: 'inactive' | 'recording' | 'paused' = 'inactive';
-  ondataavailable: ((event: { data: Blob }) => void) | null = null;
-  onstop: (() => void) | null = null;
-  constructor(public stream: MediaStream) {}
-  start() {
-    this.state = 'recording';
-  }
-  stop() {
-    this.state = 'inactive';
-    this.ondataavailable?.({ data: new Blob(['audio-bytes'], { type: 'audio/webm' }) });
-    this.onstop?.();
-  }
-}
-
-function mockStream(): MediaStream {
-  return { getTracks: () => [{ stop: vi.fn() }] } as unknown as MediaStream;
-}
-
-function mockClock() {
-  let current = 0;
-  vi.spyOn(Date, 'now').mockImplementation(() => current);
-  return { advance: (ms: number) => { current += ms; } };
-}
-
-/** Graba y suelta — el reloj avanza ENTRE los dos: `MicButton` descarta como tap-corto lo que
- * suelta antes de `MIN_HOLD_MS` (350ms). */
-async function dictar(clock: { advance: (ms: number) => void }) {
-  await act(async () => {
-    fireEvent.pointerDown(screen.getByTestId('mic-button'), { clientY: 300 });
-  });
-  clock.advance(400);
-  await act(async () => {
-    fireEvent.pointerUp(document);
-  });
-}
-
-describe('GastosScreen — BL-J7/K-10 (mic en la fila del rótulo)', () => {
+describe('GastosScreen — SM-P7 (dock del pie: la acción corre en el chat, no en el alta)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    tomarPendiente();
     mockListar.mockResolvedValue({ status: 'ok', gastos: [], total: 0 });
     mockResumen.mockResolvedValue({
       status: 'ok',
       resumen: { periodo: '2026-09', total: '0.00', porCategoria: [], mesAnterior: null },
     });
-    vi.stubGlobal('MediaRecorder', MockMediaRecorder);
-    Object.defineProperty(navigator, 'mediaDevices', {
-      value: { getUserMedia: vi.fn().mockResolvedValue(mockStream()) },
-      configurable: true,
-    });
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
-  it('dictado → abre el alta con `descripcion` prellenada, y NO guarda nada solo (DoD FE2 §4)', async () => {
-    const clock = mockClock();
-    mockTranscribir.mockResolvedValue({ transcript: 'cuarenta litros de nafta' });
-
-    render(<GastosScreen />);
+  it('enviar texto desde el dock deja el pendiente y abre el chat — NO abre el alta ni guarda nada', async () => {
+    const onAbrirChat = vi.fn();
+    render(<GastosScreen onAbrirChat={onAbrirChat} />);
     await screen.findByTestId('gastos-nuevo');
 
-    await dictar(clock);
+    const campo = screen.getByPlaceholderText('Contale un gasto al copiloto…');
+    fireEvent.change(campo, { target: { value: 'cuarenta litros de nafta' } });
+    fireEvent.keyDown(campo, { key: 'Enter' });
 
-    expect(await screen.findByTestId('gasto-descripcion')).toHaveValue('cuarenta litros de nafta');
+    expect(onAbrirChat).toHaveBeenCalledTimes(1);
+    expect(tomarPendiente()).toBe('cuarenta litros de nafta');
     expect(mockCrear).not.toHaveBeenCalled();
-  });
-
-  it('transcripción vacía NO abre el alta — se queda en el listado con el error del mic', async () => {
-    const clock = mockClock();
-    mockTranscribir.mockResolvedValue({ transcript: '   ' });
-
-    render(<GastosScreen />);
-    await screen.findByTestId('gastos-nuevo');
-
-    await dictar(clock);
-
-    expect(await screen.findByTestId('gastos-mic-error')).toHaveTextContent('No se entendió el audio. Probá de nuevo.');
     expect(screen.queryByTestId('gasto-descripcion')).not.toBeInTheDocument();
-    expect(mockCrear).not.toHaveBeenCalled();
   });
 
-  it('«Nuevo gasto» sigue abriendo el alta EN BLANCO — el mic no le pisa el flujo manual', async () => {
+  it('el campo del dock se puede escribir: no está deshabilitado y tocarlo NO redirige', async () => {
+    const onAbrirChat = vi.fn();
+    render(<GastosScreen onAbrirChat={onAbrirChat} />);
+    await screen.findByTestId('gastos-nuevo');
+
+    const campo = screen.getByPlaceholderText('Contale un gasto al copiloto…');
+    expect(campo).not.toBeDisabled();
+    fireEvent.focus(campo);
+    fireEvent.click(campo);
+
+    expect(onAbrirChat).not.toHaveBeenCalled();
+  });
+
+  it('sin `onAbrirChat` no se monta el dock (no hay adónde llevar el texto)', async () => {
     render(<GastosScreen />);
+    await screen.findByTestId('gastos-nuevo');
+
+    expect(screen.queryByTestId('dock-funcion')).not.toBeInTheDocument();
+  });
+
+  it('«Nuevo gasto» sigue abriendo el alta EN BLANCO — el dock no le pisa el flujo manual', async () => {
+    render(<GastosScreen onAbrirChat={vi.fn()} />);
     await screen.findByTestId('gastos-nuevo');
 
     fireEvent.click(screen.getByTestId('gastos-nuevo'));
 
     expect(await screen.findByTestId('gasto-descripcion')).toHaveValue('');
-    expect(mockTranscribir).not.toHaveBeenCalled();
   });
 });
 

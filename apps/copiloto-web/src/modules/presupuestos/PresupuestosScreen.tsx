@@ -11,9 +11,9 @@ import {
 } from '@copiloto/core';
 
 import { Button, Skeleton, Surface } from '../../design-system';
-import { MicFuncion } from '../voz';
+import { DockFuncion } from '../voz';
 import { DetallePresupuesto } from './DetallePresupuesto';
-import { FormularioPresupuesto, type ValoresInicialesPresupuesto } from './FormularioPresupuesto';
+import { FormularioPresupuesto } from './FormularioPresupuesto';
 import { TarjetaPresupuesto } from './TarjetaPresupuesto';
 import './presupuestos.css';
 
@@ -68,6 +68,8 @@ export interface PresupuestosScreenProps {
    * existe, nunca emite por su cuenta.
    */
   onFacturar: (facturaId: string) => void;
+  /** Lleva al chat principal: el dock del pie (SM-P7) deja el texto como pendiente y cambia de tab. */
+  onAbrirChat?: () => void;
 }
 
 /**
@@ -89,7 +91,7 @@ export interface PresupuestosScreenProps {
  * `Presupuesto.estado` en core). Tratar `null` como pendiente inflaría la cifra con datos que no se
  * conocen.
  */
-export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: PresupuestosScreenProps) {
+export function PresupuestosScreen({ onFacturar, presupuestoIdInicial, onAbrirChat }: PresupuestosScreenProps) {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
   const [vista, setVista] = useState<Vista>('listado');
@@ -99,10 +101,6 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
   const [sugerenciaMail, setSugerenciaMail] = useState<{ docLink: string } | null>(null);
   const [actualizando, setActualizando] = useState(false);
   const [verHistorial, setVerHistorial] = useState(false);
-  // BL-J7/K-10 — ver el mismo comentario en `GastosScreen.tsx`: dictado desde la fila del rótulo
-  // llena `concepto` (nunca es una corrección, por eso no toca `corrigiendo`).
-  const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesPresupuesto | undefined>(undefined);
-  const [errorMic, setErrorMic] = useState<string | null>(null);
   // `vivo.current = true` DENTRO del setup del efecto — StrictMode, ver el comentario equivalente en
   // GastosScreen/ClientesScreen.
   const vivo = useRef(true);
@@ -157,7 +155,6 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
   function alCrear(nuevo: Presupuesto, sugerencias: SugerenciasPresupuesto | null) {
     setVista('listado');
     setCorrigiendo(null);
-    setInicialesDictado(undefined);
     // Se RELEE en vez de insertar el objeto en la lista local: el alta puede haber reemplazado a
     // otro, que tiene que DESAPARECER del listado vigente.
     void cargar(true);
@@ -167,14 +164,6 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
 
   function abrirFormularioEnBlanco() {
     setCorrigiendo(null);
-    setInicialesDictado(undefined);
-    setVista('formulario');
-  }
-
-  function alDictarPresupuesto(texto: string) {
-    setErrorMic(null);
-    setCorrigiendo(null);
-    setInicialesDictado({ concepto: texto });
     setVista('formulario');
   }
 
@@ -203,7 +192,7 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
   const rotuloLista = verHistorial ? 'Historial' : 'Activos';
 
   return (
-    <div className="presupuestos-screen" data-testid="pantalla-presupuestos">
+    <div className="presupuestos-screen dock-host" data-testid="pantalla-presupuestos">
       {/* Anatomía de función (Tarea 3, CLAUDE.md §5): stack con nombre + período, misma card blanca
           que el bloque negro de abajo (mismo `--r-xl`) — calcado de `.fn-stack .atras` del mockup. Web
           no lleva "Volver ‹" (Rail/TabBar propios, contrato "no se toca el modelo de capas"). */}
@@ -253,12 +242,10 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
           {vista === 'formulario' ? (
             <FormularioPresupuesto
               corrige={corrigiendo}
-              iniciales={inicialesDictado}
               onCreado={alCrear}
               onCancelar={() => {
                 setVista('listado');
                 setCorrigiendo(null);
-                setInicialesDictado(undefined);
               }}
             />
           ) : (
@@ -281,13 +268,11 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
               </Surface>
 
               {/* Rótulo de sección + alta, misma fila (CLAUDE.md §5): el pill NUNCA es un FAB —
-                  compite con el mic. "Nuevo presupuesto" es el verbo textual del repo. BL-J7/K-10:
-                  dictar acá abre el formulario con `concepto` prellenado (K-10, `/transcribir`, sin
-                  sesión de chat), nunca una corrección. */}
+                  compite con el dock. "Nuevo presupuesto" es el verbo textual del repo. El campo y el
+                  mic viven en el dock del pie (`DockFuncion`, SM-P7). */}
               <div className="presupuestos-screen__fila-lbl">
                 <span className="presupuestos-screen__lista-lbl">{rotuloLista}</span>
                 <div className="presupuestos-screen__fila-lbl-acciones">
-                  <MicFuncion contexto="presupuesto" onTranscripcion={alDictarPresupuesto} onError={setErrorMic} />
                   <button
                     type="button"
                     className="presupuestos-screen__pill-nuevo"
@@ -301,12 +286,6 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
                   </button>
                 </div>
               </div>
-
-              {errorMic != null && (
-                <p className="presupuestos-screen__mic-error" data-testid="presupuestos-mic-error" role="alert">
-                  {errorMic}
-                </p>
-              )}
 
               {!hayPresupuestos && (
                 <p className="presupuestos-screen__empty" data-testid="presupuestos-vacio">
@@ -349,6 +328,8 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
           }}
         />
       )}
+
+      {onAbrirChat && <DockFuncion onAbrirChat={onAbrirChat} placeholder="Pedile un presupuesto al copiloto…" />}
     </div>
   );
 }

@@ -29,7 +29,7 @@ from test_audio import _build_app as _build_audio_app
 from test_audio import _require_tenant_fixed as _tenant_audio
 from test_web_app import _build_app, _require_tenant_fixed
 
-DESTINOS = ["gasto", "ingreso", "presupuesto", "cliente"]
+DESTINOS = ["gasto", "ingreso", "presupuesto", "cliente", "factura"]
 
 
 # ── 1. una sola whitelist ────────────────────────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ DESTINOS = ["gasto", "ingreso", "presupuesto", "cliente"]
 def test_la_whitelist_de_transcribir_es_la_misma_definicion_que_la_del_parser_de_kind():
     assert web_module.CONTEXTOS_TRANSCRIBIR is DD.CONTEXTOS_TRANSCRIBIR
     # el parser acepta EXACTAMENTE los de la lista, ni uno más ni uno menos (candidatos incluye intrusos)
-    candidatos = set(DESTINOS) | {"factura", "mi-dia", "chat", "soporte", "gastos", ""}
+    candidatos = set(DESTINOS) | {"facturas", "mi-dia", "chat", "soporte", "gastos", ""}
     aceptados = set()
     for c in candidatos:
         try:
@@ -62,10 +62,15 @@ def test_cada_destino_resuelve_una_tool_real_del_catalogo_que_no_escribe(destino
     assert tool not in tool_catalog.WRITE_TOOLS, "un dictado crudo no puede abrir un write"
 
 
-def test_factura_no_esta_y_no_se_resuelve():
-    assert "factura" not in DD.CONTEXTOS_TRANSCRIBIR
+def test_factura_esta_desde_SM_P11_y_se_resuelve_a_la_tool_que_PROPONE():
+    """SM-P11: Facturación dicta como Gastos/Ingresos. Que la tool no emite lo prueba
+    `test_dictado_factura_no_emite.py` contra el workflow real; acá sólo el cableado."""
+    assert "factura" in DD.CONTEXTOS_TRANSCRIBIR
+    assert DD.destino_de_kind("dictado:factura") == "factura"
+    assert DD.DESTINOS_DICTADO["factura"].tool == "emitir_factura"
+    assert "facturas" not in DD.CONTEXTOS_TRANSCRIBIR      # un casi-igual sigue rechazado
     with pytest.raises(DD.DestinoDictadoInvalido):
-        DD.destino_de_kind("dictado:factura")
+        DD.destino_de_kind("dictado:facturas")
 
 
 @pytest.mark.parametrize("kind", ["text", "callback", "needs_stt", None, ""])
@@ -115,7 +120,7 @@ def test_el_dictado_de_cada_destino_va_namespaceado_y_con_kind_text(rutas, desti
     assert rutas[0]["extra_config"]["idle_timeout_seconds"] == DD.IDLE_TIMEOUT_DICTADO_S
 
 
-@pytest.mark.parametrize("kind", ["dictado:factura", "dictado:", "dictado:GASTO", "dictado:gasto:x",
+@pytest.mark.parametrize("kind", ["dictado:facturas", "dictado:", "dictado:GASTO", "dictado:gasto:x",
                                   "dictado:../etc", "dictado: gasto"])
 def test_ADVERSARIAL_un_destino_fuera_de_la_lista_es_422_y_no_llega_al_workflow(rutas, kind):
     r = _chat(kind=kind)
@@ -217,7 +222,7 @@ def test_ADVERSARIAL_un_destino_fuera_de_la_lista_en_el_namespace_no_cae_al_cata
     """Defensa en profundidad (el front-door ya lo rechaza): ni LLM ni catálogo completo."""
     llm = _Llm()
     _registrar(llm)
-    out = asyncio.run(A.call_llm_tools(_turno("dictado:factura:s1")))
+    out = asyncio.run(A.call_llm_tools(_turno("dictado:facturas:s1")))
     assert llm.llamadas == []
     assert out["tool_calls"] == [] and out["content"]
 
