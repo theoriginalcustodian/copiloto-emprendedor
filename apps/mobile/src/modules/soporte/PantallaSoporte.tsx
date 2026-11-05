@@ -16,6 +16,7 @@ import { DockEntrada } from '../chat/DockEntrada';
 import { ListaMensajes } from '../chat/ListaMensajes';
 import { empujarUnaVez, reabrirNavegacion } from '../../navegacion/empujarUnaVez';
 import { Marca } from '../../theme/Marca';
+import { DockSobreContenido } from '../../theme/glass/DockSobreContenido';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
 import { TarjetaTicketSoporte } from './TarjetaTicketSoporte';
@@ -142,6 +143,7 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
           }
         />
 
+        <DockSobreContenido>
         <DockEntrada
           motivoFallo={estado?.motivoFallo ?? null}
           sendStatus={estado?.sendStatus ?? 'idle'}
@@ -151,6 +153,7 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
           placeholder={SOPORTE_PLACEHOLDER}
           scrollRef={scrollRef}
         />
+        </DockSobreContenido>
       </KeyboardAvoidingView>
     </MarcoGlass>
   );
