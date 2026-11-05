@@ -130,3 +130,32 @@ inventado se propaga firmado y con autoridad.
    «lo invoca» de «explica por qué no lo invoca» — [[el-guard-se-satisface-con-su-propio-comentario]].
 
 Emparentado: [[instrumento-que-no-mira-nunca-falla]] · [[al-juez-tambien-hay-que-darle-el-plano]].
+
+---
+
+## Refuerzo 2026-11-05 — la referencia inventada no era una captura: era un NÚMERO dentro del DoD
+
+El mismo mecanismo, un nivel más arriba: no inventé el archivo, inventé **el conjunto contra el cual
+se compara**. El DoD de `SM-P5` y `SM-P6` del sprint de pulido decía *«comparar el dock de cada
+función contra el chat en **las 5 pieles**»*. Lo escribí yo, sin instrumento.
+
+**Medido:** el sistema declara **DOS** pieles — `apps/mobile/src/modules/ajustes/skinsCatalogo.ts:6`
+(«Catálogo de presentación de las 2 pieles ODOBI»), `:17`, `:22`, `PantallaSkins.tsx:11,138`, y
+`PantallaSkins.test.tsx:88` dice textual que «Nocturno» se eliminó y «el sistema declara DOS pieles».
+«Como el teléfono» **no es una piel**, es una regla (`PantallaSkins.tsx:20`).
+
+**Por qué es el mismo defecto y no otro.** Una referencia fabricada no produce un error: produce algo
+con el nombre correcto que nadie puede distinguir de lo real. Acá produjo un **DoD imposible de
+cumplir**, y el costo lo pagó el ejecutor, no yo: frontend1 corrió la pasada de device, llegó al
+punto 7, abrió Ajustes → Apariencia, encontró dos opciones y tuvo que **devolver la pregunta**
+(«no sé a qué refieren las 5 pieles»). Un punto de DoD gastado en averiguar que el criterio no
+existía.
+
+**Lo que lo caza:** un DoD que cuenta elementos («las 5 X», «los 9 Y», «las 4 funciones») es una
+afirmación medible como cualquier otra, y la escribe quien baja el contrato — que es justo quien no
+va a ejecutarla y por eso no tropieza con el número. **Antes de escribir un número en un DoD, el
+`path:línea` que lo cuenta va en la misma oración.** Si no lo tengo, el DoD dice «en cada piel
+disponible», no «en las 5».
+
+**Lo que NO se retira:** la comparación en sí era correcta y sigue en pie. Lo que se retira es el
+cardinal. El punto 7 se cumple con dos pieles.

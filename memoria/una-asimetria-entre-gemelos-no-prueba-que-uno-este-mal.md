@@ -246,3 +246,36 @@ nombra la variable que falta**. El lado validado falla en 0 s y lo nombra.
 asimetría es información y no veredicto (el caso original de este archivo). Si preguntan lo mismo y
 difieren en *cómo se protegen*, el que no se protege está mal. Lo primero que hay que medir, entonces,
 no es la diferencia: es si el sujeto es el mismo.
+
+---
+
+## Refuerzo 2026-11-05 — el gate verde del servidor y el rojo del cliente: cada lado preguntó con otro argumento
+
+Caso nuevo del mismo patrón, esta vez entre **dos capas** en vez de dos filas, y con el signo
+invertido: la asimetría no era información benigna, era un defecto — pero igual se diagnostica con
+la misma pregunta.
+
+**Los dos veredictos.** En la pasada de device del 2026-11-05, frontend1 reportó que Facturación
+mostraba «ARCA no configurada» para `e2e-device@copiloto.test`. Backend midió el mismo usuario con
+login real: `GET /afip/estado`, **con** `cuit=20111111112` y **sin** `cuit`, las dos veces
+`puede_facturar: true` — y declaró que no había sembrado nada, o sea que las filas ya estaban cuando
+frontend1 corrió. Dos mediciones competentes, opuestas, sobre el mismo usuario.
+
+**La tentación era elegir un lado** («la app está mal» / «el dato no estaba»). La pregunta correcta
+es la de esta entrada: *¿qué pregunta hace cada lado?* Y leyendo el código la respuesta es que **no
+hacen la misma**: `apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx:249` lee el CUIT
+**cacheado en el device** y `:267` llama `estadoAfip(cuit ?? undefined)` — el pedido va **con ese
+CUIT**, no sin parámetro. Backend probó el CUIT correcto y el caso sin parámetro; nadie probó el
+tercero, que es el único que el teléfono podía estar mandando (release instalado sobre el estado
+anterior, sin `pm clear`).
+
+**El filo que da el test, y que no sale de discutir sino de leer el código:** `:274-279` (SM-N44)
+corrige la caché con `res.cuitVinculado` **después** de la respuesta, así que el gate de *ese*
+montaje ya se decidió con el valor viejo. Eso vuelve la hipótesis **falsable en dos minutos**: si la
+causa es la caché, entrar a Facturación, salir y volver a entrar tiene que dar **verde** la segunda
+vez. Si las dos dan rojo, la caché queda descartada y hay que capturar el request real.
+
+**La generalización:** cuando dos capas discrepan sobre el mismo hecho, antes de atribuir el error
+hay que escribir **el argumento exacto con el que cada una preguntó**. Un servidor probado con los
+dos valores que el autor del test imaginó sigue sin cubrir el valor que el cliente manda de verdad —
+y «probé con y sin el parámetro» se lee como exhaustivo cuando sólo es simétrico.

@@ -44,19 +44,20 @@ campo»*.
 
 | Ficha | Issue | Estado | Que falta del DoD / evidencia de cierre |
 |---|---|---|---|
-| **SM-P1** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
-| **SM-P2** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
-| **SM-P3** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
-| **SM-P4** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
-| **SM-P5** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test: comparar el dock de cada funcion contra el chat en las… |
-| **SM-P6** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test: comparar el dock de cada funcion contra el chat en las… |
+| **SM-P1** | `sin-issue` | 🟧 DOD-PARCIAL | Medido en device el 2026-11-05 (APK ef143e95): los 5 temas de «Como usar» SI llegan al chat como mensaje del usuario … |
+| **SM-P2** | `sin-issue` | 🟧 DOD-PARCIAL | NO ejercitada en la pasada del 2026-11-05 (frontend1 lo declara explicitamente: sin evidencia propia del isotipo). El… |
+| **SM-P3** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA. La Falta que esta ficha arrastraba («pasada de device, el release fb0fb9d3 no trae estos fixes») era de cuando … |
+| **SM-P4** | `sin-issue` | 🟧 DOD-PARCIAL | NO ejercitada en la pasada del 2026-11-05: la camara de Soporte no se abrio (frontend1 lo declara). El APK ef143e95 (… |
+| **SM-P5** | `sin-issue` | 🟧 DOD-PARCIAL | DEFECTO REAL ENCONTRADO EN DEVICE el 2026-11-05: con el teclado abierto el campo de Mi dia quedaba OCULTO (captura p1… |
+| **SM-P6** | `sin-issue` | 🟧 DOD-PARCIAL | Medido en device el 2026-11-05: el dock de Facturacion SI se ve con gate «ARCA no configurada» y vista «listado» - es… |
 | **SM-P7** | `sin-issue` | ✅ TERMINADO | f9c5d98b DoD1: inventario path:linea en la Falta previa (5 funciones, f9c5d98b #1654). DoD2: un solo componente DockE… |
 | **SM-P8** | `sin-issue` | ✅ TERMINADO | 82f8451e (#1651). Tabla medida: (a) puente Como usar NO APLICA: la web navega por tabs sin stack, PantallaComoUsarLaA… |
 | **SM-P9** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA de decision: lo que queda es IMPLEMENTACION y vive en otras fichas. SM-P5 (dock unico mobile, Mi dia editable) y… |
 | **SM-P10** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | La IMPLEMENTACION del dock es de SM-P6 (quitar las dos condiciones de PantallaFacturacion.tsx:706: hecho en 0212ba19 … |
 | **SM-P11** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA: la pregunta de esta ficha se disolvio, no se resolvio. Era condicional a que frontend1 necesitara un contexto n… |
-| **SM-P12** | `sin-issue` | 🟨 EN-CURSO | frontend1 (RF8T318RN9T, Metro propio desde wt-fe1-ped en main b6b342bb) |
+| **SM-P12** | `sin-issue` | 🟧 DOD-PARCIAL | Pasada CORRIDA el 2026-11-05 por frontend1 sobre el APK ef143e95 (sha 7d278a2c) en RF8T318RN9T con e2e-device@copilot… |
 | **SM-P13** | `sin-issue` | 🟧 DOD-PARCIAL | Los DOS cableados estan en main: web 40df2a15 (#1661) y mobile b6b342bb (#1662), sobre el backend 2ca3f7ad (#1660). C… |
+| **SM-P14** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -65,7 +66,7 @@ campo»*.
 ### SM-P1 · `sin-issue` — «Cómo usar la app»: tocar una card no llega a destino, vuelve a Ajustes
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes.
+- **Falta:** Medido en device el 2026-11-05 (APK ef143e95): los 5 temas de «Como usar» SI llegan al chat como mensaje del usuario con su pregunta y reciben respuesta. PERO la pila queda en el escritorio de funciones: el chat queda DETRAS y el usuario tiene que subirlo a mano. La queja original de esta ficha era «tocar una card no llega a destino»; si hay que subir el chat a mano, el destino no se alcanza. DECISION de planificacion 2026-11-05: NO es el comportamiento deseado - el dismissAll de PantallaComoUsarLaApp tiene que dejar el chat ARRIBA. Falta ese fix (dueno frontend1) y volver a verlo en device.
 - **Cierre:** 6a1ae914 (#1650): PantallaComoUsarLaApp deja la pregunta y hace dismissAll al chat, test PantallaComoUsarLaApp.test.tsx. Premisa confirmada por el operador 2026-11-04, textual: 'como el prototipo' (index.html:3614), las 5 cards llevan AL CHAT con la pregunta dicha, no a la funcion.
 - **Dueño:** frontend1
 - **Reportado por el operador (2026-11-04):** «cuando hago click en cualquier opción como cargar un
@@ -96,7 +97,7 @@ campo»*.
 ### SM-P2 · `sin-issue` — El isotipo de mobile sale 4× más fino que el del mapa
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes.
+- **Falta:** NO ejercitada en la pasada del 2026-11-05 (frontend1 lo declara explicitamente: sin evidencia propia del isotipo). El APK ef143e95 (sha 7d278a2c) SI contiene el fix 6a1ae914, asi que no hace falta build nuevo por esta ficha: falta mirarla en el telefono, en la proxima pasada.
 - **Cierre:** 6a1ae914 (#1650): Marca.tsx corrige el trazo del isotipo (strokeWidth en unidades del viewBox, sin predividir por la escala); Marca.test.tsx.
 - **Dueño:** frontend1
 - **Reportado por el operador (2026-11-04):** «el isologo es diferente, tiene líneas más finas»,
@@ -122,7 +123,7 @@ campo»*.
 ### SM-P3 · `sin-issue` — El dictado del chat ENVÍA solo: no hay forma de arrepentirse
 
 - **Estado:** CERRADO-POR-DECISION
-- **Falta:** Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes.
+- **Falta:** NADA. La Falta que esta ficha arrastraba («pasada de device, el release fb0fb9d3 no trae estos fixes») era de cuando estaba DOD-PARCIAL y quedo huerfana al cerrarse por decision el 2026-11-04: una ficha cerrada por decision no tiene pendiente de device, y dejarla escrita hacia leer el APK vigente como inservible. El codigo de 6a1ae914 (#1650) se verifica como parte de SM-P12 junto con el resto, no como DoD propio de esta ficha.
 - **Decision:** operador, 2026-11-04, respuesta directa a frontend1 (relayada por planificacion), registrada en docs/copiloto-emprendedor/2026-11-04-BACKLOG-sprint-pulido-final.md: el mic funciona como WhatsApp en toda la app, soltar o Enviar-tras-fijar manda el audio. El codigo de pegar el texto entro en 6a1ae914 (#1650) y se revirtio en #1658.
 - **Cierre:** 6a1ae914 (#1650): ChatView.alAudio transcribe sin contexto y pega en el composer sin enviar (semilla), borrarArchivoLocal en finally; tests en ChatView.test.tsx y PantallaPrincipal.dockMiDia.test.tsx.
 - **Dueño:** frontend1 (backend sólo si `SM-P11` resulta necesaria)
@@ -149,7 +150,7 @@ campo»*.
 ### SM-P4 · `sin-issue` — Sacar la cámara del composer de Soporte
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes.
+- **Falta:** NO ejercitada en la pasada del 2026-11-05: la camara de Soporte no se abrio (frontend1 lo declara). El APK ef143e95 (sha 7d278a2c) SI contiene el fix 6a1ae914; falta mirarla en el telefono en la proxima pasada.
 - **Cierre:** 6a1ae914 (#1650): se retira la camara del composer de Soporte (PantallaSoporte.tsx, textosSoporte.ts, TarjetaTicketSoporte, useTicketsSoporte); PantallaSoporte.test.tsx; fila soporte del mapeo corregida.
 - **Dueño:** frontend1
 - **Orden del operador (2026-11-04):** «en soporte técnico hay que sacar la cámara de fotos que
@@ -170,7 +171,7 @@ campo»*.
 ### SM-P5 · `sin-issue` — Un solo dock en toda la app: sin fondo alrededor, con blur (mobile)
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Falta: pasada de device (SM-P12) con e2e-device@copiloto.test: comparar el dock de cada funcion contra el chat en las 5 pieles y confirmar el despacho bajo la pila real de glass.
+- **Falta:** DEFECTO REAL ENCONTRADO EN DEVICE el 2026-11-05: con el teclado abierto el campo de Mi dia quedaba OCULTO (captura p1_escrito.png). Causa medida por frontend1: «recorrido» baja con el teclado y panelY se quedaba en el valor viejo. Fix bab2217d (panelYAlCambiarRecorrido), PR #1685, jest 72/72 - NO verificado en device todavia. Falta: mergear #1685, build nuevo y volver a device. Nota: el DoD hablaba de «las 5 pieles» y eso era un numero mio sin instrumento - son DOS (skinsCatalogo.ts:6,17,22).
 - **Cierre:** 0212ba19 (#1653): despachoAlChat.ts + DockAlChat despachan primero y vuelven despues, dock en las 9 funciones, Mi dia editable. Envoltorio visual unico DockSobreContenido (mismo ScrimDock del chat) en DockFuncion y Soporte, test DockSobreContenido.test.tsx. Inventario path:linea en el cierre_ del buzon.
 - **Dueño:** frontend1
 - **Orden del operador (2026-11-04):** «todos los campos de ingreso de texto y los botones de mic
@@ -191,7 +192,7 @@ campo»*.
 ### SM-P6 · `sin-issue` — El dock de Facturación existe pero no se ve: medir cuál condición lo oculta
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** Falta: pasada de device (SM-P12) con e2e-device@copiloto.test: comparar el dock de cada funcion contra el chat en las 5 pieles y confirmar el despacho bajo la pila real de glass.
+- **Falta:** Medido en device el 2026-11-05: el dock de Facturacion SI se ve con gate «ARCA no configurada» y vista «listado» - esa combinacion no lo oculta (captura fac1.png), lo que responde el DoD 9 por la mitad. La otra mitad (gate «listo» + «listado») queda SIN PROBAR porque e2e-device no tiene perfil fiscal ni credencial: depende del tenant sintetico que le toca a backend. Y el DoD pedia comparar «las 5 pieles»: son DOS (ODOBI claro y oscuro) mas «Como el telefono» que es una regla, no una piel (skinsCatalogo.ts:6,17,22; PantallaSkins.tsx:11,138) - el 5 lo puse yo sin instrumento.
 - **Cierre:** 0212ba19 (#1653): PantallaFacturacion.tsx:706 monta DockAlChat sin condiciones, mic manda audio al chat (P10 por decision del operador 2026-11-04). Tests PantallaFacturacion.test.tsx: despacha antes de router.back, dock aun sin CUIT, sin chat listo no navega.
 - **Dueño:** frontend1
 - **Medido:** `facturacion/PantallaFacturacion.tsx:706` monta `DockAlChat` **sólo** con
@@ -284,8 +285,9 @@ campo»*.
 
 ### SM-P12 · `sin-issue` — El sprint cierra con una pasada de device completa
 
-- **Estado:** EN-CURSO
+- **Estado:** DOD-PARCIAL
 - **Dueno-activo:** frontend1 (RF8T318RN9T, Metro propio desde wt-fe1-ped en main b6b342bb)
+- **Falta:** Pasada CORRIDA el 2026-11-05 por frontend1 sobre el APK ef143e95 (sha 7d278a2c) en RF8T318RN9T con e2e-device@copiloto.test; cierre en coordinacion/abierto/2026-11-05_cierre_frontend1-a-planificacion_SM-P12-pasada-device-APK-7d278a2c-parcial.md. Cubiertos: DoD 1 y 6 (texto) CUMPLEN; 3, 4, 9 y 10 PARCIALES; 2 defecto hallado y corregido en codigo; 7 no cubierto. Falta, por dueno: (a) [FALTA-VOZ] el operador - mic mantener/soltar/deslizar-fijar en chat, Mi dia y Gastos, y dictado de Facturacion completo e incompleto, con el guion exacto ya escrito en el cierre; (b) tenant con perfil fiscal Y credencial cargados para e2e-device (dueno BACKEND, destraba DoD 3/4/9/10 - medido: afip_web.py:749 calcula puede_facturar = bool(creds) and bool(perfil) and condicion_soportada, asi que basta una credencial SINTETICA que nunca sirva contra ARCA: el DoD es «sin emitir»); (c) build nuevo con el fix de SM-P5 (#1685) para el teclado en device; (d) P2 y P4 no se ejercitaron en esta pasada. RESUELTO por planificacion: «las 5 pieles» NO existen - el sistema declara DOS (ODOBI claro y oscuro) mas «Como el telefono», que es una regla y no una piel (apps/mobile/src/modules/ajustes/skinsCatalogo.ts:6,17,22 y PantallaSkins.tsx:11,138). El numero 5 lo puse yo sin instrumento.
 - **Dueño:** frontend1 (dueño del device) con la cola de las demás
 - **Qué:** una sola pasada final en device que ejercite **todas** las fichas de este sprint que
   terminaron, en una corrida, con el usuario canónico `e2e-device@copiloto.test`.
@@ -301,7 +303,7 @@ campo»*.
 
 - **Estado:** DOD-PARCIAL
 - **Dueno-activo:** frontend1 (mobile) + frontend2 (web) -- el lado backend ya esta en main
-- **Falta:** Los DOS cableados estan en main: web 40df2a15 (#1661) y mobile b6b342bb (#1662), sobre el backend 2ca3f7ad (#1660). ChatRequest unico en el core. VERIFICADO en navegador real (Playwright, build ae21d662 desplegado en copilotoemprendedor.duckdns.org, usuario e2e-device, 2026-11-05): POST /chat kind dictado:factura + polling /reply con sesion dictado:factura:<sid> contra el backend real, card factura-propuesta con la propuesta (Mi Dia, Consumidor Final, 1x15000, total 15000), sin Emitir y con Completar a mano (el backend la marco incompleta), nada emitido; Completar a mano abre el wizard y limpia la card. HALLAZGO que jsdom no veia, corregido en #1683 (ae21d662): la card se pintaba en y=999-1208 con viewport 889, detras del dock y sin scroll, y el foco quedaba en BODY; ahora y=545-754 sobre el dock (772) y foco en el textarea. NO verificado en navegador: que el wizard conserve el borrador prellenado en los pasos siguientes (lo cubre jsdom). FALTA SOLO: device, dictar una factura y ver la card prellenada sin que se emita nada, con e2e-device@copiloto.test y nunca el tenant fiscal del operador (pasada de SM-P12).
+- **Falta:** Los DOS cableados estan en main: web 40df2a15 (#1661) y mobile b6b342bb (#1662), sobre el backend 2ca3f7ad (#1660). ChatRequest unico en el core. VERIFICADO en navegador real (Playwright, build ae21d662 desplegado en copilotoemprendedor.duckdns.org, usuario e2e-device, 2026-11-05): POST de chat con kind dictado:factura + polling de reply con sesion dictado:factura:<sid> contra el backend real, card factura-propuesta con la propuesta (Mi Dia, Consumidor Final, 1x15000, total 15000), sin Emitir y con Completar a mano (el backend la marco incompleta), nada emitido; Completar a mano abre el wizard y limpia la card. HALLAZGO que jsdom no veia, corregido en #1683 (ae21d662): la card se pintaba en y=999-1208 con viewport 889, detras del dock y sin scroll, y el foco quedaba en BODY; ahora y=545-754 sobre el dock (772) y foco en el textarea. NO verificado en navegador: que el wizard conserve el borrador prellenado en los pasos siguientes (lo cubre jsdom). FALTA SOLO device, y la pasada del 2026-11-05 lo intento y NO pudo: en el telefono el mic de Facturacion ejecuta y no emite (correcto) pero la card prellenada NO se vio, porque la app mostraba el gate «ARCA no configurada». Backend midio despues que el gate del backend esta VERDE para ese usuario (puede_facturar true, CUIT 20111111112, credencial sintetica en homologacion, 46 tests en el VPS) y que no sembro nada, o sea que la app y la API no ven lo mismo. Test discriminante derivado del codigo y despachado a frontend1: PantallaFacturacion.tsx:249-267 pide el estado de afip CON el CUIT cacheado del device, y :274-279 (SM-N44) corrige la cache recien DESPUES de la respuesta, asi que si la causa es la cache el segundo ingreso a Facturacion tiene que dar verde. Hasta que eso se resuelva, el device de esta ficha esta bloqueado por una causa identificada, no por falta de intento.
 - **Dueño:** backend (la línea, HECHA) + frontend1 (cableado mobile) + frontend2 (cableado web)
 - **Por qué es una ficha nueva y no SM-P6 ni SM-P11:** nace de la **segunda** decisión del operador
   del 2026-11-04, posterior a las dos. SM-P6 ya cerró su pregunta (el dock va siempre, sin
@@ -339,3 +341,30 @@ campo»*.
   **incompleto** (pregunta sin card en el 1er turno) y el completo; (4) device: dictar una factura
   desde Facturación y ver la card prellenada **sin que se emita nada**, con el usuario canónico
   `e2e-device@copiloto.test` y **nunca** contra el tenant fiscal del operador.
+
+### SM-P14 · `sin-issue` — Una card pendiente CONTAMINA la respuesta de una pregunta que no la menciona
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend (el contexto que arma el prompt), con planificación midiendo el alcance
+- **Medido en device el 2026-11-05** (frontend1, APK `ef143e95`, `e2e-device@copiloto.test`): con una
+  card de presupuesto SIN resolver viva en el chat, la respuesta al tema «¿Cómo emito mi primera
+  factura?» de «Cómo usar la app» llegó con el ejemplo «…Seed Mi Dia una reparación por $3.000» — es
+  decir, los datos de la card pendiente aparecieron dentro de una respuesta que no los pidió. Hecho
+  medido; causa no investigada.
+- **Por qué tiene ficha propia y no es un detalle de SM-P12:** la pasada de device la encontró de
+  rebote, y una observación sin ficha no se persigue. Además no es cosmética: si el contexto del
+  agente arrastra el contenido de una card pendiente a cualquier turno siguiente, el mismo mecanismo
+  puede arrastrar datos de un cliente a una respuesta sobre otro. Eso es un problema de **aislamiento
+  dentro del tenant**, no de redacción.
+- **🔴 El modo de falla a evitar:** declararla «es el contexto conversacional, funciona así» sin medir
+  QUÉ se inyecta. La pregunta correcta no es «¿por qué menciona el presupuesto?» sino **«¿qué entra
+  exactamente en el prompt de un turno, y quién decide que una card sin resolver entre?»** —
+  con el payload real de un turno, no con el diseño supuesto.
+- **DoD:**
+  1. El payload REAL del turno que produjo la contaminación (o su reproducción), mostrando qué parte
+     del estado pendiente se inyectó y desde dónde (`path:línea` del armado del contexto).
+  2. Veredicto explícito: es intencional (y entonces queda escrito dónde se declara) o es un defecto.
+  3. Si es defecto: fix de raíz en el armado del contexto, con test que ejercite «card pendiente de A
+     + pregunta no relacionada ⇒ la respuesta no cita A».
+  4. Control adversarial del caso que importa: card pendiente del cliente A + pregunta sobre el
+     cliente B ⇒ la respuesta no filtra datos de A. Sin ese test el punto 3 queda `[UNVERIFIED]`.
