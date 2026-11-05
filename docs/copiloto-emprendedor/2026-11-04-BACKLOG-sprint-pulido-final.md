@@ -50,7 +50,7 @@ campo»*.
 | **SM-P4** | `sin-issue` | 🟧 DOD-PARCIAL | Falta: pasada de device (SM-P12) con e2e-device@copiloto.test; el release fb0fb9d3 no trae estos fixes. |
 | **SM-P5** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-P6** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-P7** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 2 y 3: el aspecto visual (blur sobre el hilo, translucidez y contraste del texto) NO se verifico en navegador por… |
+| **SM-P7** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 2 y 3 (aspecto): el dock quedo en las 5 funciones pero NO se verifico en navegador el aspecto real (blur del cont… |
 | **SM-P8** | `sin-issue` | ✅ TERMINADO | 82f8451e (#1651). Tabla medida: (a) puente Como usar NO APLICA: la web navega por tabs sin stack, PantallaComoUsarLaA… |
 | **SM-P9** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-P10** | `sin-issue` | ⬜ PENDIENTE | — |
@@ -201,7 +201,7 @@ campo»*.
 ### SM-P7 · `sin-issue` — El mismo dock unificado, en la web
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** DoD 2 y 3: el aspecto visual (blur sobre el hilo, translucidez y contraste del texto) NO se verifico en navegador por piel; solo tipos, tests y el gate de hex. Ademas MicFuncion (GastosScreen.tsx:243, IngresosScreen.tsx:177, ClientesScreen.tsx:292, PresupuestosScreen.tsx:290) queda FUERA del dock: es un mic suelto junto a un formulario, no un dock; decision de unificarlo o no es de planificacion. Hallazgo y unificacion estructural hechos en 82f8451e (#1651): el dock web NO estaba unificado (Composer.tsx:79-121 y ComposerSoporte.tsx:57-98 duplicaban JSX; chat.css:649-659 fondo lleno sin backdrop-filter, unico en repo presupuestos.css:415 lo apaga; desktop.css:363-421 pisaba aparte); ahora DockEntrada.tsx unico, envoltorio y blur por tokens en chat.css.
+- **Falta:** DoD 2 y 3 (aspecto): el dock quedo en las 5 funciones pero NO se verifico en navegador el aspecto real (blur del contenido que pasa por debajo, translucidez, contraste del texto) por piel ni el anclaje sticky con lista larga; solo tipos, 1435+ tests y el gate de hex. Hecho en f9c5d98b (#1654): DockFuncion.tsx -> DockEntrada (unico), montado en GastosScreen.tsx:273, IngresosScreen.tsx:204, ClientesScreen.tsx:325, PresupuestosScreen.tsx:332, PantallaFacturacion.tsx:571-572 (gate listo Y vista listado, igual que mobile PantallaFacturacion.tsx:706; test de ambos ejes); MicFuncion borrado; onAbrirChat cableado en AppShell/DesktopShell; la accion corre al llegar al chat (dejarPendiente + changeTab + tomarPendiente ChatScreen.tsx:68-71). Premisa 1 del contrato (Facturacion sin dock): en web NO existia dock alguno, no habia condicion que lo ocultara; premisa 2 (Mi dia) es mobile.
 - **Dueño:** frontend2
 - **Qué:** mismo criterio que `SM-P5` en `apps/copiloto-web`.
 - **🔴 Antes de implementar:** verificar si en web el dock **está** unificado en un componente como
