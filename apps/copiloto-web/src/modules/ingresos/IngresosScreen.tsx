@@ -3,8 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { borrarIngreso, formatearFechaCorta, listarIngresos, obtenerResumenIngresos, type Ingreso, type ResumenIngresos as ResumenIngresosDato } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
-import { MicFuncion } from '../voz';
-import { FormularioIngreso, type ValoresInicialesIngreso } from './FormularioIngreso';
+import { DockFuncion } from '../voz';
+import { FormularioIngreso } from './FormularioIngreso';
 import { ResumenIngresos } from './ResumenIngresos';
 import { TarjetaIngreso } from './TarjetaIngreso';
 import './ingresos.css';
@@ -30,17 +30,18 @@ type Vista = 'listado' | 'formulario';
  * No se porta: `RefreshControl` (no existe en web, reemplazado por botón "Actualizar") ni
  * `BuscadorActividad` (pertenece al módulo `actividad`, todavía no portado a web — fuera de scope).
  */
-export function IngresosScreen() {
+export interface IngresosScreenProps {
+  /** Lleva al chat principal: el dock del pie (SM-P7) deja el texto como pendiente y cambia de tab. */
+  onAbrirChat?: () => void;
+}
+
+export function IngresosScreen({ onAbrirChat }: IngresosScreenProps = {}) {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [ingresos, setIngresos] = useState<Ingreso[]>([]);
   const [resumen, setResumen] = useState<ResumenIngresosDato | null>(null);
   const [vista, setVista] = useState<Vista>('listado');
   const [actualizando, setActualizando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // BL-J7/K-10 — ver el mismo comentario en `GastosScreen.tsx`: dictado desde la fila del rótulo
-  // llena `concepto` (el campo libre "por qué trabajo"), no `monto` ni `cliente`.
-  const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesIngreso | undefined>(undefined);
-  const [errorMic, setErrorMic] = useState<string | null>(null);
   const vivo = useRef(true);
   useEffect(() => {
     vivo.current = true;
@@ -79,18 +80,10 @@ export function IngresosScreen() {
 
   function alGuardar() {
     setVista('listado');
-    setInicialesDictado(undefined);
     void cargar(true);
   }
 
   function abrirFormularioEnBlanco() {
-    setInicialesDictado(undefined);
-    setVista('formulario');
-  }
-
-  function alDictarIngreso(texto: string) {
-    setErrorMic(null);
-    setInicialesDictado({ concepto: texto });
     setVista('formulario');
   }
 
@@ -107,7 +100,7 @@ export function IngresosScreen() {
   const hayIngresos = ingresos.length > 0;
 
   return (
-    <div className="ingresos-screen" data-testid="pantalla-ingresos">
+    <div className="ingresos-screen dock-host" data-testid="pantalla-ingresos">
       {/* Anatomía de función (Tarea 3, CLAUDE.md §5): stack con nombre + período. Mismo criterio que
           `GastosScreen` — web no lleva "Volver ‹" (Rail/TabBar propios). El período no depende de
           `estado`: es el mes en curso, siempre disponible. */}
@@ -159,22 +152,19 @@ export function IngresosScreen() {
           {vista === 'formulario' ? (
             <FormularioIngreso
               origen="manual"
-              iniciales={inicialesDictado}
               onGuardado={alGuardar}
-              onCancelar={() => { setVista('listado'); setInicialesDictado(undefined); }}
+              onCancelar={() => setVista('listado')}
             />
           ) : (
             <>
               {resumen != null && <ResumenIngresos resumen={resumen} />}
 
               {/* Rótulo de sección + alta, en la misma fila (CLAUDE.md §5): el pill NUNCA es un FAB
-                  — compite con el mic. "Anotar que me pagaron" es el verbo textual del repo, nunca
-                  "Nuevo ingreso". BL-J7/K-10: dictar acá abre el formulario con `concepto`
-                  prellenado (K-10, `/transcribir`, sin sesión de chat). */}
+                  — compite con el dock. "Anotar que me pagaron" es el verbo textual del repo, nunca
+                  "Nuevo ingreso". El campo y el mic viven en el dock del pie (`DockFuncion`, SM-P7). */}
               <div className="ingresos-screen__fila-lbl">
                 <span className="ingresos-screen__lista-lbl">Últimos</span>
                 <div className="ingresos-screen__fila-lbl-acciones">
-                  <MicFuncion contexto="ingreso" onTranscripcion={alDictarIngreso} onError={setErrorMic} />
                   <button
                     type="button"
                     className="ingresos-screen__pill-nuevo"
@@ -188,12 +178,6 @@ export function IngresosScreen() {
                   </button>
                 </div>
               </div>
-
-              {errorMic != null && (
-                <p className="ingresos-screen__mic-error" data-testid="ingresos-mic-error" role="alert">
-                  {errorMic}
-                </p>
-              )}
 
               {!hayIngresos && (
                 <p className="ingresos-screen__empty" data-testid="ingresos-vacio">
@@ -216,6 +200,8 @@ export function IngresosScreen() {
           )}
         </div>
       )}
+
+      {onAbrirChat && <DockFuncion onAbrirChat={onAbrirChat} placeholder="Contale un cobro al copiloto…" />}
     </div>
   );
 }

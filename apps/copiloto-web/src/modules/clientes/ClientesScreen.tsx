@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { listarClientes, obtenerCliente, type Cliente, type DatosCliente, type DuplicadoCliente } from '@copiloto/core';
+import { listarClientes, obtenerCliente, type Cliente, type DuplicadoCliente } from '@copiloto/core';
 
 import { Button, Skeleton, Surface } from '../../design-system';
-import { MicFuncion } from '../voz';
+import { DockFuncion } from '../voz';
 import { FichaCliente } from './FichaCliente';
 import { FormularioCliente } from './FormularioCliente';
 import { TarjetaCliente } from './TarjetaCliente';
@@ -35,9 +35,11 @@ export interface ClientesScreenProps {
    * `TarjetaClientePropuesto`). El shell lo resetea a `null` en cada cambio de tab (ver
    * `AppShell`/`DesktopShell`), así que un remount posterior sin id nuevo no reabre la ficha vieja. */
   clienteIdInicial?: number;
+  /** Lleva al chat principal: el dock del pie (SM-P7) deja el texto como pendiente y cambia de tab. */
+  onAbrirChat?: () => void;
 }
 
-export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
+export function ClientesScreen({ clienteIdInicial, onAbrirChat }: ClientesScreenProps = {}) {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [total, setTotal] = useState(0);
@@ -47,10 +49,6 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
   const [ficha, setFicha] = useState<Cliente | null>(null);
   const [formulario, setFormulario] = useState<{ edita: Cliente | null } | null>(null);
   const [avisoDuplicado, setAvisoDuplicado] = useState<DuplicadoCliente | null>(null);
-  // BL-J7/K-10 — ver el mismo comentario en `GastosScreen.tsx`: dictado desde la fila del rótulo
-  // llena `nombre` (el único dato con el que este alta puede arrancar sin tipear nada).
-  const [inicialesDictado, setInicialesDictado] = useState<DatosCliente | undefined>(undefined);
-  const [errorMic, setErrorMic] = useState<string | null>(null);
   /**
    * "Le vendiste a N clientes" tiene que ser el tamaño de TODA la cartera, no el de una búsqueda
    * filtrada — se actualiza sólo con una respuesta SIN `q` (dentro de `cargar`) y mientras el
@@ -116,7 +114,6 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
 
   function alGuardar(cliente: Cliente) {
     setFormulario(null);
-    setInicialesDictado(undefined);
     setAvisoDuplicado(null);
     void cargar(true);
     setFicha(cliente);
@@ -124,14 +121,6 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
 
   function abrirFormularioEnBlanco() {
     setAvisoDuplicado(null);
-    setInicialesDictado(undefined);
-    setFormulario({ edita: null });
-  }
-
-  function alDictarCliente(texto: string) {
-    setErrorMic(null);
-    setAvisoDuplicado(null);
-    setInicialesDictado({ nombre: texto });
     setFormulario({ edita: null });
   }
 
@@ -176,7 +165,7 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
   const clientesOrdenados = ordenarAlfabetico(clientes);
 
   return (
-    <div className="clientes-screen" data-testid="pantalla-clientes">
+    <div className="clientes-screen dock-host" data-testid="pantalla-clientes">
       <header className="clientes-screen__stack">
         <span className="clientes-screen__nombre-fila">
           <span className="clientes-screen__nombre">Clientes</span>
@@ -225,11 +214,10 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
           {formulario != null ? (
             <FormularioCliente
               edita={formulario.edita}
-              iniciales={inicialesDictado}
               onGuardado={alGuardar}
               onDuplicado={alDuplicado}
               onAbrirCliente={(c) => { setFormulario(null); setFicha(c); }}
-              onCancelar={() => { setFormulario(null); setInicialesDictado(undefined); }}
+              onCancelar={() => setFormulario(null)}
             />
           ) : (
             <>
@@ -282,14 +270,12 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
               </label>
 
               {/* Rótulo de sección + alta, en la misma fila (CLAUDE.md §5): el pill NUNCA es un
-                  FAB — compite con el mic. "Con movimiento" y "Nuevo cliente" son el rótulo y el
+                  FAB — compite con el dock. "Con movimiento" y "Nuevo cliente" son el rótulo y el
                   verbo textuales del mockup (`.fila-lbl`/`.nuevo`), no genéricos inventados.
-                  BL-J7/K-10: dictar acá abre el alta con `nombre` prellenado (K-10, `/transcribir`,
-                  sin sesión de chat). */}
+                  El campo y el mic viven en el dock del pie (`DockFuncion`, SM-P7). */}
               <div className="clientes-screen__fila-lbl">
                 <span className="clientes-screen__lista-lbl">Con movimiento</span>
                 <div className="clientes-screen__fila-lbl-acciones">
-                  <MicFuncion contexto="cliente" onTranscripcion={alDictarCliente} onError={setErrorMic} />
                   <button
                     type="button"
                     className="clientes-screen__pill-nuevo"
@@ -303,12 +289,6 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
                   </button>
                 </div>
               </div>
-
-              {errorMic != null && (
-                <p className="clientes-screen__mic-error" data-testid="clientes-mic-error" role="alert">
-                  {errorMic}
-                </p>
-              )}
 
               {!hayClientes && (
                 <p className="clientes-screen__empty" data-testid="clientes-vacio">
@@ -341,6 +321,8 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
           onEditar={(c) => { setFicha(null); setFormulario({ edita: c }); }}
         />
       )}
+
+      {onAbrirChat && <DockFuncion onAbrirChat={onAbrirChat} placeholder="Contale un cliente al copiloto…" />}
     </div>
   );
 }

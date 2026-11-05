@@ -26,6 +26,7 @@ import {
 
 import { Button, Skeleton } from '../../design-system';
 import { generarId } from '../../util/id';
+import { DockFuncion } from '../voz';
 import { DetalleComprobante } from './DetalleComprobante';
 import { derivarPasoVisible, type PasoVisible } from './maquinaEstado';
 import { PasoCliente } from './PasoCliente';
@@ -168,9 +169,11 @@ export interface PantallaFacturacionProps {
    *  final del shell (mismo criterio que el resto de M-WEB: quien monta decide el destino, no el
    *  módulo). `undefined` = el botón queda deshabilitado (mismo estado que antes del wiring). */
   onConfigurar?: () => void;
+  /** Lleva al chat principal: el dock del pie (SM-P7) deja el texto como pendiente y cambia de tab. */
+  onAbrirChat?: () => void;
 }
 
-export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: PantallaFacturacionProps = {}) {
+export function PantallaFacturacion({ facturaIdInicial, onConfigurar, onAbrirChat }: PantallaFacturacionProps = {}) {
   const [gate, setGate] = useState<EstadoGate>({ tipo: 'verificando' });
   // H-A4-5: arranca en 'listado' salvo que llegue un borrador de afuera (`facturaIdInicial`), que ya ES
   // la acción explícita que justifica entrar directo al wizard. Ver el docstring del módulo.
@@ -445,7 +448,7 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
   const cuitConocido = gate.tipo === 'listo' || gate.tipo === 'bloqueado' ? gate.cuit : null;
 
   return (
-    <div className="facturacion-screen" data-testid="pantalla-facturacion">
+    <div className="facturacion-screen dock-host" data-testid="pantalla-facturacion">
       {/* Anatomía de función (Tarea 3, CLAUDE.md §5): stack con nombre + período, calcado de
           `.fn-stack .atras` del mockup fuente. El nombre migra del `<h1>` de sección a esta card
           blanca -- mismo tratamiento que `GastosScreen`. Web no lleva "Volver ‹": Rail/TabBar
@@ -560,6 +563,13 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
           onCerrar={() => setDetalleComprobante(null)}
           onCobroCambiado={() => void refMeDeben.current?.recargar()}
         />
+      )}
+
+      {/* SM-P7 — mismo dock que el resto de las funciones, con la MISMA condición que mobile
+          (`PantallaFacturacion.tsx:706`: gate `listo` Y vista `listado`). En el wizard no va: ahí el
+          emprendedor está cargando datos en campos propios y un segundo campo de texto compite con ellos. */}
+      {onAbrirChat && gate.tipo === 'listo' && vista === 'listado' && (
+        <DockFuncion onAbrirChat={onAbrirChat} placeholder="Pedile una factura al copiloto…" />
       )}
     </div>
   );
