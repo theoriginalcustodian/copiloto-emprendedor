@@ -57,6 +57,7 @@ campo»*.
 | **SM-P11** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA: la pregunta de esta ficha se disolvio, no se resolvio. Era condicional a que frontend1 necesitara un contexto n… |
 | **SM-P12** | `sin-issue` | 🟧 DOD-PARCIAL | Pasada CORRIDA el 2026-11-05 por frontend1 sobre el APK ef143e95 (sha 7d278a2c) en RF8T318RN9T con e2e-device@copilot… |
 | **SM-P13** | `sin-issue` | 🟧 DOD-PARCIAL | Los DOS cableados ya estan en main: web 40df2a15 (#1661) y mobile b6b342bb (#1662), sobre el backend 2ca3f7ad (#1660,… |
+| **SM-P14** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -340,3 +341,30 @@ campo»*.
   **incompleto** (pregunta sin card en el 1er turno) y el completo; (4) device: dictar una factura
   desde Facturación y ver la card prellenada **sin que se emita nada**, con el usuario canónico
   `e2e-device@copiloto.test` y **nunca** contra el tenant fiscal del operador.
+
+### SM-P14 · `sin-issue` — Una card pendiente CONTAMINA la respuesta de una pregunta que no la menciona
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend (el contexto que arma el prompt), con planificación midiendo el alcance
+- **Medido en device el 2026-11-05** (frontend1, APK `ef143e95`, `e2e-device@copiloto.test`): con una
+  card de presupuesto SIN resolver viva en el chat, la respuesta al tema «¿Cómo emito mi primera
+  factura?» de «Cómo usar la app» llegó con el ejemplo «…Seed Mi Dia una reparación por $3.000» — es
+  decir, los datos de la card pendiente aparecieron dentro de una respuesta que no los pidió. Hecho
+  medido; causa no investigada.
+- **Por qué tiene ficha propia y no es un detalle de SM-P12:** la pasada de device la encontró de
+  rebote, y una observación sin ficha no se persigue. Además no es cosmética: si el contexto del
+  agente arrastra el contenido de una card pendiente a cualquier turno siguiente, el mismo mecanismo
+  puede arrastrar datos de un cliente a una respuesta sobre otro. Eso es un problema de **aislamiento
+  dentro del tenant**, no de redacción.
+- **🔴 El modo de falla a evitar:** declararla «es el contexto conversacional, funciona así» sin medir
+  QUÉ se inyecta. La pregunta correcta no es «¿por qué menciona el presupuesto?» sino **«¿qué entra
+  exactamente en el prompt de un turno, y quién decide que una card sin resolver entre?»** —
+  con el payload real de un turno, no con el diseño supuesto.
+- **DoD:**
+  1. El payload REAL del turno que produjo la contaminación (o su reproducción), mostrando qué parte
+     del estado pendiente se inyectó y desde dónde (`path:línea` del armado del contexto).
+  2. Veredicto explícito: es intencional (y entonces queda escrito dónde se declara) o es un defecto.
+  3. Si es defecto: fix de raíz en el armado del contexto, con test que ejercite «card pendiente de A
+     + pregunta no relacionada ⇒ la respuesta no cita A».
+  4. Control adversarial del caso que importa: card pendiente del cliente A + pregunta sobre el
+     cliente B ⇒ la respuesta no filtra datos de A. Sin ese test el punto 3 queda `[UNVERIFIED]`.
