@@ -13,7 +13,7 @@ import { conAlfa } from './conAlfa';
 
 export const ALFA_SCRIM_ABAJO = 0.9;
 
-export function ScrimDock({ testID }: { testID: string }) {
+export function ScrimDock({ testID }: { testID?: string }) {
   const tema = useTema();
   return (
     <LinearGradient
