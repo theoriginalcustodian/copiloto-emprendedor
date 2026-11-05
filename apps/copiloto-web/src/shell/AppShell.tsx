@@ -189,9 +189,9 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
               />
             )}
             {activeTab === 'connections' && <ConnectionsScreen />}
-            {activeTab === 'gastos' && <GastosScreen gastoIdInicial={gastoIdAbierto ?? undefined} />}
-            {activeTab === 'clientes' && <ClientesScreen clienteIdInicial={clienteIdAbierto ?? undefined} />}
-            {activeTab === 'ingresos' && <IngresosScreen />}
+            {activeTab === 'gastos' && <GastosScreen gastoIdInicial={gastoIdAbierto ?? undefined} onAbrirChat={() => changeTab('chat')} />}
+            {activeTab === 'clientes' && <ClientesScreen clienteIdInicial={clienteIdAbierto ?? undefined} onAbrirChat={() => changeTab('chat')} />}
+            {activeTab === 'ingresos' && <IngresosScreen onAbrirChat={() => changeTab('chat')} />}
             {activeTab === 'actividad' && (
               <ActividadScreen
                 onAbrirGasto={abrirGasto}
@@ -199,7 +199,7 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
                 onAbrirTicket={setTicketIdAbierto}
               />
             )}
-            {activeTab === 'presupuestos' && <PresupuestosScreen onFacturar={irAFacturar} />}
+            {activeTab === 'presupuestos' && <PresupuestosScreen onFacturar={irAFacturar} onAbrirChat={() => changeTab('chat')} />}
             {activeTab === 'inteligencia' && <InteligenciaScreen onAbrirChat={() => changeTab('chat')} />}
             {activeTab === 'midia' && <MidiaScreen avatar={<AvatarCuenta onPress={() => changeTab('ajustes')} />} onAbrirChat={() => changeTab('chat')} />}
             {activeTab === 'escritorio' && (
@@ -226,6 +226,7 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
               <PantallaFacturacion
                 facturaIdInicial={facturaIdDesdePresupuesto}
                 onConfigurar={() => changeTab('ajustes')}
+                onAbrirChat={() => changeTab('chat')}
               />
             )}
             {/* Ver el mismo comentario en `DesktopShell.tsx`: el `&& esAdmin` cubre el caso en que

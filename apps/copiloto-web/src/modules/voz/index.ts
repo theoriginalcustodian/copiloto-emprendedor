@@ -1,1 +1,1 @@
-export { MicFuncion, type MicFuncionProps } from './MicFuncion';
+export { DockFuncion, type DockFuncionProps } from './DockFuncion';
