@@ -170,7 +170,7 @@ def _fernet_key_env(monkeypatch):
 # `/ingresos`, `/ingresos/resumen`, `/ingresos/{ingreso_id}`, `/clientes`, `/clientes/{cliente}`,
 # `/contabilidad/resumen`, `/actividad`. Lote: 7 intentadas, 7 cubiertas, 0 sin poder. Además el alta de
 # cliente con el MISMO documento que otro tenant se afirma 201 (nunca un 409 que nombre al otro).
-_DEUDA_TENANT_SCOPED_SIN_TEST = 42  # SM-H2: bajó 43→42 (cancelar ya tiene su caso hostil)
+_DEUDA_TENANT_SCOPED_SIN_TEST = 0  # SEC-A2-2: 42→0 con test_adversarial_frontdoor_por_ruta.py
 
 
 # --- Construcción del front-door COMPLETO (mismo set de sub-apps que serve.py) ------------------
@@ -411,7 +411,7 @@ def _cobertura_desde_codigo(codigo: str, nombre_archivo: str, rutas_reales: list
 # NO entra `test_cobros_y_catalogo.py`: sus adversariales llaman al store directo con un cliente_id
 # ya resuelto, nunca pasan por `Depends(require_tenant)` -- exactamente la mitad que este ratchet
 # existe para vigilar (ver docstring del módulo).
-_ARCHIVOS_ADVERSARIALES = ("test_adversarial_multitenant.py", "test_afip_web_facturas.py")
+_ARCHIVOS_ADVERSARIALES = ("test_adversarial_multitenant.py", "test_afip_web_facturas.py", "test_adversarial_frontdoor_por_ruta.py")
 
 
 def _cobertura_adversarial(rutas_reales: list) -> _Cobertura:
@@ -493,6 +493,49 @@ def test_el_conteo_de_cobertura_coincide_con_lo_que_cita_el_buzon():
         "/clientes", "/clientes/{cliente}", "/contabilidad/resumen", "/actividad",
         # SM-H2 2026-11-02
         "/afip/facturas/{factura_id}/cancelar",
+        # SEC-A2-2 2026-11-05 (test_adversarial_frontdoor_por_ruta.py)
+        "/afip/ajustes",
+        "/afip/ambiente",
+        "/afip/anulaciones/{anulacion_id}",
+        "/afip/anulaciones/{anulacion_id}/confirmar",
+        "/afip/comprobantes",
+        "/afip/comprobantes/impagos",
+        "/afip/comprobantes/{comprobante_id}",
+        "/afip/comprobantes/{comprobante_id}/cobros",
+        "/afip/comprobantes/{comprobante_id}/cobros/{cobro_id}",
+        "/afip/conectar",
+        "/afip/estado",
+        "/afip/facturas/{factura_id}/cliente",
+        "/afip/facturas/{factura_id}/confirmar",
+        "/afip/facturas/{factura_id}/datos-venta",
+        "/afip/facturas/{factura_id}/items",
+        "/afip/facturas/{factura_id}/items/{indice}",
+        "/afip/perfil",
+        "/auth/cambiar-contrasena",
+        "/auth/cambiar-email",
+        "/capacidades",
+        "/chat",
+        "/chat/audio",
+        "/chat/foto",
+        "/composio/connect",
+        "/composio/connection",
+        "/feedback/audio",
+        "/gastos/leer-foto",
+        "/inteligencia/graficos/categorias",
+        "/inteligencia/graficos/entro-vs-salio",
+        "/inteligencia/graficos/facturacion",
+        "/inteligencia/graficos/margen-trabajo",
+        "/inteligencia/portada",
+        "/mi-dia/tablero",
+        "/mi-dia/tarjetas",
+        "/mi-dia/tarjetas/{tarjeta_id}",
+        "/mi-dia/tarjetas/{tarjeta_id}/estado",
+        "/mp/connect",
+        "/salud/canario",
+        "/soporte/chat",
+        "/soporte/chat/audio",
+        "/transcribir",
+        "/warm",
     }
 
 
@@ -534,9 +577,13 @@ def test_A1_un_caso_nuevo_sobre_ruta_con_id_baja_la_deuda_exactamente_uno():
     clasificacion = _clasificar_rutas(app, require_tenant)
     rutas_reales = _rutas_reales(app.routes)
     cobertura_hoy = _cobertura_adversarial(rutas_reales)
+    # Con la deuda en 0 no queda una ruta sin cobertura que probar: se elige una con parámetro y se la
+    # DESCUBRE (se resta de la cobertura base) para medir que agregar su literal baja la deuda en 1.
+    candidata = next(p for p in sorted(clasificacion["tenant_scoped"]) if "{" in p)
+    cobertura_hoy = type(cobertura_hoy)(plantillas=cobertura_hoy.plantillas - {candidata},
+                                        sin_match=cobertura_hoy.sin_match, fstrings=cobertura_hoy.fstrings)
     deuda_hoy = set(clasificacion["tenant_scoped"]) - cobertura_hoy.plantillas
-
-    candidata = next(p for p in deuda_hoy if "{" in p)
+    assert candidata in deuda_hoy
     literal = re.sub(r"\{[^}]+\}", "id-de-prueba-e2e2f4", candidata)
     ruta_candidata = next(r for r in rutas_reales if r.path == candidata)
     verbo = next(m for m in ruta_candidata.methods if m != "HEAD").lower()

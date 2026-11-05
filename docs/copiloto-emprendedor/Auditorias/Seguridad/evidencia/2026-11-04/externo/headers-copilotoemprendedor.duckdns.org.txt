@@ -1,0 +1,14 @@
+HTTP/1.1 405 Method Not Allowed
+Allow: GET
+Alt-Svc: h3=":443"; ma=2592000
+Content-Length: 31
+Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'
+Content-Type: application/json
+Date: Thu, 05 Nov 2026 02:02:57 GMT
+Permissions-Policy: microphone=(self), camera=(), geolocation=()
+Referrer-Policy: strict-origin-when-cross-origin
+Strict-Transport-Security: max-age=31536000
+Via: 1.1 Caddy
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+

@@ -1,0 +1,4 @@
+# Nmap 7.80 scan initiated Wed Nov 04 22:12:50 2026 as: "C:\\Program Files (x86)\\Nmap\\nmap.exe" -Pn -sT -p- --min-rate 1000 -T4 -oN C:/gfw-src/wt-seg-f0/docs/copiloto-emprendedor/Auditorias/Seguridad/evidencia/2026-11-04/externo/nmap.txt -oG C:/gfw-src/wt-seg-f0/docs/copiloto-emprendedor/Auditorias/Seguridad/evidencia/2026-11-04/externo/nmap.gnmap 178.105.191.1
+Host: 178.105.191.1 (static.1.191.105.178.clients.your-server.de)	Status: Up
+Host: 178.105.191.1 (static.1.191.105.178.clients.your-server.de)	Ports: 25/open/tcp//smtp///, 110/open/tcp//pop3///, 119/open/tcp//nntp///, 143/open/tcp//imap///, 465/open/tcp//smtps///, 563/open/tcp//snews///, 587/open/tcp//submission///, 993/open/tcp//imaps///, 995/open/tcp//pop3s///	Ignored State: filtered (65526)
+# Nmap done at Wed Nov 04 23:00:11 2026 -- 1 IP address (1 host up) scanned in 2840.74 seconds
