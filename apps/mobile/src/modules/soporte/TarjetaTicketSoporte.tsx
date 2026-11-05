@@ -20,8 +20,6 @@ export interface TarjetaTicketSoporteProps {
   cantidadAnteriores: number;
   /** `null` ⇒ la fila «Te contestan» NO se pinta (el plazo es decisión del operador, BL-O7). */
   respuestaEstimada: string | null;
-  /** Resultado del último adjunto (`null` = ninguno todavía). */
-  aviso: string | null;
   onAbrirTicket: (ticketId: number) => void;
 }
 
@@ -33,21 +31,19 @@ export interface TarjetaTicketSoporteProps {
  * (BL-O7) y por lo que el backend de verdad guarda. La fila «Te contestan» sólo aparece si el backend
  * manda un plazo; con `null` (hoy) no se pinta.
  *
- * Es un agregado: sin ticket vigente, sin anteriores y sin aviso devuelve `null` y la pantalla queda como
- * estaba.
+ * Es un agregado: sin ticket vigente y sin anteriores devuelve `null` y la pantalla queda como estaba.
  */
 export function TarjetaTicketSoporte({
   vigente,
   anteriores,
   cantidadAnteriores,
   respuestaEstimada,
-  aviso,
   onAbrirTicket,
 }: TarjetaTicketSoporteProps) {
   const tema = useTema();
   const [desplegado, setDesplegado] = useState(false);
 
-  if (vigente === null && cantidadAnteriores === 0 && aviso === null) return null;
+  if (vigente === null && cantidadAnteriores === 0) return null;
 
   return (
     <View testID="soporte-tickets" style={{ gap: tema.espacio.sm, marginTop: tema.espacio.sm }}>
@@ -99,16 +95,6 @@ export function TarjetaTicketSoporte({
             {SOPORTE_QUE_VIAJA}
           </Text>
         </Pressable>
-      )}
-
-      {aviso !== null && (
-        <Text
-          testID="soporte-adjunto-aviso"
-          accessibilityLiveRegion="polite"
-          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}
-        >
-          {aviso}
-        </Text>
       )}
 
       {cantidadAnteriores > 0 && (

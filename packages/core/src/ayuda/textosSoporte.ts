@@ -28,24 +28,12 @@ export const SOPORTE_QUE_VIAJA =
 export const SOPORTE_PLACEHOLDER = 'Contame qué pasó…';
 
 /**
- * Los tickets propios y el clip de adjuntos (PROTO4APP §D/§E). Mismas reglas que las constantes de
- * arriba: sin plazo inventado y sin prometer lo que el backend no hace.
- *
- * 🔴 **El clip adjunta a UN ticket, no a la conversación.** `POST /soporte/tickets/{id}/adjuntos` cuelga la
- * imagen de un ticket ya abierto; no hay adjuntos sueltos del chat. Sin ticket no hay a dónde mandarla, y
- * decirlo es mejor que aceptar la foto y perderla.
+ * Los tickets propios (PROTO4APP §D). Mismas reglas que las constantes de arriba: sin plazo inventado y
+ * sin prometer lo que el backend no hace. (Los textos del clip de adjuntos se retiraron el 2026-11-04,
+ * cuando se sacó la cámara del composer de Soporte.)
  */
 export const SOPORTE_TICKET_ROTULO_SOBRE = 'Sobre';
 export const SOPORTE_TICKET_ROTULO_CONTESTAN = 'Te contestan';
-export const SOPORTE_ADJUNTO_SIN_TICKET_TITULO = 'Todavía no hay un ticket abierto';
-export const SOPORTE_ADJUNTO_SIN_TICKET =
-  'La foto se adjunta a un ticket. Contame qué pasó y, si hace falta abrir uno, después la sumás ahí.';
-export const SOPORTE_ADJUNTO_OK = 'Listo, la foto quedó adjunta al ticket.';
-export const SOPORTE_ADJUNTO_FORMATO = 'Sólo se pueden adjuntar fotos en JPG o PNG.';
-export const SOPORTE_ADJUNTO_RECHAZADO = 'No se pudo adjuntar: la foto pesa demasiado o el ticket ya tiene todas las que admite.';
-export const SOPORTE_ADJUNTO_NO_ENCONTRADO = 'No encontramos ese ticket. Probá de nuevo en un momento.';
-export const SOPORTE_ADJUNTO_NO_DISPONIBLE = 'Adjuntar fotos todavía no está disponible.';
-export const SOPORTE_ADJUNTO_ERROR = 'No pudimos subir la foto. Probá de nuevo.';
 
 /** «Ver tickets anteriores (3)». `n` es lo que el toque despliega, no el total del tenant. */
 export function soporteVerTicketsAnteriores(n: number): string {
