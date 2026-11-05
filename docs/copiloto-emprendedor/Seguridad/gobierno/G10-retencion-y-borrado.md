@@ -10,4 +10,4 @@
 | Graphity | indefinida | **sin borrado por tenant** |
 | Composio connections | indefinida | **sin revocación en el código** |
 
-**Borrado de tenant:** no existe; es la BRECHA D8 y el primer entregable de su ficha (orden propuesto: revocar Composio → borrar Graphity → borrar filas por `cliente_id` → baja GoTrue → esperar rotación de backups).
+**Borrado de tenant:** no existe; es la BRECHA SEC-D8 y el primer entregable de su ficha (orden propuesto: revocar Composio → borrar Graphity → borrar filas por `cliente_id` → baja GoTrue → esperar rotación de backups).
