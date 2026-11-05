@@ -18,3 +18,6 @@
 | 2026-11-05 | SEC-C10-1 | Backups locales: `/usr/local/sbin/uc-backup-local.sh` + `uc-backup-local.{service,timer}` (pg_dump -Fc GoTrue+Temporal → `/var/backups/uc`, 7 d) | restore de GoTrue 28/28; timer enabled | `systemctl disable --now uc-backup-local.timer; rm /usr/local/sbin/uc-backup-local.sh /etc/systemd/system/uc-backup-local.*` |
 | 2026-11-05 | SEC-C5-2 | journald: `SystemMaxUse=500M`, `MaxRetentionSec=30day` en `/etc/systemd/journald.conf.d/uc.conf` | disk-usage 1.2G → 315M; web/worker active | `rm /etc/systemd/journald.conf.d/uc.conf; systemctl restart systemd-journald` |
 | 2026-11-05 | SEC-C5-1 | Filtro `log_redact` sobre `uvicorn.access` (PR en curso) | test 5/5 en VPS; falta deploy + re-medición | revert del PR |
+| 2026-11-05 08:30:06 | F4-revG | opus | 1397a309b610 | e43bf865 | 1 | 192 | docs/copiloto-emprendedor/Auditorias/Seguridad/evidencia/2026-11-05-f4/headless/F4-revG-opus.json |
+| 2026-11-05 08:34:37 | F4-ciego | fable | 1838bf15ff0b | e43bf865 | 1 | 463 | docs/copiloto-emprendedor/Auditorias/Seguridad/evidencia/2026-11-05-f4/headless/F4-ciego-fable.json |
+| 2026-11-05 08:36:27 | F4-revG2 | opus | 8b90ead197ae | e43bf865 | 1 | 95 | docs/copiloto-emprendedor/Auditorias/Seguridad/evidencia/2026-11-05-f4/headless/F4-revG2-opus.json |

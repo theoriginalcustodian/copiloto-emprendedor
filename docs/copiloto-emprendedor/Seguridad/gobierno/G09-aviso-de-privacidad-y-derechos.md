@@ -6,3 +6,5 @@
 **Terceros:** G3/G8. **Retención:** G10.
 **Derechos:** acceso, rectificación, supresión, portabilidad. **Mecanismo hoy: manual vía el operador, sin endpoint** (BRECHA SEC-D8). El texto legal se versiona con el ratchet `LEGAL_VERSION`; este borrador no lo reemplaza.
 **Contacto:** **[PENDIENTE operador]**.
+
+**Pregunta cerrada con el dato (SEC-D10, medido 2026-11-05):** la consola del operador (`copiloto_consola`, SELECT-only) lee `copiloto_mensajes` de **todos** los tenants por diseño. ¿Es ese el alcance deseado y debe decirse en este aviso? Decide el operador.

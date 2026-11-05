@@ -27,7 +27,7 @@ SEC-D1 off-site · SEC-D2 TLS Postgres de fusion · SEC-D3 signup/MFA · SEC-D6 
 ## Limitaciones declaradas
 - nmap desde la PC inválido (proxy local); cierre externo por TCP connect.
 - Caso 7 del wrapper headless (escritura bloqueada) sin control positivo propio.
-- No se hizo la pasada ciega con Fable ni revisión Opus de G1–G12 en esta corrida: queda como paso de aprobación del operador.
+- Pasada ciega Fable y revisión Opus de G1–G12: **intentadas y fallidas** (3 corridas, «Autocompact thrashing», ≈ USD 30 sin resultado; ver HALLAZGOS.md). Sustituidas por una revisión determinista de cifras (2 correcciones). Relanzar requiere arreglar el contexto base de headless.
 - C7 cerrado en fuente Y en el APK compilado `ef143e95` (0 hallazgos, con control positivo; ver HALLAZGOS.md). No se corrió docker-bench; la higiene de contenedores se midió con `docker inspect` (ninguno privileged, sin docker.sock).
 
 ## DoD del plan (§1)
