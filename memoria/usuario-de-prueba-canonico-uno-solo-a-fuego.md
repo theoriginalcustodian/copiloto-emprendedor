@@ -80,3 +80,39 @@ previene — y es fácil, porque las dos cosas se dicen con la misma palabra («
 `/auth/signup`, credencial a `.env.e2e` (gitignored — el repo es PÚBLICO), y tres controles
 adversariales propios (no-admin con 403 vs 401, tenant vacío **con control positivo** contra el
 canónico, y cross-tenant denegado). Corre **en el VPS**, nunca en la PC.
+
+## Refuerzo 2026-11-05 — la regla estaba escrita acá y la pasada igual corrió con OTRO usuario
+
+**Lo que pasó.** La pasada de device de `SM-P12` (2026-11-05 08:06, APK `ef143e95`) se corrió entera
+con el teléfono logueado como **`e2e-onb@copiloto.test`**, no con el canónico. Nadie lo supo hasta el
+final: el síntoma fue que Facturación mostraba «ARCA no configurada», y de ahí salió una cadena de
+diagnóstico completa y equivocada — backend midió el gate con el usuario canónico y lo encontró
+**verde**, yo leí el código y derivé una hipótesis de caché de CUIT
+(`PantallaFacturacion.tsx:249-267`) con un test discriminante falsable, y frontend1 lo corrió. La
+predicción falló. No porque el mecanismo esté mal: **porque la premisa «el sujeto es e2e-device» era
+falsa**, y nadie la había medido. La caché no tiene defecto.
+
+**Lo que esto NO es.** No es que faltara la regla: está escrita arriba, textual, desde el 2026-07-23
+— *«el teléfono siempre debe estar logueado en este usuario — si muestra otro, se hace logout+login
+limpio»*. Tampoco faltó el instrumento: la captura `cuenta.png` que lo probó la sacó frontend1 con lo
+que ya tenía. **Lo que faltó es el ORDEN: la captura llegó al final, cuando ya había un síntoma que
+explicar.** Una regla sin un paso que la verifique *antes* de medir no protege nada; sólo sirve para
+reconstruir, después, por qué la medición no valía.
+
+**Por qué el margen se ensanchó justo ahora.** Hoy hay **tres** usuarios de prueba
+(`e2e-device`, `e2e-vacio`, `e2e-onb`) donde en julio había uno canónico y un enredo de cuatro. Cada
+ampliación fue correcta por separado y ninguna cambió el canónico — pero «cuál está logueado en el
+teléfono» dejó de ser deducible y pasó a ser un **hecho que hay que mirar**. El aviso de la
+ampliación del 2026-11-03 («autorizar un segundo tenant no es mudar el canónico») cubría la
+*elección*; esto es otra cosa: el **estado heredado** del dispositivo, que nadie eligió.
+
+**El cambio concreto, no la intención:** el primer paso de cualquier receta de device es **capturar
+la cuenta logueada**, y su resultado es precondición del resto — no un dato que se adjunta al
+cierre. Si la captura no dice `e2e-device@copiloto.test`, no se mide nada hasta el logout+login.
+
+**Lo que se conserva de esa pasada.** Los veredictos que no dependen del tenant (que el campo de Mi
+día acepte texto, que un tema de «Cómo usar» llegue al chat, que el teclado tapara el campo) siguen
+valiendo como observación. Lo que **no** son es evidencia sobre el usuario canónico, así que vuelven
+a la próxima pasada. Lo mismo la medición de supervivencia de una card sin resolver: el control de
+arranque en frío fue correcto y el hecho es real, pero el sujeto era otro
+([[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]]).
