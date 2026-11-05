@@ -4,9 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import type { FlatList } from 'react-native-gesture-handler';
 
-import { ROTULO_VOLVER_AL_TABLERO, type ArchivoSubida, type AvisoAlChat, type CierreAviso } from '@copiloto/core';
+import {
+  avisoErrorTranscripcion,
+  ROTULO_VOLVER_AL_TABLERO,
+  transcribir,
+  type ArchivoSubida,
+  type AvisoAlChat,
+  type CierreAviso,
+} from '@copiloto/core';
 
 import { useSession } from '../auth/useSession';
+import { borrarArchivoLocal } from '../voz/borrarArchivoLocal';
 import { DockEntrada } from './DockEntrada';
 import { ListaMensajes } from './ListaMensajes';
 import { tomarPendiente } from './mensajePendiente';
@@ -73,7 +81,15 @@ export interface ChatViewProps {
  *
  * 🔴 **El chat NO lleva botón de cámara (SM-N24).** La foto del comprobante es sólo de Gastos: vive en
  * `gastos/FotoFuncion` y aparece cuando se va a cargar un gasto. Acá no se pasa `onFoto` al dock, así que
- * el composer no pinta el botón. (Soporte sí lo pasa, para adjuntar a un ticket: es otra pantalla.)
+ * el composer no pinta el botón. Soporte tampoco (se sacó el 2026-11-04, decisión del operador).
+ *
+ * 🔴 **Dictar NO manda: PEGA la transcripción en el campo** (pedido del operador, 2026-11-04). El audio va
+ * a `POST /transcribir` (transcribe SIN despachar, mismo tramo de voz que `/chat/audio`) y el texto cae en el
+ * composer, editable; recién al tocar enviar viaja como un mensaje de texto. Hay DOS salidas de descarte: cancelar
+ * la grabación antes de transcribir (deslizar / toque corto / «Eliminar» ⇒ `onAudio` jamás se llama, no se
+ * transcribe nada) y borrar el texto después. Sin `contexto`: el chat no es un formulario de función, y el
+ * backend acepta la ausencia (`web.py` `/transcribir`: `contexto` opcional, desconocido ⇒ se ignora). El dock
+ * de Mi día (`audioEntrante`) sigue mandando directo: es otro camino.
  *
  * Toda la lógica de envío/polling/durabilidad (texto y voz) vive en `useChat`; este componente
  * sólo arma los callbacks que conectan la vista con esa máquina.
@@ -93,10 +109,24 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
   const scrollRef = useRef<FlatList>(null);
 
   const manejarEnvio = useCallback((text: string) => void send(text, { kind: 'text' }), [send]);
-  const semilla = useMemo(
-    () => (avisoEntrante != null ? { texto: avisoEntrante.aviso.texto, id: avisoEntrante.id } : null),
-    [avisoEntrante],
-  );
+  // El composer toma UNA semilla y la aplica una vez por `id`. Dos fuentes la alimentan: el aviso de Mi día
+  // y el dictado transcripto. Ids de paridad distinta (aviso ⇒ par, dictado ⇒ impar) para que nunca
+  // colisionen, y gana la que llegó última (`fuenteSemilla`): un dictado posterior a un aviso lo pisa, y un
+  // aviso nuevo posterior a un dictado también.
+  const [dictado, setDictado] = useState<{ texto: string; n: number } | null>(null);
+  const [dictando, setDictando] = useState(false);
+  const [avisoDictado, setAvisoDictado] = useState<string | null>(null);
+  const fuenteSemilla = useRef<'aviso' | 'dictado' | null>(null);
+  const avisoVisto = useRef<number | null>(null);
+  if (avisoEntrante != null && avisoEntrante.id !== avisoVisto.current) {
+    avisoVisto.current = avisoEntrante.id;
+    fuenteSemilla.current = 'aviso';
+  }
+  const semilla = useMemo(() => {
+    if (fuenteSemilla.current === 'dictado' && dictado != null) return { texto: dictado.texto, id: dictado.n * 2 + 1 };
+    return avisoEntrante != null ? { texto: avisoEntrante.aviso.texto, id: avisoEntrante.id * 2 } : null;
+  }, [avisoEntrante, dictado]);
+  const contadorDictados = useRef(0);
 
   // K-11 / BL-J8: gate `requiere_conexion` → sheet en contexto; al volver de conectar se reenvía el pedido.
   const conexion = useConexionRequerida(estado?.messages ?? [], manejarEnvio, descartarConexion);
@@ -171,10 +201,27 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
     [send],
   );
 
-  const alAudio = useCallback(
-    (audio: ArchivoSubida, duracionSeg: number) => void enviarAudio(audio, duracionSeg),
-    [enviarAudio],
-  );
+  // Dictar PEGA, no manda: ver el docstring del módulo. El archivo local se borra SIEMPRE (cero retención).
+  const alAudio = useCallback(async (audio: ArchivoSubida) => {
+    setAvisoDictado(null);
+    setDictando(true);
+    try {
+      const res = await transcribir(audio);
+      const texto = res.transcript.trim();
+      if (texto === '') {
+        setAvisoDictado('No se entendió el audio. Probá de nuevo.');
+        return;
+      }
+      contadorDictados.current += 1;
+      fuenteSemilla.current = 'dictado';
+      setDictado({ texto, n: contadorDictados.current });
+    } catch (err) {
+      setAvisoDictado(avisoErrorTranscripcion(err));
+    } finally {
+      setDictando(false);
+      await borrarArchivoLocal(audio);
+    }
+  }, []);
 
   // SM-N25 — alto real del dock flotante: es el padding que la lista reserva al final. Medido, no supuesto.
   const [altoDock, setAltoDock] = useState(0);
@@ -261,6 +308,15 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
       />
       <View testID="chat-dock-flotante" onLayout={alMedirDock} pointerEvents="box-none" style={styles.dockFlotante}>
         <ScrimDock testID="chat-dock-scrim" />
+      {(dictando || avisoDictado != null) && (
+        <Text
+          testID={dictando ? 'chat-transcribiendo' : 'chat-dictado-aviso'}
+          accessibilityLiveRegion="polite"
+          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, paddingHorizontal: 18, paddingBottom: 4 }}
+        >
+          {dictando ? 'Transcribiendo…' : avisoDictado}
+        </Text>
+      )}
       <DockEntrada
         motivoFallo={estado?.motivoFallo ?? null}
         sendStatus={estado?.sendStatus ?? 'idle'}

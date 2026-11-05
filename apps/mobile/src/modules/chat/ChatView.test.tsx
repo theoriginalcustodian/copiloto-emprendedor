@@ -33,6 +33,7 @@ jest.mock('@copiloto/core', () => {
       getReply: jest.fn(),
     },
     leerPerfilNegocio: jest.fn().mockResolvedValue({ status: 'no_disponible' }),
+    transcribir: jest.fn(),
   };
 });
 
@@ -167,7 +168,7 @@ jest.mock('expo-audio', () => ({
   setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
-import { apiReal as api, dejarPendiente, tomarPendiente } from '@copiloto/core';
+import { apiReal as api, dejarPendiente, tomarPendiente, transcribir } from '@copiloto/core';
 import { useConexionRequerida } from './useConexionRequerida';
 
 import { almacenClave } from '../../adapters/almacen';
@@ -394,6 +395,7 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
     jest.mocked(api.sendChat).mockReset();
     jest.mocked(api.sendAudio).mockReset();
     jest.mocked(api.sendAudio).mockResolvedValue({ replies: [], next_id: 0 } as any);
+    jest.mocked(transcribir).mockReset().mockResolvedValue({ transcript: 'gasté cuatro mil en nafta' });
     jest.mocked(api.getReply).mockReset();
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
     mockRequestRecordingPermissionsAsync.mockReset().mockResolvedValue({ granted: true });
@@ -573,7 +575,7 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
     expect(api.sendAudio).not.toHaveBeenCalled();
   });
 
-  it('soltar SIN fijar envía directo -- corta, sube, entra como mensaje', async () => {
+  it('🔴 soltar SIN fijar TRANSCRIBE y PEGA el texto en el campo -- NO manda (no hay punto de arrepentimiento si manda)', async () => {
     mockGrabadorVoz.uri = 'file:///cache/voz.m4a';
     await renderChatView();
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
@@ -582,13 +584,38 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
 
     await fireEvent.press(screen.getByTestId('boton-voz-soltar-test'));
 
-    await waitFor(() => expect(api.sendAudio).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(transcribir).toHaveBeenCalledTimes(1));
+    // Sin `contexto`: el chat no es un formulario de función (el backend acepta la ausencia).
+    expect(jest.mocked(transcribir).mock.calls[0]?.[1]).toBeUndefined();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.value).toBe('gasté cuatro mil en nafta'));
+    // Nada viajó al agente: ni el audio ni un mensaje de texto.
+    expect(api.sendAudio).not.toHaveBeenCalled();
+    expect(api.sendChat).not.toHaveBeenCalled();
+    // Y el archivo local se borró igual (cero retención).
+    const { deleteAsync } = require('expo-file-system/legacy');
+    expect(deleteAsync).toHaveBeenCalledWith('file:///cache/voz.m4a', { idempotent: true });
     // Vuelve al estado inicial -- ni glass, ni controles, ni onda.
     await waitFor(() => expect(screen.queryByTestId('onda-flotante')).toBeNull());
     expect(screen.queryByTestId('voz-enviar')).toBeNull();
   });
 
-  it('fijado, Enviar -- mismo camino que soltar-sin-fijar (una sola función "mandar")', async () => {
+  it('lo dictado se EDITA y recién al tocar enviar viaja -- como mensaje de TEXTO', async () => {
+    mockGrabadorVoz.uri = 'file:///cache/voz.m4a';
+    jest.mocked(api.sendChat).mockResolvedValue({ replies: [], next_id: 0 } as any);
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+    await fireEvent.press(screen.getByTestId('boton-voz-soltar-test'));
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.value).toBe('gasté cuatro mil en nafta'));
+
+    await fireEvent.changeText(screen.getByTestId('chat-composer'), 'gasté cinco mil en nafta');
+    await fireEvent.press(screen.getByTestId('chat-enviar'));
+
+    await waitFor(() => expect(api.sendChat).toHaveBeenCalledTimes(1));
+    expect(api.sendAudio).not.toHaveBeenCalled();
+  });
+
+  it('fijado, Enviar -- mismo camino que soltar-sin-fijar (una sola función "mandar"): transcribe y pega', async () => {
     mockGrabadorVoz.uri = 'file:///cache/voz.m4a';
     await renderChatView();
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
@@ -598,13 +625,15 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
 
     await fireEvent.press(screen.getByTestId('voz-enviar'));
 
-    await waitFor(() => expect(api.sendAudio).toHaveBeenCalledTimes(1));
-    // `fijado` se resetea solo cuando `voz.fase` vuelve a `inactivo`: el botón de mantener vuelve.
-    await waitFor(() => expect(screen.getByTestId('boton-voz')).toBeTruthy());
-    expect(screen.queryByTestId('voz-enviar')).toBeNull();
+    await waitFor(() => expect(transcribir).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.value).toBe('gasté cuatro mil en nafta'));
+    expect(api.sendAudio).not.toHaveBeenCalled();
+    // Los controles del glass se van; con texto en el campo el dock ofrece Enviar en lugar del mic.
+    await waitFor(() => expect(screen.queryByTestId('voz-enviar')).toBeNull());
+    expect(screen.getByTestId('chat-enviar')).toBeTruthy();
   });
 
-  it('fijado, Eliminar -- cierra sin llamar a sendAudio, la única vía legítima de perder el audio', async () => {
+  it('fijado, Eliminar -- cancela ANTES de transcribir: no se transcribe ni se manda nada (salida de descarte #1)', async () => {
     mockGrabadorVoz.uri = 'file:///cache/voz.m4a';
     await renderChatView();
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
@@ -615,10 +644,42 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
     await fireEvent.press(screen.getByTestId('voz-eliminar'));
 
     await waitFor(() => expect(screen.queryByTestId('voz-enviar')).toBeNull());
+    expect(transcribir).not.toHaveBeenCalled();
     expect(api.sendAudio).not.toHaveBeenCalled();
+    expect(screen.getByTestId('chat-composer').props.value).toBe('');
     expect(screen.getByTestId('boton-voz')).toBeTruthy();
   });
 
+  it('borrar el texto después deja el campo vacío y sin enviar nada (salida de descarte #2)', async () => {
+    mockGrabadorVoz.uri = 'file:///cache/voz.m4a';
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+    await fireEvent.press(screen.getByTestId('boton-voz-soltar-test'));
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.value).toBe('gasté cuatro mil en nafta'));
+
+    await fireEvent.changeText(screen.getByTestId('chat-composer'), '');
+
+    expect(screen.getByTestId('chat-composer').props.value).toBe('');
+    expect(api.sendChat).not.toHaveBeenCalled();
+    expect(api.sendAudio).not.toHaveBeenCalled();
+  });
+
+  it('si la transcripción falla se dice en palabras, no se pega nada y el archivo igual se borra', async () => {
+    const { ApiError } = jest.requireActual('@copiloto/core');
+    mockGrabadorVoz.uri = 'file:///cache/voz-falla.m4a';
+    jest.mocked(transcribir).mockRejectedValue(new ApiError(502, 'boom'));
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+    await fireEvent.press(screen.getByTestId('boton-voz-soltar-test'));
+
+    await waitFor(() => expect(screen.getByTestId('chat-dictado-aviso')).toBeTruthy());
+    expect(String(screen.getByTestId('chat-dictado-aviso').props.children)).toMatch(/No pudimos transcribir ahora/);
+    expect(screen.getByTestId('chat-composer').props.value).toBe('');
+    const { deleteAsync } = require('expo-file-system/legacy');
+    expect(deleteAsync).toHaveBeenCalledWith('file:///cache/voz-falla.m4a', { idempotent: true });
+  });
   it('permiso de micrófono denegado: aviso legible, sin crash ni controles', async () => {
     // 🔴 `mockResolvedValue` (persistente), NO `...Once`: con el pre-warm (useVozComando §2.bis) el
     // permiso se consulta YA al montar (precalentar), no recién al tocar el botón — un mock de un
