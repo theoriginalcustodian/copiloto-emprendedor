@@ -31,6 +31,14 @@
 #
 # coordinacion/ es gitignored → mover NO toca git, es `mv` puro. Cero riesgo de race.
 #
+# ⚠️ EL CAMPO `CIERRE:` NO SALTEA EL TTL, y eso se lee como que no funciona. Medido el 2026-11-05:
+# declaré el cierre de 11 broadcasts de octubre y el dry-run siguiente dijo «archivaría 2», porque
+# escribir el campo RENUEVA el mtime y los 11 pasaron a contar como tráfico FRESCO. Por un momento
+# lo leí como «el mecanismo no dispara»: el control que lo desmiente es `TTL_MIN=0 --dry-run`, que
+# listó los 11 y ninguna de las 25 obligaciones sin cierre. Es deliberado — un cierre escrito hace
+# un minuto no debe hacer desaparecer el archivo antes de que las otras sesiones lo lean. El efecto
+# llega en el ciclo siguiente al TTL, no en el mismo.
+#
 # Uso:
 #   scripts/archivar-buzon.sh              # archiva (default TTL 90 min)
 #   scripts/archivar-buzon.sh --dry-run    # muestra qué haría, sin mover
@@ -80,9 +88,41 @@ shopt -s nullglob
 for f in "$ABIERTO"/*.md; do
   b="$(basename "$f")"
 
-  # 1) Obligación abierta → se queda (cierre manual).
+  # 1) Obligación abierta → se queda (cierre manual)… SALVO que el archivo declare su PROPIO cierre.
+  #
+  # El campo `CIERRE:` lo propuso el hallazgo del 2026-10-16 («19 broadcasts nunca se cierran»), que
+  # midió por qué ningún otro criterio sirve y por eso NO se implementó entonces sin su test hostil:
+  #   · ANTIGÜEDAD mide la edad del archivo, no el estado de la norma: una norma vigente envejece
+  #     igual que una cumplida. Por eso las obligaciones están exentas y eso está bien.
+  #   · LA PALABRA `cerrado`/`vencido` EN EL CUERPO caza PROSA. Marcó 5 archivos, y uno era la frase
+  #     «un hallazgo nuevo NO reabre un punto cerrado».
+  #   · EL BANNER `⛔` tiene DOS referentes: en «…_REFUTADO-mi-propio-hallazgo…» dice que el archivo
+  #     refuta a OTRO, o sea que es el artefacto VIGENTE. Archivarlo mata la corrección y deja
+  #     circulando lo refutado.
+  #
+  # Por eso el criterio es un campo DEDICADO y AUTO-REFERENCIAL: sólo se escribe cuando el archivo
+  # MISMO queda cerrado, nunca para marcar una prohibición ni el estado de otro. El janitor no
+  # juzga: el criterio es la presencia del campo, y la decisión queda en quien escribe el archivo,
+  # que es el único que sabe si su norma sigue viva.
+  #
+  #   CIERRE: VENCIDO|REFUTADO|CUMPLIDO — <motivo en una línea>
+  #
+  # Tres exigencias del patrón, cada una contra un falso positivo MEDIDO:
+  #   · `^` ancla a inicio de línea  → el banner `⛔ REFUTADO` y cualquier cita indentada (`> ` o
+  #     dentro de un bloque de código del propio protocolo) NO matchean.
+  #   · uno de los TRES valores, exacto → no caza prosa que use la palabra «cierre».
+  #   · ` — ` + motivo NO VACÍO        → la PLANTILLA del protocolo
+  #     (`CIERRE: VENCIDO|REFUTADO|CUMPLIDO — <motivo…>`) NO matchea, porque tras `VENCIDO` viene un
+  #     `|` y no el guión. Ese es el caso hostil que el documento que PROPONE el campo contiene
+  #     literalmente, y el que un patrón laxo archivaría primero.
+  # El test hostil de los cuatro casos vive en scripts/tests/test-archivar-buzon-campo-cierre.sh.
+  CIERRE_AUTODECLARADO='^CIERRE: (VENCIDO|REFUTADO|CUMPLIDO) — .+'
   if echo "$b" | grep -qE "$OBLIGACIONES"; then
-    kept_obl=$((kept_obl+1)); continue
+    if grep -qE "$CIERRE_AUTODECLARADO" "$f"; then
+      : # declara su propio cierre → cae a los pasos 2 y 3 como cualquier tráfico
+    else
+      kept_obl=$((kept_obl+1)); continue
+    fi
   fi
 
   # 2) Tráfico fresco (dentro del TTL) → se queda (hilo en curso).
