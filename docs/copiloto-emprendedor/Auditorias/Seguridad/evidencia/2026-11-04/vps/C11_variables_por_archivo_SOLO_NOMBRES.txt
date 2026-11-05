@@ -1,0 +1,11 @@
+clinic-agent.env: 5 vars
+copiloto.env: 40 vars
+copiloto-gotrue.env: 22 vars
+deepseek-worker.env: 9 vars
+documed-e2e-user.env: 2 vars
+documed.env: 15 vars
+fusion-pg.env: 7 vars
+fusion-supabase.env: 3 vars
+hitl-listener.env: 3 vars
+mp-spike.env: 7 vars
+wa-sender.env: 11 vars

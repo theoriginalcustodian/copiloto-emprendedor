@@ -1,0 +1,55 @@
+# smoke beta e2e · sha=e581ccb7d227bbfb7bbd9001332c0bda297db443 · 2026-11-05T01:45:27Z · host=unreal-copilot · tmpdir_remoto=/tmp/tmp.oVjM6hR2C6
+[PASS] alta sin invite-token llega a validación, ya no es 403 (SM-C2) — status=422
+[PASS] alta (/auth/signup) — status=200 cliente_id=9e2406da-fae4-41fe-ab2d-767c4d9e719f
+[PASS] login (/auth/login) — status=200 token_len=755
+[PASS] login: set de claves = CLAVES_LOGIN (MECLAVESRESTO) — sobra_no_declaradas=[] faltan_declaradas=[]
+[PASS] /me (identidad de tenant) — status=200 me={'cliente_id': '9e2406da-fae4-41fe-ab2d-767c4d9e719f', 'email': 'smoke-2ab48e27@beta.local', 'es_admin': False, 'cuenta_google': False, 'mp_connected': False, 'composio_connected': [], 'onboarding_completado': False, 'fecha_alta': '2026-11-05', 'legal_aceptado': False, 'legal_version_aceptada': None}
+[PASS] /me: set de claves = CLAVES_ME (MECLAVESRUNTIME) — sobra_no_declaradas=[] faltan_declaradas=[]
+[PASS] /catalog — status=200 n_services=6
+[PASS] /catalog: set de claves = CLAVES_CATALOG (MECLAVESRESTO) — sobra_no_declaradas=[] faltan_declaradas=[]
+[PASS] /warm (memoria) — status=200 {'warmed': False}
+[PASS] /warm: set de claves = CLAVES_WARM (MECLAVESRESTO) — sobra_no_declaradas=[] faltan_declaradas=[]
+[PASS] chat simple → el agente responde — reply=Puedo ayudarte a registrar ingresos y gastos, preparar facturas y presupuestos, generar links de cobro, consultar los números de tu negocio,
+[PASS] /chat: set de claves = CLAVES_CHAT (MECLAVESRESTO) — sobra_no_declaradas=[] faltan_declaradas=[]
+[PASS] /reply: set de claves = CLAVES_REPLY (MECLAVESRESTO) — sobra_no_declaradas=[] faltan_declaradas=[]
+[PASS] chat ReAct (multi-paso) → responde coherente — reply=agendar «Reunión con Juan» 2026-11-06 10:00
+[PASS] connect composio/gmail → URL OAuth — status=200
+[PASS] connect mercadopago → URL OAuth — status=200
+[PASS] /auth/refresh (sesión persistente) — status=200
+[PASS] adversarial: no-admin GET /admin/salud → 403 — status=403
+[PASS] adversarial: no-admin GET /admin/uso → 403 — status=403
+[PASS] adversarial: no-admin GET /admin/errores → 403 — status=403
+[PASS] adversarial: no-admin GET /admin/soporte → 403 — status=403
+[PASS] adversarial: no-admin GET /admin/auditoria → 403 — status=403
+[PASS] adversarial: no-admin GET /admin/tenants → 403 — status=403
+[PASS] adversarial: no-admin POST /admin/tenants/{id}/estado → 403 — status=403
+[PASS] consola: otorgar claim admin — user_id=a9eb5fb1-7df1-48f2-b0f3-55d320cfdbf9
+[PASS] consola: re-login post-grant — status=200
+[PASS] consola: GET /me → es_admin true — status=200 body={'cliente_id': '9e2406da-fae4-41fe-ab2d-767c4d9e719f', 'email': 'smoke-2ab48e27@beta.local', 'es_admin': True, 'cuenta_google': False, 'mp_connected': False, 'composio_connected': [], 'onboarding_completado': False, 'fecha_alta': '2026-11-05', 'legal_aceptado': False, 'legal_version_aceptada': None}
+[PASS] consola: admin GET /admin/salud → 200 — status=200
+[PASS] consola: admin GET /admin/uso → 200 — status=200
+[PASS] consola: admin GET /admin/errores → 200 — status=200
+[PASS] consola: admin GET /admin/soporte → 200 — status=200
+[PASS] consola: admin GET /admin/auditoria → 200 — status=200
+[PASS] consola: admin GET /admin/tenants → 200 — status=200
+[PASS] consola: admin POST /admin/tenants/{id}/estado → 200 (MUTA, 7a) — status=200 body={"cliente_id":"9e2406da-fae4-41fe-ab2d-767c4d9e719f","de":"active","a":"suspended"}
+[PASS] consola: GET /admin/auditoria → el evento de la mutación aparece, detalle intacto — status=200 fila={'id': 58, 'cliente_id': '9e2406da-fae4-41fe-ab2d-767c4d9e719f', 'admin_user_id': 'a9eb5fb1-7df1-48f2-b0f3-55d320cfdbf9', 'admin_email': 'smoke-2ab48e27@beta.local', 'accion': 'tenant.estado', 'detalle': {'a': 'suspended', 'de': 'active', 'cliente_id': '9e2406da-fae4-41fe-ab2d-767c4d9e719f'}, 'resultado': 'exitoso', 'created_at': '2026-11-05T01:45:43.306298Z'}
+[PASS] reintento: trauma fabricado (dominio permitido) — id=56 fingerprint=smoke-reintento-7a1e159b
+[PASS] reintento: GET /admin/errores trae el trauma con motivo_prohibido=null — status=200 fila={'id': 56, 'fingerprint': 'smoke-reintento-7a1e159b', 'workflow': 'SmokeTestWorkflow', 'error_type': 'SmokeError', 'costura': 'smoke_test', 'estado': 'pendiente', 'ultima_nota': None, 'dedupe_count': 1, 'intentos': 0, 'created_at': '2026-11-05T01:45:43.673371Z', 'updated_at': '2026-11-05T01:45:43.673371Z', 'tenants_afectados': 1, 'motivo_prohibido': None}
+[PASS] reintento: POST /admin/errores/{id}/reintentar → 200 (MUTA, 7b) — status=200 body={"trauma_id":56,"estado":"pendiente"}
+[PASS] reintento: GET /admin/auditoria → el evento del REINTENTO aparece, detalle intacto — status=200 fila={'id': 59, 'cliente_id': '9e2406da-fae4-41fe-ab2d-767c4d9e719f', 'admin_user_id': 'a9eb5fb1-7df1-48f2-b0f3-55d320cfdbf9', 'admin_email': 'smoke-2ab48e27@beta.local', 'accion': 'trauma.reintento', 'detalle': {'dominio': None, 'trauma_id': 56, 'fingerprint': 'smoke-reintento-7a1e159b'}, 'resultado': 'exitoso', 'created_at': '2026-11-05T01:45:44.094075Z'}
+[PASS] artefacto: index.html sirve un <script> de /assets — /assets/index-OPacAYqd.js
+[PASS] artefacto: el bundle contiene la base de auth horneada (copilotoemprendedor.duckdns.org) — status=200 ocurrencias=1
+[PASS] artefacto: control negativo -- string imposible da 0 ocurrencias — ocurrencias=0 bundle_len=597350
+[PASS] artefacto: GET /auth/v1/authorize?provider=google → 302 a accounts.google.com — status=302 location=https://accounts.google.com/o/oauth2/v2/auth?client_id=890375505063-a2tim63uf5advkp19atf6seqat9ogjbj.apps.googleusercont
+[cleanup] workflow terminado=conv-web-9e2406da-fae4-41fe-ab2d-767c4d9e719f-smoke-3ebb9f03
+[cleanup] workflow terminado=conv-web-9e2406da-fae4-41fe-ab2d-767c4d9e719f-smoke-470536e4
+[cleanup] tenant rows borrados=1
+[cleanup] trauma fabricado borrado=1
+[cleanup] gotrue user a9eb5fb1-7df1-48f2-b0f3-55d320cfdbf9 borrado
+
+===== RESUMEN SMOKE BETA =====
+checks ejecutados: 43 de 43 esperados
+11/11 críticos · 32/32 no-críticos
+VEREDICTO: BETA-READY (críticos verdes)
+# exit=0

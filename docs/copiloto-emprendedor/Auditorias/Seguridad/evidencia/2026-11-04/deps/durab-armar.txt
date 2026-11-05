@@ -1,0 +1,16 @@
+[e2e-g6-durabilidad] BASE=https://copilotoemprendedor.duckdns.org
+[e2e-g6-durabilidad] 1) login canónico (e2e-device@copiloto.test)
+[e2e-g6-durabilidad] 2) turno 1 (conversación simple) -- session_id=e2e-g6-durabilidad-499913f5-6bfb-446b-bcb2-839524bdada1 marcador=3e62c965
+[e2e-g6-durabilidad]    /chat accepted=true wf_id=conv-web-4f3ecb78-2e36-4044-a56e-0e7ef6c4a655-e2e-g6-durabilidad-499913f5-6bfb-446b-bcb2-839524bdada1
+[e2e-g6-durabilidad] 3) turno HITL (calendar_book sin confirmar) -- session_id=e2e-g6-durabilidad-hitl-3d5ee85e-b5a8-48f8-8751-f3b007daf1bb
+[e2e-g6-durabilidad]    /chat accepted=true wf_id=conv-web-4f3ecb78-2e36-4044-a56e-0e7ef6c4a655-e2e-g6-durabilidad-hitl-3d5ee85e-b5a8-48f8-8751-f3b007daf1bb
+[e2e-g6-durabilidad]    esperando la card de confirmación (ANTES del restart -- el gate tiene que quedar
+[e2e-g6-durabilidad]    parqueado en el event history, no sólo en memoria viva del worker actual)
+[e2e-g6-durabilidad]    gate abierto -- token=confirm:1:0
+[e2e-g6-durabilidad] 4) estado guardado en C:\gfw-src\wt-seg-f0\.e2e-state\g6-durabilidad-worker-restart.json
+
+=== ARMADO -- turno 1 y el gate HITL están en vuelo ahora mismo ===
+Corré un restart REAL del worker (deploy.sh real, o cualquier restart legítimo que ya vaya
+a pasar por su propio mérito) y después corré:
+    python scripts/e2e_g6_durabilidad_worker_restart.py --verificar
+

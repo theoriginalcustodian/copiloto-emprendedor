@@ -94,3 +94,12 @@ paths = [
   # (`--refs-stdin` del pre-push), que sí escanea esos commits y corre PRIMERO y fail-closed.
   '''^\.claude/worktrees/''',
 ]
+
+# SEC-C6-1 (auditoría 2026-11-04): el default NO caza `Authorization: Bearer <token literal>` (medido: el token
+# real de 60fps en .mcp.json, 39decb95, pasó la historia entera sin alerta). La clase excluye `$`, `<`, `{` a
+# propósito: `Bearer ${TOKEN}` / `Bearer <token>` son placeholders y no deben frenar un push.
+[[rules]]
+id = "uc-bearer-token-literal"
+description = "Header Authorization: Bearer con token LITERAL (MCP/HTTP config)."
+regex = '''(?i)authorization["']?\s*[:=]\s*["']?bearer\s+[A-Za-z0-9._~+/=-]{24,}'''
+keywords = ["bearer"]

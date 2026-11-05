@@ -11,3 +11,10 @@ acaca393caa53db00582959b5d25bbd5522e6f74:memoria/checkpoints/checkpoint_2026-06-
 # esta allowlist no puede prever). El tercero (.env.e2e) no aplica: nunca está trackeado.
 docs/copiloto-emprendedor/2026-07-23-harness-e2e-cierre-sprint-device-al-dia.md:generic-api-key:37
 memoria/checkpoints/checkpoint_2026-06-30_2008_copiloto_b_skeleton_merged.md:generic-api-key:55
+
+# SEC-C6-1 (2026-11-04): token Bearer de 60fps.design en .mcp.json, YA fuera de HEAD (#505). Sigue en la historia
+# publica; el operador aceptó el riesgo (fila cerrada, DECISIONES). Se ignora por fingerprint de ESTOS 3 commits;
+# un Bearer literal NUEVO vuelve a fallar.
+39decb952fcc854e9db95d107e10e83efa4a0d45:Prototipo frontend/odobi-ui/.mcp.json:uc-bearer-token-literal:5
+3e9e79d8f1080555ee60c4d9d9fd13b541a96c1f:Prototipo frontend/odobi-ui/.mcp.json:uc-bearer-token-literal:5
+5dacc36ce4d57f85ea60c8c7a22c505b509062c1:Prototipo frontend/odobi-ui/.mcp.json:uc-bearer-token-literal:5

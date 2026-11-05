@@ -1,0 +1,9 @@
+GOTRUE_DISABLE_SIGNUP=false
+GOTRUE_JWT_EXP=3600
+GOTRUE_TAG=v2.186.0
+CADDY_TAG=2
+COPILOTO_ENGINE_MODE=react
+COPILOTO_LOG_STT_TEXT=<no definida>
+COPILOTO_DEDICATED_GOTRUE=true
+GOTRUE_SITE_URL=https://copiloto.178-105-191-1.sslip.io
+GOTRUE_URI_ALLOW_LIST=https://copiloto.178-105-191-1.sslip.io/*,https://copilotoemprendedor.duckdns.org/*

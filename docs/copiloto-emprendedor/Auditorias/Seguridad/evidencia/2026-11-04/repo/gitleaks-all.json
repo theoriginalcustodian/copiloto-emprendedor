@@ -1,0 +1,23 @@
+[
+ {
+  "RuleID": "github-pat",
+  "Description": "Uncovered a GitHub Personal Access Token, potentially leading to unauthorized repository access and sensitive content exposure.",
+  "StartLine": 1,
+  "EndLine": 1,
+  "StartColumn": 21,
+  "EndColumn": 60,
+  "Match": "REDACTED",
+  "Secret": "REDACTED",
+  "File": "secreto-sintetico-descartable-2.txt",
+  "SymlinkFile": "",
+  "Commit": "b97ed32201ace75da912db44f5d8a0e173b4654c",
+  "Link": "https://github.com/theoriginalcustodian/copiloto-emprendedor/blob/b97ed32201ace75da912db44f5d8a0e173b4654c/secreto-sintetico-descartable-2.txt#L1",
+  "Entropy": 5.221928,
+  "Author": "Operador Unreal",
+  "Email": "admin@unreal-copilot.local",
+  "Date": "2026-09-22T13:07:05Z",
+  "Message": "test: control negativo A4 (secreto sintetico 36ch forma ghp_, descartable, worktree 2)",
+  "Tags": [],
+  "Fingerprint": "b97ed32201ace75da912db44f5d8a0e173b4654c:secreto-sintetico-descartable-2.txt:github-pat:1"
+ }
+]
