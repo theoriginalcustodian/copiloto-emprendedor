@@ -114,3 +114,49 @@ hoy. Aprovechan la misma sentada:
 Me contás qué funcionó y qué no, con el nivel de detalle que te salga. Yo escribo el estado de cada
 ficha con la evidencia, y lo que falle vuelve a su dueño como defecto con causa, no como «no
 funcionó». Las fichas que cubre esta sentada: **SM-P1, P2, P4, P5, P6, P12 y P13**.
+
+---
+
+## 🔊 ENMIENDA 2026-11-05 — la voz del operador puede NO ser necesaria
+
+**Lo que esta receta daba por sentado:** que los bloques A, B y C exigen que el operador hable.
+
+**Lo que resultó falso, y no por un diseño nuevo:** este camino YA se ejerció y quedó acreditado el
+**2026-08-04**, en el cierre de BETA-1a por backend
+(`coordinacion/cerrado/2026-08-04/2026-08-04_listo_frontend-a-backend_e2e-BETA1a-feedback-texto-y-voz.md`):
+
+> «Grabé el mic mientras reproducía por los parlantes de la PC (**TTS real, Windows SAPI, voz
+> `Microsoft Helena Desktop`**) … el mic del device la captó de verdad»
+
+y el STT devolvió la transcripción correcta. **Es el camino de PRODUCCIÓN** —aire → micrófono del
+device → STT real—, no un mock ni una inyección por la API: el único eslabón sustituido es la
+laringe.
+
+**Instrumento:** `scripts/voz-device-tts.ps1` (medido 2026-11-05 en esta PC: voz `Microsoft Helena
+Desktop`, es-ES, presente y hablando). Tiene las cuatro frases de esta receta **textuales**, un modo
+`-Async` para el bloque A —donde hay que MANTENER el mic apretado con `adb input motionevent` DOWN
+mientras suena el audio— y `-Listar`.
+
+### 🐤 El canario NO es opcional
+
+El mismo precedente documenta el modo de falla que hace falso-verdear esto: **con silencio, Whisper
+alucinó «¡Gracias!»** — una transcripción plausible. Si el audio no llega al teléfono (salida por
+defecto en otra placa, volumen bajo, teléfono lejos), la pantalla igual muestra texto y la corrida
+«anda» sin haber medido nada. Medido el 2026-11-05: **esta PC tiene DOS salidas de audio**
+(«Realtek High Definition Audio» y «Dispositivo de audio USB»), así que la condición existe de hecho.
+
+Por eso el primer paso de la pasada de voz es `-Canario` (silencio deliberado, con la app grabando):
+
+- la app transcribe algo → **el STT alucina; ninguna corrida posterior acredita nada**;
+- la app no transcribe nada → el instrumento discrimina, y recién ahí valen las frases.
+
+### Qué queda sin verificar, y es honesto decirlo
+
+Lo medido hoy es que **el script emite audio en español**. Que el micrófono de **este** teléfono
+(`RF8T318RN9T`) lo capte y el STT de **estas** pantallas lo transcriba **no está medido**: el
+precedente del 04-08 corrió sobre otro device (`RF8R50N2WGR`) y otra pantalla (Feedback de Mi
+cuenta). Es un spike corto del dueño del device, no una certeza heredada.
+
+**Si el canario discrimina y una frase transcribe, los bloques A, B y C dejan de necesitar al
+operador** y pasan a ser trabajo de la sesión que tiene el teléfono. El bloque D nunca necesitó voz:
+son cuatro chequeos a ojo.
