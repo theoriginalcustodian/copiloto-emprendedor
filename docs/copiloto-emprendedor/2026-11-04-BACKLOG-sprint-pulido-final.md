@@ -346,6 +346,25 @@ campo»*.
 
 - **Estado:** PENDIENTE
 - **Dueño:** backend (el contexto que arma el prompt), con planificación midiendo el alcance
+- **🟢 El punto 1 del DoD está PAGADO (planificación, 2026-11-05) y la causa NO era la que se supuso.**
+  Medición completa en la `ENMIENDA` del `contrato_planificacion-a-backend_SM-P14…` del buzón.
+  Resumen: la **estructura** de la propuesta ya se saca bien del prompt — viaja en `artifact`, que es
+  campo **hermano** de `observation`, y `tr_msg` se arma sólo con `observation`
+  (`conversation_workflow.py:489`; `tool_catalog.py:1004-1005`). Lo que contamina es la **prosa** del
+  `observation["result"]`, que interpola **nombre de cliente y concepto**
+  (`tool_catalog.py:999-1003`) y entra al transcript (`:493`) y al tail del turno siguiente sin ningún
+  saneamiento (`:566`, `REACT_TAIL = 80`). El **monto** no sale de ahí: viene del `role:user` del
+  turno original (`:551`). Encaja con lo medido en device («Seed Mi Dia una reparación por $3.000» =
+  cliente + concepto + el monto del propio pedido).
+  **No hay un `observation.pop` que agregar**: la distinción que falta es *instrucción táctica de este
+  turno* vs *estado vigente*, no *con contexto vs sin contexto*.
+- **🔴 ALCANCE: no es una tool, es el patrón — y el caso grave es otro.** Seis `observation` interpolan
+  datos en prosa (`tool_catalog.py:847` gasto, `:926` cliente, `:999` presupuesto, `:1216` ingreso,
+  `:1711` factura y **`:1066` `consultar_cliente`**). `:1066` mete **nombre + «Últimas:» operaciones
+  del cliente** en el tail: el arrastre de datos de un cliente a una respuesta sobre otro —el riesgo
+  de aislamiento intra-tenant que esta ficha teme— **ya no es hipótesis, tiene `path:línea`**. El
+  control adversarial del DoD punto 4 cambia de sujeto: **cliente A → pregunta por cliente B**, con el
+  assert sobre los `messages` del segundo turno.
 - **Medido en device el 2026-11-05** (frontend1, APK `ef143e95`, `e2e-device@copiloto.test`): con una
   card de presupuesto SIN resolver viva en el chat, la respuesta al tema «¿Cómo emito mi primera
   factura?» de «Cómo usar la app» llegó con el ejemplo «…Seed Mi Dia una reparación por $3.000» — es
