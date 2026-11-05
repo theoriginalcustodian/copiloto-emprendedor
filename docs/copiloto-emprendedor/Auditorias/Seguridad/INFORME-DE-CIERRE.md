@@ -28,7 +28,7 @@ D1 off-site · D2 TLS Postgres de fusion · D3 signup/MFA · D6 usuario no-root 
 - nmap desde la PC inválido (proxy local); cierre externo por TCP connect.
 - Caso 7 del wrapper headless (escritura bloqueada) sin control positivo propio.
 - No se hizo la pasada ciega con Fable ni revisión Opus de G1–G12 en esta corrida: queda como paso de aprobación del operador.
-- No se escaneó el bundle/APK (C7) ni se corrió docker-bench; la higiene de contenedores se midió con `docker inspect` (ninguno privileged, sin docker.sock).
+- C7 se midió sobre el fuente (0 hallazgos, HALLAZGOS.md), no sobre el APK compilado; no se corrió docker-bench; la higiene de contenedores se midió con `docker inspect` (ninguno privileged, sin docker.sock).
 
 ## DoD del plan (§1)
 Cumplido: instrumentos con control positivo, hallazgos con evidencia, correcciones con rollback y re-medición. **No cumplido:** punto 7 (G1–G12 aprobados) y pasada ciega final.
