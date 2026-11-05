@@ -52,8 +52,8 @@ campo»*.
 | **SM-P6** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-P7** | `sin-issue` | 🟧 DOD-PARCIAL | DoD 2 y 3: el aspecto visual (blur sobre el hilo, translucidez y contraste del texto) NO se verifico en navegador por… |
 | **SM-P8** | `sin-issue` | ✅ TERMINADO | 82f8451e (#1651). Tabla medida: (a) puente Como usar NO APLICA: la web navega por tabs sin stack, PantallaComoUsarLaA… |
-| **SM-P9** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-P10** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-P9** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA de decision: lo que queda es IMPLEMENTACION, y vive en otras dos fichas, no aca. SM-P5 (dock unico mobile) tiene… |
+| **SM-P10** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA de decision; la IMPLEMENTACION es de SM-P6, que ahora cambia de pregunta: ya no es -medir cual condicion oculta … |
 | **SM-P11** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-P12** | `sin-issue` | ⬜ PENDIENTE | — |
 
@@ -223,7 +223,9 @@ campo»*.
 
 ### SM-P9 · `sin-issue` — DECISIÓN DEL OPERADOR: ¿el campo de Mi día se edita o sube el chat?
 
-- **Estado:** PENDIENTE
+- **Estado:** CERRADO-POR-DECISION
+- **Falta:** NADA de decision: lo que queda es IMPLEMENTACION, y vive en otras dos fichas, no aca. SM-P5 (dock unico mobile) tiene que dejar el campo de Mi dia editable y retirar onTocarCampo como -subir el chat-, y SM-P6 tiene que invertir el orden: la accion PRIMERO, la vuelta al chat DESPUES. Mientras esas dos no esten en TERMINADO, el comportamiento que el operador pidio NO esta en la app. Esta ficha no lo acredita: solo acredita que la decision esta tomada.
+- **Decision:** RESUELTA por el operador el 2026-11-04 en el hilo de planificacion, textual: -el campo de ingreso de texto en mi dia debe poder ingresar texto....igual que todos los campos de todas la funciones...la intencion es que el campo de ingreso de texto y el boton del mic esten en todas las funciones...en mi dia y en el chat...asi que solo hay que replicar el mismo campo-. O sea: el campo de Mi dia SE EDITA. Registrada en este mismo doc versionado docs/copiloto-emprendedor/2026-11-04-BACKLOG-sprint-pulido-final.md, que es el registro del sprint de pulido. Se retira onTocarCampo como -subir el chat- (PantallaPrincipal.tsx:183; el comentario de :59 queda obsoleto). La cita al prototipo index.html:2717 que justificaba el comportamiento actual NO se retira como observacion -- era real -- pero la decision del operador es posterior y manda. ADEMAS fija el ORDEN, que no estaba en ninguna ficha: -cuando se ingresa texto o se envia un audio se vuelve al chat luego de la accion...pero no antes....siempre despues....al volver al chat la accion se ejecuta y aparece la card correspondiente-. Hoy DockAlChat hace dejarAvisoParaElChat + router.back() y el chat ejecuta al recuperar foco, o sea navega ANTES de actuar: es el inverso de lo pedido.
 - **Dueño:** **operador** (nadie implementa hasta que decida)
 - **Reportado por el operador (2026-11-04):** «cuando hago click en el campo de ingreso de texto en
   Mi día se va derecho a la pantalla del chat, en vez de habilitar el ingreso de texto... el botón
@@ -239,7 +241,9 @@ campo»*.
 
 ### SM-P10 · `sin-issue` — DECISIÓN DEL OPERADOR: ¿qué hace el mic en Facturación?
 
-- **Estado:** PENDIENTE
+- **Estado:** CERRADO-POR-DECISION
+- **Falta:** NADA de decision; la IMPLEMENTACION es de SM-P6, que ahora cambia de pregunta: ya no es -medir cual condicion oculta el dock- sino -quitar las dos condiciones de PantallaFacturacion.tsx:706 y verificarlo-. Mientras P6 no este TERMINADO, Facturacion sigue sin campo ni mic para el usuario.
+- **Decision:** RESUELTA por el operador el 2026-11-04, textual: -el mic en facturacion hace lo mismo que en todas las funciones...enviar audio...al ser un copiloto de voz el campo de ingreso de texto y el mic deben estar en todas las funciones, en mi dia y en el chat principal...todos iguales con el mismo diseno...para que el usuario tenga facilidad de uso-. Registrada en este mismo doc versionado docs/copiloto-emprendedor/2026-11-04-BACKLOG-sprint-pulido-final.md. La pregunta de la ficha queda contestada: el mic hace lo mismo que en cualquier funcion, sin excepcion fiscal, y el campo de texto tambien va. CONSECUENCIA MEDIDA: el dock de Facturacion existe pero esta condicionado (PantallaFacturacion.tsx:706 lo monta solo con gate.tipo==listo Y vista==listado) y por decision va SIEMPRE. OJO con el lado backend: dictado_destinos.py:43 excluye el contexto -factura- a proposito (-emitir es irreversible ante ARCA, asi que la transcripcion cruda no precarga nada-) y web.py:970 IGNORA un contexto desconocido en vez de rechazarlo. Mandar audio desde Facturacion NO precarga una factura: va al chat como cualquier audio, compatible con la decision y con la orden de no emitir facturas. Si alguna vez se quiere que precargue, es otra ficha y otra decision.
 - **Dueño:** **operador**
 - **Contexto medido:** Facturación **ya tiene** dock (ver `SM-P6`) y lo que dicta **se siembra en
   el composer del chat** (`voz/DockAlChat.tsx`), nunca emite. Eso es deliberado:
