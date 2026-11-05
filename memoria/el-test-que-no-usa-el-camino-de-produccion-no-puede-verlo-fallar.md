@@ -244,3 +244,46 @@ Y el contraste que lo cierra: los stubs nuevos fallan **al instante y con el mis
 excepción**, no devuelven un éxito falso. Control de equivalencia: la salida del smoke difirió en
 **2 líneas de 44**, las dos previstas. Un doble que «arregla» el caso en vez de reproducirlo habría
 cambiado lo medido y el test habría seguido verde igual.
+
+---
+
+## Refuerzo 2026-11-05 — el test escribía el SUJETO a mano, así que medía el patrón contra sí mismo
+
+La variante más barata de este defecto no es un doble de una dependencia: es un test que **produce su
+propio dato de entrada dentro del script**, cuando en producción ese dato lo produce **otro canal**.
+
+**El caso.** El janitor del buzón reconoce que una obligación declara su propio cierre con
+`^CIERRE: (VENCIDO|REFUTADO|CUMPLIDO) — .+` — **em dash**. Se embarcó con un test hostil de 4 casos,
+todos verdes, dos de ellos genuinamente adversariales (la plantilla con pipes, el banner `⛔`). Al día
+siguiente se usó por primera vez en serio y **no funcionó**: la línea salió con guion ASCII `-`,
+porque el canal real de escritura es PowerShell/Windows, que no tipea el em dash con fiabilidad. El
+cierre quedó **inerte**.
+
+Los 4 casos escribían el em dash **tecleado dentro del propio `.sh`**. Nunca ejercitaron el canal por
+el que la línea llega al archivo en la vida real, y por eso un test hostil y bien pensado salió verde
+sobre un guard que no podía funcionar: medía el patrón contra una entrada que el patrón ya cumplía.
+
+**Y el fallo es mudo en la dirección del «no»** ([[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]):
+la línea queda escrita, visible en el archivo, citable como hecho. El autor lee **su propia línea** y
+da el cierre por efectivo. Lo que nadie mide es que el **lector** la reconozca. Un separador que el
+entorno de escritura no puede producir no es un guard: es un éxito falso
+([[una-orden-correcta-con-el-comando-incompleto-produce-un-exito-falso]]).
+
+**La pregunta que lo caza:** *el dato que mi test teclea, ¿quién lo teclea en producción?* Si la
+respuesta es «otro canal» — otro shell, otro editor, otro proceso, otro sistema operativo — el verde
+sólo acredita el camino que el test inventó. Y si el sujeto del patrón es un **glifo**, la pregunta se
+vuelve obligatoria: los caracteres son justo lo que las capas intermedias normalizan en silencio
+([[un-escape-que-pasa-por-una-capa-extra-llega-como-byte-invisible]] ·
+[[la-capa-de-lectura-normalizo-el-sujeto-antes-de-medirlo]]).
+
+**El arreglo fue mover el guard, no el test.** El separador pasó a aceptar `—`, `–`, `-` y `--`,
+porque lo que protegía del caso hostil nunca fue el glifo: era el `|` que sigue a `VENCIDO` en la
+plantilla, y eso vale igual para los cuatro. Un guard apoyado en un detalle frágil que **no era el
+que protegía** es peor que uno laxo: cuesta lo mismo de saltear por accidente y da la misma
+tranquilidad.
+
+**Control, en este orden:** patrón viejo + test nuevo → **3 fallos**; patrón nuevo + test nuevo →
+**8/8**. El control negativo va primero: sin él, el nuevo verde habría sido el mismo verde del día
+anterior. Y el caso 8 mide que el separador laxo **no** reabrió el caso hostil (la plantilla con pipes
+sigue sin matchear, ahora probada también con guion ASCII) — relajar un patrón obliga a re-ejercitar
+lo que el patrón estricto cubría, no a suponerlo.
