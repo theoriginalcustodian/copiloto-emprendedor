@@ -54,3 +54,51 @@ una lección nueva, el paso que falta es grepear los casos existentes de su mism
 
 Emparentado: [[buzon-se-ordena-por-janitor-no-por-disciplina]] ·
 [[un-disparador-cumplido-no-avisa-a-nadie]] · [[el-cron-dispara-mas-cuanto-menos-trabaja-la-sesion]].
+
+## Refuerzo 2026-11-05 — PAGADO: el estado terminal lo declara el AUTOR, en un campo que sólo puede hablar de sí mismo
+
+Esto estuvo 20 días como propuesta sin implementar, y el motivo escrito era bueno: tocar el janitor
+para que archive **obligaciones** exige probar lo contrario de lo que uno quiere —que una obligación
+**viva sobrevive**— y un test que sólo verifique «el cerrado se archiva» sale verde aunque el patrón
+archive todo. Ese fallo borra normas vigentes del circuito **sin un solo síntoma**: el janitor no
+falla cuando archiva de más, archiva ([[instrumento-que-no-mira-nunca-falla]]).
+
+**La solución es un campo DEDICADO y AUTO-REFERENCIAL** en `scripts/archivar-buzon.sh`:
+
+```
+CIERRE: VENCIDO|REFUTADO|CUMPLIDO — <motivo en una línea>
+```
+
+El janitor no juzga: el criterio es la **presencia** del campo, y la decisión queda en quien escribe
+el archivo, que es el único que sabe si su norma sigue viva. Lo que hace que funcione donde los otros
+tres criterios fallaron son **tres exigencias del patrón, cada una contra un falso positivo medido**:
+
+| Exigencia | Qué falso positivo mata |
+|---|---|
+| `^` anclado a inicio de línea | el banner `⛔ REFUTADO`, que **tiene dos referentes**: en «…_REFUTADO-mi-propio-hallazgo…» significa que el archivo refuta a OTRO, o sea que es el artefacto **vigente**. Archivarlo mata la corrección y deja circulando lo falso ([[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]) |
+| uno de los TRES valores, exacto | la **prosa**: «un hallazgo nuevo NO reabre un punto **cerrado**» marcaba el archivo con el criterio-palabra ([[no-era-que-no-cazaba-el-patron-era-que-no-lo-cazaba-en-su-forma-real]]) |
+| ` — ` + motivo **no vacío** | la **plantilla del propio protocolo**: `CIERRE: VENCIDO\|REFUTADO\|CUMPLIDO — <motivo…>`. Tras `VENCIDO` viene un `\|` y no el guión, así que no matchea — **el documento que define el mecanismo no se autodestruye**. Es el caso hostil que el proponente contiene literalmente, y el primero que un patrón laxo archivaría |
+
+**El test es hostil por construcción** (`scripts/tests/test-archivar-buzon-campo-cierre.sh`, 6 casos):
+1 control positivo (si éste falla, todo lo demás es vacuo), **3 hostiles** —los tres de la tabla—,
+1 de que el campo **no saltea el TTL** y 1 de no-regresión. Entra solo al denominador de
+`scripts/ci/tests-coordinacion.sh` (87 tests) que `lint.sh:70` corre.
+
+### 🔭 Y el detalle que casi leí como «no funciona»
+
+Declaré el cierre de **11** broadcasts de octubre y el dry-run siguiente dijo **«archivaría 2»**.
+Por un momento lo leí como que el mecanismo no disparaba. No: **escribir el campo renueva el
+`mtime`**, así que los 11 pasaron a contar como tráfico **fresco** y quedaron dentro del TTL de 90
+min. Es deliberado —un cierre escrito hace un minuto no debe hacer desaparecer el archivo antes de
+que las otras sesiones lo lean— pero **el efecto llega un ciclo después, no en el mismo**.
+
+El control que lo desmiente es mover **una** variable: `TTL_MIN=0 --dry-run` → listó **11 de 11**
+marcados y **0** de las 25 obligaciones sin cierre. Sin ese control, «archivaría 2» es
+indistinguible de un patrón que no matchea ([[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]).
+
+**Y el campo no releva de medir.** De los 12 broadcasts, marqué 11: el del sync del grafo dice en su
+cuerpo *«falta UN paso que yo no puedo correr»* — espera acción ajena, así que es obligación
+legítima y **sigue abierto**. Los tres que afirmaban un estado del sistema los medí antes de
+declararlos vencidos (`vigia.sh` sí existe en el compartido · `git rev-list @{u}..HEAD` = 0 · 0 de 10
+instrumentos faltantes), no los cerré por antigüedad
+([[un-despacho-de-retiro-no-distingue-el-resto-olvidado-de-la-excepcion-fechada]]).
