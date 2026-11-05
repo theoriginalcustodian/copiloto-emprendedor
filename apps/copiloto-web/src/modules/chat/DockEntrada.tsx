@@ -70,8 +70,19 @@ export function DockEntrada({ testId, placeholder, ocupado, aviso, onEnviar }: D
     };
   }, []);
 
+  // `disabled={ocupado}` le quita el foco al campo (medido en navegador real, SM-P13: tras enviar, el
+  // activeElement quedaba en BODY). Se recuerda si lo tenía al enviar y se devuelve al terminar.
+  const teniaFocoRef = useRef(false);
+  useEffect(() => {
+    if (!ocupado && teniaFocoRef.current) {
+      teniaFocoRef.current = false;
+      campoRef.current?.focus();
+    }
+  }, [ocupado]);
+
   function enviar() {
     if (!puedeEnviar) return;
+    teniaFocoRef.current = document.activeElement === campoRef.current;
     const texto = borrador;
     setBorrador('');
     onEnviar(texto);

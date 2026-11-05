@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /** Partial mock: sólo la red — mismo arnés que `ClientesScreen.test.tsx`/`TarjetaClientePropuesto.test.tsx`. */
@@ -408,6 +408,27 @@ describe('PantallaFacturacion (web) — SM-P13: dictado de factura prellena, no 
     expect(mockConfirmar).not.toHaveBeenCalled();
     expect(mockCrearFactura).not.toHaveBeenCalled();
     expect(tomarPendiente()).toBeNull();
+  });
+
+  it('navegador real (SM-P13): la card se trae a la vista y el campo recupera el foco al terminar el dictado', async () => {
+    const scroll = vi.fn();
+    const previo = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scroll;
+    try {
+      mockGetReply.mockResolvedValue({ next_id: 3, replies: [{ id: 3, text: '', card: cardFactura([]) as never }] });
+      render(<PantallaFacturacion />);
+      await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeInTheDocument());
+      const campo = within(screen.getByTestId('dock-funcion')).getByRole('textbox');
+      campo.focus();
+
+      dictar('facturale 150 mil a la panadería');
+
+      expect(await screen.findByTestId('factura-propuesta', undefined, ESPERA)).toBeInTheDocument();
+      await waitFor(() => expect(scroll).toHaveBeenCalled());
+      await waitFor(() => expect(campo).toHaveFocus());
+    } finally {
+      Element.prototype.scrollIntoView = previo;
+    }
   });
 
   it('caso INCOMPLETO: el 1er turno es una PREGUNTA SIN CARD (nada que prellenar) y el 2º, por el MISMO hilo, trae la card', async () => {
