@@ -4627,6 +4627,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/soporte"
     },
+    "modules/voz::dock-alchat-aviso": {
+      "en": [
+        "apps/mobile/src/modules/voz/DockAlChat.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-04",
+      "id": "dock-alchat-aviso",
+      "motivo": "SM-P5/P6: aviso mobile cuando el dock de una funcion despacha al chat y el ChatView montado aun no esta listo (onboarding o sin hidratar). Es del despacho por registro en modulo (despachoAlChat.ts), mecanismo propio de la pila de glass de expo-router; la web no tiene pila de modales. Dueno: frontend2, que decide en SM-P7 si el dock web necesita un aviso equivalente. Disparador para sacarla: que SM-P7 cierre con su par o lo declare no aplicable.",
+      "pantalla": "modules/voz"
+    },
     "modules/voz::dock-funcion": {
       "en": [
         "apps/mobile/src/modules/voz/DockFuncion.tsx"
