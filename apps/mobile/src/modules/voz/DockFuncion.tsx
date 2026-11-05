@@ -10,6 +10,7 @@ import {
 } from '@copiloto/core';
 
 import { DockEntrada } from '../chat/DockEntrada';
+import { DockSobreContenido } from '../../theme/glass/DockSobreContenido';
 import { useTema } from '../../theme/ThemeProvider';
 import { borrarArchivoLocal } from './borrarArchivoLocal';
 
@@ -66,6 +67,7 @@ export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError,
 
   return (
     <KeyboardAvoidingView testID="dock-funcion" behavior="padding">
+      <DockSobreContenido>
       {ultimaDuracionSeg !== null && (
         <Text testID="dock-funcion-chip" style={[styles.chip, { color: tema.color.textoTenue }]}>
           {`Por voz · ${formatearDuracion(ultimaDuracionSeg)}`}
@@ -78,6 +80,7 @@ export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError,
         onSinPermiso={() => onError?.('Activá el permiso de micrófono en Ajustes para dictar por voz.')}
         disabled={disabled}
       />
+      </DockSobreContenido>
     </KeyboardAvoidingView>
   );
 }
