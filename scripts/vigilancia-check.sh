@@ -111,7 +111,8 @@ done
 alarma=0
 reporte=()
 declare -A _DECL_MEMO=()   # memo del bloque SIN DUEÑO: (archivo -> roles declarados)
-declare -A _MT_MEMO=()     # memo del bloque SIN DUEÑO: (archivo -> mtime)
+declare -A _MT_MEMO=()     # memo del bloque SIN DUEÑO: (archivo -> mtime `%Y`)     — eje GRACIA
+declare -A _NAC_MEMO=()    # memo del bloque SIN DUEÑO: (archivo -> nacimiento `%W`) — eje EMISIÓN (ver el bloque)
 add() { reporte+=("$1"); alarma=1; }
 
 # ── 0) HOOKS: el pre-push de secretos depende de una config LOCAL compartida ──────────────────
@@ -565,15 +566,56 @@ for par in "backend:$mt_be" "frontend1:$mt_fe" "frontend2:$mt_fe" "auditoria:0" 
     # (~6,7 s de los 67 s, medido 2026-10-16). La cache es local al proceso y este script no
     # reescribe el buzon mientras lo lee; por eso va aca y no en la lib, donde un test que
     # reescriba el mismo path entre dos llamadas la dejaria rancia.
+    # ⚠️ El timestamp de este bloque es la EMISION, y la emision es el NACIMIENTO (`%W`), no el
+    # mtime (`%Y`). La pregunta que hace el bloque es literalmente «¿se emitio DESPUES de la ultima
+    # senal del rol?», y una ENMIENDA no es una emision: con `%Y`, editar un contrato YA LEIDO Y
+    # EJECUTADO lo mueve detras de la senal del rol y lo acusa de huerfano.
+    # Medido el 2026-11-05 con datos reales: el contrato del contraste 3:1 nacio 13:36:42
+    # (W=1793896602), frontend1 dio senal 13:47 y LO EJECUTO (midio las 2 pieles y mergeo #1702),
+    # y mi enmienda de 13:56:10 (Y=1793897770) lo dejo "emitido despues" -> SIN DUENO falso. Con
+    # `%W` el nacimiento queda ANTES de la senal y no escala, que es lo correcto.
+    # El fix YA EXISTIA en el otro call-site: `escaladores-buzon.sh:244-251` usa `%W` como piso por
+    # el motivo SIMETRICO (ahi ampliar un pedido_ le refresca el mtime y lo SACA del radar). Mismo
+    # defecto de base -- derivar un hecho de emision de un timestamp de modificacion -- con los dos
+    # signos de error, y el fix no habia llegado a este bloque.
+    # Fallback a `%Y` si el filesystem no da nacimiento (`%W` = 0), igual que el otro call-site.
+    # Si una enmienda SI necesita lectura, el mecanismo es un mensaje NUEVO (`dato_`), no tocarle
+    # el mtime a un contrato cerrado: el gate no puede distinguir una correccion de un typo de una
+    # enmienda sustantiva, y el falso positivo es el error caro (ensena a saltear el gate).
+    # 🔧 SON DOS PREGUNTAS CON DOS EJES, y hasta el 2026-11-05 compartian un solo timestamp:
+    #   · GRACIA (abajo): «¿esto se TOCO hace muy poco? dale margen antes de acusar» -> `%Y` (mtime).
+    #   · EMISION (abajo): «¿NACIO despues de la ultima senal del rol?»              -> `%W` (nacimiento).
+    # Darles el mismo valor hace que cada arreglo rompa la otra: el primer intento de este fix puso
+    # `%W` en las dos y el CONTROL POSITIVO del test e2e salio ROJO -- su caso fabrica el contrato y
+    # lo ENVEJECE con `touch`, que mueve `%Y` y NO `%W`, asi que el archivo caia dentro de la gracia
+    # y el bloque dejaba de escalar una ausencia real. El rojo fue correcto y por eso se separan.
     if [ -z "${_DECL_MEMO[$nombre]+x}" ]; then
       _DECL_MEMO[$nombre]="$(roles_declarados_en "$BUZON/abierto/$nombre")"
       _MT_MEMO[$nombre]="$(stat -c %Y "$BUZON/abierto/$nombre" 2>/dev/null || echo 0)"
+      # El eje EMISION toma `min(%W, %Y)`, y la frase que lo justifica es: «este archivo existia,
+      # COMO MINIMO, desde el mas viejo de los dos timestamps». Es la semantica exacta que el bloque
+      # necesita, y cubre los tres casos sin ramas especiales:
+      #   · enmienda (mi falso positivo): min(nacio 13:36, tocado 13:56) = 13:36 -> no escala. ✔
+      #   · filesystem sin nacimiento (`%W`=0): min cae al mtime = comportamiento anterior. ✔
+      #   · fixture envejecido con `touch -d` (lo que hace `msg()` del test e2e, :60-63, porque en
+      #     Linux `%W` NO se puede setear): min(nacio ahora, tocado hace 120min) = hace 120min, o
+      #     sea el test vuelve a poder fabricar un contrato viejo. ✔
+      # El sesgo de `min` es hacia NO escalar, que es el lado correcto: el falso positivo es el que
+      # ensena a saltear el gate. El unico caso que subestima es un archivo recien nacido con mtime
+      # puesto viejo a mano, que fuera de un fixture no ocurre.
+      _nac_c="$(stat -c %W "$BUZON/abierto/$nombre" 2>/dev/null || echo 0)"
+      if [ -z "$_nac_c" ] || [ "$_nac_c" -le 0 ] 2>/dev/null; then
+        _nac_c="${_MT_MEMO[$nombre]}"
+      elif [ "${_MT_MEMO[$nombre]}" -gt 0 ] 2>/dev/null && [ "${_MT_MEMO[$nombre]}" -lt "$_nac_c" ]; then
+        _nac_c="${_MT_MEMO[$nombre]}"
+      fi
+      _NAC_MEMO[$nombre]="$_nac_c"
     fi
     declarados_c="${_DECL_MEMO[$nombre]}"
     if [ -n "$declarados_c" ] && ! printf '%s
 ' "$declarados_c" | grep -qxF "$rol"; then continue; fi
-    mt_c="${_MT_MEMO[$nombre]}"
-    [ "$(( ahora_ts - mt_c ))" -lt "$GRACIA_SEG" ] && continue
+    mt_c="${_NAC_MEMO[$nombre]}"
+    [ "$(( ahora_ts - ${_MT_MEMO[$nombre]} ))" -lt "$GRACIA_SEG" ] && continue
     [ "$mt_c" -gt "$senal" ] && huerfanos+=("$nombre")
   done < <(ls -1 "$BUZON/abierto" 2>/dev/null | grep -iE '^[0-9-]+_(contrato|urgente)_')
   [ "${#huerfanos[@]}" -eq 0 ] && continue

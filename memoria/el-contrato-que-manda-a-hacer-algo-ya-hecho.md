@@ -367,3 +367,43 @@ sha**. Emitirlo cuesta, medido en esta entrada, que el peer lo lea, mida, contes
 equivocada. No hay prudencia que justifique saltear el control más barato de los dos. Tercera vez en
 el día que esta clase se evitó midiendo primero, y ninguna de las tres fue por sospecha: fueron por
 correr el comando igual.
+
+
+## Refuerzo 2026-11-05 — lo cometi EN EL ACTO DE RESCATAR, con el control correcto sobre la pregunta equivocada
+
+Esta entrada manda medir estado y dueno de cada id **antes de citarlo**. Hoy la incumpli en el unico
+momento en que parecia que la prudencia pedia lo contrario.
+
+**El caso.** Tres `contrato_..._a-todos_` quedaron sin lector 14 h (auditoria y manejo-de-errores sin
+sesion viva). Iba a archivarlos por mi propia norma y **me frene**, razonando que un `mv` mueve el
+archivo pero no retira lo que el cuerpo manda. Los rescate a un consolidado y archive los originales.
+Cuatro ciclos del gate despues, lo medi: **las tres ordenes ya estaban HECHAS** — la entrada 03 del
+corpus ya era `DIFERENTE · B` (`:44`), `SM-J4` estaba TERMINADO con DoD de device del 04-11, y la
+«ficha de clase de los 24 skips» era `SM-N58`, cerrada con 3 shas ancestros y control negativo.
+
+**La forma del error es la que importa.** Mi control fue bueno y la pregunta mala: pregunte
+**«¿esta orden nombra a este rol?»** —dio 2 de 3, y ese 2 me convencio de no archivar— cuando lo que
+decidia era **«¿esta orden sigue PENDIENTE?»**. Un control bien ejecutado sobre la pregunta equivocada
+**se siente igual** que uno bien dirigido: hay medicion, hay cifra, hay conclusion. Lo unico que falta
+es que responda lo que estaba en juego. Hermano de
+[[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]], pero sin ambiguedad de nombre: el sujeto era
+claro y la **pregunta** estaba desalineada.
+
+**Lo que costo:** una **alarma inmortal**. El gate reporto `SIN DUENO` cuatro ciclos seguidos sobre un
+archivo que no tenia a quien entregarse y que no mandaba nada. Eso es lo que entrena a saltear el gate
+([[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]), y lo produje yo tratando de no perder una
+orden. **El miedo a perder una orden no exime de medirla: la exige.**
+
+**Y el instrumento existia y no lo corri:**
+`docs/copiloto-emprendedor/Auditorias/instrumentos/falta-vencido-candidatos.py`, cuyo docstring cita el
+caso gemelo (`SM-N31` pedia pasar 12 y 13 a CONFORME y ya lo estaban) y cuyo `CERRADOS = ("CONFORME",
+"DIFERENTE · B")` es exactamente el criterio que me faltaba. Para el estado de una entrada del corpus,
+`scripts/mapa-51-estado.py`; para una ficha, `sprint-estado.py`. Escribir un regex propio para esto es
+reinventar un instrumento que ya distingue el caso ([[el-fix-ya-existe-en-otro-call-site]]).
+
+**How to apply:** antes de **rescatar, relayear o reclamar** una orden, corré el estado de **cada id
+que menciona** — no de su destinatario. Dos controles distintos y los dos obligatorios: *¿a quien
+interpela?* (decide a donde va) y *¿sigue pendiente?* (decide **si va**). El segundo es el que
+autoriza a dejar el archivo abierto; sin el, lo que queda abierto es una alarma sin dueno. Y el
+control de cierre, barato: si archivas algo porque esta pagado, **pega la evidencia de cada id en el
+cuerpo antes del `mv`** — asi el archivado queda auditable y nadie lo reabre por las dudas.

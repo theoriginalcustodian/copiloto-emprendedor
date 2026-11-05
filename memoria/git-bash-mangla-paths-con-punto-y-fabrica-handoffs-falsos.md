@@ -148,3 +148,51 @@ síntoma aparece lejos de la causa (falló el *push*, no la lectura).
 corre **no** es un escaneo limpio — y su mensaje **nombra la variable culpable**, así que el
 diagnóstico costó cero. Un guard que se hubiera limitado a «0 hallazgos» habría pusheado a un repo
 público sin escanear.
+
+## Refuerzo 2026-11-05 — `[IO.File]` NO sigue al `cd` de PowerShell: con ruta relativa escribí en el CHECKOUT COMPARTIDO
+
+Mismo eje que el mangling de paths, en la otra capa: **lo que yo escribí no es lo que la capa de abajo
+resolvió**, y el efecto cayó en otro archivo sin un solo error.
+
+Estaba resolviendo un conflicto de merge en mi worktree. El comando era
+
+```powershell
+cd C:\gfw-src\wt-plan-n58
+$p = "memoria\instrumento-que-no-mira-nunca-falla.md"   # ← RELATIVA
+$l = Get-Content $p                                      # leyó el del WORKTREE ✔
+[IO.File]::WriteAllText($p, ...)                         # escribió en el COMPARTIDO ✘
+```
+
+`Set-Location`/`cd` mueve el cwd del **provider de PowerShell**, no el
+`[Environment]::CurrentDirectory` del proceso .NET, que sigue siendo el directorio de **arranque** —
+acá, el checkout compartido. Resultado: los cmdlets (`Get-Content`, `Select-String`, `Resolve-Path`)
+leyeron el worktree y `[IO.File]` escribió 6 KB encima del archivo homónimo del compartido, que estaba
+**limpio**. Dos capas, dos rutas distintas, cero excepciones.
+
+**Lo que hizo que tardara en verse:** mis controles post-escritura (`Select-String`, `ReadAllText` con
+ruta relativa) **también** resolvían con el provider ⇒ leían el worktree ⇒ reportaban *«los marcadores
+siguen ahí»*. Eso se lee como «mi escritura no se aplicó», no como «se aplicó en otra parte»: el
+instrumento confirmaba el no-efecto en el lugar correcto mientras el efecto real pasaba en otro.
+El discriminante fue comparar los **bytes** (76732 esperados vs 83334 encontrados): una cifra que no
+cerraba por ninguna de las dos hipótesis. [[una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal]].
+
+**Segundo daño en el mismo comando:** `Get-Content` sin `-Encoding utf8` lee UTF-8 como ANSI, así que
+lo reescrito quedó **mojibake entero** (`observación` → `observaciÃ³n`) — 722 líneas añadidas / 552
+borradas, el archivo completo. La escritura era correcta (`UTF8Encoding($false)`); la **lectura** ya
+había destruido el dato. [[la-capa-de-lectura-normalizo-el-sujeto-antes-de-medirlo]].
+
+**Reglas que quedan:**
+
+1. **`[IO.File]::*` SIEMPRE con ruta absoluta.** En la misma sesión, el `AppendAllText` con absoluta
+   funcionó y el `WriteAllText` con relativa pisó: la diferencia no era la API, era la ruta.
+2. **`Get-Content` sobre archivos del repo va con `-Encoding utf8`** — o, mejor, el texto no se
+   round-trippea por PowerShell: `sed` desde Git Bash por ruta no toca la codificación.
+3. **El control del efecto se mide en la ruta ABSOLUTA del archivo que querés**, no con la misma
+   expresión relativa que pudo resolver a otra parte.
+
+**Reparación:** el estado previo del compartido era limpio (= su HEAD), así que
+`git checkout -- <una ruta explícita>` lo devolvió exacto. Controles: `git status` vacío, `0`
+ocurrencias de mojibake, `0` copias de mi refuerzo (no pertenece a ese archivo), `15` acentos
+correctos. El archivo del compartido está **atrasado** respecto de `origin/main` y así quedó: traerlo
+al día habría sido un cambio que nadie pidió, y commitearlo revierte fixes
+([[base-rancia-invierte-la-direccion-del-diff]]).
