@@ -22,7 +22,7 @@
 Smoke 43/43 y durabilidad VERDE sobre `ff5fb289`. PRs: #1669, #1671, #1673, #1674, #1675.
 
 ## Abierto (todo en DECISIONES-OPERADOR.md)
-SEC-D1 off-site · SEC-D2 TLS Postgres de fusion · SEC-D3 signup/MFA · SEC-D6 usuario no-root · SEC-D8 borrado/exportación por tenant · SEC-D9 apps inactivas y sus `.env` · SEC-D10 BYPASSRLS · SEC-D11 npm/expo-router. SEC-D10 quedó MEDIDO (roles acotados; residual: la consola lee `copiloto_mensajes` de todos los tenants). SEC-D9 medido: los tokens de 6 apps inactivas siguen vivos → revocar. Además, 40 rutas con prueba cross-tenant profunda pendiente (ficha SM-S).
+SEC-D1 off-site · SEC-D2 TLS Postgres de fusion · SEC-D3 signup/MFA · SEC-D6 usuario no-root · SEC-D8 borrado/exportación por tenant · SEC-D9 apps inactivas y sus `.env` · SEC-D10 BYPASSRLS · SEC-D11 npm/expo-router. SEC-D10 quedó MEDIDO (roles acotados; residual: la consola lee `copiloto_mensajes` de todos los tenants). SEC-D9 medido: los tokens de 6 apps inactivas siguen vivos; el operador lo aceptó y lo difiere al cutover a los 4 VPS (2026-11-05). Además, 40 rutas con prueba cross-tenant profunda pendiente (ficha SM-S).
 
 ## Limitaciones declaradas
 - nmap desde la PC inválido (proxy local); cierre externo por TCP connect.
