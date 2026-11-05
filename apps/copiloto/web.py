@@ -73,6 +73,7 @@ from upload_validacion import FIRMAS_AUDIO, FIRMAS_IMAGEN, magic_bytes_validos
 from soporte_store import ESTADOS_VALIDOS as SOPORTE_ESTADOS_VALIDOS
 from soporte_store import MAX_ADJUNTOS_POR_TICKET, TicketStore
 
+import audio_sin_voz
 import dictado_destinos
 import services
 from calendar_policy import CALENDAR_POLICY
@@ -648,7 +649,13 @@ def _default_transcribe(audio_bytes: bytes, content_type: str) -> str:
     DENTRO -- recién se instancia/usa cuando `/chat/audio` recibe un request real, nunca al armar
     la app (import-safety, mismo criterio que `serve.py`). Si falta `GROQ_API_KEY` en el env,
     `GroqSTT.transcribe` levanta `RuntimeError` explícito (ver stt.py); la ruta lo traduce a 503
-    sin romper el resto del front-door (texto por `/chat` sigue andando igual)."""
+    sin romper el resto del front-door (texto por `/chat` sigue andando igual).
+
+    Defensa B (2026-11-05): ANTES de pagar el STT se descarta el audio sin voz (silencio / ruido estacionario)
+    devolviendo `""`, que todos los llamadores ya traducen a 422 «no se entendió el audio». Whisper alucina
+    «Gracias.» ante silencio puro (medido 6/6 en prod): ver `audio_sin_voz`. La defensa A vive en `stt.py`."""
+    if not audio_sin_voz.hay_voz(audio_bytes, content_type or ""):
+        return ""
     return build_stt().transcribe(audio_bytes, filename=_filename_for_content_type(content_type),
                                 content_type=content_type or "audio/ogg")
 
