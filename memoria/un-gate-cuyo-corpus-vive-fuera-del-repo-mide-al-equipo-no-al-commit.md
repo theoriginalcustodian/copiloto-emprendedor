@@ -78,3 +78,26 @@ saltea con `--no-verify` y se lleva puesto todo lo demás que el gate sí medía
 4. Cuando un gate compartido se enciende por algo que **otra sesión** produjo, entregale a su dueña el
    parche **ya verificado** (rc antes / rc después, medido sobre una copia), no el pedido de trabajo.
    Es la diferencia entre destrabar el tronco de todos y pasarle una tarea más.
+
+## Refuerzo 2026-11-05 — mismo script, dos corpus: el DISCO absolvió, el COMMIT condenó
+
+El caso más barato de esta familia y el más fácil de no ver, porque no hay dos instrumentos: hay
+**uno**, `scripts/medir-indice-memoria.py`, corrido en dos lados.
+
+En mi worktree dijo `cobertura 428/428 entradas indexadas`. El mismo script en CI dijo
+`427/427` más `[MAL] links a archivos inexistentes: 1`. La diferencia no era el código ni la versión:
+el corpus local es **lo que hay en disco** y el de CI es **lo que hay en el commit**. El archivo
+`la-norma-vivia-en-el-encabezado-del-doc-que-iba-a-editar.md` existía en el worktree y en el slug de
+Claude Code, y **nunca se había commiteado** — así que el puntero que agregué al índice apuntaba a un
+archivo que, para main, no existe. `lint` rojo.
+
+Lo que lo hace traicionero: el veredicto local no era un falso verde cualquiera, era **el número que
+yo quería ver**. Fui a arreglar una entrada huérfana, el medidor dijo «428/428, resuelto», y el
+resultado confirmó el trabajo. El control que valía era el que mide el **commit**, y es justo el que
+no corrí antes de pushear.
+
+La pregunta, en su versión corta: **¿este gate mide el disco o mide el commit?** Para cualquier gate
+de integridad referencial —índices, links, manifiestos, inventarios de archivos— la respuesta decide
+si su verde significa algo. Y el control positivo es gratis: `git status --short` sobre el directorio
+que el gate recorre. Un `??` ahí es exactamente la discrepancia, antes de gastar un PR en descubrirla
+([[el-checkout-compartido-sirve-comandos-viejos]]).
