@@ -111,12 +111,22 @@ for f in "$ABIERTO"/*.md; do
   #   · `^` ancla a inicio de línea  → el banner `⛔ REFUTADO` y cualquier cita indentada (`> ` o
   #     dentro de un bloque de código del propio protocolo) NO matchean.
   #   · uno de los TRES valores, exacto → no caza prosa que use la palabra «cierre».
-  #   · ` — ` + motivo NO VACÍO        → la PLANTILLA del protocolo
+  #   · separador + motivo NO VACÍO    → la PLANTILLA del protocolo
   #     (`CIERRE: VENCIDO|REFUTADO|CUMPLIDO — <motivo…>`) NO matchea, porque tras `VENCIDO` viene un
   #     `|` y no el guión. Ese es el caso hostil que el documento que PROPONE el campo contiene
   #     literalmente, y el que un patrón laxo archivaría primero.
+  #
+  # ⚠️ EL SEPARADOR ACEPTA `—`, `–`, `-` y `--` DESDE EL 2026-11-05, y la razón es un falso verde
+  # MEDIDO en el PRIMER uso en serio del campo. El patrón exigía el em dash `—`; la línea que
+  # planificación escribió ese día en el hallazgo del ratchet salió con guión ASCII (el canal de
+  # escritura de Windows/PowerShell no tipea el em dash con fiabilidad), así que el cierre quedó
+  # **inerte**: escrito, visible, citado como hecho — y el janitor nunca lo vio. Un separador que
+  # el entorno no puede producir de forma confiable no es un guard, es un éxito falso: el autor
+  # declara el cierre, lee su propia línea en el archivo y nadie mide que el lector la reconozca.
+  # Lo que PROTEGE del caso hostil no es el glifo, es el `|` que sigue a `VENCIDO` en la plantilla,
+  # y eso vale igual para los cuatro separadores.
   # El test hostil de los cuatro casos vive en scripts/tests/test-archivar-buzon-campo-cierre.sh.
-  CIERRE_AUTODECLARADO='^CIERRE: (VENCIDO|REFUTADO|CUMPLIDO) — .+'
+  CIERRE_AUTODECLARADO='^CIERRE: (VENCIDO|REFUTADO|CUMPLIDO) (—|–|--|-) .+'
   if echo "$b" | grep -qE "$OBLIGACIONES"; then
     if grep -qE "$CIERRE_AUTODECLARADO" "$f"; then
       : # declara su propio cierre → cae a los pasos 2 y 3 como cualquier tráfico

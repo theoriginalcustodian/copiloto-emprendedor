@@ -110,6 +110,40 @@ else
   ok "el tráfico normal viejo se sigue archivando"
 fi
 
+echo '── 7. EL CASO QUE FALLÓ DE VERDAD: separador ASCII (-) también cuenta como cierre ──'
+# No es un caso teórico. El 2026-11-05, en el PRIMER uso en serio del campo, planificación escribió
+# `CIERRE: CUMPLIDO - …` con guión ASCII en el hallazgo del ratchet: el canal de escritura de Windows
+# no tipea el em dash con fiabilidad. El patrón exigía `—`, así que el cierre quedó INERTE — escrito,
+# visible en el archivo, citado como hecho, y el janitor nunca lo vio. El autor lee su propia línea y
+# no mide que el LECTOR la reconozca: un guard cuyo glifo el entorno no puede producir es un éxito
+# falso, no una protección. Lo que protege del caso 3 es el `|`, no el glifo.
+for sep in '-' '--' '–'; do
+  n="2026-10-06_urgente_planificacion-a-todos_cierre-sep-$(printf '%s' "$sep" | od -An -tx1 | tr -d ' \n').md"
+  msg "$n" "# Norma vieja
+
+CIERRE: CUMPLIDO $sep su regla ya vive en CLAUDE.md y el sprint cerró."
+  correr
+  if sigue "$n"; then
+    mal "NO archivó un cierre válido con separador '$sep' — el cierre queda inerte, como el 2026-11-05"
+  else
+    ok "archivó el cierre con separador '$sep'"
+  fi
+done
+
+echo "── 8. CONTROL HOSTIL del separador nuevo: la plantilla con pipes Y guión ASCII tampoco cuenta ──"
+# Si aceptar `-` hubiera abierto la puerta al caso 3, el doc que define el campo se autodestruiría
+# igual. El guard real sigue siendo el `|` tras VENCIDO, y hay que medirlo con el separador laxo.
+msg "2026-10-07_hallazgo_planificacion-a-todos_plantilla-ascii.md" \
+'# Propuesta
+
+CIERRE: VENCIDO|REFUTADO|CUMPLIDO - <motivo en una línea>'
+correr
+if sigue "2026-10-07_hallazgo_planificacion-a-todos_plantilla-ascii.md"; then
+  ok "la plantilla con pipes no matchea ni con guión ASCII — el separador laxo no abrió la puerta"
+else
+  mal "con el separador ASCII la PLANTILLA empezó a matchear: el caso 3 volvió por la ventana"
+fi
+
 echo
 if [ "$fallos" -eq 0 ]; then
   echo "✅ test-archivar-buzon-campo-cierre: OK"
