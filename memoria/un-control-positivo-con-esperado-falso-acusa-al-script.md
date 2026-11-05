@@ -241,3 +241,43 @@ atribuye ([[dos-causas-suficientes-el-test-no-atribuye]]). El mismo control dife
 default=1, el touch ya no lo salva.
 
 → [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] · [[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]] · [[la-condicion-que-el-instrumento-exige-para-ver-cambia-lo-medido]]
+
+---
+
+## Refuerzo 2026-11-05 — el esperado no se mueve: se FABRICA, y entonces condena a un instrumento correcto
+
+Hoy el mismo defecto apareció **dos veces en una hora**, y en la dirección menos sospechada: no ajusté
+el esperado para ver verde, lo **inventé** — y el control dio **rojo** sobre un instrumento que estaba bien.
+
+Medía «qué ramas no tienen PR mergeado» con el predicado que esta memoria ya declara autorizado
+(`gh pr list --state merged --head`, el único registro que el squash no destruye).
+
+1. **Primer control fabricado — el esperado dependía del MINUTO.** Elegí como control positivo
+   `planificacion/cierre-separador-inerte`, «una rama que mergué hoy». Dio `0 PRs mergeados`, **igual que
+   una rama inexistente**, así que concluí que el predicado estaba roto. No lo estaba: el barrido
+   arrancó **antes** del merge (19:13Z). Un control cuyo esperado es cierto recién a partir de cierto
+   instante no es un control, es una carrera.
+2. **Segundo control fabricado — el esperado contradecía el propio output.** Para «merges viejos» elegí
+   tres ramas tomadas de la salida anterior... que esa misma salida marcaba `1158:CLOSED`, `536:CLOSED`,
+   `1137:CLOSED`. O sea: exigí «debe figurar como mergeada» a tres ramas cuyo PR fue **cerrado sin
+   mergear**. Los tres `!! NO figura` eran correctos; el equivocado era yo.
+
+**El control válido no se elige por memoria: se CONSTRUYE consultando la verdad-terreno primero.** Lo
+que funcionó: `gh pr list --state merged --head <rama>` rama por rama, y exigir que esas —y sólo esas—
+figuren en la lista (3/3 OK, inexistente ausente). El esperado salió de la forja, no de mi recuerdo.
+
+**Y el defecto que el control fabricado tapó media hora, que era el grave:** 330 llamadas `gh` seguidas
+pegan en el rate-limit, y mi `${n:-0}` convertía **«la consulta falló» en «0 PRs mergeados»** — el
+instrumento degradaba **hacia la acusación**. Por eso veía `sin-PR-alguno` masivo, contra una medición
+previa de 309/332 *con* PR. El arreglo de raíz es doble: **una sola consulta** (`--limit 2000`, y comparar
+conjuntos) y un **abort ruidoso** si la lista viene corta — `if [ "$n" -lt 100 ]; then exit 3`. Un
+default numérico en una variable que puede venir vacía por fallo es un fail-open silencioso con forma
+de prudencia ([[un-degradado-prudente-hacia-el-caso-benigno-envenena-la-medicion]]).
+
+**How to apply:** antes de escribir el esperado de un control positivo, contestá dónde lo leíste —si la
+respuesta es «me acuerdo» o «sale del output que estoy auditando», no es un esperado, es una conjetura.
+Y si el control falla, la primera hipótesis no es «el script está roto» sino «¿el esperado es verificable
+contra una fuente independiente?». Un rojo falso cuesta igual que un verde falso: me hizo descartar y
+reescribir tres veces un predicado que funcionaba.
+
+→ [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] · [[la-cita-de-procedencia-muere-en-el-merge]] · [[base-rancia-invierte-la-direccion-del-diff]]
