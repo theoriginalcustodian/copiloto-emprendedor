@@ -28,8 +28,11 @@ import { useTema } from '../../theme/ThemeProvider';
  * Decisión C). La nota del sistema es explícita: *«un chat de ayuda propio sería la misma duplicación
  * que sacamos con la solapa "Preguntar" de Inteligencia»*. Dos hilos que saben cosas distintas del
  * mismo negocio obligan a recordar en cuál preguntaste. Tocar un tema deja la pregunta en el buzón
- * (`mensajePendiente`) y cierra el glass; el chat de abajo la manda al recuperar el foco, **con los
- * datos del emprendedor a mano**, que es lo que una ayuda escrita no puede hacer.
+ * (`mensajePendiente`) y descarta **toda la pila de glass** (`router.dismissAll()`: esta pantalla
+ * está apilada sobre Ajustes, que está sobre el chat — un `back()` dejaba la pregunta colgada en
+ * Ajustes); el chat de abajo la manda al recuperar el foco, **con los datos del emprendedor a
+ * mano**, que es lo que una ayuda escrita no puede hacer. Los cinco temas van al chat, igual que
+ * en el prototipo (`index.html:3614`, handler único `data-tema`): ninguno abre otro flujo.
  *
  * 🔴 **Los ejemplos siguen viniendo de `GET /capacidades`, no escritos acá.** Es la propiedad que
  * hacía valiosa a la pantalla anterior y no se pierde en la fusión: el endpoint publica una capacidad
@@ -71,10 +74,15 @@ export function PantallaComoUsarLaApp() {
     };
   }, [cargar]);
 
-  /** Deja la pregunta dicha en el chat principal y cierra el glass. Ver el docstring del módulo. */
+  /**
+   * Deja la pregunta dicha en el chat principal y descarta TODA la pila de glass hasta él. Esta
+   * pantalla se abre desde Ajustes (`ajustes.tsx` → `/ajustes-como-usar`), o sea hay DOS glass
+   * sobre el chat: `back()` volvía a Ajustes y la pregunta quedaba colgada hasta cerrarlo también.
+   * Ver el docstring del módulo.
+   */
   function preguntar(pregunta: string) {
     dejarPendiente(pregunta);
-    router.back();
+    router.dismissAll();
   }
 
   // `capacidades` vacío NO es lo mismo que `no_disponible`: el endpoint contestó y dice que hoy no

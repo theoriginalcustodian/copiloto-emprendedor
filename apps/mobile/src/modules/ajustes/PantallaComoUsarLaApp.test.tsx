@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), back: jest.fn() },
+  router: { push: jest.fn(), back: jest.fn(), dismissAll: jest.fn() },
   useFocusEffect: jest.fn(),
 }));
 
@@ -54,16 +54,25 @@ describe('PantallaComoUsarLaApp — la fusión de la guía y el «cómo uso la a
     });
   });
 
-  it('🔴 tocar un tema deja la pregunta para el CHAT PRINCIPAL y cierra el glass', async () => {
+  it('🔴 tocar CADA tema deja su pregunta para el CHAT PRINCIPAL y descarta TODA la pila de glass', async () => {
     // El puente de la Decisión C: no se abre un chat de ayuda propio. Dos hilos que saben cosas
     // distintas del mismo negocio obligan a recordar en cuál preguntaste.
+    // Esta pantalla vive sobre Ajustes (DOS glass sobre el chat): `back()` sólo cerraba UNO y la
+    // pregunta quedaba colgada en Ajustes. Se exige `dismissAll` y que NO se use `back`.
     await montar();
 
-    fireEvent.press(screen.getByTestId('como-usar-tema-0'));
+    for (let i = 0; i < TEMAS_AYUDA.length; i++) {
+      jest.mocked(router.dismissAll).mockClear();
+      jest.mocked(router.back).mockClear();
+      jest.mocked(router.push).mockClear();
+      tomarPendiente();
+      await fireEvent.press(screen.getByTestId(`como-usar-tema-${i}`));
 
-    expect(tomarPendiente()).toBe(TEMAS_AYUDA[0]!.pregunta);
-    expect(router.back).toHaveBeenCalledTimes(1);
-    expect(router.push).not.toHaveBeenCalled();
+      expect(tomarPendiente()).toBe(TEMAS_AYUDA[i]!.pregunta);
+      expect(router.dismissAll).toHaveBeenCalledTimes(1);
+      expect(router.back).not.toHaveBeenCalled();
+      expect(router.push).not.toHaveBeenCalled();
+    }
   });
 
   it('SM-N42 p4: los cinco temas viven en UNA sola tarjeta (el `.grupo` del prototipo), no en cinco', async () => {

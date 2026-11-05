@@ -27,18 +27,27 @@ describe('Marca -- isotipo Odobi (reemplaza el placeholder de "onda de voz" here
     expect(screen.getByTestId('marca-isotipo-trazo-4').props.d).toBe('M19.5 6.5a9 9 0 0 1 0 11');
   });
 
-  it('logoScale: al doblar `size`, el stroke-width final se divide a la mitad (trazo visualmente constante)', async () => {
-    // Cada mount consulta SU propio árbol (no el `screen` global) -- necesario porque este test
-    // compara dos tamaños montados en paralelo dentro del mismo `it`.
-    const chico = await montar({ size: 64 });
-    const grande = await montar({ size: 128 });
+  it('proporcionalidad: el stroke-width va en unidades de viewBox (constante) y el grosor en pantalla crece con `size`', async () => {
+    // Cada mount consulta SU propio árbol (no el `screen` global).
+    const chico = await montar({ size: 64, tono: 'desnudo' });
+    const grande = await montar({ size: 128, tono: 'desnudo' });
 
     const strokeChico = chico.getByTestId('marca-isotipo-trazo-1').props.strokeWidth;
     const strokeGrande = grande.getByTestId('marca-isotipo-trazo-1').props.strokeWidth;
+    // Mismo valor en unidades de viewBox a cualquier tamaño (1.3, el del prototipo)...
+    expect(strokeChico).toBeCloseTo(1.3, 5);
+    expect(strokeGrande).toBeCloseTo(1.3, 5);
 
-    // El doble de tamaño con el mismo trazo canónico (1.7 en viewBox 24) implica la mitad de
-    // stroke-width predividido -- si alguien rompe la predivisión por escala, este ratio se mueve.
-    expect(strokeChico / strokeGrande).toBeCloseTo(2, 5);
+    // ...y el <G> lo escala: grosor en pantalla = strokeWidth × escala, proporcional al tamaño.
+    const escala = (el: ReturnType<typeof chico.getByTestId>) =>
+      Number(/scale\(([\d.]+)\)/.exec(String(el.parent?.props.transform ?? ''))?.[1]);
+    const pxChico = strokeChico * escala(chico.getByTestId('marca-isotipo-trazo-1'));
+    const pxGrande = strokeGrande * escala(grande.getByTestId('marca-isotipo-trazo-1'));
+    expect(pxGrande / pxChico).toBeCloseTo(2, 5);
+    // Prototipo `index.html:1876`: a 96 px el trazo rinde 5,2 px.
+    const p96 = await montar({ size: 96, tono: 'desnudo' });
+    const t96 = p96.getByTestId('marca-isotipo-trazo-1');
+    expect(t96.props.strokeWidth * escala(t96)).toBeCloseTo(5.2, 5);
   });
 
   it('tono="acento" (default) pinta el badge y el trazo con colores DISTINTOS', async () => {
@@ -74,9 +83,12 @@ describe('Marca -- isotipo Odobi (reemplaza el placeholder de "onda de voz" here
     expect(desnudo.getByTestId('marca-isotipo-trazo-1').props.stroke).toBe(
       acento.getByTestId('marca').props.style.backgroundColor,
     );
-    // Signo a `size` ⇒ escala 96/24 = 4 ⇒ trazo 1.3/4. Con badge el signo sería 96·34/80 y el trazo mayor.
-    expect(desnudo.getByTestId('marca-isotipo-trazo-1').props.strokeWidth).toBeCloseTo(1.3 / 4, 5);
-    expect(acento.getByTestId('marca-isotipo-trazo-1').props.strokeWidth).toBeGreaterThan(1.3 / 4);
+    // Signo a `size` ⇒ escala 96/24 = 4. El strokeWidth es el mismo (viewBox) en ambos tonos; lo que
+    // cambia es la escala del <G>: con badge el signo mide 96·34/80, así que se ve más chico.
+    const transform = (r: typeof desnudo) =>
+      String(r.getByTestId('marca-isotipo-trazo-1').parent?.props.transform ?? '');
+    expect(transform(desnudo)).toContain('scale(4)');
+    expect(transform(acento)).not.toContain('scale(4)');
   });
 
   it('badge redondeado: tamaño y radio siguen derivando de `size` (30% -- sin cambios de layout)', async () => {
