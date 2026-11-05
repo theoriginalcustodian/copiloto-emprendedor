@@ -1105,6 +1105,7 @@ distribuciones instaladas» — rojo del WRAPPER leido como rojo del gate
 
 Emparentado: [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] y
 [[el-canario-el-control-positivo-de-lo-que-falla-callado]] — el canario de un canal es un `echo`.
+
 ## Refuerzo 2026-11-05 — el INSTRUMENTO DEL TEST no podia fabricar el eje que el gate mide, y el rojo parecia del fix
 
 Arreglé un falso positivo de `scripts/vigilancia-check.sh`: el bloque SIN DUEÑO derivaba la **emisión**
