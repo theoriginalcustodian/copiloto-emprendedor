@@ -210,3 +210,27 @@ reescribí como única línea, devolví el archivo a `.escalador-estado/` con `m
 cosas — contenido idéntico al original, formato igual al de sus hermanos (`^[0-9]{10}$`), y **0**
 residuo en `cerrado/`. Lo que **no** se puede recuperar si no te das cuenta es el contador: nadie
 audita un epoch.
+
+## Refuerzo 2026-11-05 — archivar un documento cuyo AUTOR todavía le está appendeando ROMPE el append, y el stub lo crea el otro, no vos
+
+Toda esta entrada trata del caso en que **yo** escribo a una ruta que cambió. Falta la cara simétrica,
+que pagué hoy: **yo moví el archivo y el stub lo fabricó otra sesión.** A las 13:23 archivé el
+`cierre_` de SM-P12 a `cerrado/2026-11-05/` aplicando el janitor; frontend1 **seguía escribiéndolo** y
+su `>>` a la ruta vieja creó un **stub de 1488 chars en `abierto/`**, mientras el cuerpo real de
+**16060 chars** quedaba en `cerrado/` **sin la adenda de las 13:40**. Nadie recibió un error: el `mv`
+salió bien y el `>>` salió bien.
+
+**Por qué no lo ve el janitor:** su criterio es `mtime > TTL`, y un `cierre_` recién escrito no lo
+supera — pero un `mv` **manual** mío sí puede caer en el medio de una tanda de appends. El TTL protege
+contra el archivo viejo; **nada protege contra el autor vivo**, porque «el autor va a seguir
+escribiendo» no es un estado que el buzón represente.
+
+**La regla:** un `cierre_`/`avance_` con `mtime` de **menos de ~15 min** se deja donde está. Si lo
+archivás igual, lo que no se hace es **elegir una mitad**: la reparación **fusiona** las dos
+(`[[resolver-tomando-un-lado-nunca-converge]]`), con una nota nombrando la causa, y recién entonces se
+borra el stub. Medido hoy: `17932` chars finales (> 16060), adendas 13:20 y 13:40 presentes,
+`CORRECCION ids` presente, **0** copias en `abierto/`.
+
+Y el control que lo caza sin saber que pasó: **contar las copias del tema** después de archivar —
+`ls abierto/ cerrado/<hoy>/ | grep -c '<slug>'` debe dar **1**. Es el mismo control del typo de
+arriba: preguntar *«¿cuántos archivos responden a este tema?»*, no *«¿se movió el mío?»*.

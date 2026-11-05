@@ -1069,3 +1069,39 @@ pendiente, y después del loop se afirma el verde, no se asume. Con eso el PR #1
 Y lo que esto desarma: la autorización permanente de mergear **no** es autorización para mergear sin
 mirar. La precondición sigue siendo el verde; lo que la orden del operador elimina es la **pregunta**,
 no la **verificación**.
+
+## Refuerzo 2026-11-05 — un monitor sobre un CANAL MUERTO cierra con «exit 0, sin output», que es el mismo texto del exito
+
+El caso de arriba es un instrumento cuyo RANGO sale vacio. Este es peor: el **canal de ejecucion**
+estaba muerto y el instrumento lo reporto como terminacion limpia.
+
+Esta sesion perdio el canal Bash: toda invocacion volvia «Bash completed with no output», incluido un
+heredoc que debia escribir cuatro archivos (no los escribio) y un `scripts/vigia.sh`. Arme un
+`Monitor` para esperar el check `backend` de un PR, con un bucle que **imprime antes de romper**, y la
+notificacion fue:
+
+```
+Monitor "check backend del PR 1700 hasta que termine" ended without producing output (exit 0)
+```
+
+**Ese texto es indistinguible de tres mundos distintos:** (1) el canal no ejecuto nada; (2) el bucle
+corrio y la condicion nunca se cumplio; (3) termino bien. Y el `exit 0` empuja hacia el tercero. Si lo
+hubiera leido como «ya esta», habria mergeado con el check **todavia IN_PROGRESS**.
+
+**Lo que lo destapo fue un CONTROL POSITIVO del canal, no del monitor:** `echo CONTROL-POSITIVO-OK`
+devolvio **cero bytes**. Un `echo` que no vuelve no tiene lectura ambigua. El control sobre el
+instrumento (¿el monitor midio?) seguia siendo ambiguo; el control sobre el **canal** (¿este shell
+ejecuta algo?) no.
+
+**How to apply:** (1) un monitor/background que cierra **sin un solo evento** NO acredita la
+condicion: antes de actuar, medi el sujeto por otra via (acá, `gh pr view` por PowerShell, que dio
+`backend = IN_PROGRESS`). (2) Si un canal te devolvio vacio **dos veces**, dejá de depurar el comando
+y corré un `echo` — todo instrumento que viva en ese canal (`Monitor`, `run_in_background`,
+`vigia.sh`) esta ciego, no lento. (3) En Windows hay un segundo modo de falla del canal que grita en
+vez de callarse: `bash` desde PowerShell resuelve a **WSL** y sale `exit 1` con «no tiene
+distribuciones instaladas» — rojo del WRAPPER leido como rojo del gate
+([[el-script-de-fondo-lee-su-archivo-por-ruta-fija-y-el-primer-plano-lo-pisa]]). Se evita invocando
+`C:\Program Files\Git\bin\bash.exe` por ruta.
+
+Emparentado: [[un-mecanismo-roto-hacia-el-no-no-da-sintoma]] y
+[[el-canario-el-control-positivo-de-lo-que-falla-callado]] — el canario de un canal es un `echo`.
