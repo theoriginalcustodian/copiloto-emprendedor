@@ -58,7 +58,18 @@ export type MotivoSinPropuesta =
 
 export type ResultadoDictado =
   | { status: 'ok'; resultado: PropuestaDictado }
-  | { status: 'sin_propuesta'; motivo: MotivoSinPropuesta; texto?: string };
+  | {
+      status: 'sin_propuesta';
+      motivo: MotivoSinPropuesta;
+      texto?: string;
+      /**
+       * Hasta dónde se leyó el hilo. Sólo en `respuesta_sin_card`: es lo que permite CONTINUAR un dictado
+       * que el backend contestó con una pregunta (SM-P13: la factura incompleta pregunta sin card y la
+       * card llega en el 2º turno de la MISMA sesión) pasándolo como `desdeId` del turno siguiente. Sin
+       * él, el 2º turno releería la pregunta vieja desde 0 y la tomaría por la respuesta de ahora.
+       */
+      cursor?: number;
+    };
 
 export interface PuertosDictado {
   enviar(req: ChatRequest): Promise<ChatResponse>;
@@ -74,6 +85,11 @@ export interface PedidoDictado {
   sessionId: string;
   timeoutMs?: number;
   intervaloMs?: number;
+  /**
+   * Continuar un dictado que ya contestó con una pregunta: mismo `sessionId` y el `cursor` que devolvió
+   * ese turno. Default 0 = hilo nuevo, se lee desde el principio.
+   */
+  desdeId?: number;
 }
 
 const TIMEOUT_MS = 20_000;
@@ -143,7 +159,7 @@ export async function dictarPorChat(pedido: PedidoDictado, puertos: PuertosDicta
   }
 
   // Hilo propio y nuevo: se lee desde 0 y todo lo que aparezca es de ESTE dictado.
-  let cursor = 0;
+  let cursor = pedido.desdeId ?? 0;
   let transcurrido = 0;
   while (transcurrido < timeoutMs) {
     await esperar(intervaloMs);
@@ -162,7 +178,7 @@ export async function dictarPorChat(pedido: PedidoDictado, puertos: PuertosDicta
       if (reply.text.trim() !== '') ultimoTexto = reply.text;
     }
     if (respuesta.replies.length > 0) {
-      return { status: 'sin_propuesta', motivo: 'respuesta_sin_card', texto: ultimoTexto };
+      return { status: 'sin_propuesta', motivo: 'respuesta_sin_card', texto: ultimoTexto, cursor };
     }
   }
   return { status: 'sin_propuesta', motivo: 'timeout' };

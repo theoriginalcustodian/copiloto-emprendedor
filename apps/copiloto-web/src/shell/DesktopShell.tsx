@@ -160,7 +160,6 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
               <PantallaFacturacion
                 facturaIdInicial={facturaIdDesdePresupuesto}
                 onConfigurar={() => setActiveTab('ajustes')}
-                onAbrirChat={() => setActiveTab('chat')}
               />
             )}
             {/* El `&& esAdmin` no es redundante con esconder el tab: si el claim se pierde (logout y
