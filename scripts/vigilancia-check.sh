@@ -614,6 +614,13 @@ for par in "backend:$mt_be" "frontend1:$mt_fe" "frontend2:$mt_fe" "auditoria:0" 
     declarados_c="${_DECL_MEMO[$nombre]}"
     if [ -n "$declarados_c" ] && ! printf '%s
 ' "$declarados_c" | grep -qxF "$rol"; then continue; fi
+    # Una obligación que declara su PROPIO cierre no tiene dueño que buscar: está cerrada.
+    # MEDIDO el 2026-11-05: sin esto, seis contratos cerrados minutos antes seguían acusados en este
+    # bloque, porque el gate mira `abierto/` y el janitor no los archiva hasta cumplir el TTL de
+    # 90 min. Dos criterios sobre el mismo corpus, y el gate gritaba sobre trabajo ya cerrado — que
+    # es como un guard se desarma solo (memoria/el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md).
+    # declara_su_cierre() viene de lib/buzon-roles.sh: la MISMA definición que usa el janitor.
+    declara_su_cierre "$BUZON/abierto/$nombre" && continue
     mt_c="${_NAC_MEMO[$nombre]}"
     [ "$(( ahora_ts - ${_MT_MEMO[$nombre]} ))" -lt "$GRACIA_SEG" ] && continue
     [ "$mt_c" -gt "$senal" ] && huerfanos+=("$nombre")

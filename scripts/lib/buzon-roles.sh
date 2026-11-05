@@ -351,3 +351,34 @@ rama_patrones() {
     *)         : ;;   # planificacion y manejo-de-errores no tienen prefijo propio: sin señal
   esac
 }
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# `CIERRE:` auto-declarado — FUENTE ÚNICA del patrón.
+#
+# El campo lo propuso el hallazgo del 2026-10-16 («19 broadcasts nunca se cierran») y lo implementó
+# el janitor el 2026-11-04 (#1704). Vive ACÁ, y no inline en cada consumidor, por dos defectos ya
+# pagados en este repo el MISMO día:
+#
+#   1. El separador era sólo el em dash `—`. El primer cierre real salió con guión ASCII porque el
+#      canal de escritura (PowerShell/Windows) no lo tipea con fiabilidad, y quedó INERTE: escrito,
+#      visible, citado como hecho, y el lector nunca lo vio. Lo que protege del caso hostil (la
+#      PLANTILLA `CIERRE: VENCIDO|REFUTADO|CUMPLIDO — <motivo>`, que el propio doc que define el
+#      campo contiene literal) NO es el glifo: es el `|` que sigue a `VENCIDO`, y eso vale igual
+#      para los cuatro separadores.
+#   2. El janitor conocía el campo y el GATE DE VIGILANCIA no. Resultado medido el 2026-11-05: seis
+#      contratos cerrados minutos antes seguían en el bloque `SIN DUEÑO`, porque el gate mira
+#      `abierto/` y el janitor no los archiva hasta cumplir el TTL de 90 min. Dos criterios sobre el
+#      mismo corpus = el gate grita sobre obligaciones ya cerradas, y un guard que grita en el caso
+#      normal se desarma solo (memoria/el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md).
+#
+# Dos consumidores, UNA definición: archivar-buzon.sh (para archivar) y vigilancia-check.sh (para
+# no acusar). Si mañana hay un tercero, se agrega acá, no se copia el regex.
+CIERRE_AUTODECLARADO='^CIERRE: (VENCIDO|REFUTADO|CUMPLIDO) [^|[:space:]]+ +.+'
+
+# declara_su_cierre <archivo> → rc 0 si el archivo declara su PROPIO cierre.
+# Un archivo ilegible NO cuenta como cerrado: el sesgo va hacia seguir mirándolo, que es el lado
+# recuperable (lo contrario silencia el gate sin dejar rastro).
+declara_su_cierre() {
+  [ -r "$1" ] || return 1
+  grep -qE "$CIERRE_AUTODECLARADO" "$1"
+}

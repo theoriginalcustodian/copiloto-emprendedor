@@ -42,7 +42,7 @@ trap 'rm -rf "$TMP"' EXIT
 # realmente corrio. Medido el 2026-10-13: el resumen decia un literal (`14/14`, y yo lo
 # subi a `17/17`) mientras la corrida imprimia 14 de 18 aserciones — un veredicto que no
 # cuenta lo que miro absuelve a un bloque entero que no se ejecuto.
-ASERCIONES_ESPERADAS=20
+ASERCIONES_ESPERADAS=22
 oks=0
 fallos=0
 ok()   { printf '  ✅ %s\n' "$1"; oks=$((oks + 1)); }
@@ -346,6 +346,37 @@ if printf '%s' "$out" | grep -q "SIN DUEÑO: BACKEND"; then
   ok "un contrato POSTERIOR al acuse vuelve a alarmar (el acuse no es un off-switch)"
 else
   fail "REGRESION: el acuse apago la alarma de un contrato emitido DESPUES. Salida: $out"
+fi
+
+echo "── 9. CONTROL NEGATIVO: el contrato DECLARA SU PROPIO CIERRE → no hay dueno que buscar ──"
+# Diferencial EXACTO del caso 1: mismo buzon, mismo contrato, misma ausencia de backend. La UNICA
+# variable que cambia es el campo `CIERRE:` en el cuerpo. Si el caso 1 alarma y este no, lo que mide
+# es el campo y nada mas (memoria/no-era-que-no-cazaba-el-patron-era-que-no-lo-cazaba-en-su-forma-real.md).
+#
+# MEDIDO el 2026-11-05: sin este filtro el gate acusaba seis contratos cerrados minutos antes,
+# porque el gate mira `abierto/` y el janitor no los archiva hasta cumplir el TTL de 90min. El
+# bloque pasaba de 5 a 54 lineas de ruido, y un guard que grita en el caso normal se desarma solo.
+b="$(nuevo_buzon 9)"; r="$(nuevo_slug_root 9)"
+msg "$b/cerrado/2026-08-12_avance_backend-a-todos_housekeeping.md" 120
+msg "$b/abierto/2026-08-12_contrato_planificacion-a-backend_C4-1-cerrar-signup.md" 118
+# el campo va al cuerpo, con guion ASCII a proposito: es el separador que el entorno produce de
+# verdad, y el que quedaba INERTE con el patron del em dash.
+printf 'CIERRE: CUMPLIDO - la norma ya vive en CLAUDE.md y el sprint cerro.\n' \
+  >> "$b/abierto/2026-08-12_contrato_planificacion-a-backend_C4-1-cerrar-signup.md"
+touch -d "$(hace 118)" "$b/abierto/2026-08-12_contrato_planificacion-a-backend_C4-1-cerrar-signup.md"
+correr "$b" "$r"
+if printf '%s' "$out" | grep -q "C4-1-cerrar-signup"; then
+  fail "acuso un contrato que declara su propio cierre (es el ruido medido el 2026-11-05). Salida: $out"
+else
+  ok "un contrato con CIERRE: no se acusa -- el gate y el janitor usan el MISMO criterio"
+fi
+# Y el control que evita el fail-open: el campo no puede apagar el bloque entero.
+msg "$b/abierto/2026-08-12_contrato_planificacion-a-backend_OTRO-sin-cerrar.md" 118
+correr "$b" "$r"
+if [ "$rc" -eq 1 ] && printf '%s' "$out" | grep -q "OTRO-sin-cerrar"; then
+  ok "el contrato SIN cerrar del mismo rol sigue alarmando (el campo no es un off-switch)"
+else
+  fail "el campo apago el bloque entero: una obligacion viva dejo de acusarse. exit $rc. Salida: $out"
 fi
 
 echo

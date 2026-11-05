@@ -124,4 +124,4 @@ contador agrega dos causas, la medición que atribuye no es el contador: es **la
 **Y lo que sí sostenía el fix** era el test con su control negativo (patrón viejo → 3 fallos; nuevo →
 8/8). Cuando el efecto en producción **no se puede** medir todavía, lo correcto es decir eso —
 «verificado por el test, el efecto llega en la próxima pasada» — y no rellenar el hueco con un número
-cercano ([[sin-evidencia-no-esta-listo]] · [[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]]).
+cercano (CANON 7 · [[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]]).

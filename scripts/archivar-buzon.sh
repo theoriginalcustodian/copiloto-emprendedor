@@ -47,6 +47,11 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# El patrón del campo `CIERRE:` y declara_su_cierre() viven en la lib: FUENTE ÚNICA. Antes estaban
+# inline acá, y el 2026-11-05 eso costó el defecto #2 que la lib documenta: el janitor conocía el
+# campo y el gate de vigilancia no, así que seis contratos cerrados seguían acusados como SIN DUEÑO.
+# shellcheck source=lib/buzon-roles.sh
+. "$REPO_ROOT/scripts/lib/buzon-roles.sh"
 # `coordinacion/` NO está versionada y existe UNA sola vez: en el checkout principal. Derivarla del
 # root de ESTE script hacía que el janitor no viera nada desde ningún worktree —26 vivos, el caso
 # NORMAL— y como abajo salía con exit 0, el vigía lo invocaba y creía haber ordenado el buzón.
@@ -126,9 +131,10 @@ for f in "$ABIERTO"/*.md; do
   # Lo que PROTEGE del caso hostil no es el glifo, es el `|` que sigue a `VENCIDO` en la plantilla,
   # y eso vale igual para los cuatro separadores.
   # El test hostil de los cuatro casos vive en scripts/tests/test-archivar-buzon-campo-cierre.sh.
-  CIERRE_AUTODECLARADO='^CIERRE: (VENCIDO|REFUTADO|CUMPLIDO) (—|–|--|-) .+'
+  # El patrón y la función vienen de lib/buzon-roles.sh (sourceada arriba): UNA definición para los
+  # dos consumidores — este janitor, que archiva, y vigilancia-check.sh, que deja de acusar.
   if echo "$b" | grep -qE "$OBLIGACIONES"; then
-    if grep -qE "$CIERRE_AUTODECLARADO" "$f"; then
+    if declara_su_cierre "$f"; then
       : # declara su propio cierre → cae a los pasos 2 y 3 como cualquier tráfico
     else
       kept_obl=$((kept_obl+1)); continue
