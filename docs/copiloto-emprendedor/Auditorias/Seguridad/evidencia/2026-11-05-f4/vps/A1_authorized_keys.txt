@@ -1,0 +1,5 @@
+/root/.ssh/authorized_keys: 2 llaves
+  256 SHA256:[ENMASCARADO] (ED25519)
+  256 SHA256:[ENMASCARADO] (ED25519)
+/home/kaggle-tunnel/.ssh/authorized_keys: 1 llaves
+  256 SHA256:[ENMASCARADO] (ED25519)

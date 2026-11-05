@@ -1,0 +1,12 @@
+port 22
+usepam yes
+logingracetime 30
+maxauthtries 3
+clientaliveinterval 300
+permitrootlogin without-password
+pubkeyauthentication yes
+passwordauthentication no
+kbdinteractiveauthentication no
+x11forwarding no
+permitemptypasswords no
+allowtcpforwarding yes

@@ -1,0 +1,19 @@
+copiloto-test-db|postgres:17-alpine|Up 42 minutes|127.0.0.1:55432->5432/tcp
+copiloto-test-gotrue-aud-proxy-1|caddy:2|Up 9 hours|80/tcp, 443/tcp, 2019/tcp, 443/udp, 127.0.0.1:9976->9976/tcp
+copiloto-test-gotrue-aud-auth-1|supabase/gotrue:v2.186.0|Up 9 hours (healthy)|
+copiloto-test-gotrue-aud-db-1|postgres:16-alpine|Up 9 hours (healthy)|5432/tcp
+copiloto-test-gotrue-aud-mailpit-1|axllent/mailpit:v1.21|Up 9 hours (healthy)|1025/tcp, 1110/tcp, 127.0.0.1:8976->8025/tcp
+copiloto-test-db-aud|postgres:17-alpine|Up 9 hours|127.0.0.1:55436->5432/tcp
+copiloto-auth-auth-1|supabase/gotrue:v2.186.0|Up 9 hours (healthy)|
+copiloto-auth-proxy-1|caddy:2|Up 9 hours|80/tcp, 443/tcp, 2019/tcp, 443/udp, 127.0.0.1:9997->9997/tcp
+copiloto-auth-db-1|postgres:16-alpine|Up 9 hours (healthy)|5432/tcp
+clinic-frontend|clinic-frontend:demo|Up 9 hours|0.0.0.0:3000->3000/tcp, :::3000->3000/tcp
+evolution-api|evoapicloud/evolution-api:v2.3.7|Up 9 hours|127.0.0.1:8085->8080/tcp
+evolution-postgres|postgres:15-alpine|Up 9 hours|5432/tcp
+evolution-redis|redis:7-alpine|Up 9 hours|6379/tcp
+hermes-dashboard|hermes-agent|Up 9 hours|
+hermes|hermes-agent|Up 9 hours|
+temporal-admin-tools|temporalio/admin-tools:1.29|Up 9 hours|
+temporal-ui|temporalio/ui:2.50.0|Up 9 hours|127.0.0.1:8080->8080/tcp
+temporal-server|temporalio/auto-setup:1.29|Up 9 hours (healthy)|6933-6935/tcp, 6939/tcp, 7234-7235/tcp, 7239/tcp, 127.0.0.1:7233->7233/tcp
+temporal-postgres|postgres:16-alpine|Up 9 hours (healthy)|5432/tcp
