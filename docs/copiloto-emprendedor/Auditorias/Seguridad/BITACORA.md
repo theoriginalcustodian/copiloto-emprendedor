@@ -21,3 +21,4 @@
 | 2026-11-05 08:30:06 | F4-revG | opus | 1397a309b610 | e43bf865 | 1 | 192 | docs/copiloto-emprendedor/Auditorias/Seguridad/evidencia/2026-11-05-f4/headless/F4-revG-opus.json |
 | 2026-11-05 08:34:37 | F4-ciego | fable | 1838bf15ff0b | e43bf865 | 1 | 463 | docs/copiloto-emprendedor/Auditorias/Seguridad/evidencia/2026-11-05-f4/headless/F4-ciego-fable.json |
 | 2026-11-05 08:36:27 | F4-revG2 | opus | 8b90ead197ae | e43bf865 | 1 | 95 | docs/copiloto-emprendedor/Auditorias/Seguridad/evidencia/2026-11-05-f4/headless/F4-revG2-opus.json |
+| 2026-11-05 | SEC-C8-1 | `TenantErasureWorkflow` + `/cuenta` + `/admin/tenants/{id}/borrar` (#1696 @4f34c5ba, desplegado) | E2E prod con tenant descartable (evidencia/2026-11-05-f4/sec-d8-e2e-prod.json); gate 5/5, CI 6/6 | revert del PR (aditivo, sin migración) |

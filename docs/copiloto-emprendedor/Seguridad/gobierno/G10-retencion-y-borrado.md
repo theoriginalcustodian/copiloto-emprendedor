@@ -10,4 +10,4 @@
 | Graphity | indefinida | **sin borrado por tenant** |
 | Composio connections | indefinida | **sin revocación en el código** |
 
-**Borrado de tenant:** no existe; es la BRECHA SEC-D8 y el primer entregable de su ficha (orden propuesto: revocar Composio → borrar Graphity → borrar filas por `cliente_id` → baja GoTrue → esperar rotación de backups).
+**Borrado de tenant:** implementado (SEC-D8, #1696): suspender → Schedules/workflows → revocar Composio → borrar Graphity → borrar filas por `cliente_id` (`tenants` al final) → baja GoTrue → recibo de conteos en la auditoría. **Se retienen** `afip_comprobantes` (fiscal), `copiloto_auditoria` (append-only) y `copiloto_metering`. **Backups:** la supresión se completa cuando rota el último pg_dump con datos del tenant; la retención medida de `uc-backup-local` es de 7 días (`UC_BACKUP_RETENCION_DIAS`), así que la supresión queda completa en ≤7 días. El off-site futuro (SEC-D1) deberá heredar un tope igual o menor.
