@@ -1046,3 +1046,26 @@ diferencia entre medir y no medir. Resuelto de raíz, no con un `as`: web **reex
 core (`apps/copiloto-web/src/lib/api/types.ts:66,138`), y la verificación es el conteo de
 definiciones (core 1 / web 0, medido en `origin/main` @ `40df2a15`), no un `tsc` verde — que pasa
 igual si el tipo se colapsa al angosto ([[dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una]]).
+
+## Refuerzo 2026-11-05 — el loop que esperaba al CI no miraba el rojo, y mergeé con `lint` en rojo
+
+El instrumento era un bucle propio de espera: `gh pr checks <PR>` cada 30 s, y
+`if ($o -notmatch 'pending|in_progress') { break }`. Es decir: **rompía cuando el output dejaba de
+decir «todavía corriendo»**, y eso es verdadero tanto si todo pasó como si algo falló. El `fail`
+nunca se evaluaba. Salí del loop, leí «ya no está pendiente» como «está verde» y mergeé el PR #1688
+con `lint` **rojo**.
+
+La forma del defecto es la de esta entrada, pero invertida: el `tsc` de arriba salía verde **sin
+compilar nada**; acá el bucle salía **sin leer el veredicto**. En los dos casos la salida es
+indistinguible de un éxito y por eso se lee como uno. La pregunta que lo caza es la misma de siempre
+en su versión para un gate de espera: no *¿terminó?* sino **¿qué dijo?** — un control de espera tiene
+que ramificar por el resultado **antes** de ramificar por la ausencia de «pending», y el caso rojo va
+primero, porque es el único que cuesta plata si se omite.
+
+El arreglo es una línea y está medido: `if ($o -match 'fail') { break }` **antes** del chequeo de
+pendiente, y después del loop se afirma el verde, no se asume. Con eso el PR #1689 esperó, mostró
+`VERDE` con los seis checks y recién ahí se mergeó.
+
+Y lo que esto desarma: la autorización permanente de mergear **no** es autorización para mergear sin
+mirar. La precondición sigue siendo el verde; lo que la orden del operador elimina es la **pregunta**,
+no la **verificación**.
