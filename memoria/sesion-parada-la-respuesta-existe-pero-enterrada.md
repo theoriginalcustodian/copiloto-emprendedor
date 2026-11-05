@@ -35,3 +35,29 @@ sesión que espera, no volver a preguntar.
    El que espera mira su propio hilo; una respuesta en el archivo de otro es invisible para él.
 4. **Si de verdad no existe**, entonces sí: `dato_` a quien puede contestar, marcando si NO necesita
    device (respuesta de memoria/decisión/lectura) — es lo que más rápido libera.
+
+## Refuerzo 2026-11-05 — la refutación estaba en mi PROPIO archivo cerrado, de hace tres meses
+
+Siete fichas del sprint de pulido figuraban bloqueadas por «hace falta la voz del operador», y el
+operador —que no estaba frente a la máquina— preguntó si no se podía usar el TTS de Windows.
+**La respuesta era sí, y estaba acreditada desde el 2026-08-04 en un cierre de este mismo equipo:**
+`cerrado/2026-08-04/…_listo_frontend-a-backend_e2e-BETA1a-feedback-texto-y-voz.md` dice textual
+«TTS real, Windows SAPI, voz `Microsoft Helena Desktop` — el mic del device la captó de verdad»,
+con transcripción correcta del STT. **Tres meses, y nadie lo citó en dos días de sprint.**
+
+El mecanismo es el de esta entrada —la respuesta existe pero enterrada— con **otro corpus**: no es
+otra sesión que contestó y quedó tapada, es el **buzón cerrado del propio proyecto**. Y por eso
+muerde distinto: una sesión parada al menos *se nota*; una precondición falsa no da ningún síntoma.
+Se hereda, se escribe en los `Falta:` de siete fichas, y queda esperando a una persona.
+
+**La pregunta que lo caza, antes de escribir un bloqueo en un `Falta:`:** ¿esto se intentó alguna
+vez? Un `grep` por el mecanismo —no por la ficha— sobre `cerrado/` y `memoria/`. Costó cuatro
+búsquedas encontrarlo.
+
+**El falso positivo que casi me frena, y vale tanto como el hallazgo:** la primera búsqueda trajo un
+contrato mío del 2026-11-03 titulado literalmente «**y el AUDIO se descarta**». Parecía el
+precedente que cerraba la puerta. **Era otra cosa:** el altavoz de pronunciación de la marca («se
+dice o-DO-bi»), descartado por el operador. Dos referentes para la misma palabra, y el que aparece
+primero en el grep es el que no servía — ver
+[[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]. Si lo hubiera citado sin abrirlo, habría
+confirmado el bloqueo con una autoridad que medía otra cosa.
