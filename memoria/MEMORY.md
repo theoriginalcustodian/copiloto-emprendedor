@@ -7,7 +7,7 @@
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
 
 - **🌐 EL REPO ES PÚBLICO** (2026-08-06). Un `.env` commiteado es público al instante; historia auditada: 0 secretos. `CLAUDE.md` §cabecera.
-- **📊 SPRINT VIGENTE = CORRECCIONES DEL MAPA** @`eea4b80c`: 99 fichas · 86 TERMINADO · 11 DOD-PARCIAL. Sólo lo mide `sprint-estado.py`.
+- **📊 SPRINT VIGENTE = PULIDO FINAL**: 14 fichas · 2 OK · 4 decididas · 7 DOD-PARCIAL (device/voz) · 1 abierta. Mide `sprint-estado.py`.
 - **⚙️ CI PROPIO (ADR-001)** - la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
 - **🌳 Checkout compartido: MEZCLADO en los DOS sentidos** — archivos ATRASADOS (commitearlos revierte fixes) y trabajo real sin respaldo; `??` ≠ nuevo. Medí el SIGNO contra main, por archivo.
 - **🚧 Abiertos:** clientes por voz · ingesta al grafo: corre VACÍA, falta tráfico. [[copiloto-ingesta-grafo-por-tenant-real-frente-abierto]]
@@ -58,7 +58,7 @@
 - [🎯 El control positivo cubre la mitad que sospechás](el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda.md) - el verde acredita al ciego.
 - [🔌🕳️ La costura leía un campo que NADIE escribe](la-costura-leia-un-campo-que-nadie-escribe.md) - grepeá quién ESCRIBE, no quién lee.
 - [🐤 El canario: control positivo de lo que falla CALLADO](el-canario-el-control-positivo-de-lo-que-falla-callado.md) - inyectá el caso a propósito.
-- 🖼️🎭 El instrumento INVENTA: [una referencia que no existe](el-instrumento-fabrica-una-referencia-que-no-existe.md) · [un id fabricado](un-id-que-fabrica-el-instrumento-no-puede-parecerse-a-uno-real.md) - nadie los distingue.
+- 🖼️ El instrumento INVENTA y nadie lo nota: [una referencia](el-instrumento-fabrica-una-referencia-que-no-existe.md) · [un id](un-id-que-fabrica-el-instrumento-no-puede-parecerse-a-uno-real.md) · [la ficha AJENA](la-norma-vivia-en-el-encabezado-del-doc-que-iba-a-editar.md).
 - 👯❓ [Una asimetría entre GEMELOS no prueba que uno esté mal](una-asimetria-entre-gemelos-no-prueba-que-uno-este-mal.md) - ¿qué pregunta hace cada lado?
 - [🏷️🎭 Un NOMBRE con dos referentes: se prueba A y se concluye B](un-nombre-con-dos-referentes-prueba-A-y-concluye-B.md) — y el verificador confirma: mide A.
 - 📬 [Un `cierre_` ajeno puede traer tu cola hecha](un-cierre-dirigido-a-otra-sesion-puede-contener-exactamente-tu-cola.md) · [una NORMA no tiene estado terminal](una-norma-no-tiene-estado-terminal-en-un-buzon-de-entregables.md)
