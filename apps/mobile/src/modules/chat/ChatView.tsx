@@ -49,6 +49,13 @@ export interface ChatViewProps {
    * `avisoEntrante`. `id` crece con cada audio.
    */
   audioEntrante?: { audio: ArchivoSubida; duracionSeg: number; id: number } | null;
+  /**
+   * SM-P1 — el chat acaba de tomar y mandar un mensaje que otra pantalla le dejó (`dejarPendiente`: «Cómo usar»,
+   * «Nuevo evento»…). Esa pantalla cierra su glass y el usuario queda donde estaba —con el escritorio abierto si
+   * venía de Ajustes—, con el chat abajo: la pregunta se mandó pero el destino no se alcanzó. Lo dueña el shell,
+   * que es quien sube el chat y cierra el escritorio.
+   */
+  onPendienteMandado?: () => void;
 }
 
 /**
@@ -92,7 +99,7 @@ export interface ChatViewProps {
  * este ownership) que ya aporta el chrome — mismo criterio que `PantallaFacturacion`/`PantallaApps`
  * en `escritorio/`. Un `backgroundColor` acá taparía el vidrio detrás.
  */
-export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrante = null, desplazamientoTeclado = 0 }: ChatViewProps = {}) {
+export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrante = null, desplazamientoTeclado = 0, onPendienteMandado }: ChatViewProps = {}) {
   const tema = useTema();
   // `''` sólo si `me` todavía no resolvió (no debería pasar: el guard de `_layout.tsx` exige
   // `estado === 'autenticado'` antes de montar este árbol) — `useChat` degrada ese caso a sesión
@@ -173,8 +180,11 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
     useCallback(() => {
       if (!hidratado) return;
       const texto = tomarPendiente();
-      if (texto != null) void send(texto, { kind: 'text' });
-    }, [send, hidratado]),
+      if (texto != null) {
+        void send(texto, { kind: 'text' });
+        onPendienteMandado?.();
+      }
+    }, [send, hidratado, onPendienteMandado]),
   );
 
   // El confirm/cancel del gate (`ListaMensajes`/`mapearGate`) reenvía acá como `kind:'callback'` —

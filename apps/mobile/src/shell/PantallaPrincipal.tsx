@@ -221,6 +221,12 @@ export function PantallaPrincipal() {
     setAvisoEntrante(null);
     setSenalBajar((n) => n + 1);
   }, []);
+  // SM-P1: una pantalla (Cómo usar, Nuevo evento) dejó una pregunta y cerró su glass: el chat la manda y TIENE que quedar
+  // arriba, con el escritorio cerrado. Si no, la pregunta se manda pero el usuario ve el escritorio y el chat queda detrás.
+  const alMandarPendiente = useCallback(() => {
+    setSenalCerrar((n) => n + 1);
+    setSenalSubir((n) => n + 1);
+  }, []);
   const alBajarChat = useCallback(() => {
     setSenalCerrar((n) => n + 1);
     // El contexto de un aviso vive mientras la conversación está arriba por ese aviso: bajarla (con el
@@ -309,6 +315,7 @@ export function PantallaPrincipal() {
         avisoEntrante={avisoEntrante}
         onVolverAlTablero={alVolverAlTablero}
         audioEntrante={audioEntrante}
+        onPendienteMandado={alMandarPendiente}
         desplazamientoTeclado={ALTO_HANDLE + espacioSuperior(insets.top)}
       />
     </PanelDeslizable>

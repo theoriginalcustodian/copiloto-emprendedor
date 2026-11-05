@@ -29,6 +29,7 @@ import Animated, {
   Easing,
   runOnJS,
   type SharedValue,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -227,6 +228,25 @@ export function translacionPanel(
   'worklet';
   if (recorrido <= 0) return panelY;
   return panelY + ocultarTira * altoTira * (panelY / recorrido);
+}
+
+/**
+ * SM-P5 (device, 2026-11-05): dónde queda `panelY` cuando el `recorrido` CAMBIA con la app ya abierta.
+ *
+ * 🔴 **Con el teclado abierto el campo de Mi día desaparecía.** El teclado achica la ventana (`ADJUST_RESIZE`), el
+ * `onLayout` baja `recorrido` (de ~819 a ~330) pero `panelY` se quedaba en el valor viejo, y `translacionPanel` no lo
+ * limita: el panel se dibujaba a 819 px en una ventana de 925 → el campo quedaba DEBAJO del teclado. Se escribía sin
+ * ver lo escrito. Medido en device con el build 7d278a2c: `mServedView=null`, captura sin campo sobre el teclado.
+ *
+ * Regla: si el panel estaba ABAJO (tocando el techo viejo) sigue al techo nuevo — baja con el teclado y vuelve al
+ * cerrarlo —; en cualquier otra posición sólo se le prohíbe pasar del techo nuevo. La PRIMERA medida (`previo` 0) no
+ * se toca: la posición inicial la fija el `onLayout` en el frame siguiente.
+ */
+export function panelYAlCambiarRecorrido(panelY: number, previo: number, nuevo: number): number {
+  'worklet';
+  if (previo <= 0 || nuevo <= 0) return panelY;
+  if (panelY >= previo - 1) return nuevo;
+  return Math.min(panelY, nuevo);
 }
 
 /**
@@ -448,6 +468,17 @@ export function PanelDeslizable({
     };
   }, [panelY, inicio, recorrido, setPanelAbajoConAviso, avisarBajada, insetTop]);
   const { gestoAsa, gestoPie } = gestos;
+
+  // SM-P5: el techo del recorrido cambia cuando entra/sale el teclado; `panelY` lo sigue si estaba abajo. En el hilo
+  // de UI (no en el `onLayout`: ahí una escritura se pierde, ver más abajo) y sin estado de React.
+  useAnimatedReaction(
+    () => recorrido.value,
+    (actual, previo) => {
+      if (previo == null) return;
+      const y = panelYAlCambiarRecorrido(panelY.value, previo, actual);
+      if (y !== panelY.value) panelY.value = y;
+    },
+  );
 
   // SM-N22: con el panel abajo se ve el campo de Mi día (`pieAbajo`) y el chat se oculta; arriba, al revés. Mismo
   // criterio que los rótulos: lo decide `panelY` en el hilo de UI, no un estado de React.
