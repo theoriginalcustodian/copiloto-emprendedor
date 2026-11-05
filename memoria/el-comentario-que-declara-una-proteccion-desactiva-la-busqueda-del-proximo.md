@@ -190,3 +190,37 @@ declaración no divergan. Un mecanismo retirado no frena a la próxima fila bloq
 - Un control positivo del derivado: inyectá una entrada falsa en la tabla y verificá que el aviso
   **reaparece y la nombra**. Sin eso, «lo derivé» es autoevaluación.
   → [[medir-si-un-gate-dispara-antes-de-embarcarlo]] · [[documentar-el-cambio-en-un-comentario-nuevo-deja-vivo-el-viejo]]
+
+
+## Refuerzo 2026-11-05 — la protección cubría los campos ESTRUCTURADOS, y el mismo dato pasaba en PROSA
+
+SM-P14: una card de presupuesto sin resolver contaminaba la respuesta a «¿cómo emito mi primera
+factura?». Bajé el contrato con una hipótesis: *la propuesta viaja en el `observation` y nadie la saca,
+así que el fix ya existe en otro call-site y sólo hay que propagar el `observation.pop`*. Lo que me la
+hizo creer fue **un comentario que declara la protección**, `conversation_workflow.py:482-484`:
+
+> «`recibo` es para la CARD, no para el modelo: se saca de lo que ve el LLM, como `gate_card`.»
+
+Es verdadero, está bien escrito, y nombra **dos** campos saneados. Leerlo me dio el criterio y, con él,
+la conclusión de que a un tercer campo le faltaba el mismo trato. **Medido: no le falta.** La
+estructura de la propuesta ni siquiera pasa por ahí — viaja en `artifact`, campo **hermano** de
+`observation`, y el mensaje que entra al transcript se arma **sólo** con `observation` (`:489`). O sea
+que había **tres** canales y el comentario describía dos; el tercero ya estaba limpio por otra vía.
+
+**Lo que sí contamina es la prosa del propio `observation["result"]`** (`tool_catalog.py:999-1003`):
+`f"Propuse un presupuesto de «{concepto}» para {cliente_nombre}…"`. El dato no viaja como campo:
+viaja **interpolado en una instrucción en lenguaje natural** que el saneamiento por clave no puede
+ver, porque no hay clave que sacar. Y el alcance es el patrón, no la tool: seis `observation` lo hacen,
+y el grave es `:1066` (`consultar_cliente`), que deja **nombre y últimas operaciones de un cliente**
+en el tail de los 80 mensajes siguientes.
+
+**La regla:** cuando un comentario declara «este dato no lo ve el modelo», preguntá **por qué canales
+podría verlo igual**, y contá los canales en el código, no en el comentario. Un saneamiento **por
+clave** (`pop("gate_card")`) es ciego a la **misma información escrita en prosa** en el campo de al
+lado. Buscá el dato por su **valor** —el nombre del cliente, el monto— no por el nombre del campo que
+lo transporta. [[la-costura-leia-un-campo-que-nadie-escribe]] · [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]
+
+**Y el corolario de diseño:** la prosa era *correcta* para el turno en curso (le prohíbe decir «anoté»
+y le da la frase exacta — es el fix `narra-sin-hacer` v2) y es contaminación en cuanto sobrevive al
+turno. Dos decisiones correctas; el hueco vive en el par, no en ninguna de las dos.
+[[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]]
