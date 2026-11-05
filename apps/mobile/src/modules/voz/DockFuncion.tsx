@@ -11,6 +11,7 @@ import {
 
 import { DockEntrada } from '../chat/DockEntrada';
 import { DockSobreContenido } from '../../theme/glass/DockSobreContenido';
+import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
 import { borrarArchivoLocal } from './borrarArchivoLocal';
 
@@ -91,12 +92,13 @@ export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError,
             {`Entendí: «${porConfirmar}»`}
           </Text>
           <View style={styles.confirmarBotones}>
-            <Pressable testID="dock-funcion-confirmar-descartar" accessibilityRole="button" onPress={() => setPorConfirmar(null)}>
+            <Pressable testID="dock-funcion-confirmar-descartar" accessibilityRole="button" style={pressableStyle(undefined, PRESS_FADE)} onPress={() => setPorConfirmar(null)}>
               <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Descartar</Text>
             </Pressable>
             <Pressable
               testID="dock-funcion-confirmar-enviar"
               accessibilityRole="button"
+              style={pressableStyle(undefined, PRESS_FADE)}
               onPress={() => {
                 const t = porConfirmar;
                 setPorConfirmar(null);
