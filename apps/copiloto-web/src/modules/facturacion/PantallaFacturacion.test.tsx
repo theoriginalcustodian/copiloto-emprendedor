@@ -309,11 +309,11 @@ describe('PantallaFacturacion (web) — idem_key en "Nueva factura" (FACTID)', (
 });
 
 /**
- * SM-P7 — el dock del pie sólo se monta con el gate `listo` Y la vista `listado` (misma condición que
- * mobile, `PantallaFacturacion.tsx:706`). Control negativo en los dos ejes: con el gate bloqueado no
- * hay adónde mandar el pedido, y en el wizard el dock compite con los campos del paso.
+ * SM-P7 — el dock del pie va SIEMPRE (decisión del operador 2026-11-04): con el gate bloqueado y con el
+ * wizard abierto también. Antes un test afirmaba lo contrario (gate listo Y vista listado) y estaba
+ * verde POR la condición que había que eliminar.
  */
-describe('PantallaFacturacion (web) — SM-P7: dock del pie sólo con gate listo y vista listado', () => {
+describe('PantallaFacturacion (web) — SM-P7: el dock del pie va siempre', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCrearFactura.mockResolvedValue({ status: 'ok', ok: true, facturaId: 'factura-1' });
@@ -335,21 +335,21 @@ describe('PantallaFacturacion (web) — SM-P7: dock del pie sólo con gate listo
     expect(mockCrearFactura).not.toHaveBeenCalled();
   });
 
-  it('gate bloqueado: NO hay dock', async () => {
+  it('gate bloqueado: el dock sigue estando', async () => {
     mockEstadoAfip.mockResolvedValue(estadoAfipMock({ puedeFacturar: false, motivoNoPuedeFacturar: null }));
     render(<PantallaFacturacion onAbrirChat={vi.fn()} onConfigurar={() => {}} />);
     await waitFor(() => expect(screen.getByTestId('facturacion-cta-configurar')).toBeInTheDocument());
 
-    expect(screen.queryByTestId('dock-funcion')).not.toBeInTheDocument();
+    expect(screen.getByTestId('dock-funcion')).toBeInTheDocument();
   });
 
-  it('wizard abierto (borrador externo): NO hay dock', async () => {
+  it('wizard abierto (borrador externo): el dock sigue estando', async () => {
     mockEstadoAfip.mockResolvedValue(estadoAfipMock());
     mockEsperarEstadoEstable.mockResolvedValue({ convergio: true, estado: estadoMock() });
     render(<PantallaFacturacion facturaIdInicial="factura-1" onAbrirChat={vi.fn()} />);
     await waitFor(() => expect(screen.getByTestId('facturacion-paso-datos-venta')).toBeInTheDocument());
 
-    expect(screen.queryByTestId('dock-funcion')).not.toBeInTheDocument();
+    expect(screen.getByTestId('dock-funcion')).toBeInTheDocument();
   });
 });
 

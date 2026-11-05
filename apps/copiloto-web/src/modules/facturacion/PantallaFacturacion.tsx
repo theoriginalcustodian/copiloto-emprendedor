@@ -565,12 +565,10 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar, onAbrirCha
         />
       )}
 
-      {/* SM-P7 — mismo dock que el resto de las funciones, con la MISMA condición que mobile
-          (`PantallaFacturacion.tsx:706`: gate `listo` Y vista `listado`). En el wizard no va: ahí el
-          emprendedor está cargando datos en campos propios y un segundo campo de texto compite con ellos. */}
-      {onAbrirChat && gate.tipo === 'listo' && vista === 'listado' && (
-        <DockFuncion onAbrirChat={onAbrirChat} placeholder="Pedile una factura al copiloto…" />
-      )}
+      {/* SM-P7 — mismo dock que el resto de las funciones, SIEMPRE montado (decisión del operador
+          2026-11-04: sin condiciones de gate ni de vista). Ojo, a diferencia de mobile: en web antes no
+          había NINGÚN dock en esta pantalla, así que no existía condición que lo ocultara. */}
+      {onAbrirChat && <DockFuncion onAbrirChat={onAbrirChat} placeholder="Pedile una factura al copiloto…" />}
     </div>
   );
 }
