@@ -90,7 +90,7 @@ import { ThemeProvider } from '../theme/ThemeProvider';
 import { PantallaPrincipal } from './PantallaPrincipal';
 
 describe('PantallaPrincipal — SM-I2/SM-P9: el dock de Mi día entra al chat', () => {
-  it('🔴 el campo de Mi día SE EDITA y lo escrito/dictado se MANDA una vez por el chat; el mic del chat transcribe y pega', async () => {
+  it('🔴 el campo de Mi día SE EDITA y lo escrito/dictado se MANDA una vez por el chat; el mic del chat también manda el audio', async () => {
     jest.mocked(leerTablero).mockResolvedValue({ status: 'ok', tablero: { solapas: [] } } as any);
     jest.mocked(leerCalendario).mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
     jest.mocked(listarCatalogo).mockResolvedValue({ status: 'ok', servicios: [] });
@@ -142,9 +142,9 @@ describe('PantallaPrincipal — SM-I2/SM-P9: el dock de Mi día entra al chat', 
     expect(jest.mocked(api.sendAudio).mock.calls[0]).toContainEqual(audio);
     expect(transcribir).not.toHaveBeenCalled();
 
-    // El dock del CHAT, en cambio, transcribe y pega (2026-11-04). `sendAudio` sigue en 1.
+    // El dock del CHAT hace LO MISMO (2026-11-04: el mic funciona igual en toda la app): manda el audio.
     await fireEvent.press(mics[0]!);
-    await waitFor(() => expect(transcribir).toHaveBeenCalledTimes(1));
-    expect(api.sendAudio).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(api.sendAudio).toHaveBeenCalledTimes(2));
+    expect(transcribir).not.toHaveBeenCalled();
   });
 });
