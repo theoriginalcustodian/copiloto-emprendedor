@@ -56,7 +56,7 @@ campo»*.
 | **SM-P10** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | La IMPLEMENTACION del dock es de SM-P6 (quitar las dos condiciones de PantallaFacturacion.tsx:706: hecho en 0212ba19 … |
 | **SM-P11** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA: la pregunta de esta ficha se disolvio, no se resolvio. Era condicional a que frontend1 necesitara un contexto n… |
 | **SM-P12** | `sin-issue` | 🟨 EN-CURSO | frontend1 (RF8T318RN9T, Metro propio desde wt-fe1-ped en main b6b342bb) |
-| **SM-P13** | `sin-issue` | 🟧 DOD-PARCIAL | Los DOS cableados ya estan en main: web 40df2a15 (#1661) y mobile b6b342bb (#1662), sobre el backend 2ca3f7ad (#1660,… |
+| **SM-P13** | `sin-issue` | 🟧 DOD-PARCIAL | Los DOS cableados estan en main: web 40df2a15 (#1661) y mobile b6b342bb (#1662), sobre el backend 2ca3f7ad (#1660). C… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -301,7 +301,7 @@ campo»*.
 
 - **Estado:** DOD-PARCIAL
 - **Dueno-activo:** frontend1 (mobile) + frontend2 (web) -- el lado backend ya esta en main
-- **Falta:** Los DOS cableados ya estan en main: web 40df2a15 (#1661) y mobile b6b342bb (#1662), sobre el backend 2ca3f7ad (#1660, 48 passed en el VPS con test adversarial y control positivo). El ChatRequest quedo unificado en el core (web lo REEXPORTA: definiciones core 1 / web 0). FALTA SOLO: (1) device, dictar una factura y ver la card prellenada SIN que se emita nada, con e2e-device@copiloto.test y nunca contra el tenant fiscal del operador -- es parte de la pasada de SM-P12; (2) la verificacion en navegador real de la mitad web, que se midio con jsdom y mocks de red.
+- **Falta:** Los DOS cableados estan en main: web 40df2a15 (#1661) y mobile b6b342bb (#1662), sobre el backend 2ca3f7ad (#1660). ChatRequest unico en el core. VERIFICADO en navegador real (Playwright, build ae21d662 desplegado en copilotoemprendedor.duckdns.org, usuario e2e-device, 2026-11-05): POST /chat kind dictado:factura + polling /reply con sesion dictado:factura:<sid> contra el backend real, card factura-propuesta con la propuesta (Mi Dia, Consumidor Final, 1x15000, total 15000), sin Emitir y con Completar a mano (el backend la marco incompleta), nada emitido; Completar a mano abre el wizard y limpia la card. HALLAZGO que jsdom no veia, corregido en #1683 (ae21d662): la card se pintaba en y=999-1208 con viewport 889, detras del dock y sin scroll, y el foco quedaba en BODY; ahora y=545-754 sobre el dock (772) y foco en el textarea. NO verificado en navegador: que el wizard conserve el borrador prellenado en los pasos siguientes (lo cubre jsdom). FALTA SOLO: device, dictar una factura y ver la card prellenada sin que se emita nada, con e2e-device@copiloto.test y nunca el tenant fiscal del operador (pasada de SM-P12).
 - **Dueño:** backend (la línea, HECHA) + frontend1 (cableado mobile) + frontend2 (cableado web)
 - **Por qué es una ficha nueva y no SM-P6 ni SM-P11:** nace de la **segunda** decisión del operador
   del 2026-11-04, posterior a las dos. SM-P6 ya cerró su pregunta (el dock va siempre, sin
