@@ -6,6 +6,8 @@ import type { FlatList } from 'react-native-gesture-handler';
 
 import {
   ROTULO_VOLVER_AL_TABLERO,
+  avisoErrorTranscripcion,
+  transcribir,
   type ArchivoSubida,
   type AvisoAlChat,
   type CierreAviso,
@@ -13,6 +15,7 @@ import {
 
 import { registrarDespachoChat } from '../../navegacion/despachoAlChat';
 import { useSession } from '../auth/useSession';
+import { borrarArchivoLocal } from '../voz/borrarArchivoLocal';
 import { DockEntrada } from './DockEntrada';
 import { ListaMensajes } from './ListaMensajes';
 import { tomarPendiente } from './mensajePendiente';
@@ -113,7 +116,7 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
   // El composer toma UNA semilla (el aviso de Mi día) y la aplica una vez por id.
   const avisoVisto = useRef<number | null>(null);
   if (avisoEntrante != null && avisoEntrante.id !== avisoVisto.current) avisoVisto.current = avisoEntrante.id;
-  const semilla = useMemo(
+  const semillaAviso = useMemo(
     () => (avisoEntrante != null ? { texto: avisoEntrante.aviso.texto, id: avisoEntrante.id * 2 } : null),
     [avisoEntrante],
   );
@@ -205,7 +208,31 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
   );
 
   // El mic MANDA el audio (como WhatsApp: soltar o Enviar tras fijar), igual que en Mi día y en las funciones.
-  const alAudio = useCallback((audio: ArchivoSubida, duracionSeg: number) => void enviarAudio(audio, duracionSeg), [enviarAudio]);
+  // SM-P14 — el mic del chat NO manda: transcribe y PEGA el texto en el composer para que el usuario lo vea, lo
+  // corrija y lo envíe él. Sin piso de longitud: «Sí»/«No» son confirmaciones HITL legítimas; el criterio acá es
+  // mostrar, no rechazar. El audio crudo se descarta (no se sube al agente). Mi día y las funciones siguen mandando.
+  const [pegado, setPegado] = useState<{ texto: string; id: number } | null>(null);
+  const [avisoVoz, setAvisoVoz] = useState<string | null>(null);
+  const contadorPegado = useRef(0);
+  // Un aviso nuevo de Mi día tiene prioridad sobre un pegado viejo ya aplicado: si no, `pegado ?? aviso` lo taparía.
+  useEffect(() => setPegado(null), [avisoEntrante]);
+  const alAudio = useCallback(async (audio: ArchivoSubida, _duracionSeg: number) => {
+    setAvisoVoz(null);
+    try {
+      const res = await transcribir(audio);
+      const texto = res.transcript.trim();
+      if (texto === '') {
+        setAvisoVoz('No se entendió el audio. Probá de nuevo.');
+        return;
+      }
+      contadorPegado.current += 1;
+      setPegado({ texto, id: contadorPegado.current * 2 + 1 });
+    } catch (err) {
+      setAvisoVoz(avisoErrorTranscripcion(err));
+    } finally {
+      await borrarArchivoLocal(audio);
+    }
+  }, []);
 
   // SM-N25 — alto real del dock flotante: es el padding que la lista reserva al final. Medido, no supuesto.
   const [altoDock, setAltoDock] = useState(0);
@@ -292,13 +319,18 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
       />
       <View testID="chat-dock-flotante" onLayout={alMedirDock} pointerEvents="box-none" style={styles.dockFlotante}>
         <ScrimDock testID="chat-dock-scrim" />
+      {avisoVoz !== null && (
+        <Text testID="chat-aviso-voz" accessibilityLiveRegion="polite" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, textAlign: 'center' }}>
+          {avisoVoz}
+        </Text>
+      )}
       <DockEntrada
         motivoFallo={estado?.motivoFallo ?? null}
         sendStatus={estado?.sendStatus ?? 'idle'}
         onEnviarTexto={manejarEnvio}
         onAudio={alAudio}
         disabled={estado === null}
-        semilla={semilla}
+        semilla={pegado ?? semillaAviso}
         scrollRef={scrollRef}
       />
       </View>

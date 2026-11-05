@@ -750,6 +750,7 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
         contexto="factura"
         placeholder="Una factura, o hablá…"
         onTexto={(t) => void alDictarFactura(t)}
+        confirmarDictado
         onError={setErrorMic}
         disabled={dictado.ocupado}
       />
