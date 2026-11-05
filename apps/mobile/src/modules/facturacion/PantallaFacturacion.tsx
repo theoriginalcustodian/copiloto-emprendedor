@@ -1,4 +1,4 @@
-import { router, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 // 🔴 `RefreshControl` de RNGH, no el de `react-native`: el scroll de RNGH espera a ESE handler
@@ -38,8 +38,8 @@ import { useTema } from '../../theme/ThemeProvider';
 // que recibe el foco en vez de dejarlo tapado por el teclado. Ver su docstring y el de `MarcoGlass`.
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
-import { despacharTextoAlChat } from '../../navegacion/despachoAlChat';
-import { AvisoDictado, DockFuncion, useDictadoPorFuncion } from '../voz';
+import { AvisoDictado, DockFuncion } from '../voz';
+import { useDictadoFactura } from './useDictadoFactura';
 import { generarId } from '../../util/id';
 import { guardarCuitCacheado, leerCuitCacheado } from '../afip/cuitCache';
 import { derivarPasoVisible, type PasoVisible } from './maquinaEstado';
@@ -588,7 +588,7 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
   // (`dictado:factura`): el backend resuelve `emitir_factura`, que PROPONE un borrador (nunca emite) y devuelve su
   // `facturaId`. Adoptarlo abre el wizard sobre ESE borrador, igual que `facturaIdInicial`. Emitir sigue detrás de la
   // confirmación del wizard.
-  const dictado = useDictadoPorFuncion('factura');
+  const dictado = useDictadoFactura();
   const [errorMic, setErrorMic] = useState<string | null>(null);
   const alDictarFactura = useCallback(
     async (texto: string) => {
@@ -605,14 +605,8 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
         setVista('wizard');
         return;
       }
-      // Sin card: al faltar datos el backend contesta con una PREGUNTA (dos pasos) y la card llega en el segundo turno
-      // de la misma sesión. Esa conversación es del chat: se le manda lo dicho y se vuelve a él. Sin chat listo no se
-      // navega (perder lo dicho en silencio es peor).
-      if (!despacharTextoAlChat(texto)) {
-        setErrorMic('El chat todavía no está listo. Probá de nuevo en un momento.');
-        return;
-      }
-      router.back();
+      // Sin card: o hay una PREGUNTA pendiente (dictado incompleto; el hilo queda abierto en el hook y la próxima frase
+      // la contesta desde el cursor) o un aviso del degradado. Ninguna de las dos va al chat: es la conversación de la función.
     },
     // `dictado.dictar` es estable (useCallback del hook).
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -741,9 +735,14 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
       </ScrollFormulario>
 
       {/* SM-J1: el dock al pie, fuera del scroll. El texto va al chat (propone, nunca emite). */}
-      {errorMic != null && (
+      {dictado.pregunta != null && (
+        <Text testID="facturacion-dictado-pregunta" accessibilityLiveRegion="polite" style={{ color: tema.color.texto, fontSize: tema.tipo.chico, paddingHorizontal: 18, paddingBottom: 4 }}>
+          {dictado.pregunta}
+        </Text>
+      )}
+      {(errorMic ?? dictado.aviso) != null && (
         <Text testID="facturacion-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico, paddingHorizontal: 18 }}>
-          {errorMic}
+          {errorMic ?? dictado.aviso}
         </Text>
       )}
       <AvisoDictado testID="facturacion-dictado" ocupado={dictado.ocupado} aviso={null} />

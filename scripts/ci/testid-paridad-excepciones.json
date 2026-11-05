@@ -2851,6 +2851,16 @@
       "motivo": "SM-P13: indicador «interpretando» del dock de Facturacion mientras el motor arma la card (dictado:factura). Lo pinta AvisoDictado en mobile; el par web es de frontend2 (su rama frontend2/p13-factura-dictado) y puede usar otro id. Disparador para sacarla: que el lado web de SM-P13 mergee con su par o lo declare no aplicable.",
       "pantalla": "modules/facturacion"
     },
+    "modules/facturacion::facturacion-dictado-pregunta": {
+      "en": [
+        "apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-04",
+      "id": "facturacion-dictado-pregunta",
+      "motivo": "SM-P13: la PREGUNTA del copiloto en un dictado incompleto (hilo abierto, la proxima frase la contesta). En web la pinta DockEntrada como su `aviso` {texto, alerta:false}, sin id propio (apps/copiloto-web/src/modules/facturacion/PantallaFacturacion.tsx:605-611): el par existe, solo que dentro de un componente compartido. Dueno: frontend2. Disparador para sacarla: que DockEntrada web exponga un id para el aviso, o que mobile reuse un componente de aviso con id comun.",
+      "pantalla": "modules/facturacion"
+    },
     "modules/facturacion::facturacion-error-borrador-botones": {
       "en": [
         "apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx"
@@ -2878,7 +2888,7 @@
       "falta_en": "web",
       "fecha": "2026-11-04",
       "id": "facturacion-mic-error",
-      "motivo": "SM-P13: texto de error del dock de Facturacion (chat no listo al despachar un dictado incompleto, o fallo de transcripcion). El chat-no-listo es del despacho por registro en modulo de la pila de glass mobile; la web no la tiene. Dueno del par web: frontend2. Disparador para sacarla: que el lado web de SM-P13 cierre con su par o lo declare no aplicable.",
+      "motivo": "SM-P13: aviso del degradado del dictado de Facturacion (no se pudo consultar / tardo / no alcanzo a armar la factura) o error de permiso de microfono. En web el mismo aviso lo pinta DockEntrada como `aviso` {alerta:true} sin id propio (PantallaFacturacion.tsx:608-609). Dueno: frontend2. Disparador para sacarla: que DockEntrada web exponga un id para el aviso.",
       "pantalla": "modules/facturacion"
     },
     "modules/facturacion::facturacion-nueva-factura-fila": {
