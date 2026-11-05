@@ -63,7 +63,7 @@ export interface SignupResponse {
 // GET /me
 // ---------------------------------------------------------------------------
 
-import type { MeResponse } from '@copiloto/core';
+import type { ChatRequest, MeResponse } from '@copiloto/core';
 
 export type { MeResponse };
 
@@ -131,12 +131,11 @@ export interface ConnectResponse {
 
 export type ChatMessageKind = 'text' | 'callback';
 
-export interface ChatRequest {
-  session_id: string;
-  text: string;
-  kind: ChatMessageKind;
-  mode?: string | null;
-}
+/**
+ * Una sola definición: la del core. Esta copia angosta (4 campos vs 10) divergía en silencio — el
+ * puerto de `dictarPorChat` (core) y `api.sendChat` (web) no se podían cruzar sin un `as`.
+ */
+export type { ChatRequest };
 
 export interface ChatResponse {
   wf_id: string;
