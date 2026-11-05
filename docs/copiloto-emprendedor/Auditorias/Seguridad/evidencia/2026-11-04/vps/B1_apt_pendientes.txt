@@ -1,0 +1,6 @@
+1 any-version
+      1 noble
+      2 noble-security
+    118 noble-updates
+      3 noble-updates,noble-security
+total: 125

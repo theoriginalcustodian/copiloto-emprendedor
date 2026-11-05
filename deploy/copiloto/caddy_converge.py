@@ -17,6 +17,29 @@ import sys
 RUTAS_AUTH = ("/auth/v1/authorize*", "/auth/v1/callback*", "/auth/v1/verify*")
 
 
+# Hardening (auditoría 2026-11-04, SEC-C2-1 / SEC-C3-1). microphone=(self): el dictado de la app lo necesita.
+# CSP acotada a directivas que NO rompen la PWA (frame-ancestors/base-uri/object-src); una CSP de scripts
+# requiere inventario de inline scripts → ficha aparte, no se adivina acá.
+CABECERAS_SEGURIDAD = [
+    "    header {",
+    '        Strict-Transport-Security "max-age=31536000"',
+    '        X-Content-Type-Options "nosniff"',
+    '        X-Frame-Options "DENY"',
+    '        Referrer-Policy "strict-origin-when-cross-origin"',
+    '        Permissions-Policy "microphone=(self), camera=(), geolocation=()"',
+    "        Content-Security-Policy \"frame-ancestors 'none'; base-uri 'self'; object-src 'none'\"",
+    "        -Server",
+    "    }",
+]
+# La documentación interactiva de la API no se publica en el front-door (superficie: 97 paths).
+BLOQUEO_DOCS_API = [
+    "    @apidocs path /docs /docs/* /redoc /openapi.json",
+    "    handle @apidocs {",
+    "        respond 404",
+    "    }",
+]
+
+
 def bloque_texto(host, cuerpo):
     """Texto de un bloque de sitio, SIN salto final (la comparación es exacta)."""
     return f"{host} {{\n" + "\n".join(cuerpo) + "\n}"
@@ -29,7 +52,7 @@ def cuerpo_copiloto(web_port):
 def cuerpo_publico(auth_port, web_port):
     # `log` = logging de Caddy a journal (sin cambio de respuestas). Es la directiva que prueba que el
     # deploy CONVERGE: agregarla al deseado debe reflejarse en el Caddy vivo (DEPLOYNOCONVERGE, DEPLOYLAG).
-    cuerpo = ["    log"]
+    cuerpo = ["    log"] + CABECERAS_SEGURIDAD + BLOQUEO_DOCS_API
     for ruta in RUTAS_AUTH:
         cuerpo += [f"    handle {ruta} {{", f"        reverse_proxy 127.0.0.1:{auth_port}", "    }"]
     cuerpo += ["    handle {", f"        reverse_proxy 127.0.0.1:{web_port}", "    }"]

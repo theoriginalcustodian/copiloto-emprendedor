@@ -1,0 +1,17 @@
+NEEDRESTART-VER: 3.6
+NEEDRESTART-KCUR: 6.8.0-52-generic
+NEEDRESTART-KEXP: 6.8.0-147-generic
+NEEDRESTART-KSTA: 3
+NEEDRESTART-SVC: dbus.service
+NEEDRESTART-SVC: docker.service
+NEEDRESTART-SVC: getty@tty1.service
+NEEDRESTART-SVC: serial-getty@ttyS0.service
+NEEDRESTART-SVC: systemd-logind.service
+NEEDRESTART-SVC: uc-documed-worker.service
+NEEDRESTART-SVC: unattended-upgrades.service
+NEEDRESTART-SESS: root @ session #21849
+NEEDRESTART-SESS: root @ session #22820
+NEEDRESTART-SESS: root @ session #22828
+NEEDRESTART-SESS: root @ session #27649
+NEEDRESTART-SESS: root @ session #4158
+NEEDRESTART-SESS: root @ user manager service

@@ -226,7 +226,6 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
               <PantallaFacturacion
                 facturaIdInicial={facturaIdDesdePresupuesto}
                 onConfigurar={() => changeTab('ajustes')}
-                onAbrirChat={() => changeTab('chat')}
               />
             )}
             {/* Ver el mismo comentario en `DesktopShell.tsx`: el `&& esAdmin` cubre el caso en que

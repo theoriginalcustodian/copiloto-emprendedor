@@ -56,7 +56,7 @@ campo»*.
 | **SM-P10** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | La IMPLEMENTACION del dock es de SM-P6 (quitar las dos condiciones de PantallaFacturacion.tsx:706: hecho en 0212ba19 … |
 | **SM-P11** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA: la pregunta de esta ficha se disolvio, no se resolvio. Era condicional a que frontend1 necesitara un contexto n… |
 | **SM-P12** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-P13** | `sin-issue` | 🟧 DOD-PARCIAL | El CABLEADO de los dos frontends y el device. El backend esta HECHO y desplegado (2ca3f7ad, #1660): la linea en _DEST… |
+| **SM-P13** | `sin-issue` | 🟧 DOD-PARCIAL | Mitad WEB HECHA en main 40df2a15 (#1661): Facturacion web dicta con kind=dictado:factura, pinta factura_propuesta, in… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -300,7 +300,7 @@ campo»*.
 
 - **Estado:** DOD-PARCIAL
 - **Dueno-activo:** frontend1 (mobile) + frontend2 (web) -- el lado backend ya esta en main
-- **Falta:** El CABLEADO de los dos frontends y el device. El backend esta HECHO y desplegado (2ca3f7ad, #1660): la linea en _DESTINOS, el comentario reescrito y el test adversarial contra el workflow real con control positivo, 48 passed en el VPS. Lo que falta: (1) mobile, Facturacion deja DockAlChat y usa el camino de Gastos pintando la card factura_propuesta; (2) web, lo mismo; (3) el test del caso INCOMPLETO en cada lado, que es el que difiere de Gastos -- el dictado incompleto contesta con una PREGUNTA SIN CARD en el primer turno y la card llega en el segundo; (4) device, dictar una factura y ver la card prellenada sin que se emita nada, con e2e-device@copiloto.test y nunca contra el tenant fiscal del operador.
+- **Falta:** Mitad WEB HECHA en main 40df2a15 (#1661): Facturacion web dicta con kind=dictado:factura, pinta factura_propuesta, incompleto = pregunta sin card + 2o turno desde el cursor (desdeId/cursor en packages/core/src/chat/dictadoPorChat.ts), tests en apps/copiloto-web/src/modules/facturacion/PantallaFacturacion.test.tsx (completo, incompleto con mutacion del cursor en rojo, completar a mano, fallo de red); ChatRequest unificado en el core. FALTA: (1) mobile, el cableado de frontend1 (#1662) sobre el core ya mergeado; (2) device, dictar una factura y ver la card prellenada sin que se emita nada, con e2e-device@copiloto.test y nunca contra el tenant fiscal del operador; (3) la verificacion en navegador real de la web (esta mitad se midio con jsdom y mocks de red).
 - **Dueño:** backend (la línea, HECHA) + frontend1 (cableado mobile) + frontend2 (cableado web)
 - **Por qué es una ficha nueva y no SM-P6 ni SM-P11:** nace de la **segunda** decisión del operador
   del 2026-11-04, posterior a las dos. SM-P6 ya cerró su pregunta (el dock va siempre, sin

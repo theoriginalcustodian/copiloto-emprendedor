@@ -1,13 +1,13 @@
 annotated-doc==0.0.4
 annotated-types==0.7.0
-anyio==4.14.1
-certifi==2026.6.17
+anyio==4.14.2
+certifi==2026.10.18
 cffi==2.0.0
 charset-normalizer==3.4.7
 click==8.4.2
 composio==0.17.1
 composio-client==1.41.0
-cryptography==49.0.0
+cryptography==50.0.0
 distro==1.9.0
 fastapi==0.138.2
 h11==0.16.0
@@ -28,7 +28,7 @@ pycparser==3.0
 pydantic==2.13.4
 pydantic_core==2.46.4
 Pygments==2.20.0
-PyJWT==2.13.0
+PyJWT==2.15.0
 Pysher==1.0.8
 pytest==9.1.1
 pytest-asyncio==1.4.0
@@ -41,7 +41,7 @@ tqdm==4.68.3
 types-protobuf==6.32.1.20260221
 typing-inspection==0.4.2
 typing_extensions==4.15.0
-urllib3==2.7.0
+urllib3==2.8.0
 uvicorn==0.49.0
 websocket-client==1.9.0
 
@@ -51,4 +51,4 @@ afip.py==1.2.0
 # Conversión de fuentes self-hosted en build-time (deploy/copiloto/fetch-fonts.sh) — no es
 # dependencia del runtime del servicio. brotli lo requiere fontTools para comprimir a woff2.
 fonttools==4.63.0
-brotli==1.2.0
+brotli==1.2.1
