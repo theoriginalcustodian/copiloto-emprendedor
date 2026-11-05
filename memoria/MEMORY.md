@@ -142,7 +142,6 @@
 
 
 ### Git, deploy y checkout compartido
-- [🗂️💥 `Set-Location` NO mueve el cwd de .NET: el path relativo escribe en OTRO repo](set-location-no-mueve-el-cwd-de-dotnet-y-el-path-relativo-escribe-en-otro-repo.md) — dejó el índice del compartido en 0 líneas.
 - [💾💥 `open(path,"w")` TRUNCA al abrir](open-w-trunca-al-abrir-y-una-excepcion-en-el-write-destruye-el-archivo.md) — deja 0 bytes: tmp + `os.replace`.
 - [🩹 `--amend`/rebase en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) - commit `docs:` nuevo.
 - [💥 `git checkout <ref> -- .` PISA lo del working tree](checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree.md) - usá `merge-base`.
@@ -163,6 +162,7 @@
 - [⚠️ El MCP de Composio da acceso TOTAL al Gmail del operador](composio-mcp-gmail-acceso-completo.md) - incluye borrado. No heredarlo a agentes autónomos.
 - [🕸️ Grafo: tenant dedicado + structured 0-LLM + ontología scoped](graphity-tenant-dedicado-y-ontologia-scoped.md) - instancia COMPARTIDA ⇒ `graph_ids` o fuga. · [sync: costo FIJO](el-costo-del-sync-del-grafo-es-fijo-no-de-ingesta.md)
 - [🔑🚪 La tabla que RESUELVE el control no puede estar sujeta al control](la-tabla-que-resuelve-el-control-no-puede-estar-sujeta-al-control.md)
+- [🏗️🕳️ Diferir a una MIGRACIÓN de infra no cubre lo que es de APLICACIÓN](diferir-a-una-migracion-de-infra-no-cubre-lo-que-es-de-aplicacion.md) - 4 VPS post-beta: clasificá por capa.
 - [🧪 DESPLEGADO ≠ con clientes - los datos se fabrican](desplegado-no-significa-con-clientes.md) - cero usuarios; "prod-beta" desvía a migraciones defensivas.
 - [🔐 Deuda de secretos a rotar (pre-prod)](deuda-secretos-rotar.md) - keys que pasaron por chat. grep-first + restart al rotar.
 

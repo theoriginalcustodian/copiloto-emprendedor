@@ -55,8 +55,8 @@ campo»*.
 | **SM-P9** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA de decision: lo que queda es IMPLEMENTACION y vive en otras fichas. SM-P5 (dock unico mobile, Mi dia editable) y… |
 | **SM-P10** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | La IMPLEMENTACION del dock es de SM-P6 (quitar las dos condiciones de PantallaFacturacion.tsx:706: hecho en 0212ba19 … |
 | **SM-P11** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA: la pregunta de esta ficha se disolvio, no se resolvio. Era condicional a que frontend1 necesitara un contexto n… |
-| **SM-P12** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-P13** | `sin-issue` | 🟧 DOD-PARCIAL | Mitad WEB HECHA en main 40df2a15 (#1661): Facturacion web dicta con kind=dictado:factura, pinta factura_propuesta, in… |
+| **SM-P12** | `sin-issue` | 🟨 EN-CURSO | frontend1 (RF8T318RN9T, Metro propio desde wt-fe1-ped en main b6b342bb) |
+| **SM-P13** | `sin-issue` | 🟧 DOD-PARCIAL | Los DOS cableados ya estan en main: web 40df2a15 (#1661) y mobile b6b342bb (#1662), sobre el backend 2ca3f7ad (#1660,… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -284,7 +284,8 @@ campo»*.
 
 ### SM-P12 · `sin-issue` — El sprint cierra con una pasada de device completa
 
-- **Estado:** PENDIENTE
+- **Estado:** EN-CURSO
+- **Dueno-activo:** frontend1 (RF8T318RN9T, Metro propio desde wt-fe1-ped en main b6b342bb)
 - **Dueño:** frontend1 (dueño del device) con la cola de las demás
 - **Qué:** una sola pasada final en device que ejercite **todas** las fichas de este sprint que
   terminaron, en una corrida, con el usuario canónico `e2e-device@copiloto.test`.
@@ -300,7 +301,7 @@ campo»*.
 
 - **Estado:** DOD-PARCIAL
 - **Dueno-activo:** frontend1 (mobile) + frontend2 (web) -- el lado backend ya esta en main
-- **Falta:** Mitad WEB HECHA en main 40df2a15 (#1661): Facturacion web dicta con kind=dictado:factura, pinta factura_propuesta, incompleto = pregunta sin card + 2o turno desde el cursor (desdeId/cursor en packages/core/src/chat/dictadoPorChat.ts), tests en apps/copiloto-web/src/modules/facturacion/PantallaFacturacion.test.tsx (completo, incompleto con mutacion del cursor en rojo, completar a mano, fallo de red); ChatRequest unificado en el core. FALTA: (1) mobile, el cableado de frontend1 (#1662) sobre el core ya mergeado; (2) device, dictar una factura y ver la card prellenada sin que se emita nada, con e2e-device@copiloto.test y nunca contra el tenant fiscal del operador; (3) la verificacion en navegador real de la web (esta mitad se midio con jsdom y mocks de red).
+- **Falta:** Los DOS cableados ya estan en main: web 40df2a15 (#1661) y mobile b6b342bb (#1662), sobre el backend 2ca3f7ad (#1660, 48 passed en el VPS con test adversarial y control positivo). El ChatRequest quedo unificado en el core (web lo REEXPORTA: definiciones core 1 / web 0). FALTA SOLO: (1) device, dictar una factura y ver la card prellenada SIN que se emita nada, con e2e-device@copiloto.test y nunca contra el tenant fiscal del operador -- es parte de la pasada de SM-P12; (2) la verificacion en navegador real de la mitad web, que se midio con jsdom y mocks de red.
 - **Dueño:** backend (la línea, HECHA) + frontend1 (cableado mobile) + frontend2 (cableado web)
 - **Por qué es una ficha nueva y no SM-P6 ni SM-P11:** nace de la **segunda** decisión del operador
   del 2026-11-04, posterior a las dos. SM-P6 ya cerró su pregunta (el dock va siempre, sin

@@ -1027,3 +1027,22 @@ dieron **0** — porque las tablas tienen RLS y el rol de la conexión (`uc_fact
 ([[supuesto-cuya-falla-parece-un-estado-legitimo]]). O sea que arreglar el transporte habría producido
 un número **peor** que el 127: el 127 grita, el 0 se cita. Cuando un instrumento roto se arregla, hay
 que volver a preguntar qué mide — no sólo si ya corre.
+
+---
+
+## Refuerzo 2026-11-04 — `tsc --noEmit` limpio sobre un tsconfig con `files: []`
+
+PR #1661 (frontend2, SM-P13): `tsc --noEmit` local **limpio**, CI **rojo** con un `TS2345` real
+(`ChatRequest` definido dos veces, core 10 campos / web 4, cruzados en el puerto de
+`useDictadoFactura.ts:34`). La causa no fue una diferencia de versión ni de entorno: el `tsconfig`
+de `apps/copiloto-web` es de **referencias de proyecto**, con `files: []`. Un `tsc --noEmit` sobre
+eso **no compila ningún archivo** y sale 0 — no porque no haya errores, sino porque no miró nada.
+El CI usa `tsc --build --force --noEmit`, que sí recorre las referencias, y ahí aparecieron.
+
+El patrón es el mismo de arriba con otra cara: el instrumento salió **verde sin mirar**, y el verde
+se leyó como «el tipo está bien». La pregunta que lo caza no es *¿dio 0?* sino **¿cuántos archivos
+compiló?** — en un tsconfig de referencias, `--build` no es un detalle de performance: es la
+diferencia entre medir y no medir. Resuelto de raíz, no con un `as`: web **reexporta** el tipo del
+core (`apps/copiloto-web/src/lib/api/types.ts:66,138`), y la verificación es el conteo de
+definiciones (core 1 / web 0, medido en `origin/main` @ `40df2a15`), no un `tsc` verde — que pasa
+igual si el tipo se colapsa al angosto ([[dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una]]).
