@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, StyleSheet, Text } from 'react-native';
+import { KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   avisoErrorTranscripcion,
@@ -28,6 +28,12 @@ export interface DockFuncionProps {
   onError?: (mensaje: string) => void;
   /** Si se pasa, el audio NO se transcribe acá: se entrega tal cual (lo manda otro, p. ej. el chat — `DockAlChat`). */
   onAudioCrudo?: (audio: ArchivoSubida, duracionSeg: number) => void;
+  /**
+   * SM-P14 — el dictado NO se consume solo: se muestra lo que entendió el STT («Entendí: …») y recién con «Enviar» llega
+   * a `onTexto`. Para funciones donde el texto prellena un formulario fiscal: un ruido transcripto como «El» no debe
+   * volverse una línea de factura sin que el usuario lo haya visto. Lo escrito a mano no pasa por acá.
+   */
+  confirmarDictado?: boolean;
 }
 
 /**
@@ -38,10 +44,12 @@ export interface DockFuncionProps {
  * `KeyboardAvoidingView` envuelve SÓLO al dock: sube con el teclado y le achica el lugar al scroll de arriba,
  * que ya maneja su propio teclado (`ScrollFormulario`).
  */
-export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError, onAudioCrudo }: DockFuncionProps) {
+export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError, onAudioCrudo, confirmarDictado = false }: DockFuncionProps) {
   const tema = useTema();
   // Duración del último dictado transcripto: alimenta el chip «Por voz · m:ss» (DoD FE1 #5).
   const [ultimaDuracionSeg, setUltimaDuracionSeg] = useState<number | null>(null);
+  // SM-P14 — transcripción esperando confirmación (sólo con `confirmarDictado`).
+  const [porConfirmar, setPorConfirmar] = useState<string | null>(null);
 
   async function alAudio(audio: ArchivoSubida, duracionSeg: number) {
     if (onAudioCrudo != null) {
@@ -57,6 +65,10 @@ export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError,
         return;
       }
       setUltimaDuracionSeg(duracionSeg);
+      if (confirmarDictado) {
+        setPorConfirmar(texto);
+        return;
+      }
       onTexto(texto, 'dictado');
     } catch (err) {
       onError?.(avisoErrorTranscripcion(err));
@@ -73,6 +85,29 @@ export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError,
           {`Por voz · ${formatearDuracion(ultimaDuracionSeg)}`}
         </Text>
       )}
+      {porConfirmar !== null && (
+        <View testID="dock-funcion-confirmar" style={styles.confirmar}>
+          <Text testID="dock-funcion-confirmar-texto" accessibilityLiveRegion="polite" style={{ color: tema.color.texto, fontSize: tema.tipo.chico }}>
+            {`Entendí: «${porConfirmar}»`}
+          </Text>
+          <View style={styles.confirmarBotones}>
+            <Pressable testID="dock-funcion-confirmar-descartar" accessibilityRole="button" onPress={() => setPorConfirmar(null)}>
+              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Descartar</Text>
+            </Pressable>
+            <Pressable
+              testID="dock-funcion-confirmar-enviar"
+              accessibilityRole="button"
+              onPress={() => {
+                const t = porConfirmar;
+                setPorConfirmar(null);
+                onTexto(t, 'dictado');
+              }}
+            >
+              <Text style={{ color: tema.color.acento, fontSize: tema.tipo.chico }}>Enviar</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
       <DockEntrada
         placeholder={placeholder}
         onEnviarTexto={(texto) => onTexto(texto, 'escrito')}
@@ -87,4 +122,6 @@ export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError,
 
 const styles = StyleSheet.create({
   chip: { fontSize: 12, alignSelf: 'flex-end', paddingHorizontal: 18 },
+  confirmar: { paddingHorizontal: 18, paddingBottom: 6, gap: 6 },
+  confirmarBotones: { flexDirection: 'row', justifyContent: 'flex-end', gap: 24 },
 });
