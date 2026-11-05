@@ -222,13 +222,14 @@ export function Composer({
             <IconoCamara color={tonoBotonFoto(tema, !disabled).glifo} />
           </Pressable>
         )}
+        {/* SM-P6 — el borde es `textoTenue` (≥3:1 vs burbuja y lienzo en las 2 pieles, WCAG 1.4.11; lo exige `paresPintadosContraste.test.tsx` §9): el vidrio solo da 1,01:1 (claro) / 1,12:1 (oscuro). */}
         {/* El campo es una píldora de vidrio (gradiente s1→s2, borde, radio, luz superior) — un
             `TextInput` no puede llevar hijos, así que el vidrio se arma alrededor y el input va
             adentro, transparente. */}
         {enLugarDelCampo}
         <View
           testID="chat-composer-campo"
-          style={[styles.campo, { borderColor: tema.color.borde, borderRadius: RADIO_CAMPO }, capturando && styles.oculto]}
+          style={[styles.campo, { borderColor: tema.color.textoTenue, borderRadius: RADIO_CAMPO }, capturando && styles.oculto]}
         >
           {/* SM-N25 — base translúcida BAJO el vidrio: el campo flota sobre el chat, y con el vidrio solo (alfa .04-.14 en oscuro)
               el texto de una card que pasa por detrás se pisa con el placeholder (medido en device 2026-11-02). Tomada del
