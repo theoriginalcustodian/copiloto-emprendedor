@@ -66,6 +66,7 @@
 - [🧟🔗 La cita «medido @ sha» MUERE en el squash-merge](la-cita-de-procedencia-muere-en-el-merge.md) — 26% muere en un clon. Procedencia = merge commit.
 - [⏱️🔀 Dos mediciones CONTRADICTORIAS pueden ser ambas ciertas: el sujeto cambió](dos-mediciones-contradictorias-pueden-ser-ambas-ciertas-el-sujeto-cambio.md) — su 5 y mi 6, con 33 min de diferencia.
 - [📏🏷️ Una cifra SIN UNIDAD se cita para cualquier pregunta](una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta.md) — 3 a la vez; ganó la más alta.
+- [🎙️📉 La confianza del STT va al REVÉS](la-senal-de-confianza-del-stt-ordena-al-reves-del-caso-de-uso.md) — «Sí» es lo peor: ENERGÍA.
 - [📐🫥 La capa de LECTURA normalizó el sujeto antes de medirlo](la-capa-de-lectura-normalizo-el-sujeto-antes-de-medirlo.md) — bytes de una repr. ya transformada.
 
 - [🏷️🩸 El marcador de pendencia SOBREVIVE a su refutacion](el-marcador-de-pendencia-sobrevive-a-su-propia-refutacion.md) - y el texto ANTES del marcador es lo HECHO, no el motivo.
@@ -105,6 +106,7 @@
 
 ### Diagnóstico: leer el contrato antes de explicar
 - [🎯🕳️ Diseñar contra el riesgo TEMIDO ciega al caso NORMAL](disenar-contra-el-riesgo-temido-ciega-al-caso-normal.md) - corré el caso vacío primero.
+- [🛡️🙃 Guard tras la confirmación humana](un-guard-despues-de-la-confirmacion-humana-contradice-al-usuario-informado.md)
 - [🎛️ Verificar la COMPOSICIÓN ROOT, no el default](verificar-la-composicion-root-no-el-default.md) - otra capa puede sobreescribirla.
 - 🎭 El exit code MIENTE en los dos sentidos: [el pipe se lo come](el-pipe-se-come-el-exit-code.md) · [0 sin pushear; ROJO con el merge hecho](git-push-puede-salir-exit-0-sin-haber-pusheado.md) - el control es el EFECTO.
 
@@ -131,6 +133,8 @@
 ### Coordinación entre sesiones
 - [🛑🤖 Parar nombrando UN mecanismo deja el otro armado](una-orden-de-parada-que-nombra-un-mecanismo-deja-el-otro-armado.md) — el monitor sobrevive y ACTUA.
 - [📋🔃 El contrato que manda a hacer algo YA HECHO](el-contrato-que-manda-a-hacer-algo-ya-hecho.md) - medí estado y dueño de cada id ANTES de citarlo.
+- [📬🗃️ El `mv` archiva el archivo, no la ORDEN](un-mv-que-archiva-un-contrato-silencia-el-gate-no-la-orden.md) — con un `dato_`.
+- [📭🕳️ Buzón no versionado, ruta RELATIVA = 0](leer-un-buzon-no-versionado-por-ruta-relativa-da-cero.md) — absoluta + control+.
 - [📬 Un mensaje entregado DONDE NADIE MIRA no fue entregado](mensaje-entregado-donde-nadie-mira.md) - probá el cable.
 - [📮🕳️ El TIPO de mensaje decide si lo PERSIGUEN](el-tipo-de-mensaje-decide-si-alguien-lo-persigue.md) - `dato_` NO escala; ¿querés reclamo? → `pedido_`.
 - [📢📋 De dos artefactos, gana el que CIRCULA](de-dos-artefactos-con-distinta-precision-gana-el-que-circula.md) - appendear deja el titular refutado al frente.
@@ -174,6 +178,3 @@
 
 ## 🗄️ Historia
 → [HISTORIA.md](HISTORIA.md) - cerrados y bajados. NO se carga; buscable.
-- [🗓️🕳️ `--since=<hoy>` dio CERO con seis commits de hoy](el-filtro-de-fecha-da-cero-en-el-borde-del-dia.md) — el filtro miente en el borde del dia; usa `-N`.
-- [🚧🔧 Un `Falta:` que dice IMPOSIBLE describe el INSTRUMENTO del dia](un-falta-que-dice-imposible-describe-el-instrumento-del-dia.md) — una tenencia nueva destrabo 4 fichas sin tocar codigo.
-- [🚧✂️ Un `Falta:` que no se RECORTA al pagarse fabrica cola inexistente](un-falta-que-no-se-recorta-al-pagarse-fabrica-cola-inexistente.md) — dos clasificadores, el corpus añejo.
