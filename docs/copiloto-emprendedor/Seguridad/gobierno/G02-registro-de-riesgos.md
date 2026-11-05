@@ -11,7 +11,7 @@ Escala A/M/B (probabilidad, impacto). Dueño de todos: operador. Se revisa en ca
 | Ejecución de código en el proceso web (root) | VPS | B | A | sandbox systemd 3.9, sin capabilities | Parcial (SEC-D6) |
 | CVE en dependencias | auth/cripto | M | M | Dependabot ON, bump Python verificado | npm pendiente (SEC-D11) |
 | Datos fiscales (CUIT) en logs | contribuyentes | A | M | filtro `log_redact` + retención 30 d | Cerrado, medido |
-| Sin mecanismo de supresión/portabilidad | titulares | M | M | — | **Abierto** (SEC-D8) |
+| Sin mecanismo de supresión/portabilidad | titulares | M | M | — | **Mitigado** (SEC-D8, 2026-11-05; residual: backups locales hasta su rotación) |
 | Tráfico app→DB sin TLS (red privada) | DB fusion | B | M | red privada Hetzner | Abierto (SEC-D2) |
 | Registro abierto sin MFA/rate-limit | cuentas | M | B | RLS limita el daño | Decisión (SEC-D3) |
 | Fuentes comerciales en historia pública | licencias | B | B | decisión de dejarlo (2026-10-12) | Aceptado |
