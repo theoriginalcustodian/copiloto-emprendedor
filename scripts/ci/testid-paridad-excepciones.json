@@ -1949,16 +1949,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/chat"
     },
-    "modules/chat::composer": {
-      "en": [
-        "apps/copiloto-web/src/modules/chat/Composer.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "composer",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/chat"
-    },
     "modules/chat::composer-status": {
       "en": [
         "apps/mobile/src/modules/chat/Composer.tsx"
@@ -4426,16 +4416,6 @@
       "id": "recientes-vacio",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/recientes"
-    },
-    "modules/soporte::composer-soporte": {
-      "en": [
-        "apps/copiloto-web/src/modules/soporte/ComposerSoporte.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "composer-soporte",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/soporte"
     },
     "modules/soporte::mi-ticket-cargando": {
       "en": [

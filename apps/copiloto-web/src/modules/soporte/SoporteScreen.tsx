@@ -39,10 +39,9 @@ export interface SoporteScreenProps {
  */
 export function SoporteScreen({ funcion }: SoporteScreenProps) {
   const { me } = useSession();
-  const { messages, sendStatus, send, sendAudio } = useChatSoporte(me?.cliente_id ?? '', funcion);
+  const { messages, sendStatus, send } = useChatSoporte(me?.cliente_id ?? '', funcion);
 
   const handleSend = useCallback((text: string) => void send(text, { kind: 'text' }), [send]);
-  const handleSendAudio = useCallback((blob: Blob) => void sendAudio(blob), [sendAudio]);
   const handleChoice = useCallback(
     (value: string, label: string) => void send(value, { kind: 'callback', displayText: label }),
     [send],
@@ -70,7 +69,7 @@ export function SoporteScreen({ funcion }: SoporteScreenProps) {
         emptyHint={WELCOME_TEXT[funcion]}
         mostrarEjemplos={false}
       />
-      <ComposerSoporte sendStatus={sendStatus} onSend={handleSend} onSendAudio={handleSendAudio} />
+      <ComposerSoporte sendStatus={sendStatus} onSend={handleSend} />
     </div>
   );
 }

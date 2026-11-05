@@ -631,8 +631,35 @@ a.artifact:focus-visible {
 }
 
 /* ---------- Composer (Task 15, EXTRACT §2.10 texto-only) ---------- */
+/* SM-P7 — dock FLOTANTE, un solo envoltorio para el chat de negocio y el de soporte (`DockEntrada`).
+   Sin color de fondo alrededor: el contenedor es transparente y se SOBREPONE al hilo; lo único que
+   se pinta es la píldora (`.composer__row`), translúcida y con blur sobre el texto que queda detrás.
+   El hilo reserva su alto con `--dock-alto` (lo publica `DockEntrada` en este mismo padre). Todo por
+   tokens de la piel: ningún hex. */
+.chat-screen {
+  --dock-blur: 16px;
+  --dock-campo-bg: color-mix(in srgb, var(--input-bg) 74%, transparent);
+}
+
+.chat-screen .chat-messages {
+  padding-bottom: calc(var(--dock-alto, 84px) + 12px);
+}
+
 .composer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
   padding: 8px 16px 18px;
+  background: none;
+  pointer-events: none;
+}
+
+/* El envoltorio transparente no debe comerse los toques sobre el hilo: sólo la píldora y el aviso. */
+.composer__row,
+.composer__status {
+  pointer-events: auto;
 }
 
 .composer__status {
@@ -653,7 +680,9 @@ a.artifact:focus-visible {
   gap: 6px;
   padding: 8px 8px 8px 18px;
   border-radius: 20px;
-  background: var(--input-bg);
+  background: var(--dock-campo-bg, var(--input-bg));
+  -webkit-backdrop-filter: blur(var(--dock-blur, 0px));
+  backdrop-filter: blur(var(--dock-blur, 0px));
   border: var(--input-border);
   box-shadow: var(--input-shadow);
 }

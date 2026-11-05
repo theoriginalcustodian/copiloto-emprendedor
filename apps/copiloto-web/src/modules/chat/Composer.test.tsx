@@ -10,7 +10,7 @@ import { Composer, type ComposerProps } from './Composer';
  * — los tests de `MicButton`/`onSendAudio` en sí viven en `MicButton.test.tsx`.
  */
 function renderComposer(props: Partial<ComposerProps> = {}) {
-  const merged: ComposerProps = { sendStatus: 'idle', onSend: vi.fn(), onSendAudio: vi.fn(), ...props };
+  const merged: ComposerProps = { sendStatus: 'idle', onSend: vi.fn(), ...props };
   return render(<Composer {...merged} />);
 }
 
