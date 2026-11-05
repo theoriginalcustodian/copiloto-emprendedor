@@ -35,9 +35,36 @@
   la receta es del operador, y cambiar la frase cambia lo que se mide.
 
 .PARAMETER Canario
-  No dice NADA: deja N segundos de silencio deliberado. Corré ESTO PRIMERO, con la app grabando.
-  · Si la app transcribe algo ⇒ el STT está alucinando: ninguna corrida posterior acredita nada.
-  · Si la app no transcribe nada (o da error de audio vacío) ⇒ el instrumento discrimina, seguí.
+  No dice NADA: deja N segundos de silencio deliberado, con la app grabando.
+
+  🔴 CORREGIDO 2026-11-05, DESPUÉS DE LA PRIMERA CORRIDA — este canario NO sirve en una pantalla
+  con flujo propio, y la culpa es del canario, no de quien lo corrió.
+
+  Corrido en el dock de Facturación (frontend1, APK `7d278a2c`, usuario canónico), la app contestó
+  «¿Qué producto o servicio querés facturar?» y el veredicto fue «el STT alucina». **Ese veredicto
+  no está atribuido.** Medido en el código: `PantallaFacturacion.tsx:596` llama `dictado.dictar(texto)`
+  SIN guard de texto vacío, y `useDictadoFactura.ts:76-78` pinta la pregunta del agente cuando la
+  respuesta viene `sin_propuesta / respuesta_sin_card`. Entonces DOS causas suficientes producen
+  exactamente la misma pantalla:
+
+    A. el STT alucinó texto (el «¡Gracias!» del 04-08), o
+    B. la transcripción vino VACÍA y el flujo de factura preguntó igual, por falta de guard.
+
+  Un test con dos causas suficientes no atribuye: no distingue «el instrumento no discrimina» de
+  «el instrumento discrimina perfecto y la app no tiene guard de dictado vacío».
+
+  ⇒ **El canario de aire va en el CHAT GENERAL**, donde una transcripción vacía no tiene un flujo
+  que la rescate y la respuesta del agente delata el contenido. Y para aislar al STT de verdad no
+  hace falta el teléfono: ver `-SilencioWav`.
+
+.PARAMETER SilencioWav
+  Escribe un WAV de silencio PCM válido (16 kHz, mono, 16-bit — lo que Whisper espera) en la ruta
+  dada, para mandarlo DIRECTO a `POST /transcribir` y leer la transcripción CRUDA.
+
+  Esto es el control que separa las dos variables que el canario de aire mezcla:
+    · ¿el STT alucina con silencio?  -> este WAV contra el endpoint. Sin device, sin aire, determinista.
+    · ¿el audio llega por el aire?   -> el canario en el chat general, con el teléfono.
+  Mezcladas, ninguna de las dos se puede concluir.
 
 .PARAMETER Async
   Devuelve el control de inmediato y sigue hablando de fondo. Es lo que hace falta para el
@@ -74,6 +101,7 @@ param(
   [switch]$Canario,
   [switch]$Listar,
   [switch]$Async,
+  [string]$SilencioWav,
   [int]$DelayMs = 0,
   [int]$CanarioSegundos = 5,
   [int]$Velocidad = -1
@@ -100,12 +128,47 @@ if ($Listar) {
     "      «{0}»" -f $CATALOGO[$k].texto
   }
   ""
-  "  -Canario    | SILENCIO deliberado ($CanarioSegundos s). Corré esto PRIMERO."
+  "  -Canario              | canario de AIRE: silencio deliberado ($CanarioSegundos s)."
+  "                          Va en el CHAT GENERAL, no en un dock de formulario."
+  "  -SilencioWav <ruta>   | WAV de silencio para POST /transcribir: aísla al STT,"
+  "                          sin device y sin aire. Es el control que ATRIBUYE."
+  exit 0
+}
+
+if ($SilencioWav) {
+  # WAV PCM de silencio: header RIFF + muestras en cero. 16 kHz, mono, 16-bit.
+  # No usa TTS (hablar "nada" no produce archivo) y no necesita el teléfono: su destino es
+  # POST /transcribir, para leer la transcripción CRUDA del STT ante silencio puro.
+  $hz = 16000; $canales = 1; $bits = 16
+  $muestras = $hz * $CanarioSegundos
+  $bytesData = $muestras * $canales * ($bits / 8)
+  $byteRate = $hz * $canales * ($bits / 8)
+  $ms = New-Object System.IO.MemoryStream
+  $w = New-Object System.IO.BinaryWriter($ms)
+  $w.Write([char[]]'RIFF'); $w.Write([int](36 + $bytesData)); $w.Write([char[]]'WAVE')
+  $w.Write([char[]]'fmt '); $w.Write([int]16); $w.Write([int16]1)
+  $w.Write([int16]$canales); $w.Write([int]$hz); $w.Write([int]$byteRate)
+  $w.Write([int16]($canales * ($bits / 8))); $w.Write([int16]$bits)
+  $w.Write([char[]]'data'); $w.Write([int]$bytesData)
+  $w.Write((New-Object byte[] $bytesData))   # el silencio: ceros
+  $w.Flush()
+  [IO.File]::WriteAllBytes($SilencioWav, $ms.ToArray())
+  $w.Dispose(); $ms.Dispose()
+
+  "WAV de silencio escrito: {0}" -f $SilencioWav
+  "  {0} s · {1} Hz · mono · {2}-bit PCM · {3} bytes" -f $CanarioSegundos, $hz, $bits, (Get-Item $SilencioWav).Length
+  ""
+  "PARA QUÉ: mandalo a POST /transcribir y mirá la transcripción CRUDA."
+  "  devuelve texto  -> el STT ALUCINA con silencio. Es un defecto del STT, medido sin device."
+  "  devuelve vacío  -> el STT discrimina; entonces lo que haya pasado en pantalla es de la APP,"
+  "                     no del STT (p.ej. falta de guard de dictado vacío)."
+  ""
+  "Esto NO reemplaza al canario de aire: éste mide al STT, aquél mide si el audio LLEGA."
   exit 0
 }
 
 if (-not $Canario -and -not $Frase) {
-  Write-Error "Pasá -Frase <A|B|C1|C2>, o -Canario, o -Listar. El canario va PRIMERO."
+  Write-Error "Pasá -Frase <A|B|C1|C2>, -Canario, -SilencioWav <ruta>, o -Listar."
   exit 2
 }
 
@@ -144,13 +207,24 @@ $s.SetOutputToDefaultAudioDevice()
 
 if ($Canario) {
   ""
-  "=== CANARIO — SILENCIO DELIBERADO, $CanarioSegundos s ==="
-  "Poné la app a grabar AHORA y soltá al terminar la cuenta."
+  "=== CANARIO DE AIRE — SILENCIO DELIBERADO, $CanarioSegundos s ==="
+  ""
+  "🔴 CORRELO EN EL CHAT GENERAL, NO EN UN DOCK DE FORMULARIO."
+  "   En el dock de Facturación este canario NO atribuye: medido en código,"
+  "   PantallaFacturacion.tsx:596 dicta SIN guard de texto vacío, así que una"
+  "   transcripción vacía y una alucinada dan la MISMA pantalla («¿Qué producto"
+  "   o servicio querés facturar?»). Dos causas suficientes, cero atribución."
+  ""
+  "Poné la app a grabar AHORA, en el chat, y soltá al terminar la cuenta."
   ""
   "LECTURA del resultado:"
-  "  app transcribe ALGO  -> el STT ALUCINA. Ninguna corrida posterior acredita nada."
-  "                          (el 2026-08-04 el silencio dio «¡Gracias!»)"
-  "  app NO transcribe    -> el instrumento DISCRIMINA. Seguí con -Frase."
+  "  el agente responde al CONTENIDO -> llegó audio que no emití: el STT alucina"
+  "                                     o hay ruido ambiente. Ninguna corrida vale."
+  "                                     (el 2026-08-04 el silencio dio «¡Gracias!»)"
+  "  no transcribe / avisa vacío     -> el instrumento DISCRIMINA. Seguí con -Frase."
+  ""
+  "Para saber si la culpa es del STT o de la app, el control que lo separa es"
+  "-SilencioWav contra POST /transcribir: ahí se lee la transcripción CRUDA, sin device."
   ""
   for ($i = $CanarioSegundos; $i -gt 0; $i--) {
     Write-Host ("  silencio... {0}" -f $i)
