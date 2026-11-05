@@ -21,7 +21,7 @@ from contexto_tenant import conexion_con_tenant, tenant
 _deps: dict = {}
 
 #: Prefijos de Schedules por tenant (ver `ensure_*_schedules.py`).
-PREFIJOS_SCHEDULE = ("grafo-sync-", "mi-dia-")
+PREFIJOS_SCHEDULE = ("grafo-sync-", "mi-dia-", "soporte-feedback-")
 
 
 def set_tenant_erasure_deps(*, conn_factory: Callable, composio_gateway=None, memory_provider=None,
@@ -48,13 +48,20 @@ async def tenant_erasure_suspender(cliente_id: str) -> str | None:
 async def tenant_erasure_temporal(cliente_id: str, propio_workflow_id: str) -> dict:
     client = activity.client()
     schedules = 0
+    # 1) los conocidos por id exacto (idempotente: NOT_FOUND = ya no existe)
     for prefijo in PREFIJOS_SCHEDULE:
         try:
             await client.get_schedule_handle(f"{prefijo}{cliente_id}").delete()
             schedules += 1
-        except RPCError as exc:  # NOT_FOUND = ya no existe: idempotente
+        except RPCError as exc:
             if "not found" not in str(exc).lower():
                 raise
+    # 2) red de seguridad: CUALQUIER schedule cuyo id termine en `-{cliente_id}` (un schedule por tenant
+    #    nuevo que no esté en PREFIJOS_SCHEDULE no puede sobrevivir al borrado en silencio).
+    async for s in await client.list_schedules():
+        if s.id.endswith(f"-{cliente_id}"):
+            await client.get_schedule_handle(s.id).delete()
+            schedules += 1
     terminados = 0
     async for wf in client.list_workflows('ExecutionStatus="Running"'):
         if cliente_id in wf.id and wf.id != propio_workflow_id:
