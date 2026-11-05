@@ -33,3 +33,8 @@
 
 ## Condiciones para el bump de deps (peer planificación, 2026-11-04)
 `pyjwt`/`cryptography`: no se bumpean sin test adversarial de auth **corriendo después**; rollback escrito; smoke 39/39 + durabilidad 8/8 posteriores; no leer `cert_enc`/`key_enc` ni imprimir `DATABASE_URL`; coordinar con la sesión backend (`requirements.txt` y venv del VPS son suyos).
+
+## Actualización 2026-11-05
+- **SEC-A2-2 (ratchet 42→0):** `test_adversarial_frontdoor_por_ruta.py` ejercita las 42 rutas tenant-scoped con dos tokens y factories espía: sin identidad → 401/403 sin tocar datos; con el token de A y el `cliente_id` de B inyectado (query/header/path) → B jamás aparece. Gate local en VPS: 76 passed. **Control negativo:** con la identidad leída del query, 6 tests fallan (mutación detectada). **LÍMITE:** 40 de las 42 rutas cortan en 422 antes de la capa de datos (sin body válido), así que para ellas sólo queda probada la mitad «sin identidad»; la mitad cross-tenant profunda exige fixtures con body por ruta → ficha `SM-S` pendiente. Estado: PARCIAL (no CERRADO).
+- **nmap -p- desde la PC (C1): INVÁLIDO.** Reportó 25/110/119/143/465/563/587/993/995 «open» sin banner y con 1,2 ms de latencia hacia Hetzner, y NO vio 22/80/443; el control positivo (443 visible) falló y el host no escucha ninguno de esos puertos (`ss -ltn`). Es un proxy local de correo de la PC. Cierre externo: probado por conexión TCP directa (3000/8090/55444 cerrados). Repetir el escaneo desde otra red queda como mejora.
+- **SEC-A6-1:** borrados 21 contenedores `copiloto-test-*` de septiembre (4 `auth` en bucle de restart). Volúmenes intactos.

@@ -1,0 +1,9 @@
+HTTP/1.1 405 Method Not Allowed
+Allow: GET
+Alt-Svc: h3=":443"; ma=2592000
+Content-Length: 31
+Content-Type: application/json
+Date: Thu, 05 Nov 2026 02:02:58 GMT
+Server: uvicorn
+Via: 1.1 Caddy
+
