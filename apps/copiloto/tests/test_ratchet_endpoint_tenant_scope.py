@@ -91,6 +91,7 @@ def _cross_tenant_por_diseno() -> dict[str, str]:
         "/admin/auditoria": "ídem — Consola de Operador.",
         "/admin/tenants": "ídem — Consola de Operador.",
         "/admin/tenants/{cliente_id}/estado": "ídem — Consola de Operador; el cliente_id viaja por PATH, no por Depends(require_tenant), justamente porque opera sobre un tenant ajeno por diseño.",
+        "/admin/tenants/{cliente_id}/borrar": "SEC-D8 — baja de tenant desde la Consola de Operador; opera sobre un tenant ajeno por diseño, exige claim de admin + reescribir el cliente_id, y se audita antes de arrancar (test_tenant_erasure_adversarial.py).",
         "/admin/errores/{trauma_id}/reintentar": "ídem — Consola de Operador.",
         "/admin/soporte/tickets": "ídem — Consola de Operador.",
         "/admin/soporte/tickets/{ticket_id}": "ídem — Consola de Operador.",

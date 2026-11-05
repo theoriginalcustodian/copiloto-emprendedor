@@ -74,6 +74,9 @@ from mi_dia_schedule_activities import avanzar_tablero_mi_dia, set_mi_dia_deps
 from mi_dia_schedule_workflow import MiDiaDetectorWorkflow
 from grafo_sync_activities import set_grafo_sync_deps, sincronizar_grafo_negocio
 from grafo_sync_workflow import GrafoSyncWorkflow
+from onboarding import GoTrueAdmin
+from tenant_erasure_activities import ACTIVITIES as ACTIVITIES_TENANT_ERASURE, set_tenant_erasure_deps
+from tenant_erasure_workflow import TenantErasureWorkflow
 from mi_dia_tarjeta_store import TarjetaStore
 from cobro_store import CobroStore
 from inteligencia_queries import InteligenciaQueries
@@ -349,6 +352,12 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
     # ejecución de Temporal, sin tumbar el worker entero (mismo criterio que autosanación abajo).
     set_grafo_sync_deps(conn_factory)
 
+    # SEC-D8 — baja de tenant (borrado durable multi-sistema). Mismas deps que el resto: conn_factory
+    # compartido, gateway Composio y MemoryProvider ya construidos arriba; GoTrue admin se arma lazy
+    # desde SUPABASE_URL/SERVICE_ROLE_KEY (`fusion-supabase.env`, ya cargado en el unit del worker).
+    set_tenant_erasure_deps(conn_factory=conn_factory, composio_gateway=gateway,
+                            memory_provider=memory_provider, gotrue_factory=GoTrueAdmin.from_env)
+
     # Fase 3 — el ciclo de auto-reparación. El cliente es un `OpenAI()` crudo y NO el `LlmProvider`
     # del agente: `auditor_parches` y el forjador usan `client.chat.completions.create`, que es el
     # contrato que el banco C0 midió, y `LlmProvider` expone otro (`complete`/`complete_tools`).
@@ -391,7 +400,8 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
 
     return {"workflows": [ConversationWorkflow, MpRefreshWorkflow, AfipOnboardingWorkflow,
                           FacturaWorkflow, AnulacionWorkflow, MiDiaDetectorWorkflow,
-                          AutosanacionWorkflow, GrafoSyncWorkflow, SoporteFeedbackWorkflow],
+                          AutosanacionWorkflow, GrafoSyncWorkflow, SoporteFeedbackWorkflow,
+                          TenantErasureWorkflow],
             "activities": _ACTIVITIES + [refresh_credential, dar_de_alta_afip,
                                          verificar_habilitacion_afip, purgar_secretos_vencidos,
                                          cargar_contexto_factura, reservar_numero_comprobante,
@@ -403,7 +413,7 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
                                          clasificar_y_encolar_feedback,
                                          procesar_feedback_pendiente_de_tenant,
                                          registrar_trauma_de_turno]
-                          + ACTIVITIES_AUTOSANACION,
+                          + ACTIVITIES_AUTOSANACION + ACTIVITIES_TENANT_ERASURE,
             "context_factory": ctx_factory}
 
 
