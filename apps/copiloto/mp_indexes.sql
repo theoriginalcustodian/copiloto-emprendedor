@@ -20,3 +20,15 @@ CREATE TABLE IF NOT EXISTS uc_factory.mp_link_dedup (
     created_at          timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (cliente_id, idem_key)
 );
+
+-- SEC-A2-2 (auditoría de seguridad 2026-11-04): esta tabla quedó con RLS habilitado, SIN policy y SIN
+-- FORCE. El owner (`uc_factory`, el rol del worker) la bypasseaba: el aislamiento dependía sólo del
+-- filtro `cliente_id` explícito del store. Mismo patrón que las demás tablas del copiloto
+-- (`provision_tables.py`): policy `tenant_isolation` con USING + WITH CHECK y FORCE, idempotente.
+-- Los accesos pasan por `conexion_con_tenant` (worker_b), que declara el tenant al abrir la conexión.
+ALTER TABLE uc_factory.mp_link_dedup ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON uc_factory.mp_link_dedup;
+CREATE POLICY tenant_isolation ON uc_factory.mp_link_dedup
+  FOR ALL USING (cliente_id = uc_factory.current_cliente_id()::text)
+  WITH CHECK (cliente_id = uc_factory.current_cliente_id()::text);
+ALTER TABLE uc_factory.mp_link_dedup FORCE ROW LEVEL SECURITY;
