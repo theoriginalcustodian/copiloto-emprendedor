@@ -59,3 +59,6 @@
 
 ## C7 — secretos en el código que viaja al bundle (medido 2026-11-05 @18d616d1)
 Barrido de `apps/mobile` y `apps/copiloto-web` (sin tests/fixtures/lock) por claves `sk-`, `AIza`, JWT, `SERVICE_ROLE`, llaves privadas, `gphy_`, `ghp_`: **0 coincidencias**. Variables públicas que sí viajan: `EXPO_PUBLIC_API_BASE`, `VITE_API_BASE`, `VITE_API_MOCK`, `VITE_AUTH_URL`, `VITE_BUILD_SHA` — URLs y el sha de build, ninguna credencial. **Límite:** es un barrido del fuente, no del APK compilado; el escaneo del binario (ef143e95) queda sin hacer.
+
+## Cross-tenant profundo (SEC-A2-2, medido 2026-11-05)
+`test_adversarial_frontdoor_profundo.py` recorre las **100** operaciones no públicas del OpenAPI con un body válido generado desde su esquema y el `cliente_id` de B sembrado en todo string, query, header y path, con el token de A. Resultado en VPS: **100/100 sin que la capa de datos vea a B**; **75** superan la validación (antes eran 2 de 42) y **10** llegan hasta la capa de datos. **Límite honesto:** las 90 restantes cortan antes de la factory por otras razones (precondiciones de estado, gateways `None`, ids inexistentes); su aislamiento descansa en `require_tenant` + RLS FORCE, no en esta prueba. Estado SEC-A2-2: CERRADO para la capa de front-door; el aislamiento de datos lo respalda la prueba de RLS contra Postgres real.
