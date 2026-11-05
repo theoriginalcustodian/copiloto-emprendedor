@@ -26,7 +26,8 @@ import {
 
 import { Button, Skeleton } from '../../design-system';
 import { generarId } from '../../util/id';
-import { DockFuncion } from '../voz';
+import { DockEntrada } from '../chat/DockEntrada';
+import { TarjetaFacturaPropuesta } from '../chat/TarjetaFacturaPropuesta';
 import { DetalleComprobante } from './DetalleComprobante';
 import { derivarPasoVisible, type PasoVisible } from './maquinaEstado';
 import { PasoCliente } from './PasoCliente';
@@ -37,6 +38,7 @@ import { ResumenFacturacion } from './ResumenFacturacion';
 import { SeccionMeDeben, type SeccionMeDebenHandle } from './SeccionMeDeben';
 import { SeccionMisComprobantes, type SeccionMisComprobantesHandle } from './SeccionMisComprobantes';
 import { TarjetaComprobante } from './TarjetaComprobante';
+import { useDictadoFactura } from './useDictadoFactura';
 import './facturacion.css';
 
 const INTERVALO_POLL_EMISION_MS = 1500;
@@ -169,16 +171,21 @@ export interface PantallaFacturacionProps {
    *  final del shell (mismo criterio que el resto de M-WEB: quien monta decide el destino, no el
    *  módulo). `undefined` = el botón queda deshabilitado (mismo estado que antes del wiring). */
   onConfigurar?: () => void;
-  /** Lleva al chat principal: el dock del pie (SM-P7) deja el texto como pendiente y cambia de tab. */
-  onAbrirChat?: () => void;
 }
 
-export function PantallaFacturacion({ facturaIdInicial, onConfigurar, onAbrirChat }: PantallaFacturacionProps = {}) {
+export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: PantallaFacturacionProps = {}) {
   const [gate, setGate] = useState<EstadoGate>({ tipo: 'verificando' });
   // H-A4-5: arranca en 'listado' salvo que llegue un borrador de afuera (`facturaIdInicial`), que ya ES
   // la acción explícita que justifica entrar directo al wizard. Ver el docstring del módulo.
   const [vista, setVista] = useState<'listado' | 'wizard'>(facturaIdInicial != null ? 'wizard' : 'listado');
   const [facturaId, setFacturaId] = useState<string | null>(facturaIdInicial ?? null);
+  /** El borrador de afuera del que hay que hacerse cargo: el de `facturaIdInicial` o, desde SM-P13, el que
+   *  el usuario dictó y eligió «Completar a mano». Mismo camino de adopción para los dos. */
+  const [borradorAdoptar, setBorradorAdoptar] = useState<string | null>(facturaIdInicial ?? null);
+  const dictado = useDictadoFactura();
+  useEffect(() => {
+    if (facturaIdInicial != null) setBorradorAdoptar(facturaIdInicial);
+  }, [facturaIdInicial]);
   const [creandoBorrador, setCreandoBorrador] = useState(false);
   const [errorBorrador, setErrorBorrador] = useState(false);
   const [reintentoBorrador, setReintentoBorrador] = useState(0);
@@ -238,12 +245,12 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar, onAbrirCha
 
   // 2. Adoptar un borrador que llega de AFUERA (p. ej. facturar desde un presupuesto, fuera de PR1).
   useEffect(() => {
-    if (facturaIdInicial == null) return;
+    if (borradorAdoptar == null) return;
     let cancelado = false;
     setCreandoBorrador(true);
     setErrorBorrador(false);
     (async () => {
-      const { estado } = await esperarEstadoEstable(facturaIdInicial);
+      const { estado } = await esperarEstadoEstable(borradorAdoptar);
       if (cancelado || !vivo.current) return;
       setEstadoFacturaActual(estado);
       if (estado.receptor) setClienteLocal(estado.receptor);
@@ -258,7 +265,19 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar, onAbrirCha
     return () => {
       cancelado = true;
     };
-  }, [facturaIdInicial]);
+  }, [borradorAdoptar]);
+
+  /** «Completar a mano» de la propuesta dictada: se sigue sobre el MISMO borrador, en el wizard. */
+  const completarAMano = useCallback(
+    (id: string) => {
+      dictado.limpiar();
+      setFacturaId(id);
+      setEstadoFacturaActual(null);
+      setVista('wizard');
+      setBorradorAdoptar(id);
+    },
+    [dictado],
+  );
 
   // 3. Gate pasado, vista wizard y sin factura activa -> crear el borrador y esperar a que el estado
   // se estabilice. `vista !== 'wizard'` es el guard de H-A4-5: sin él, este efecto crea un borrador
@@ -565,10 +584,34 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar, onAbrirCha
         />
       )}
 
-      {/* SM-P7 — mismo dock que el resto de las funciones, SIEMPRE montado (decisión del operador
-          2026-11-04: sin condiciones de gate ni de vista). Ojo, a diferencia de mobile: en web antes no
-          había NINGÚN dock en esta pantalla, así que no existía condición que lo ocultara. */}
-      {onAbrirChat && <DockFuncion onAbrirChat={onAbrirChat} placeholder="Pedile una factura al copiloto…" />}
+      {/* SM-P13 — lo dictado NO va al chat: se prellena acá, como en Gastos/Ingresos/Presupuestos/Clientes
+          (decisión del operador 2026-11-04). `TarjetaFacturaPropuesta` es la misma del chat: de sólo lectura,
+          propone y no emite; «Emitir» es un gate explícito y «Completar a mano» sigue sobre el borrador. */}
+      {dictado.propuesta != null && (
+        <TarjetaFacturaPropuesta
+          propuesta={dictado.propuesta}
+          mensajeId="dictado"
+          onCompletarAMano={completarAMano}
+        />
+      )}
+
+      {/* SM-P7 — mismo dock que el resto de las funciones, SIEMPRE montado (sin condiciones de gate ni de
+          vista). La pregunta del copiloto (dictado incompleto) se muestra en el dock: contestarla es
+          seguir el mismo hilo. */}
+      <DockEntrada
+        testId="dock-funcion"
+        placeholder="Pedile una factura al copiloto…"
+        ocupado={dictado.ocupado}
+        aviso={
+          dictado.pregunta != null
+            ? { texto: dictado.pregunta, alerta: false }
+            : dictado.aviso != null
+              ? { texto: dictado.aviso, alerta: true }
+              : null
+        }
+        onEnviar={(texto) => void dictado.dictar(texto)}
+      />
+
     </div>
   );
 }

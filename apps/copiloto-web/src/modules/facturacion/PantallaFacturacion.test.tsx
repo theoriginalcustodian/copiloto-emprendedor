@@ -14,6 +14,8 @@ vi.mock('@copiloto/core', async (importOriginal) => {
     esperarEcoDelSignal: vi.fn(),
     esperarEstadoEstable: vi.fn(),
     estadoFactura: vi.fn(),
+    sendChat: vi.fn(),
+    getReply: vi.fn(),
     quitarItem: vi.fn(),
     setCliente: vi.fn(),
     setDatosVenta: vi.fn(),
@@ -21,9 +23,12 @@ vi.mock('@copiloto/core', async (importOriginal) => {
 });
 
 import {
+  confirmarConTokenFresco,
   crearFactura,
   estadoAfip,
   esperarEstadoEstable,
+  getReply,
+  sendChat,
   tomarPendiente,
   type EstadoAfip,
   type EstadoFacturaResp,
@@ -34,6 +39,9 @@ import { PantallaFacturacion } from './PantallaFacturacion';
 const mockCrearFactura = vi.mocked(crearFactura);
 const mockEstadoAfip = vi.mocked(estadoAfip);
 const mockEsperarEstadoEstable = vi.mocked(esperarEstadoEstable);
+const mockSendChat = vi.mocked(sendChat);
+const mockGetReply = vi.mocked(getReply);
+const mockConfirmar = vi.mocked(confirmarConTokenFresco);
 
 function estadoMock(over: Partial<EstadoFacturaResp> = {}): EstadoFacturaResp {
   return {
@@ -319,25 +327,17 @@ describe('PantallaFacturacion (web) — SM-P7: el dock del pie va siempre', () =
     mockCrearFactura.mockResolvedValue({ status: 'ok', ok: true, facturaId: 'factura-1' });
   });
 
-  it('gate listo + listado: hay dock, y enviar deja el pendiente y abre el chat', async () => {
+  it('gate listo + listado: hay dock y el campo se puede escribir', async () => {
     mockEstadoAfip.mockResolvedValue(estadoAfipMock());
-    const onAbrirChat = vi.fn();
-    render(<PantallaFacturacion onAbrirChat={onAbrirChat} />);
+    render(<PantallaFacturacion />);
     await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeInTheDocument());
 
-    const campo = screen.getByPlaceholderText('Pedile una factura al copiloto…');
-    expect(campo).not.toBeDisabled();
-    fireEvent.change(campo, { target: { value: 'facturale 5000 a Pérez' } });
-    fireEvent.keyDown(campo, { key: 'Enter' });
-
-    expect(onAbrirChat).toHaveBeenCalledTimes(1);
-    expect(tomarPendiente()).toBe('facturale 5000 a Pérez');
-    expect(mockCrearFactura).not.toHaveBeenCalled();
+    expect(screen.getByPlaceholderText('Pedile una factura al copiloto…')).not.toBeDisabled();
   });
 
   it('gate bloqueado: el dock sigue estando', async () => {
     mockEstadoAfip.mockResolvedValue(estadoAfipMock({ puedeFacturar: false, motivoNoPuedeFacturar: null }));
-    render(<PantallaFacturacion onAbrirChat={vi.fn()} onConfigurar={() => {}} />);
+    render(<PantallaFacturacion onConfigurar={() => {}} />);
     await waitFor(() => expect(screen.getByTestId('facturacion-cta-configurar')).toBeInTheDocument());
 
     expect(screen.getByTestId('dock-funcion')).toBeInTheDocument();
@@ -346,10 +346,116 @@ describe('PantallaFacturacion (web) — SM-P7: el dock del pie va siempre', () =
   it('wizard abierto (borrador externo): el dock sigue estando', async () => {
     mockEstadoAfip.mockResolvedValue(estadoAfipMock());
     mockEsperarEstadoEstable.mockResolvedValue({ convergio: true, estado: estadoMock() });
-    render(<PantallaFacturacion facturaIdInicial="factura-1" onAbrirChat={vi.fn()} />);
+    render(<PantallaFacturacion facturaIdInicial="factura-1" />);
     await waitFor(() => expect(screen.getByTestId('facturacion-paso-datos-venta')).toBeInTheDocument());
 
     expect(screen.getByTestId('dock-funcion')).toBeInTheDocument();
+  });
+});
+
+/**
+ * SM-P13 — Facturación PRELLENA como las otras cuatro funciones: lo dictado NO va al chat, viaja a `/chat`
+ * con `kind="dictado:factura"` y la card `factura_propuesta` se pinta ACÁ. El backend propone, nunca emite.
+ * Los `waitFor` esperan el sondeo real de `dictarPorChat` (1 s por tick).
+ */
+describe('PantallaFacturacion (web) — SM-P13: dictado de factura prellena, no manda al chat', () => {
+  const EFECTIVA = 'dictado:factura:sid-1';
+  const ESPERA = { timeout: 5000 };
+
+  const cardFactura = (faltantes: string[]) => ({
+    kind: 'factura_propuesta',
+    data: {
+      factura_id: 'fac-7',
+      faltantes,
+      items: [{ descripcion: 'Instalación', cantidad: 1, precio_unitario: 150000 }],
+      cliente: { razon_social: 'Panadería La Esquina', cuit: '30712345678', condicion_iva: 'RESPONSABLE_INSCRIPTO', del_registro: false },
+      total: 150000,
+      tipo_comprobante: 'FACTURA_C',
+    },
+  });
+
+  function dictar(texto: string) {
+    const campo = screen.getByPlaceholderText('Pedile una factura al copiloto…');
+    fireEvent.change(campo, { target: { value: texto } });
+    fireEvent.keyDown(campo, { key: 'Enter' });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    tomarPendiente();
+    mockEstadoAfip.mockResolvedValue(estadoAfipMock());
+    mockSendChat.mockResolvedValue({ wf_id: 'wf-1', accepted: true, session_id: EFECTIVA });
+    mockEsperarEstadoEstable.mockResolvedValue({ convergio: true, estado: estadoMock() });
+  });
+
+  it('caso COMPLETO: manda kind="dictado:factura", pinta la card prellenada y NO emite ni va al chat', async () => {
+    mockGetReply.mockResolvedValue({ next_id: 3, replies: [{ id: 3, text: '', card: cardFactura([]) as never }] });
+    render(<PantallaFacturacion />);
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeInTheDocument());
+
+    dictar('facturale 150 mil a la panadería');
+
+    expect(await screen.findByTestId('factura-propuesta', undefined, ESPERA)).toBeInTheDocument();
+    expect(mockSendChat).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'facturale 150 mil a la panadería', kind: 'dictado:factura' }),
+    );
+    expect(screen.getByTestId('factura-propuesta-total')).toHaveTextContent('150000');
+    expect(screen.getByTestId('factura-propuesta-emitir')).toBeInTheDocument();
+    // Prellenar no es emitir: el gate sigue en manos de quien toca «Emitir la factura».
+    expect(mockConfirmar).not.toHaveBeenCalled();
+    expect(mockCrearFactura).not.toHaveBeenCalled();
+    expect(tomarPendiente()).toBeNull();
+  });
+
+  it('caso INCOMPLETO: el 1er turno es una PREGUNTA SIN CARD (nada que prellenar) y el 2º, por el MISMO hilo, trae la card', async () => {
+    mockGetReply
+      .mockResolvedValueOnce({ next_id: 2, replies: [{ id: 2, text: '¿A quién le facturo?' }] })
+      .mockResolvedValueOnce({ next_id: 5, replies: [{ id: 5, text: '', card: cardFactura(['receptor']) as never }] });
+    render(<PantallaFacturacion />);
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeInTheDocument());
+
+    dictar('facturá 150 mil');
+
+    // La pregunta se ve y NO hay card (ni vacía).
+    expect(await screen.findByText('¿A quién le facturo?', undefined, ESPERA)).toBeInTheDocument();
+    expect(screen.queryByTestId('factura-propuesta')).not.toBeInTheDocument();
+
+    dictar('a la panadería');
+
+    expect(await screen.findByTestId('factura-propuesta', undefined, ESPERA)).toBeInTheDocument();
+    // Misma sesión y lectura DESDE el cursor del turno 1: sin eso relee la pregunta vieja.
+    expect(mockSendChat).toHaveBeenCalledTimes(2);
+    expect(mockSendChat.mock.calls[1]![0].session_id).toBe(mockSendChat.mock.calls[0]![0].session_id);
+    expect(mockGetReply).toHaveBeenLastCalledWith(EFECTIVA, 2);
+    // Incompleta: no se ofrece emitir; se ofrece completar a mano sobre el mismo borrador.
+    expect(screen.queryByTestId('factura-propuesta-emitir')).not.toBeInTheDocument();
+    expect(screen.getByTestId('factura-propuesta-completar')).toBeInTheDocument();
+    expect(mockConfirmar).not.toHaveBeenCalled();
+  });
+
+  it('«Completar a mano» sigue sobre el MISMO borrador, en el wizard', async () => {
+    mockGetReply.mockResolvedValue({ next_id: 3, replies: [{ id: 3, text: '', card: cardFactura(['receptor']) as never }] });
+    render(<PantallaFacturacion />);
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeInTheDocument());
+
+    dictar('facturá 150 mil');
+    fireEvent.click(await screen.findByTestId('factura-propuesta-completar', undefined, ESPERA));
+
+    await waitFor(() => expect(mockEsperarEstadoEstable).toHaveBeenCalledWith('fac-7'));
+    expect(await screen.findByTestId('facturacion-paso-datos-venta')).toBeInTheDocument();
+    expect(screen.queryByTestId('factura-propuesta')).not.toBeInTheDocument();
+    expect(mockCrearFactura).not.toHaveBeenCalled();
+  });
+
+  it('si el backend no responde: aviso visible y ninguna card (no se degrada en silencio)', async () => {
+    mockSendChat.mockRejectedValue(new Error('red'));
+    render(<PantallaFacturacion />);
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeInTheDocument());
+
+    dictar('facturá 150 mil');
+
+    expect(await screen.findByText('No pude consultar al asistente. Probá de nuevo.', undefined, ESPERA)).toBeInTheDocument();
+    expect(screen.queryByTestId('factura-propuesta')).not.toBeInTheDocument();
   });
 });
 
