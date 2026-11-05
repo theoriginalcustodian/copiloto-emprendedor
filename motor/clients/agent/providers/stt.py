@@ -50,6 +50,8 @@ def _texto_si_hay_voz(d: dict) -> str:
     try:
         maximo = float(os.environ.get("STT_NO_SPEECH_MAX") or NO_SPEECH_MAX_DEFAULT)
     except ValueError:
+        # env mal tipeado: NO se apaga el guard (sería fail-open por un typo) — vuelve al default, con rastro.
+        _log_stt.warning('{"evento": "stt_env_invalido", "var": "STT_NO_SPEECH_MAX"}')
         maximo = NO_SPEECH_MAX_DEFAULT
     if not 0 < maximo < 1:
         return texto

@@ -33,17 +33,18 @@ sin deploy):
 from __future__ import annotations
 
 import array
+import io
 import logging
 import math
 import os
 import subprocess
 import tempfile
+import wave
 from dataclasses import dataclass
 
 _log = logging.getLogger(__name__)
 
 SAMPLE_RATE = 16000
-CUADRO = SAMPLE_RATE // 50        # 20 ms
 MIN_CUADROS = 10                  # < 200 ms: no hay base para medir
 MAX_SEGUNDOS = 180                # tope de decodificación (el audio ya está acotado a 25 MB por web.py)
 TIMEOUT_FFMPEG_S = 15
@@ -70,31 +71,54 @@ def _env_float(nombre: str, default: float) -> float:
         return default
 
 
-def medir_pcm(pcm: bytes) -> Medicion | None:
+def medir_pcm(pcm: bytes, sample_rate: int = SAMPLE_RATE) -> Medicion | None:
     """RMS global y dinámica de un PCM int16 little-endian mono. `None` si hay menos de `MIN_CUADROS` cuadros."""
     muestras = array.array("h")
     muestras.frombytes(pcm[: len(pcm) - (len(pcm) % 2)])
     if muestras.itemsize != 2:  # pragma: no cover — plataformas raras
         return None
-    n_cuadros = len(muestras) // CUADRO
+    cuadro = max(sample_rate // 50, 1)          # 20 ms al sample rate real del clip
+    n_cuadros = len(muestras) // cuadro
     if n_cuadros < MIN_CUADROS:
         return None
     por_cuadro = []
     total_cuadrados = 0
     for i in range(n_cuadros):
-        suma = sum(v * v for v in muestras[i * CUADRO:(i + 1) * CUADRO])
+        suma = sum(v * v for v in muestras[i * cuadro:(i + 1) * cuadro])
         total_cuadrados += suma
-        por_cuadro.append(math.sqrt(suma / CUADRO))
+        por_cuadro.append(math.sqrt(suma / cuadro))
     por_cuadro.sort()
     p50 = por_cuadro[int(0.5 * (n_cuadros - 1))]
     p90 = por_cuadro[int(0.9 * (n_cuadros - 1))]
-    return Medicion(rms=math.sqrt(total_cuadrados / (n_cuadros * CUADRO)),
+    return Medicion(rms=math.sqrt(total_cuadrados / (n_cuadros * cuadro)),
                     dinamica=p90 / max(p50, 1.0), cuadros=n_cuadros)
 
 
-def decodificar_a_pcm(audio_bytes: bytes, content_type: str = "") -> bytes | None:
-    """ffmpeg → PCM 16 kHz mono int16. Por ARCHIVO temporal y no por pipe: un m4a con el `moov` al final (lo que
-    graba el device) no se puede leer de un pipe no-seekable. `None` si ffmpeg falla o no está."""
+def _decodificar_wav(audio_bytes: bytes) -> tuple[bytes, int] | None:
+    """WAV PCM de 16 bits en Python puro (sin ffmpeg): primer canal y sample rate del propio clip."""
+    try:
+        with wave.open(io.BytesIO(audio_bytes)) as w:
+            if w.getsampwidth() != 2:
+                return None
+            crudo = w.readframes(w.getnframes())
+            canales, rate = w.getnchannels(), w.getframerate()
+    except (wave.Error, EOFError):
+        return None   # no es un WAV legible: lo intenta ffmpeg, y si tampoco, `hay_voz` lo loguea como no medible
+    if canales > 1:
+        muestras = array.array("h")
+        muestras.frombytes(crudo[: len(crudo) - (len(crudo) % 2)])
+        crudo = muestras[::canales].tobytes()
+    return crudo, rate
+
+
+def decodificar_a_pcm(audio_bytes: bytes, content_type: str = "") -> tuple[bytes, int] | None:
+    """→ `(PCM int16 mono, sample_rate)`. WAV 16 bits en Python puro; el resto (mp4/webm/ogg del device) por ffmpeg.
+    ffmpeg va por ARCHIVO temporal y no por pipe: un m4a con el `moov` al final (lo que graba el device) no se
+    puede leer de un pipe no-seekable. `None` si no se pudo decodificar."""
+    if audio_bytes[:4] == b"RIFF":
+        wav = _decodificar_wav(audio_bytes)
+        if wav is not None:
+            return wav
     try:
         with tempfile.NamedTemporaryFile(suffix=".audio", delete=True) as tmp:
             tmp.write(audio_bytes)
@@ -103,9 +127,11 @@ def decodificar_a_pcm(audio_bytes: bytes, content_type: str = "") -> bytes | Non
                 ["ffmpeg", "-nostdin", "-v", "error", "-t", str(MAX_SEGUNDOS), "-i", tmp.name,
                  "-f", "s16le", "-ac", "1", "-ar", str(SAMPLE_RATE), "pipe:1"],
                 capture_output=True, timeout=TIMEOUT_FFMPEG_S, check=False)
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError) as exc:
+        # ffmpeg ausente o colgado: no es «sin voz», es «no medible» → `hay_voz` deja decidir al STT, pero el rastro queda.
+        _log.warning('{"evento": "audio_sin_voz_ffmpeg_fallo", "error": "%s"}', type(exc).__name__)
         return None
-    return r.stdout if r.returncode == 0 and r.stdout else None
+    return (r.stdout, SAMPLE_RATE) if r.returncode == 0 and r.stdout else None
 
 
 def motivo_sin_voz(medicion: Medicion) -> str | None:
@@ -123,8 +149,8 @@ def hay_voz(audio_bytes: bytes, content_type: str = "") -> bool:
     """`False` sólo si se MIDIÓ y no hay voz. Ante lo que no se puede medir, `True` (y se loguea)."""
     if os.environ.get("STT_GUARD_ENERGIA", "1").strip() == "0":
         return True
-    pcm = decodificar_a_pcm(audio_bytes, content_type)
-    medicion = medir_pcm(pcm) if pcm else None
+    decodificado = decodificar_a_pcm(audio_bytes, content_type)
+    medicion = medir_pcm(*decodificado) if decodificado else None
     if medicion is None:
         _log.warning('{"evento": "audio_sin_voz_no_medible", "content_type": "%s", "bytes": %d}',
                      (content_type or "")[:40], len(audio_bytes))

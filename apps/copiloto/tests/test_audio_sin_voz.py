@@ -5,14 +5,13 @@ transcribiendo: si no, el guard está fail-closed de más y rompe el dictado, el
 
 La «voz» de estos tests es SINTÉTICA (portadora de ruido modulada a 4 Hz con pausas, como la envolvente silábica):
 prueba el criterio, no el STT. La voz real (TTS SAPI) se ejercita en el E2E contra prod
-(`scripts/e2e_silencio_stt.py`). Necesita `ffmpeg` (está en el VPS); sin él se saltea, y el test de fail-open lo cubre.
+(`scripts/e2e_silencio_stt.py`). Los WAV se decodifican en Python puro, así que NO dependen de ffmpeg (el runner de GitHub no lo tiene).
 """
 from __future__ import annotations
 
 import io
 import math
 import random
-import shutil
 import struct
 import wave
 
@@ -25,7 +24,6 @@ from test_audio import (_WEBM_HEADER, _build_app, _mp_fernet_key_env,  # noqa: F
                         _require_tenant_fixed)
 
 N = 16000 * 5
-requiere_ffmpeg = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg no está en esta máquina")
 
 
 def _wav(muestra) -> bytes:
@@ -111,7 +109,6 @@ def _post(wav: bytes):
                                 files={"audio": ("clip.wav", wav, "audio/wav")})
 
 
-@requiere_ffmpeg
 @pytest.mark.parametrize("clip", [_silencio, _hiss, _tono], ids=["silencio", "hiss", "tono"])
 def test_HOSTIL_endpoint_sin_voz_da_422_y_NO_llama_al_STT(spy, clip):
     r = _post(clip())
@@ -119,21 +116,18 @@ def test_HOSTIL_endpoint_sin_voz_da_422_y_NO_llama_al_STT(spy, clip):
     assert spy.llamadas == 0, "se pagó (y se confió en) el STT con un clip sin voz"
 
 
-@requiere_ffmpeg
 def test_CONTROL_POSITIVO_endpoint_con_voz_sigue_transcribiendo(spy):
     r = _post(_voz_sintetica())
     assert r.status_code == 200 and r.json() == {"transcript": "compré nafta"}
     assert spy.llamadas == 1
 
 
-@requiere_ffmpeg
 def test_kill_switch_por_env_deja_pasar_el_silencio(spy, monkeypatch):
     """Rollback sin deploy: `STT_GUARD_ENERGIA=0` apaga B (queda la defensa A en el proveedor)."""
     monkeypatch.setenv("STT_GUARD_ENERGIA", "0")
     assert _post(_silencio()).status_code == 200 and spy.llamadas == 1
 
 
-@requiere_ffmpeg
 def test_umbral_por_env_se_lee_en_cada_llamada(spy, monkeypatch):
     monkeypatch.setenv("STT_DINAMICA_MIN", "0")
     monkeypatch.setenv("STT_RMS_MIN", "0")
@@ -152,3 +146,18 @@ def test_fail_open_no_es_silencioso(spy, caplog):
     with caplog.at_level(logging.WARNING, logger="audio_sin_voz"):
         assert audio_sin_voz.hay_voz(_WEBM_HEADER + b"fake", "audio/webm") is True
     assert "audio_sin_voz_no_medible" in caplog.text
+
+
+
+def test_wav_a_otro_sample_rate_y_estereo_tambien_se_mide():
+    """El device no promete 16 kHz mono: el cuadro de 20 ms se calcula al rate real y el estéreo usa el primer canal."""
+    b = io.BytesIO()
+    r = random.Random(3)
+    with wave.open(b, "wb") as w:
+        w.setnchannels(2)
+        w.setsampwidth(2)
+        w.setframerate(8000)
+        w.writeframes(b"".join(struct.pack("<hh", int(r.gauss(0, 100)), 0) for _ in range(8000 * 3)))
+    pcm, rate = audio_sin_voz.decodificar_a_pcm(b.getvalue(), "audio/wav")
+    assert rate == 8000 and len(pcm) == 8000 * 3 * 2
+    assert audio_sin_voz.motivo_sin_voz(audio_sin_voz.medir_pcm(pcm, rate)) == "ruido_estacionario"
