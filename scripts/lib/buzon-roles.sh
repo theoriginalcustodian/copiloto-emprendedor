@@ -174,6 +174,35 @@ roles_declarados_en() {
   # 2026-10-16). El ERE es el MISMO que tenia el sed; los dos `tr` son clases de glob, no regex.
   # Si la linea no matchea el ancla de extraccion se usa entera, igual que el sed sin match.
   if [[ "$linea" =~ $ROLES_PREFIJO_RE ]]; then crudo="${BASH_REMATCH[1]}"; else crudo="$linea"; fi
+  # 🔴 CORTE EN EL PRIMER SEPARADOR DE PROSA (2026-11-05). Antes se tokenizaba TODO lo que seguía a
+  # los dos puntos, así que un rol nombrado en la EXPLICACIÓN quedaba declarado. Medido sobre la
+  # ficha real del grafo: declaraba tres roles y la función devolvía CINCO, porque la oración que
+  # explicaba por qué `auditoria` y `manejo-de-errores` quedaban afuera los NOMBRABA.
+  #
+  #   ROLES: backend — y no auditoria, porque no tiene sesión viva
+  #     antes -> "backend auditoria"   ← la aclaración que EXCLUYE es lo que INCLUYE
+  #     ahora -> "backend"
+  #
+  # Es el dual de `memoria/el-guard-se-satisface-con-su-propio-comentario.md`: ahí el comentario
+  # satisfacía al guard, acá lo ALIMENTA. Y no dio síntoma antes porque el archivo SÍ tenía la
+  # línea: cualquier control que pregunte «¿declara ROLES:?» sale verde — lo que estaba mal era el
+  # VALOR devuelto, y ningún test comparaba el valor contra lo que el humano escribió.
+  #
+  # Consecuencia de diseño que esto arregla: antes la línea `ROLES:` NO PODÍA llevar explicación, y
+  # una línea que no tolera explicación es una que la próxima persona rompe igual.
+  #
+  # El corte es por expansión de parámetro (no procesos nuevos): esta función corre por cada .md de
+  # un buzón de ~3300, y era el 15% del tiempo de `vigilancia-check.sh`.
+  #
+  # FAIL-OPEN si el corte deja el conjunto vacío: devolver nada equivale a «no declara padrón», y el
+  # caller entonces usa el alcance del NOMBRE, que escala a MÁS roles, no a menos. Es la salida
+  # segura — la peligrosa sería recortar hasta dejar a nadie, que es el apagado contra el que el
+  # caso 1 de `test-escalador-roles-declarados.sh` monta guardia.
+  crudo="${crudo%%—*}"       # em dash: el separador que usan las fichas
+  crudo="${crudo%%(*}"       # paréntesis de aclaración
+  crudo="${crudo%%.*}"       # fin de oración (ningún rol lleva punto)
+  crudo="${crudo%% -- *}"    # doble guion ASCII
+  crudo="${crudo%% - *}"     # guion simple con espacios (no parte un `manejo-de-errores`)
   crudo="${crudo//[\`*_]/}"
   crudo="${crudo//[,;\/]/ }"
   for tok in $crudo; do
