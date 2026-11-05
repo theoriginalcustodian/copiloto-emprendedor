@@ -237,6 +237,10 @@ caza "MP access token de TEST" uc-mercadopago-access-token-test \
 caza "GRAPHITY_API_KEY" uc-graphity-api-key \
   "GRAPHITY_API_KEY=$(printf 'gphy_''%s' 'Qw8Er4Ty7Ui2Op5As')"
 
+caza "Authorization: Bearer con token literal (forma del .mcp.json real)" uc-bearer-token-literal   "  \"headers\": { \"Authorization\": \"$(printf 'Bearer ''%s' 'Zk8Qm3Vx7Lp2Rt9Ws4Yn6Hc1Bd5Fg0JaE')\" }"
+no_caza "Bearer con placeholder \${TOKEN} (config de ejemplo)"   "  \"headers\": { \"Authorization\": \"Bearer \${MCP_TOKEN}\" }"
+no_caza "Bearer con placeholder <token> (doc)"   "Authorization: Bearer <token-de-60fps>"
+
 # La frontera de la regla del DSN, medida como blast radius ANTES de embarcarla: el repo YA contiene
 # las dos formas de abajo (CI de `tests.yml`, `provision-rol-*.sh`, `docker-compose.gotrue.yml`). Si
 # cualquiera de las dos disparara, el push de las TRES sesiones fallaría y el camino de menor

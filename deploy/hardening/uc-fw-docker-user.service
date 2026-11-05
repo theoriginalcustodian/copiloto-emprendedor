@@ -1,0 +1,13 @@
+# Cierra a internet los puertos publicados por docker-proxy (ufw NO los ve: pasan por FORWARD/DNAT).
+# Auditoría 2026-11-04, SEC-A1-1. Idempotente (-C antes de -I). Rollback: systemctl disable --now + iptables -D DOCKER-USER ...
+[Unit]
+Description=Drop internet a puertos publicados por Docker (3000, 55444)
+After=docker.service network-online.target
+Requires=docker.service
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'for p in 3000 55444; do iptables -C DOCKER-USER -i eth0 -p tcp -m conntrack --ctorigdstport $p -j DROP 2>/dev/null || iptables -I DOCKER-USER 1 -i eth0 -p tcp -m conntrack --ctorigdstport $p -j DROP; done'
+ExecStop=/bin/sh -c 'for p in 3000 55444; do iptables -D DOCKER-USER -i eth0 -p tcp -m conntrack --ctorigdstport $p -j DROP 2>/dev/null || true; done'
+[Install]
+WantedBy=multi-user.target

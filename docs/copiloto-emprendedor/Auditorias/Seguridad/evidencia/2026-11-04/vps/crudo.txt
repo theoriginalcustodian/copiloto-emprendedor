@@ -1,0 +1,451 @@
+
+###SEC A1_usuarios
+root:0:/root:/bin/bash
+
+###SEC A1_sudo
+Defaults	env_reset
+Defaults	mail_badpass
+Defaults	secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin"
+Defaults	use_pty
+root	ALL=(ALL:ALL) ALL
+%admin ALL=(ALL) ALL
+%sudo	ALL=(ALL:ALL) ALL
+@includedir /etc/sudoers.d
+root ALL=(ALL) NOPASSWD:ALL
+
+###SEC A1_sshd
+port 22
+usepam yes
+logingracetime 120
+maxauthtries 6
+clientaliveinterval 0
+permitrootlogin without-password
+pubkeyauthentication yes
+passwordauthentication yes
+kbdinteractiveauthentication no
+x11forwarding yes
+permitemptypasswords no
+allowtcpforwarding yes
+
+###SEC A1_authorized_keys
+/root/.ssh/authorized_keys: 2 llaves
+  256 SHA256:[ENMASCARADO] (ED25519)
+  256 SHA256:[ENMASCARADO] (ED25519)
+/home/kaggle-tunnel/.ssh/authorized_keys: 1 llaves
+  256 SHA256:[ENMASCARADO] (ED25519)
+
+###SEC A1_ultimos_logins
+root     pts/0        Mon Jun 15 22:11 - 03:18  (05:07)     181.89.241.169
+reboot   system boot  Mon Jun 15 19:31   still running      6.8.0-52-generic
+
+wtmp begins Tue Jan 28 10:22:08 2025
+
+###SEC A1_systemd_security
+-- uc-copiloto-web: CapabilityBoundingSet=cap_chown cap_dac_override cap_dac_read_search cap_fowner cap_fsetid cap_kill cap_setgid cap_setuid cap_setpcap cap_linux_immutable cap_net_bind_service cap_net_broadcast cap_net_admin cap_net_raw cap_ipc_lock cap_ipc_owner cap_sys_module cap_sys_rawio cap_sys_chroot cap_sys_ptrace cap_sys_pacct cap_sys_admin cap_sys_boot cap_sys_nice cap_sys_resource cap_sys_time cap_sys_tty_config cap_mknod cap_lease cap_audit_write cap_audit_control cap_setfcap cap_mac_override cap_mac_admin cap_syslog cap_wake_alarm cap_block_suspend cap_audit_read cap_perfmon cap_bpf cap_checkpoint_restore User=root PrivateTmp=no ProtectHome=no ProtectSystem=no NoNewPrivileges=no
+→ Overall exposure level for uc-copiloto-web.service: 9.6 UNSAFE :-{
+-- uc-copiloto-worker: CapabilityBoundingSet=cap_chown cap_dac_override cap_dac_read_search cap_fowner cap_fsetid cap_kill cap_setgid cap_setuid cap_setpcap cap_linux_immutable cap_net_bind_service cap_net_broadcast cap_net_admin cap_net_raw cap_ipc_lock cap_ipc_owner cap_sys_module cap_sys_rawio cap_sys_chroot cap_sys_ptrace cap_sys_pacct cap_sys_admin cap_sys_boot cap_sys_nice cap_sys_resource cap_sys_time cap_sys_tty_config cap_mknod cap_lease cap_audit_write cap_audit_control cap_setfcap cap_mac_override cap_mac_admin cap_syslog cap_wake_alarm cap_block_suspend cap_audit_read cap_perfmon cap_bpf cap_checkpoint_restore User=root PrivateTmp=no ProtectHome=no ProtectSystem=no NoNewPrivileges=no
+→ Overall exposure level for uc-copiloto-worker.service: 9.6 UNSAFE :-{
+-- uc-copiloto-worker-soporte: CapabilityBoundingSet=cap_chown cap_dac_override cap_dac_read_search cap_fowner cap_fsetid cap_kill cap_setgid cap_setuid cap_setpcap cap_linux_immutable cap_net_bind_service cap_net_broadcast cap_net_admin cap_net_raw cap_ipc_lock cap_ipc_owner cap_sys_module cap_sys_rawio cap_sys_chroot cap_sys_ptrace cap_sys_pacct cap_sys_admin cap_sys_boot cap_sys_nice cap_sys_resource cap_sys_time cap_sys_tty_config cap_mknod cap_lease cap_audit_write cap_audit_control cap_setfcap cap_mac_override cap_mac_admin cap_syslog cap_wake_alarm cap_block_suspend cap_audit_read cap_perfmon cap_bpf cap_checkpoint_restore User=root PrivateTmp=no ProtectHome=no ProtectSystem=no NoNewPrivileges=no
+→ Overall exposure level for uc-copiloto-worker-soporte.service: 9.6 UNSAFE :-{
+
+###SEC C11_permisos_secretos
+600 root:root /etc/unreal-copilot/clinic-agent.env
+600 root:root /etc/unreal-copilot/copiloto.env
+600 root:root /etc/unreal-copilot/copiloto-gotrue.env
+600 root:root /etc/unreal-copilot/deepseek-worker.env
+600 root:root /etc/unreal-copilot/documed-e2e-user.env
+600 root:root /etc/unreal-copilot/documed.env
+600 root:root /etc/unreal-copilot/fusion-pg.env
+600 root:root /etc/unreal-copilot/fusion-supabase.env
+600 root:root /etc/unreal-copilot/hitl-listener.env
+600 root:root /etc/unreal-copilot/mp-spike.env
+600 root:root /etc/unreal-copilot/wa-sender.env
+700 root:root /etc/unreal-copilot
+
+###SEC C11_variables_por_archivo_SOLO_NOMBRES
+clinic-agent.env: 5 vars
+copiloto.env: 40 vars
+copiloto-gotrue.env: 22 vars
+deepseek-worker.env: 9 vars
+documed-e2e-user.env: 2 vars
+documed.env: 15 vars
+fusion-pg.env: 7 vars
+fusion-supabase.env: 3 vars
+hitl-listener.env: 3 vars
+mp-spike.env: 7 vars
+wa-sender.env: 11 vars
+
+###SEC C11_allowlist_valores_no_sensibles
+GOTRUE_DISABLE_SIGNUP=false
+GOTRUE_JWT_EXP=3600
+GOTRUE_TAG=v2.186.0
+CADDY_TAG=2
+COPILOTO_ENGINE_MODE=react
+COPILOTO_LOG_STT_TEXT=<no definida>
+COPILOTO_DEDICATED_GOTRUE=true
+GOTRUE_SITE_URL=https://copiloto.178-105-191-1.sslip.io
+GOTRUE_URI_ALLOW_LIST=https://copiloto.178-105-191-1.sslip.io/*,https://copilotoemprendedor.duckdns.org/*
+
+###SEC C11_procesos_y_usuarios
+      1 root            905052 temporal-test-s
+      1 root           3995682 python
+      1 root           3995677 python
+      1 root           3995673 python
+      1 root           3494330 caddy
+      1 root           3268435 python
+      1 root           3268423 python
+      1 root           3268421 python
+      1 root           3268413 python
+      1 root           3268402 python
+      1 root           2986321 caddy
+      1 root           2884144 caddy
+      1 root           2857601 caddy
+      1 root           2693790 python
+      1 root           2693275 python
+
+###SEC A6_docker_contenedores
+copiloto-test-gotrue-proxy-1|caddy:2|Up 4 weeks|80/tcp, 443/tcp, 2019/tcp, 443/udp, 127.0.0.1:9971->9971/tcp
+copiloto-test-gotrue-auth-1|supabase/gotrue:v2.186.0|Up 4 weeks (healthy)|
+copiloto-test-gotrue-db-1|postgres:16-alpine|Up 4 weeks (healthy)|5432/tcp
+copiloto-test-gotrue-mailpit-1|axllent/mailpit:v1.21|Up 4 weeks (healthy)|1025/tcp, 1110/tcp, 127.0.0.1:8971->8025/tcp
+copiloto-auth-auth-1|supabase/gotrue:v2.186.0|Up 4 weeks (healthy)|
+copiloto-test-gotrue-plan-proxy-1|caddy:2|Up 6 weeks|80/tcp, 443/tcp, 2019/tcp, 443/udp, 127.0.0.1:9977->9977/tcp
+copiloto-test-gotrue-plan-auth-1|supabase/gotrue:v2.186.0|Up 6 weeks (healthy)|
+copiloto-test-gotrue-plan-db-1|postgres:16-alpine|Up 6 weeks (healthy)|5432/tcp
+copiloto-test-gotrue-plan-mailpit-1|axllent/mailpit:v1.21|Up 6 weeks (healthy)|1025/tcp, 1110/tcp, 127.0.0.1:8977->8025/tcp
+copiloto-test-db-plan|postgres:17-alpine|Up 6 weeks|127.0.0.1:55437->5432/tcp
+copiloto-test-gotrue-fe2-proxy-1|caddy:2|Up 6 weeks|80/tcp, 443/tcp, 2019/tcp, 443/udp, 127.0.0.1:9974->9974/tcp
+copiloto-test-gotrue-fe2-auth-1|supabase/gotrue:v2.186.0|Up 6 weeks (healthy)|
+copiloto-test-gotrue-fe2-db-1|postgres:16-alpine|Up 6 weeks (healthy)|5432/tcp
+copiloto-test-gotrue-fe2-mailpit-1|axllent/mailpit:v1.21|Up 6 weeks (healthy)|1025/tcp, 1110/tcp, 127.0.0.1:8974->8025/tcp
+copiloto-test-gotrue-be-proxy-1|caddy:2|Up 6 weeks|80/tcp, 443/tcp, 2019/tcp, 443/udp, 127.0.0.1:9975->9975/tcp
+copiloto-test-gotrue-be-auth-1|supabase/gotrue:v2.186.0|Up 6 weeks (healthy)|
+copiloto-test-gotrue-be-db-1|postgres:16-alpine|Up 6 weeks (healthy)|5432/tcp
+copiloto-test-gotrue-be-mailpit-1|axllent/mailpit:v1.21|Up 6 weeks (healthy)|1025/tcp, 1110/tcp, 127.0.0.1:8975->8025/tcp
+copiloto-test-gotrue-aud-proxy-1|caddy:2|Up 6 weeks|80/tcp, 443/tcp, 2019/tcp, 443/udp, 127.0.0.1:9976->9976/tcp
+copiloto-test-gotrue-aud-auth-1|supabase/gotrue:v2.186.0|Up 6 weeks (healthy)|
+copiloto-test-gotrue-aud-db-1|postgres:16-alpine|Up 6 weeks (healthy)|5432/tcp
+copiloto-test-gotrue-aud-mailpit-1|axllent/mailpit:v1.21|Up 6 weeks (healthy)|1025/tcp, 1110/tcp, 127.0.0.1:8976->8025/tcp
+copiloto-test-gotrue-fe1-proxy-1|caddy:2|Up 6 weeks|80/tcp, 443/tcp, 2019/tcp, 443/udp, 127.0.0.1:9973->9973/tcp
+copiloto-test-gotrue-fe1-auth-1|supabase/gotrue:v2.186.0|Up 6 weeks (healthy)|
+copiloto-test-gotrue-fe1-db-1|postgres:16-alpine|Up 6 weeks (healthy)|5432/tcp
+copiloto-test-gotrue-fe1-mailpit-1|axllent/mailpit:v1.21|Up 6 weeks (healthy)|1025/tcp, 1110/tcp, 127.0.0.1:8973->8025/tcp
+copiloto-test-db-be|postgres:17-alpine|Up 6 weeks|127.0.0.1:55435->5432/tcp
+copiloto-test-db-fe2|postgres:17-alpine|Up 6 weeks|127.0.0.1:55434->5432/tcp
+copiloto-test-db-aud|postgres:17-alpine|Up 6 weeks|127.0.0.1:55436->5432/tcp
+copiloto-test-db-fe1|postgres:17-alpine|Up 6 weeks|127.0.0.1:55433->5432/tcp
+copiloto-test-db|postgres:17-alpine|Up 2 months|127.0.0.1:55432->5432/tcp
+s6port|alpine/socat|Up 3 months|0.0.0.0:55444->5432/tcp, [::]:55444->5432/tcp
+spike-s6|postgres:16-alpine|Up 3 months|5432/tcp
+copiloto-auth-proxy-1|caddy:2|Up 4 weeks|80/tcp, 443/tcp, 2019/tcp, 443/udp, 127.0.0.1:9997->9997/tcp
+copiloto-auth-db-1|postgres:16-alpine|Up 4 months (healthy)|5432/tcp
+clinic-frontend|clinic-frontend:demo|Up 4 months|0.0.0.0:3000->3000/tcp, :::3000->3000/tcp
+evolution-api|evoapicloud/evolution-api:v2.3.7|Up 4 months|127.0.0.1:8085->8080/tcp
+evolution-postgres|postgres:15-alpine|Up 4 months|5432/tcp
+evolution-redis|redis:7-alpine|Up 4 months|6379/tcp
+hermes-dashboard|hermes-agent|Up 4 months|
+hermes|hermes-agent|Up 4 months|
+temporal-admin-tools|temporalio/admin-tools:1.29|Up 4 months|
+temporal-ui|temporalio/ui:2.50.0|Up 4 months|127.0.0.1:8080->8080/tcp
+temporal-server|temporalio/auto-setup:1.29|Up 4 months (healthy)|6933-6935/tcp, 6939/tcp, 7234-7235/tcp, 7239/tcp, 127.0.0.1:7233->7233/tcp
+temporal-postgres|postgres:16-alpine|Up 4 months (healthy)|5432/tcp
+
+###SEC A6_docker_inspect
+/copiloto-test-gotrue-proxy-1 user= privileged=false netmode=copiloto-test-gotrue_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO]>/etc/caddy/Caddyfile(ro) 
+/copiloto-test-gotrue-auth-1 user=supabase privileged=false netmode=copiloto-test-gotrue_net capadd=[] readonly=false restart=unless-stopped mounts=
+/copiloto-test-gotrue-db-1 user= privileged=false netmode=copiloto-test-gotrue_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO].sql->/docker-entrypoint-initdb.d/00-auth-schema.sql(ro) [ENMASCARADO]>/var/lib/postgresql/data(z) 
+/copiloto-test-gotrue-mailpit-1 user= privileged=false netmode=copiloto-test-gotrue_net capadd=[] readonly=false restart=no mounts=
+/copiloto-auth-auth-1 user=supabase privileged=false netmode=copiloto-auth_net capadd=[] readonly=false restart=unless-stopped mounts=
+/copiloto-test-gotrue-plan-proxy-1 user= privileged=false netmode=copiloto-test-gotrue-plan_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO]>/etc/caddy/Caddyfile(ro) 
+/copiloto-test-gotrue-plan-auth-1 user=supabase privileged=false netmode=copiloto-test-gotrue-plan_net capadd=[] readonly=false restart=unless-stopped mounts=
+/copiloto-test-gotrue-plan-db-1 user= privileged=false netmode=copiloto-test-gotrue-plan_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO].sql->/docker-entrypoint-initdb.d/00-auth-schema.sql(ro) [ENMASCARADO]>/var/lib/postgresql/data(z) 
+/copiloto-test-gotrue-plan-mailpit-1 user= privileged=false netmode=copiloto-test-gotrue-plan_net capadd=[] readonly=false restart=no mounts=
+/copiloto-test-db-plan user= privileged=false netmode=bridge capadd=[] readonly=false restart=no [ENMASCARADO]>/var/lib/postgresql/data() 
+/copiloto-test-gotrue-fe2-proxy-1 user= privileged=false netmode=copiloto-test-gotrue-fe2_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO]>/etc/caddy/Caddyfile(ro) 
+/copiloto-test-gotrue-fe2-auth-1 user=supabase privileged=false netmode=copiloto-test-gotrue-fe2_net capadd=[] readonly=false restart=unless-stopped mounts=
+/copiloto-test-gotrue-fe2-db-1 user= privileged=false netmode=copiloto-test-gotrue-fe2_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO].sql->/docker-entrypoint-initdb.d/00-auth-schema.sql(ro) [ENMASCARADO]>/var/lib/postgresql/data(z) 
+/copiloto-test-gotrue-fe2-mailpit-1 user= privileged=false netmode=copiloto-test-gotrue-fe2_net capadd=[] readonly=false restart=no mounts=
+/copiloto-test-gotrue-be-proxy-1 user= privileged=false netmode=copiloto-test-gotrue-be_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO]>/etc/caddy/Caddyfile(ro) 
+/copiloto-test-gotrue-be-auth-1 user=supabase privileged=false netmode=copiloto-test-gotrue-be_net capadd=[] readonly=false restart=unless-stopped mounts=
+/copiloto-test-gotrue-be-db-1 user= privileged=false netmode=copiloto-test-gotrue-be_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO].sql->/docker-entrypoint-initdb.d/00-auth-schema.sql(ro) [ENMASCARADO]>/var/lib/postgresql/data(z) 
+/copiloto-test-gotrue-be-mailpit-1 user= privileged=false netmode=copiloto-test-gotrue-be_net capadd=[] readonly=false restart=no mounts=
+/copiloto-test-gotrue-aud-proxy-1 user= privileged=false netmode=copiloto-test-gotrue-aud_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO]>/etc/caddy/Caddyfile(ro) 
+/copiloto-test-gotrue-aud-auth-1 user=supabase privileged=false netmode=copiloto-test-gotrue-aud_net capadd=[] readonly=false restart=unless-stopped mounts=
+/copiloto-test-gotrue-aud-db-1 user= privileged=false netmode=copiloto-test-gotrue-aud_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO].sql->/docker-entrypoint-initdb.d/00-auth-schema.sql(ro) [ENMASCARADO]>/var/lib/postgresql/data(z) 
+/copiloto-test-gotrue-aud-mailpit-1 user= privileged=false netmode=copiloto-test-gotrue-aud_net capadd=[] readonly=false restart=no mounts=
+/copiloto-test-gotrue-fe1-proxy-1 user= privileged=false netmode=copiloto-test-gotrue-fe1_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO]>/etc/caddy/Caddyfile(ro) 
+/copiloto-test-gotrue-fe1-auth-1 user=supabase privileged=false netmode=copiloto-test-gotrue-fe1_net capadd=[] readonly=false restart=unless-stopped mounts=
+/copiloto-test-gotrue-fe1-db-1 user= privileged=false netmode=copiloto-test-gotrue-fe1_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO]>/var/lib/postgresql/data(z) [ENMASCARADO].sql->/docker-entrypoint-initdb.d/00-auth-schema.sql(ro) 
+/copiloto-test-gotrue-fe1-mailpit-1 user= privileged=false netmode=copiloto-test-gotrue-fe1_net capadd=[] readonly=false restart=no mounts=
+/copiloto-test-db-be user= privileged=false netmode=bridge capadd=[] readonly=false restart=no [ENMASCARADO]>/var/lib/postgresql/data() 
+/copiloto-test-db-fe2 user= privileged=false netmode=bridge capadd=[] readonly=false restart=no [ENMASCARADO]>/var/lib/postgresql/data() 
+/copiloto-test-db-aud user= privileged=false netmode=bridge capadd=[] readonly=false restart=no [ENMASCARADO]>/var/lib/postgresql/data() 
+/copiloto-test-db-fe1 user= privileged=false netmode=bridge capadd=[] readonly=false restart=no [ENMASCARADO]>/var/lib/postgresql/data() 
+/copiloto-test-db user= privileged=false netmode=bridge capadd=[] readonly=false restart=no [ENMASCARADO]>/var/lib/postgresql/data() 
+/s6port user= privileged=false netmode=bridge capadd=[] readonly=false restart=no mounts=
+/spike-s6 user= privileged=false netmode=bridge capadd=[] readonly=false restart=no [ENMASCARADO]>/var/lib/postgresql/data() 
+/copiloto-auth-proxy-1 user= privileged=false netmode=copiloto-auth_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO]>/etc/caddy/Caddyfile(ro) 
+/copiloto-auth-db-1 user= privileged=false netmode=copiloto-auth_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO].sql->/docker-entrypoint-initdb.d/00-auth-schema.sql(ro) [ENMASCARADO]>/var/lib/postgresql/data(z) 
+/clinic-frontend user=nextjs privileged=false netmode=bridge capadd=[] readonly=false restart=unless-stopped mounts=
+/evolution-api user= privileged=false netmode=evolution-api_evolution-net capadd=[] readonly=false restart=always [ENMASCARADO]>/evolution/instances(z) 
+/evolution-postgres user= privileged=false netmode=evolution-api_evolution-net capadd=[] readonly=false restart=always [ENMASCARADO]>/var/lib/postgresql/data(z) 
+/evolution-redis user= privileged=false netmode=evolution-api_evolution-net capadd=[] readonly=false restart=always [ENMASCARADO]>/data(z) 
+/hermes-dashboard user=root privileged=false netmode=host capadd=[] readonly=false restart=unless-stopped mounts=/root/.hermes->/opt/data(rw) 
+/hermes user=root privileged=false netmode=host capadd=[] readonly=false restart=unless-stopped mounts=/root/.hermes->/opt/data(rw) 
+/temporal-admin-tools user=temporal privileged=false netmode=temporal-net capadd=[] readonly=false restart=unless-stopped mounts=
+/temporal-ui user=temporal privileged=false netmode=temporal-net capadd=[] readonly=false restart=unless-stopped mounts=
+/temporal-server user=temporal privileged=false netmode=temporal-net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO].yaml->[ENMASCARADO].yaml(ro) 
+/temporal-postgres user= privileged=false netmode=temporal-net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO]>/var/lib/postgresql/data(z) 
+
+###SEC B2_docker_imagenes
+alpine/socat:latest|3 months ago|9.73MB
+postgres:17-alpine|4 months ago|297MB
+clinic-frontend:demo|4 months ago|185MB
+<none>:<none>|4 months ago|185MB
+<none>:<none>|4 months ago|185MB
+<none>:<none>|4 months ago|185MB
+<none>:<none>|4 months ago|184MB
+<none>:<none>|4 months ago|184MB
+postgres:16|4 months ago|451MB
+caddy:2|4 months ago|62.9MB
+unreal-copilot-sandbox-browser:1|4 months ago|2.58GB
+unreal-copilot-sandbox-temporal:1|4 months ago|269MB
+uc-spike-b:latest|4 months ago|269MB
+uc-spike-a:latest|4 months ago|2.58GB
+uc-sandbox-temporal:spike|4 months ago|265MB
+<none>:<none>|4 months ago|265MB
+uc-sandbox-browser:spike|4 months ago|2.58GB
+unreal-copilot-sandbox:2|4 months ago|206MB
+<none>:<none>|4 months ago|135MB
+unreal-copilot-sandbox:1|4 months ago|131MB
+unreal-copilot-sandbox:spike|4 months ago|131MB
+postgres:15-alpine|4 months ago|292MB
+hermes-agent:latest|4 months ago|3.65GB
+temporalio/admin-tools:1.29|4 months ago|1.08GB
+temporalio/auto-setup:1.29|4 months ago|962MB
+python:3.12-slim|4 months ago|119MB
+temporalio/ui:2.50.0|5 months ago|572MB
+postgres:16-alpine|5 months ago|276MB
+redis:7-alpine|6 months ago|39.1MB
+evoapicloud/evolution-api:latest|6 months ago|1.28GB
+
+###SEC B1_os
+Ubuntu 24.04.1 LTS
+6.8.0-52-generic
+vmlinuz-6.8.0-52-generic
+vmlinuz-6.8.0-147-generic
+REBOOT-REQUERIDO
+libc6
+linux-image-6.8.0-124-generic
+linux-base
+linux-image-6.8.0-134-generic
+linux-base
+linux-image-6.8.0-136-generic
+linux-base
+libc6
+linux-image-6.8.0-137-generic
+linux-base
+linux-image-6.8.0-138-generic
+linux-base
+linux-image-6.8.0-139-generic
+linux-base
+libc6
+linux-image-6.8.0-142-generic
+linux-base
+linux-image-6.8.0-146-generic
+linux-base
+linux-image-6.8.0-147-generic
+linux-base
+
+###SEC B1_apt_ultimo_update
+2026-11-04 12:41
+2026-11-04 12:41:55.352187122 +0000
+
+###SEC B1_apt_pendientes
+      1 any-version
+      1 noble
+      2 noble-security
+    118 noble-updates
+      3 noble-updates,noble-security
+total: 125
+
+###SEC B1_apt_pendientes_seguridad
+bind9-dnsutils/noble-updates,noble-security 1:9.18.39-0ubuntu0.24.04.9 amd64 [upgradable from: 1:9.18.39-0ubuntu0.24.04.8]
+bind9-host/noble-updates,noble-security 1:9.18.39-0ubuntu0.24.04.9 amd64 [upgradable from: 1:9.18.39-0ubuntu0.24.04.8]
+bind9-libs/noble-updates,noble-security 1:9.18.39-0ubuntu0.24.04.9 amd64 [upgradable from: 1:9.18.39-0ubuntu0.24.04.8]
+libmspack0t64/noble-security 0.11-1.1ubuntu0.24.04.1 amd64 [upgradable from: 0.11-1.1build1]
+libpcre2-8-0/noble-security 10.42-4ubuntu2.2 amd64 [upgradable from: 10.42-4ubuntu2]
+
+###SEC B1_unattended
+enabled
+active
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+Unattended-Upgrade::Allowed-Origins {
+
+###SEC B1_needrestart
+NEEDRESTART-VER: 3.6
+NEEDRESTART-KCUR: 6.8.0-52-generic
+NEEDRESTART-KEXP: 6.8.0-147-generic
+NEEDRESTART-KSTA: 3
+NEEDRESTART-SVC: dbus.service
+NEEDRESTART-SVC: docker.service
+NEEDRESTART-SVC: getty@tty1.service
+NEEDRESTART-SVC: serial-getty@ttyS0.service
+NEEDRESTART-SVC: systemd-logind.service
+NEEDRESTART-SVC: uc-documed-worker.service
+NEEDRESTART-SVC: unattended-upgrades.service
+NEEDRESTART-SESS: root @ session #21849
+NEEDRESTART-SESS: root @ session #22820
+NEEDRESTART-SESS: root @ session #22828
+NEEDRESTART-SESS: root @ session #27649
+NEEDRESTART-SESS: root @ session #4158
+NEEDRESTART-SESS: root @ user manager service
+
+###SEC B2_versiones
+v2.11.4 h1:[ENMASCARADO]
+Python 3.12.3
+v22.22.3
+Docker version 27.5.1, build 9f9e405
+
+###SEC C1_puertos_escuchando
+0.0.0.0:22|sshd
+0.0.0.0:3000|docker-proxy
+0.0.0.0:55444|docker-proxy
+0.0.0.0:8090|uvicorn
+127.0.0.1:2019|caddy
+127.0.0.1:37515|temporal-sdk-py
+127.0.0.1:39069|temporal-sdk-py
+127.0.0.1:39179|temporal-sdk-py
+127.0.0.1:39999|temporal-sdk-py
+127.0.0.1:44577|temporal-sdk-py
+127.0.0.1:46781|temporal-sdk-py
+127.0.0.1:55432|docker-proxy
+127.0.0.1:55433|docker-proxy
+127.0.0.1:55434|docker-proxy
+127.0.0.1:55435|docker-proxy
+127.0.0.1:55436|docker-proxy
+127.0.0.1:55437|docker-proxy
+127.0.0.1:7233|docker-proxy
+127.0.0.1:8080|uvicorn
+127.0.0.1:8085|docker-proxy
+127.0.0.1:8088|MainThread
+127.0.0.1:8091|python
+127.0.0.1:8099|python
+127.0.0.1:8100|uvicorn
+127.0.0.1:8200|uvicorn
+127.0.0.1:8931|python
+127.0.0.1:8971|docker-proxy
+127.0.0.1:8973|docker-proxy
+127.0.0.1:8974|docker-proxy
+127.0.0.1:8975|docker-proxy
+127.0.0.1:8976|docker-proxy
+127.0.0.1:8977|docker-proxy
+127.0.0.1:9119|hermes
+127.0.0.1:9971|docker-proxy
+127.0.0.1:9973|docker-proxy
+127.0.0.1:9974|docker-proxy
+127.0.0.1:9975|docker-proxy
+127.0.0.1:9976|docker-proxy
+127.0.0.1:9977|docker-proxy
+127.0.0.1:9997|docker-proxy
+127.0.0.53%lo:53|systemd-resolve
+127.0.0.54:53|systemd-resolve
+[::]:22|sshd
+[::]:3000|docker-proxy
+*:40501|temporal-test-s
+*:443|caddy
+*:45507|temporal-test-s
+[::]:55444|docker-proxy
+*:80|caddy
+
+###SEC C1_udp
+10.0.0.20:68|dhcpcd
+10.10.0.20:68|dhcpcd
+127.0.0.53%lo:53|systemd-resolve
+127.0.0.54:53|systemd-resolve
+178.105.191.1%eth0:68|systemd-network
+*:443|caddy
+
+###SEC C1_ufw
+Status: inactive
+
+###SEC C1_fail2ban
+Status
+|- Number of jail:	1
+`- Jail list:	sshd
+
+###SEC C5_journal
+Archived and active journals take up 1.1G in the file system.
+journald sin limites explicitos
+
+###SEC C5_caddy_log
+total 0
+{"level":"info","ts":1793841564.7161698,"logger":"http.log.access","msg":"handled request","request":{"remote_ip":"193.4
+
+###SEC C3_sslip_uso_ultimos_dias
+mp.178-105-191-1.sslip.io requests_14d=0
+copiloto.178-105-191-1.sslip.io requests_14d=8
+copilotoemprendedor.duckdns.org requests_14d=21324
+primera_linea_log: {"level":"info","ts":1792632028.4510725,"logger":"http.log.a
+
+###SEC A2_postgres
+-- version
+PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
+-- conexion
+uc_factory | False | False
+-- roles ([ENMASCARADO])
+anon | False | False | False | False | False | nunca
+authenticated | False | False | False | False | False | nunca
+authenticator | True | False | False | False | False | nunca
+copiloto_autosanacion | True | False | True | False | False | nunca
+copiloto_consola | True | False | True | False | False | nunca
+dashboard_user | False | False | False | True | True | nunca
+pgaudit_auditor | False | False | False | False | False | nunca
+pgbouncer | True | False | False | False | False | nunca
+postgres | True | False | True | True | True | nunca
+rag_connector | True | False | False | False | False | nunca
+service_role | False | False | True | False | False | nunca
+supabase_admin | True | True | True | True | True | nunca
+supabase_auth_admin | True | False | False | True | False | nunca
+supabase_etl_admin | True | False | True | False | False | nunca
+supabase_functions_admin | True | False | False | True | False | nunca
+supabase_read_only_user | True | False | True | False | False | nunca
+supabase_realtime_admin | False | False | False | False | False | nunca
+supabase_replication_admin | True | False | False | False | False | nunca
+supabase_storage_admin | True | False | False | True | False | nunca
+uc_factory | True | False | False | False | False | nunca
+-- settings
+listen_addresses | *
+log_connections | off
+log_statement | ddl
+password_encryption | scram-sha-256
+row_security | on
+ssl | off
+-- tablas SIN rls (schema public)
+1 | 7 | 3 | 11
+-- tablas public SIN rls (nombre)
+tasks
+-- tablas con rls pero SIN policy
+-- esquemas
+_realtime
+auth
+documed
+extensions
+graphql
+graphql_public
+net
+pgbouncer
+public
+rag
+realtime
+storage
+supabase_functions
+uc_factory
+vault
+-- hba (si legible)
+Traceback (most recent call last):
+  File "<stdin>", line 16, in <module>
+  File "<stdin>", line 6, in q
+psycopg2.errors.InsufficientPrivilege: permission denied for view pg_hba_file_rules
+

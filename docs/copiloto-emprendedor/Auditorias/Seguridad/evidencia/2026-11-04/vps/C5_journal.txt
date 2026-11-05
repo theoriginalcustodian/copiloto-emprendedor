@@ -1,0 +1,2 @@
+Archived and active journals take up 1.1G in the file system.
+journald sin limites explicitos

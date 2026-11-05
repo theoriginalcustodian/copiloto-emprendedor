@@ -1,0 +1,6 @@
+10.0.0.20:68|dhcpcd
+10.10.0.20:68|dhcpcd
+127.0.0.53%lo:53|systemd-resolve
+127.0.0.54:53|systemd-resolve
+178.105.191.1%eth0:68|systemd-network
+*:443|caddy
