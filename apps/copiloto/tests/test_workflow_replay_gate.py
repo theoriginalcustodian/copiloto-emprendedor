@@ -67,6 +67,8 @@ SIN_FIXTURE_TODAVIA: dict[str, str] = {
     "MiDiaDetectorWorkflow": "schedule read-only, sin mutación ni HITL",
     "SoporteFeedbackWorkflow": "volumen bajo, sin HITL",
     "MpRefreshWorkflow": "corto, sin HITL",
+    "TenantErasureWorkflow": "SEC-D8: pasos idempotentes y reintentables en orden fijo, sin HITL ni ramas; "
+        "una ejecución colgada por un patch roto se re-lanza con el mismo workflow_id (USE_EXISTING)",
 }
 
 _WORKFLOW_DIRS = ("apps/copiloto", "motor")

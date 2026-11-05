@@ -826,6 +826,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                    actividad_app: FastAPI | None = None,
                    inteligencia_app: FastAPI | None = None,
                    mi_dia_app: FastAPI | None = None,
+                   cuenta_app: FastAPI | None = None,
                    admin_app: FastAPI | None = None,
                    require_claims: Callable | None = None,
                    read_replies_fn: Callable[[str, str, int], list] | None = None,
@@ -1682,6 +1683,9 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     # `/mi-dia/*` (hito 7 — Kanban + detector proactivo). Mismo criterio opcional que el resto.
     if mi_dia_app is not None:
         app.include_router(mi_dia_app.router)
+    # `/cuenta/*` (SEC-D8: exportar y borrar los datos del propio usuario). Barrera propia por ruta.
+    if cuenta_app is not None:
+        app.include_router(cuenta_app.router)
 
     # SPA mismo-origen (Task 8): se monta al final -> no ensombrece ninguna ruta de API/MP de arriba.
     # No-op si todavía no hay build (front-door API-only hasta que `sync-web.sh` produzca el `dist`).

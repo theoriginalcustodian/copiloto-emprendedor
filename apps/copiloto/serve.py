@@ -35,6 +35,7 @@ import psycopg2
 from fastapi import Depends
 import uvicorn
 from temporalio.client import Client
+from temporalio.common import WorkflowIDConflictPolicy
 
 from clients.agent.channels.web import WebChannelAdapter
 from clients.agent.providers.composio_gateway import ComposioGateway
@@ -80,6 +81,8 @@ from inteligencia_queries import InteligenciaQueries
 from mi_dia_orquestador import avanzar_tablero
 from mi_dia_tarjeta_store import TarjetaStore
 from mi_dia_web import create_mi_dia_app
+from cuenta_web import create_cuenta_app
+from tenant_erasure_workflow import TenantErasureWorkflow, workflow_id as erasure_workflow_id
 from actividad_store import ActividadStore
 from cliente_store import ClienteStore
 from gasto_store import GastoStore
@@ -245,7 +248,17 @@ async def _serve() -> None:
         conn.autocommit = True
         return conn
 
+    _task_queue = os.environ.get("AGENT_B_TASK_QUEUE", "agent-emprendedor")
+
+    async def iniciar_borrado(cliente_id: str, solicitante: str, email: str) -> None:
+        """SEC-D8. `id` determinístico + USE_EXISTING: pedir el borrado dos veces reusa el mismo."""
+        await client.start_workflow(
+            TenantErasureWorkflow.run, args=[cliente_id, solicitante, email],
+            id=erasure_workflow_id(cliente_id), task_queue=_task_queue,
+            id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING)
+
     admin_app = create_admin_app(
+        iniciar_borrado=iniciar_borrado,
         require_admin=require_admin, temporal_client=client,
         # Mismo nombre de env var que `worker_b.AGENT_B_TASK_QUEUE` -- no se importa de ahí porque
         # `worker_b.py` es un proceso SEPARADO (ver su docstring); acoplar los dos módulos por un
@@ -257,6 +270,9 @@ async def _serve() -> None:
         # MISMO `conn_factory` (rol dueño, ya envuelto con `conexion_con_tenant`) que usa el resto
         # de la app; cero conexión nueva.
         conn_factory=conn_factory)
+
+    cuenta_app = create_cuenta_app(require_tenant=require_tenant, conn_factory=conn_factory,
+                                   iniciar_borrado=iniciar_borrado)
 
     inteligencia_app = create_inteligencia_app(
         require_tenant=require_tenant,
@@ -289,7 +305,7 @@ async def _serve() -> None:
         afip_app=afip_app, presupuestos_app=presupuestos_app, gastos_app=gastos_app,
         clientes_app=clientes_app, contabilidad_app=contabilidad_app, actividad_app=actividad_app,
         inteligencia_app=inteligencia_app,
-        mi_dia_app=mi_dia_app,
+        mi_dia_app=mi_dia_app, cuenta_app=cuenta_app,
         admin_app=admin_app,
         gotrue=gotrue,
         mp_gateway=mp_gateway, composio_gateway=composio_gateway,

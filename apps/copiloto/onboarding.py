@@ -160,6 +160,14 @@ class GoTrueAdmin:
         )
         resp.raise_for_status()
 
+    def admin_delete_user(self, user_id: str) -> None:
+        """DELETE /auth/v1/admin/users/{id} — baja del usuario (SEC-D8, ISO 27701 7.3). 404 = ya no
+        existe -> OK (idempotente: el workflow de borrado reintenta)."""
+        resp = self._client.delete(
+            f"{self._base_url}/auth/v1/admin/users/{user_id}", headers=self._headers())
+        if resp.status_code not in (200, 204, 404):
+            resp.raise_for_status()
+
     def find_user_by_email(self, email: str) -> dict | None:
         """Lookup público — CONS0b (`deploy/copiloto/asignar-claim-admin.sh`) necesita resolver
         `email -> id` sin pasar por el flujo de alta. Envoltorio fino sobre `_find_user_by_email`,
