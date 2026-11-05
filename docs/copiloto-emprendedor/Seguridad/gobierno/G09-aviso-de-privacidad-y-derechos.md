@@ -4,5 +4,5 @@
 **Propósito:** operar el copiloto del emprendedor (chat, integraciones, cobros, memoria de actividad).
 **Categorías:** identificación (email), contenido de conversación, datos fiscales (CUIT), datos de las apps conectadas, pagos.
 **Terceros:** G3/G8. **Retención:** G10.
-**Derechos:** acceso, rectificación, supresión, portabilidad. **Mecanismo hoy: manual vía el operador, sin endpoint** (BRECHA D8). El texto legal se versiona con el ratchet `LEGAL_VERSION`; este borrador no lo reemplaza.
+**Derechos:** acceso, rectificación, supresión, portabilidad. **Mecanismo hoy: manual vía el operador, sin endpoint** (BRECHA SEC-D8). El texto legal se versiona con el ratchet `LEGAL_VERSION`; este borrador no lo reemplaza.
 **Contacto:** **[PENDIENTE operador]**.

@@ -8,7 +8,7 @@
 | Reverse proxy | Caddy, hosts sslip `copiloto.*` y `mp.*` | cabeceras + `/docs` 404 |
 | Auth | GoTrue dedicada (`copiloto-auth`) + Postgres local | backup local diario |
 | Orquestación | Temporal (127.0.0.1:7233) + `temporal-postgres` | backup local diario |
-| Datos de negocio | Postgres de fusion (10.0.0.3), schema `uc_factory` | RLS FORCE; sin TLS (D2) |
+| Datos de negocio | Postgres de fusion (10.0.0.3), schema `uc_factory` | RLS FORCE; sin TLS (SEC-D2) |
 | Memoria de grafo | Graphity (instancia compartida, tenant dedicado) | sin borrado por tenant |
 | Repo | GitHub público | secret scanning + push protection |
 
