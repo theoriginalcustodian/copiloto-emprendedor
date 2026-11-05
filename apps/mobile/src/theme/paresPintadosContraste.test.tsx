@@ -1072,3 +1072,68 @@ describe('control negativo -- corrido, no razonado', () => {
     expect(DEUDA_CONOCIDA.oscuro[clavePar(parMalo!)]).toBeUndefined();
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// §9 — Contraste NO-TEXTO (WCAG 1.4.11, 3:1): la píldora del dock contra la burbuja del asistente.
+// Las 3 preguntas de arriba miden TEXTO sobre fondo (4.5:1). Esto es otra pregunta: ¿se distingue el
+// BORDE/superficie de un componente de lo que tiene al lado? Superficie contra superficie, sin texto.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+const UMBRAL_NO_TEXTO = 3;
+
+/** CSS crudo (`#RRGGBB` o `rgba(r,g,b,a)`) → hex plano, compuesto sobre un fondo sólido. */
+function aplanarCss(css: string, hexFondo: string): string {
+  const m = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/.exec(css.trim());
+  if (m) return componer(Number(m[1]), Number(m[2]), Number(m[3]), m[4] === undefined ? 1 : Number(m[4]), hexFondo);
+  return css.length === 4 ? `#${css.slice(1).split('').map((c) => c + c).join('')}` : css.slice(0, 7);
+}
+
+/** Superficie PINTADA de la píldora del dock: base `fondo` + gradiente s1→s2 (los dos extremos). */
+function superficiesPildora(t: Tokens): string[] {
+  return [t.glass.s1, t.glass.s2].map((s) => aplanarCss(s, t.color.fondo));
+}
+
+/** Superficie PINTADA de la burbuja del asistente: `s2` sobre el lienzo + gradiente asistente1→2 (los dos extremos). */
+function superficiesBurbujaAsistente(t: Tokens): string[] {
+  const base = aplanarCss(t.glass.s2, t.color.fondo);
+  return [t.glass.asistente1, t.glass.asistente2].map((s) => aplanarCss(s, base));
+}
+
+/** El peor caso entre todos los pares extremo-a-extremo: el dock se distingue si aguanta el PEOR. */
+function peorContraste(as: string[], bs: string[]): number {
+  return Math.min(...as.flatMap((a) => bs.map((b) => contraste(a, b))));
+}
+
+describe('contraste NO-TEXTO (WCAG 1.4.11, 3:1) — dock vs burbuja del asistente', () => {
+  for (const piel of ['claro', 'oscuro'] as const) {
+    it(`${piel}: el dock (superficie, o su PROPIO borde) se distingue de la burbuja del asistente y del lienzo ≥ ${UMBRAL_NO_TEXTO}:1`, async () => {
+      const t = SKINS[piel];
+      const burbuja = superficiesBurbujaAsistente(t);
+      const superficie = peorContraste(superficiesPildora(t), burbuja);
+
+      // El borde se lee de lo que el Composer PINTA, no de un token supuesto.
+      const inst = await render(
+        <ThemeProvider skinForzado={piel}>
+          <Composer sendStatus="idle" motivoFallo={null} onSend={() => {}} />
+        </ThemeProvider>,
+      );
+      const estilo = StyleSheet.flatten(inst.getByTestId('chat-composer-campo').props.style) as { borderColor?: string };
+      const bordeDock = aplanarCss(String(estilo.borderColor), t.color.fondo);
+      const bordeVsBurbuja = peorContraste([bordeDock], burbuja);
+      const bordeVsLienzo = contraste(bordeDock, t.color.fondo);
+
+      console.log(
+        `[1.4.11 dock] ${piel}: superficie↔burbuja ${superficie.toFixed(2)}:1 · borde ${bordeDock}↔burbuja ${bordeVsBurbuja.toFixed(2)}:1 · borde↔lienzo ${bordeVsLienzo.toFixed(2)}:1`,
+      );
+
+      const porSuperficie = superficie >= UMBRAL_NO_TEXTO;
+      const porBorde = bordeVsBurbuja >= UMBRAL_NO_TEXTO && bordeVsLienzo >= UMBRAL_NO_TEXTO;
+      expect(porSuperficie || porBorde).toBe(true);
+    });
+  }
+
+  it('control negativo: el par (burbuja, burbuja) NO pasa — el instrumento discrimina, no aprueba todo', () => {
+    const b = superficiesBurbujaAsistente(SKINS.claro);
+    expect(peorContraste(b, b)).toBeLessThan(UMBRAL_NO_TEXTO);
+  });
+});
