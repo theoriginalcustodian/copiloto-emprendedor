@@ -18,7 +18,7 @@
 | Backups y restore | A1.2, A1.3 | 8.13, 5.30 | — | **PARCIAL** | local diario, restore GoTrue 28/28; sin off-site (SEC-D1) |
 | Cifrado en tránsito app→DB | CC6.7 | 8.24 | — | DECISIÓN | SEC-D2 |
 | Autenticación de usuarios | CC6.1 | 5.17 | — | DECISIÓN | SEC-D3 (signup abierto, sin MFA) |
-| Borrado / exportación por titular | P5, P6 | — | 7.3.2, 7.3.6 | **BRECHA** | SEC-C8-1 (SEC-D8) |
+| Borrado / exportación por titular | P5, P6 | — | 7.3.2, 7.3.6 | **Implementado y medido en prod** | SEC-C8-1 (SEC-D8) · residual: backups |
 | Inventario de terceros / subprocesadores | CC9.2 | 5.19–5.22 | 7.2.8 | PARCIAL | borrador G3/G8 con data map de C8 (sin DPA verificados) |
 | Gestión de cambios (PR + CI propio + recibos) | CC8.1 | 8.32 | — | OK | ADR-001, `gate.sh`, ruleset `main-exige-pull-request` |
 | Detección de vulnerabilidades en CI | CC7.1 | 8.8 | — | PARCIAL | gitleaks + secret scanning; pip-audit/npm audit aún no en `lint.sh` |
