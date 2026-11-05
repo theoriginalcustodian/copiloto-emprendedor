@@ -140,3 +140,49 @@ describe('dictarPorChat', () => {
     expect(leer).not.toHaveBeenCalled();
   });
 });
+
+/** SM-P13 — `factura` es destino de dictado: el backend PROPONE (`emitir_factura`), nunca emite. */
+describe('dictarPorChat — factura (SM-P13)', () => {
+  const CARD_FACTURA = {
+    kind: 'factura_propuesta',
+    data: {
+      factura_id: 'fac-7',
+      faltantes: [],
+      items: [{ descripcion: 'Instalación', cantidad: 1, precio_unitario: 150000 }],
+      cliente: { razon_social: 'Panadería La Esquina', cuit: '30712345678', condicion_iva: 'RESPONSABLE_INSCRIPTO', del_registro: false },
+      total: 150000,
+      tipo_comprobante: 'FACTURA_C',
+    },
+  };
+
+  it('manda kind="dictado:factura"', () => {
+    expect(kindDictado('factura')).toBe('dictado:factura');
+  });
+
+  it('caso COMPLETO: la card llega en el 1er turno y se devuelve ya leída, con su factura_id', async () => {
+    const { p, enviar } = puertos([respuesta(3, { id: 3, card: CARD_FACTURA })]);
+    const r = await dictarPorChat({ destino: 'factura', texto: 'facturale 150 mil a la panadería', sessionId: 's' }, p);
+    expect(enviar).toHaveBeenCalledWith(expect.objectContaining({ kind: 'dictado:factura' }));
+    if (r.status !== 'ok' || r.resultado.destino !== 'factura') throw new Error('esperaba factura');
+    expect(r.resultado.propuesta.facturaId).toBe('fac-7');
+    expect(r.resultado.propuesta.faltantes).toEqual([]);
+  });
+
+  it('caso INCOMPLETO: el 1er turno es una PREGUNTA SIN CARD y devuelve el cursor; el 2º, leyendo desde ahí, trae la card', async () => {
+    const turno1 = puertos([respuesta(2, { id: 2, text: '¿A quién le facturo?' })]);
+    const r1 = await dictarPorChat({ destino: 'factura', texto: 'facturá 150 mil', sessionId: 's' }, turno1.p);
+    expect(r1).toMatchObject({
+      status: 'sin_propuesta',
+      motivo: 'respuesta_sin_card',
+      texto: '¿A quién le facturo?',
+      cursor: 2,
+    });
+
+    const turno2 = puertos([respuesta(5, { id: 5, card: CARD_FACTURA })]);
+    const cursor = r1.status === 'sin_propuesta' ? r1.cursor : undefined;
+    const r2 = await dictarPorChat({ destino: 'factura', texto: 'a la panadería', sessionId: 's', desdeId: cursor }, turno2.p);
+    // 🔴 lee desde el cursor del turno anterior: sin él releería la pregunta vieja y la tomaría por la respuesta de ahora.
+    expect(turno2.leer).toHaveBeenCalledWith(EFECTIVA, 2);
+    expect(r2.status).toBe('ok');
+  });
+});
