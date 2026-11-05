@@ -56,3 +56,6 @@
 ## A4 / A6 (medido 2026-11-05, sólo nombres y metadatos)
 - **SEC-A4-1 (P3) credenciales de apps inactivas siguen en disco:** 11 `.env` en `/etc/unreal-copilot` (600 root); 6 corresponden a apps que el operador declaró inactivas (clinic-agent, documed, documed-e2e-user, wa-sender, deepseek-worker, mp-spike) y contienen tokens vivos (Telegram, OpenAI, Speechmatics, OpenRouter, Evolution, MP spike). Recomendación: revocar en el proveedor y borrar el archivo cuando el operador confirme el retiro (D9). No se tocó.
 - **SEC-A6-2 (P3) contenedores:** ninguno `privileged`, ninguno monta `docker.sock`. Publican a 0.0.0.0 sólo `clinic-frontend:3000` (bloqueado por ufw/DOCKER-USER, probado por TCP). `hermes` y `hermes-dashboard` corren una imagen sin tag (`latest` implícito) y 12 de 19 contenedores corren como root. Ligado a D9/D6.
+
+## C7 — secretos en el código que viaja al bundle (medido 2026-11-05 @18d616d1)
+Barrido de `apps/mobile` y `apps/copiloto-web` (sin tests/fixtures/lock) por claves `sk-`, `AIza`, JWT, `SERVICE_ROLE`, llaves privadas, `gphy_`, `ghp_`: **0 coincidencias**. Variables públicas que sí viajan: `EXPO_PUBLIC_API_BASE`, `VITE_API_BASE`, `VITE_API_MOCK`, `VITE_AUTH_URL`, `VITE_BUILD_SHA` — URLs y el sha de build, ninguna credencial. **Límite:** es un barrido del fuente, no del APK compilado; el escaneo del binario (ef143e95) queda sin hacer.
