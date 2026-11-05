@@ -1142,3 +1142,38 @@ y su sesgo es hacia **no** escalar, que es el lado correcto —
 **Control:** `0 fallos` con los dos positivos explícitos verdes («SÍ alarma cuando frontend2 realmente
 no dio señal — el fix no apagó el watchdog», «frontend2 … sí aparece muda — no hay fail-open cruzado»),
 y el gate real listando sólo las ausencias genuinas (backend 12:59, frontend2 08:55) sin frontend1.
+
+
+## Refuerzo 2026-11-05 — el lector devolvió `0` sobre un patrón que estaba DOS veces, y `0` se lee como dato
+
+Cerrando el hallazgo del ratchet del corpus necesitaba una sola cosa: ¿la alarma `EL PISO QUEDO VIEJO`
+aparece hoy en la salida del medidor? Grepeé la salida: **0 ocurrencias**. Y como ese `0` era justo lo
+que esperaba, estuve a punto de escribirlo como evidencia del cierre.
+
+Lo que lo cazó fue el **control positivo del lector**: el mismo grep, con el mismo patrón, contra el
+`.py` donde el literal **sí** está. Dio **0** también. Con ripgrep: **2**. O sea que mi `0` de la
+salida no era una medición del dato — era el lector ciego, y habría firmado un cierre con él.
+
+**La causa, aislada moviendo UNA variable** (mismo bash, mismo archivo, mismo patrón):
+
+| Forma de la llamada desde PowerShell | Resultado |
+|---|---|
+| `& $B -lc 'grep -c "PISO QUEDO VIEJO" <ruta>'` — comillas **dobles** internas | **`0`** |
+| `& $B -lc "grep -c 'PISO QUEDO VIEJO' <ruta>"` — comillas **simples** internas | **`2`** |
+
+PowerShell 5.1 se come las comillas **dobles** internas al pasar argumentos a un ejecutable nativo, así
+que bash recibe `grep -c PISO QUEDO VIEJO <ruta>`: el patrón pasa a ser `PISO` y `QUEDO`/`VIEJO` se
+vuelven nombres de archivo. **No tira error visible: imprime un número.** Y el número es plausible.
+
+**La regla operativa, para esta sesión donde el canal Bash está muerto y todo pasa por acá:**
+
+1. Un patrón **con espacios** se cita con comillas **simples por dentro** y dobles por fuera. Al revés
+   mide otra cosa en silencio.
+2. **Todo `0` que confirme lo que esperaba exige el control positivo del lector** — el mismo lector,
+   el mismo patrón, contra un corpus donde el patrón está. Si el control da `0`, el hallazgo es el
+   instrumento. [[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]
+3. Para contar sobre archivos del repo, **ripgrep (la tool Grep)** no tiene esta clase de mangling:
+   es el lector por defecto, y el bash por ruta completa queda para scripts.
+
+Por qué es peor que un rojo: un `0` no se parece a un fallo, se parece a una ausencia. El falso rojo
+manda a investigar; el falso `0` **cierra** el expediente. [[una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta]]
