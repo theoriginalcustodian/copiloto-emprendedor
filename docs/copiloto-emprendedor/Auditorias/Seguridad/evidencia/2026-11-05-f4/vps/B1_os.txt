@@ -1,0 +1,5 @@
+Ubuntu 24.04.5 LTS
+6.8.0-147-generic
+vmlinuz-6.8.0-52-generic
+vmlinuz-6.8.0-147-generic
+sin reboot pendiente

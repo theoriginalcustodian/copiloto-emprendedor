@@ -1,0 +1,19 @@
+/copiloto-test-db user= privileged=false netmode=bridge capadd=[] readonly=false restart=no [ENMASCARADO]>/var/lib/postgresql/data() 
+/copiloto-test-gotrue-aud-proxy-1 user= privileged=false netmode=copiloto-test-gotrue-aud_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO]>/etc/caddy/Caddyfile(ro) 
+/copiloto-test-gotrue-aud-auth-1 user=supabase privileged=false netmode=copiloto-test-gotrue-aud_net capadd=[] readonly=false restart=unless-stopped mounts=
+/copiloto-test-gotrue-aud-db-1 user= privileged=false netmode=copiloto-test-gotrue-aud_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO]>/var/lib/postgresql/data(z) [ENMASCARADO].sql->/docker-entrypoint-initdb.d/00-auth-schema.sql(ro) 
+/copiloto-test-gotrue-aud-mailpit-1 user= privileged=false netmode=copiloto-test-gotrue-aud_net capadd=[] readonly=false restart=no mounts=
+/copiloto-test-db-aud user= privileged=false netmode=bridge capadd=[] readonly=false restart=no [ENMASCARADO]>/var/lib/postgresql/data() 
+/copiloto-auth-auth-1 user=supabase privileged=false netmode=copiloto-auth_net capadd=[] readonly=false restart=unless-stopped mounts=
+/copiloto-auth-proxy-1 user= privileged=false netmode=copiloto-auth_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO]>/etc/caddy/Caddyfile(ro) 
+/copiloto-auth-db-1 user= privileged=false netmode=copiloto-auth_net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO].sql->/docker-entrypoint-initdb.d/00-auth-schema.sql(ro) [ENMASCARADO]>/var/lib/postgresql/data(z) 
+/clinic-frontend user=nextjs privileged=false netmode=bridge capadd=[] readonly=false restart=unless-stopped mounts=
+/evolution-api user= privileged=false netmode=evolution-api_evolution-net capadd=[] readonly=false restart=always [ENMASCARADO]>/evolution/instances(z) 
+/evolution-postgres user= privileged=false netmode=evolution-api_evolution-net capadd=[] readonly=false restart=always [ENMASCARADO]>/var/lib/postgresql/data(z) 
+/evolution-redis user= privileged=false netmode=evolution-api_evolution-net capadd=[] readonly=false restart=always [ENMASCARADO]>/data(z) 
+/hermes-dashboard user=root privileged=false netmode=host capadd=[] readonly=false restart=unless-stopped mounts=/root/.hermes->/opt/data(rw) 
+/hermes user=root privileged=false netmode=host capadd=[] readonly=false restart=unless-stopped mounts=/root/.hermes->/opt/data(rw) 
+/temporal-admin-tools user=temporal privileged=false netmode=temporal-net capadd=[] readonly=false restart=unless-stopped mounts=
+/temporal-ui user=temporal privileged=false netmode=temporal-net capadd=[] readonly=false restart=unless-stopped mounts=
+/temporal-server user=temporal privileged=false netmode=temporal-net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO].yaml->[ENMASCARADO].yaml(ro) 
+/temporal-postgres user= privileged=false netmode=temporal-net capadd=[] readonly=false restart=unless-stopped [ENMASCARADO]>/var/lib/postgresql/data(z)

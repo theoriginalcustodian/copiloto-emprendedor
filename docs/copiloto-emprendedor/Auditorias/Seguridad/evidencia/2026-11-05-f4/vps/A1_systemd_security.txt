@@ -1,0 +1,6 @@
+-- uc-copiloto-web: CapabilityBoundingSet= User=root PrivateTmp=yes ProtectHome=no ProtectSystem=full NoNewPrivileges=yes
+→ Overall exposure level for uc-copiloto-web.service: 3.9 OK :-)
+-- uc-copiloto-worker: CapabilityBoundingSet= User=root PrivateTmp=yes ProtectHome=no ProtectSystem=full NoNewPrivileges=yes
+→ Overall exposure level for uc-copiloto-worker.service: 3.9 OK :-)
+-- uc-copiloto-worker-soporte: CapabilityBoundingSet= User=root PrivateTmp=yes ProtectHome=no ProtectSystem=full NoNewPrivileges=yes
+→ Overall exposure level for uc-copiloto-worker-soporte.service: 3.9 OK :-)

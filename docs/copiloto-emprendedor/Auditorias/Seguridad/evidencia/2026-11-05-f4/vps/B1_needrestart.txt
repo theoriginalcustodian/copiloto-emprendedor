@@ -1,0 +1,6 @@
+NEEDRESTART-VER: 3.6
+NEEDRESTART-KCUR: 6.8.0-147-generic
+NEEDRESTART-KEXP: 6.8.0-147-generic
+NEEDRESTART-KSTA: 1
+NEEDRESTART-SVC: uc-documed-web.service
+NEEDRESTART-SVC: uc-documed-worker.service
