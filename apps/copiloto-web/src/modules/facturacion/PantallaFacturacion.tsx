@@ -183,6 +183,13 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
    *  el usuario dictó y eligió «Completar a mano». Mismo camino de adopción para los dos. */
   const [borradorAdoptar, setBorradorAdoptar] = useState<string | null>(facturaIdInicial ?? null);
   const dictado = useDictadoFactura();
+  // La card se monta al FINAL de la pantalla, detrás del dock sticky: en navegador real (SM-P13) quedaba
+  // fuera de pantalla sin ninguna señal. Al aparecer una propuesta nueva se la trae a la vista.
+  const refTarjetaDictado = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (dictado.propuesta == null) return;
+    refTarjetaDictado.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+  }, [dictado.propuesta]);
   useEffect(() => {
     if (facturaIdInicial != null) setBorradorAdoptar(facturaIdInicial);
   }, [facturaIdInicial]);
@@ -588,11 +595,13 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
           (decisión del operador 2026-11-04). `TarjetaFacturaPropuesta` es la misma del chat: de sólo lectura,
           propone y no emite; «Emitir» es un gate explícito y «Completar a mano» sigue sobre el borrador. */}
       {dictado.propuesta != null && (
-        <TarjetaFacturaPropuesta
-          propuesta={dictado.propuesta}
-          mensajeId="dictado"
-          onCompletarAMano={completarAMano}
-        />
+        <div ref={refTarjetaDictado}>
+          <TarjetaFacturaPropuesta
+            propuesta={dictado.propuesta}
+            mensajeId="dictado"
+            onCompletarAMano={completarAMano}
+          />
+        </div>
       )}
 
       {/* SM-P7 — mismo dock que el resto de las funciones, SIEMPRE montado (sin condiciones de gate ni de
