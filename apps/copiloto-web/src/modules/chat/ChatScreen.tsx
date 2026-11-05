@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 
 import { tomarPendiente } from '@copiloto/core';
 
@@ -57,7 +57,7 @@ export function ChatScreen({
   onAbrirCliente,
   onFacturar,
 }: ChatScreenProps = {}) {
-  const { messages, sendStatus, send, sendAudio, marcarConexionDescartada } = useChat();
+  const { messages, sendStatus, send, marcarConexionDescartada } = useChat();
   const isDesktop = variant === 'desktop';
   // K-11 / BL-J8: gate `requiere_conexion` → sheet en contexto; al volver de conectar se reenvía el
   // pedido. HOJA: `marcarConexionDescartada` persiste «Ahora no» en el mensaje (sobrevive a un reload).
@@ -81,20 +81,6 @@ export function ChatScreen({
       void send(value, { kind: 'callback', displayText: label, hitlMessageId: messageId }),
     [send],
   );
-  // BL-J7 (H-A3-7) — mismo patrón que `MicFuncion.tsx`: el instante del `pointerdown` (vía
-  // `onRecordingStart`, ya expuesto por `MicButton`) mide la duración del dictado para el chip
-  // «Por voz · m:ss» de la burbuja, sin duplicar el cronómetro interno de `MicButton`.
-  const inicioMsRef = useRef(0);
-  const handleRecordingStart = useCallback(() => {
-    inicioMsRef.current = Date.now();
-  }, []);
-  const handleSendAudio = useCallback(
-    (blob: Blob) => {
-      const duracionSeg = Math.max(1, Math.round((Date.now() - inicioMsRef.current) / 1000));
-      void sendAudio(blob, duracionSeg);
-    },
-    [sendAudio],
-  );
 
   return (
     <div className="app-frame chat-screen" data-testid="chat-screen">
@@ -108,12 +94,7 @@ export function ChatScreen({
         onAbrirCliente={onAbrirCliente}
         onFacturar={onFacturar}
       />
-      <Composer
-        sendStatus={sendStatus}
-        onSend={handleSend}
-        onSendAudio={handleSendAudio}
-        onRecordingStart={handleRecordingStart}
-      />
+      <Composer sendStatus={sendStatus} onSend={handleSend} />
       <SheetRequiereConexion
         conexion={conexion.pendiente?.conexion ?? null}
         onConectar={conexion.conectar}
