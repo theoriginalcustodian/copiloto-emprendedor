@@ -45,6 +45,7 @@ import services
 from auth import es_admin, make_require_admin, make_require_claims, make_require_tenant
 from calendar_policy import CALENDAR_POLICY
 from memory_provider import build_memory_provider
+import log_redact
 from conn_pool import pool_de_conexiones
 from contexto_tenant import conexion_con_tenant
 from deposito_traumas import fabrica_desde
@@ -300,6 +301,7 @@ async def _serve() -> None:
         # acá y no duplica el criterio "cuál transcriber usa /chat/audio" en dos módulos.
     )
 
+    log_redact.instalar()  # SEC-C5-1: el CUIT de la querystring no debe llegar al journal
     server = uvicorn.Server(uvicorn.Config(app, host=WEB_HOST, port=WEB_PORT, log_level="info"))
     print(f"copiloto web up on {WEB_HOST}:{WEB_PORT} (Temporal {TEMPORAL_TARGET}/{TEMPORAL_NAMESPACE})",
           flush=True)

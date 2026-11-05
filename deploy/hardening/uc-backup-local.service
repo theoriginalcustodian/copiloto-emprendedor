@@ -1,0 +1,5 @@
+[Unit]
+Description=Backup lógico diario de las DBs locales (GoTrue, Temporal)
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/uc-backup-local.sh
