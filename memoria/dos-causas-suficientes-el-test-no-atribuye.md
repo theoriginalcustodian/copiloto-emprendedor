@@ -94,3 +94,34 @@ silencio a `POST /transcribir`, sin device), resultó que el STT **sí** alucina
 acreditarla**. Un veredicto que acierta por casualidad es indistinguible de uno medido, y éste casi
 bloqueó la pasada entera: con la firma estable ya identificada, el canario volvió a servir sin
 arreglar nada.
+
+---
+
+## Refuerzo 2026-11-05 — el CONTADOR del janitor no atribuye, y le puse la causa que quería
+
+El caso original es un test con dos causas suficientes. La variante que me agarró hoy es más barata y
+más fácil de no ver: **un contador de salida**.
+
+El janitor del buzón imprime `archivados 6`. Archiva por **dos** caminos suficientes: el TTL de 90 min
+(tráfico viejo) y —desde ayer— el campo `CIERRE:` auto-declarado de una obligación. Acababa de
+arreglar el reconocimiento del campo, corrí el janitor, leí `archivados 6` y escribí en el cuerpo del
+PR: *«6 obligaciones cerradas archivadas»*. **El número no dice cuál de los dos caminos lo produjo**,
+y yo le puse el que estaba probando.
+
+**Lo que medía de verdad:** conté cuántas obligaciones de `cerrado/` tienen el campo → **0 de 998**.
+Los 6 eran tráfico (`dato_`/`avance_`/`cierre_`), archivado por TTL como cualquier día. Mi fix no
+había archivado nada todavía, y por una razón que el propio test ya documentaba: los 14 cierres que
+escribí estaban **dentro del TTL**, así que el janitor por diseño no los toca aún.
+
+**Por qué el error es fácil:** el contador salió **justo después** de mi cambio y en la dirección que
+yo esperaba. Un número que confirma lo que acabás de hacer no pide atribución — la regala. Y el PR ya
+estaba escrito, así que la frase falsa viajó en el mismo PR que arregla este tipo de defecto.
+
+**La pregunta:** *¿cuántos caminos producen este número, y cuál discriminaría entre ellos?* Si el
+contador agrega dos causas, la medición que atribuye no es el contador: es **la propiedad del sujeto**
+— acá, «¿los archivos movidos tienen el campo?» ([[el-control-que-mide-la-propiedad-destapa-el-defecto-ajeno-el-que-mide-mi-accion-no]]).
+
+**Y lo que sí sostenía el fix** era el test con su control negativo (patrón viejo → 3 fallos; nuevo →
+8/8). Cuando el efecto en producción **no se puede** medir todavía, lo correcto es decir eso —
+«verificado por el test, el efecto llega en la próxima pasada» — y no rellenar el hueco con un número
+cercano (CANON 7 · [[una-observacion-no-reproducida-se-degrada-a-observacion-no-se-retira]]).
