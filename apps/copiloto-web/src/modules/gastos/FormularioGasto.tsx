@@ -13,7 +13,7 @@ import {
   type OrigenGasto,
 } from '@copiloto/core';
 
-import { Button } from '../../design-system';
+import { Button, useFocoAlMontar } from '../../design-system';
 import { generarId } from '../../util/id';
 
 /**
@@ -57,6 +57,7 @@ export function FormularioGasto({
   onCancelar,
   mensajeId,
 }: FormularioGastoProps) {
+  const foco = useFocoAlMontar<HTMLFormElement>();
   const [monto, setMonto] = useState(iniciales?.monto ?? '');
   const [categoria, setCategoria] = useState<CategoriaGasto>(iniciales?.categoria ?? 'otros');
   const [proveedor, setProveedor] = useState(iniciales?.proveedor ?? '');
@@ -100,7 +101,7 @@ export function FormularioGasto({
   }
 
   return (
-    <form className="formulario-gasto" data-testid="formulario-gasto" onSubmit={(e) => void guardar(e)}>
+    <form ref={foco} className="formulario-gasto" data-testid="formulario-gasto" onSubmit={(e) => void guardar(e)}>
       {/* BL-C4: de dónde salió lo que se está confirmando. Es lo que le dice al usuario cuánto
           confiar en los valores precargados (una lectura de foto o de voz vs. algo que tipeó él). */}
       <p className="formulario-gasto__origen" data-testid="gasto-origen" data-origen={origen}>

@@ -13,7 +13,7 @@ import {
   type SugerenciasPresupuesto,
 } from '@copiloto/core';
 
-import { Button, Chip } from '../../design-system';
+import { Button, Chip, useFocoAlMontar } from '../../design-system';
 import { generarId } from '../../util/id';
 
 /**
@@ -90,6 +90,7 @@ export function FormularioPresupuesto({
   onCancelar,
   mensajeId,
 }: FormularioPresupuestoProps) {
+  const foco = useFocoAlMontar<HTMLFormElement>();
   const [concepto, setConcepto] = useState(corrige?.concepto ?? iniciales?.concepto ?? '');
   const [nombre, setNombre] = useState(corrige?.receptor.nombre ?? iniciales?.receptor?.nombre ?? '');
   const [docTipo, setDocTipo] = useState(
@@ -212,7 +213,7 @@ export function FormularioPresupuesto({
   const aproximado = calcularTotalAproximado(items);
 
   return (
-    <form className="formulario-presupuesto" data-testid="formulario-presupuesto" onSubmit={alSubmit}>
+    <form ref={foco} className="formulario-presupuesto" data-testid="formulario-presupuesto" onSubmit={alSubmit}>
       <h2 className="formulario-presupuesto__titulo" data-testid="formulario-presupuesto-titulo">
         {corrige != null ? `Corregir el N° ${corrige.numero}` : 'Nuevo presupuesto'}
       </h2>
