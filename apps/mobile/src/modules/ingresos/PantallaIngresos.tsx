@@ -19,7 +19,7 @@ import {
 import { FormularioIngreso, type ValoresInicialesIngreso } from './FormularioIngreso';
 import { ResumenIngresos } from './ResumenIngresos';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
-import { AvisoDictado, DockFuncion, inicialesDeIngreso, useDictadoPorFuncion, type ViaTexto } from '../voz';
+import { DockAlChat } from '../voz';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
@@ -71,11 +71,9 @@ export function PantallaIngresos() {
   // BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`: dictado desde la fila de acciones
   // llena `concepto` (el campo libre "por qué trabajo"), no `monto` ni `cliente`.
   const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesIngreso | undefined>(undefined);
-  const [errorMic, setErrorMic] = useState<string | null>(null);
   // `'voz'` sólo cuando el dictado por chat devolvió la propuesta del motor (igual que la card del chat);
   // `undefined` = alta manual, el backend asume `'manual'` en su ausencia.
   const [origenAlta, setOrigenAlta] = useState<OrigenIngreso | undefined>(undefined);
-  const dictado = useDictadoPorFuncion('ingreso');
   const vivo = useRef(true);
 
   const cargar = useCallback(async () => {
@@ -127,17 +125,6 @@ export function PantallaIngresos() {
     else setError('No pudimos borrarlo. Probá de nuevo.');
   }
 
-  // Ver `alDictarGasto` en `PantallaGastos.tsx`: propuesta del motor si hay, texto crudo en `concepto`
-  // (el comportamiento de antes) si el camino está apagado o falló.
-  async function alDictarIngreso(texto: string, via: ViaTexto) {
-    setErrorMic(null);
-    const propuesta = await dictado.dictar(texto);
-    if (!vivo.current) return;
-    setInicialesDictado(propuesta !== null ? inicialesDeIngreso(propuesta) : { concepto: texto });
-    setOrigenAlta(propuesta !== null && via === 'dictado' ? 'voz' : undefined);
-    setVista('formulario');
-  }
-
   return (
     // `etiqueta` = el período del resumen («Agosto»), como `.per` del prototipo. Sin resumen no hay
     // período que decir, y no se inventa uno con la fecha del teléfono.
@@ -178,13 +165,6 @@ export function PantallaIngresos() {
             />
           }
         >
-          {/* Dictado por chat: «esperando» y, si cayó al texto crudo, el porqué (ver `PantallaGastos.tsx`). */}
-          <AvisoDictado
-            testID="ingresos-dictado"
-            ocupado={dictado.ocupado}
-            aviso={vista === 'formulario' && inicialesDictado !== undefined ? dictado.aviso : null}
-          />
-
           {vista === 'formulario' ? (
             <FormularioIngreso
               iniciales={inicialesDictado}
@@ -219,12 +199,6 @@ export function PantallaIngresos() {
                   ]}
                 />
               </View>
-
-              {errorMic != null && (
-                <Text testID="ingresos-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
-                  {errorMic}
-                </Text>
-              )}
 
               {/* 🔴 Decisión C: la lista rica de ingresos (con `origen`, `borrable`) NO se toca — la
                   envuelve el buscador. Sin query, se muestra intacta; con query, pega a
@@ -295,13 +269,7 @@ export function PantallaIngresos() {
 
       {/* SM-J1: el dock de SM-I2 al pie, fuera del scroll. Escribir o dictar abren el formulario prellenado; nada se envía solo. */}
       {estado === 'ok' && vista === 'listado' && (
-        <DockFuncion
-          contexto="ingreso"
-          placeholder={PLACEHOLDER_DOCK}
-          onTexto={(t, via) => void alDictarIngreso(t, via)}
-          onError={setErrorMic}
-          disabled={dictado.ocupado}
-        />
+        <DockAlChat contexto="ingreso" origen="Ingresos" placeholder={PLACEHOLDER_DOCK} />
       )}
     </MarcoGlass>
   );

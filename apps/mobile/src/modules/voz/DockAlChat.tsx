@@ -1,3 +1,4 @@
+import type { ContextoTranscripcion } from '@copiloto/core';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Text } from 'react-native';
@@ -9,7 +10,7 @@ import { DockFuncion } from './DockFuncion';
 
 export interface DockAlChatProps {
   /** Telemetría de `/transcribir` (sólo logging del backend). Hoy el audio va crudo al chat y no se usa. */
-  contexto: 'factura' | 'bi';
+  contexto: ContextoTranscripcion;
   /** Sólo UI, nunca viaja al backend. Se conserva en la firma: lo pasan las pantallas. */
   origen: string;
   placeholder: string;

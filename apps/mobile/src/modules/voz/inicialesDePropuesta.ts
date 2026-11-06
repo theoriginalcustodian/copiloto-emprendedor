@@ -9,7 +9,7 @@ import type { ValoresInicialesPresupuesto } from '../presupuestos/FormularioPres
  * dos puertas que abren el mismo formulario con lo que el motor entendió:
  *
  *  - la card del chat (`chat/Tarjeta*Propuesto`), y
- *  - el dictado desde la función (`useDictadoPorFuncion` → `Pantalla*`).
+ *  - (retirado en SM-P14) el dictado desde la función: ahora el dock de cada función remite al chat.
  *
  * Antes cada tarjeta traía su mapeo inline: la segunda puerta lo habría copiado, y las dos copias
  * difieren el día que alguien arregla una (p. ej. la fecha `''` → omitir la clave).

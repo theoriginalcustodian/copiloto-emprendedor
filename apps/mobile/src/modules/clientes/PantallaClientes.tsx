@@ -15,7 +15,7 @@ import {
 import { FichaCliente } from './FichaCliente';
 import { FormularioCliente } from './FormularioCliente';
 import { TarjetaCliente } from './TarjetaCliente';
-import { AvisoDictado, DockFuncion, useDictadoPorFuncion } from '../voz';
+import { DockAlChat } from '../voz';
 import { CampoTexto, FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { BloqueCifra } from '../../theme/BloqueCifra';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -103,8 +103,6 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
   // BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`: dictado desde la fila de acciones
   // llena `nombre` (el único dato con el que este alta puede arrancar sin tipear nada).
   const [inicialesDictado, setInicialesDictado] = useState<DatosCliente | undefined>(undefined);
-  const [errorMic, setErrorMic] = useState<string | null>(null);
-  const dictado = useDictadoPorFuncion('cliente');
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
 
@@ -188,17 +186,6 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
   function abrirFormularioEnBlanco() {
     setAvisoDuplicado(null);
     setInicialesDictado(undefined);
-    setFormulario({ edita: null });
-  }
-
-  // Ver `alDictarGasto` en `PantallaGastos.tsx`: los datos del cliente que el motor entendió si hay,
-  // texto crudo en `nombre` (el comportamiento de antes) si el camino está apagado o falló.
-  async function alDictarCliente(texto: string) {
-    setErrorMic(null);
-    const propuesta = await dictado.dictar(texto);
-    if (!vivo.current) return;
-    setAvisoDuplicado(null);
-    setInicialesDictado(propuesta !== null ? propuesta : { nombre: texto });
     setFormulario({ edita: null });
   }
 
@@ -290,13 +277,6 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
         >
           {/* El formulario REEMPLAZA a la lista mientras está abierto: compartir el scroll con veinte
               cards deja los campos lejos del teclado, que acá se dibuja encima y no empuja nada. */}
-          {/* Dictado por chat: «esperando» y, si cayó al texto crudo, el porqué (ver `PantallaGastos.tsx`). */}
-          <AvisoDictado
-            testID="clientes-dictado"
-            ocupado={dictado.ocupado}
-            aviso={formulario != null && inicialesDictado !== undefined ? dictado.aviso : null}
-          />
-
           {formulario != null ? (
             <FormularioCliente
               edita={formulario.edita}
@@ -340,12 +320,6 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
                     ]}
                   />
               </View>
-
-              {errorMic != null && (
-                <Text testID="clientes-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
-                  {errorMic}
-                </Text>
-              )}
 
               {avisoDuplicado != null && (
                 <View style={{ gap: tema.espacio.sm }} testID="clientes-duplicado">
@@ -405,13 +379,7 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
 
       {/* SM-J1: el dock de SM-I2 al pie, fuera del scroll. Escribir o dictar abren el formulario prellenado; nada se envía solo. */}
       {estado === 'ok' && formulario === null && (
-        <DockFuncion
-          contexto="cliente"
-          placeholder={PLACEHOLDER_DOCK}
-          onTexto={(t) => void alDictarCliente(t)}
-          onError={setErrorMic}
-          disabled={dictado.ocupado}
-        />
+        <DockAlChat contexto="cliente" origen="Clientes" placeholder={PLACEHOLDER_DOCK} />
       )}
 
       {/* Fuera del scroll — ver el docstring de `FichaCliente`. */}
