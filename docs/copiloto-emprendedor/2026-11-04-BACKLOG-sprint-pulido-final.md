@@ -60,6 +60,7 @@ campo»*.
 | **SM-P14** | `sin-issue` | ✅ TERMINADO | sin-codigo — el defecto NO se reproduce por el mecanismo que la ficha le atribuia, y el fix propuesto quedo SIN respa… |
 | **SM-P15** | `sin-issue` | ✅ TERMINADO | NADA del cableado. El CONTENIDO del corpus quedo fichado aparte como issue #1728 (decision de producto del operador):… |
 | **SM-P16** | `sin-issue` | 🟧 DOD-PARCIAL | CODIGO EN MAIN: #1733 (2d50aa8a, ancestro de origin/main con control negativo). MEDIDO EN DEVICE por frontend1 el 202… |
+| **SM-P18** | `sin-issue` | 🟧 DOD-PARCIAL | PIEL CLARA SIN MEDIR. El fix esta en PR #1744 (3967b1ee) y frontend1 lo midio en device antes y despues en piel OSCUR… |
 | **SM-P17** | `sin-issue` | ✅ TERMINADO | NADA de lo pedido. frontend2 declaro, sin que se le pidiera, cinco superficies que NO estan cubiertas y NO estaban en… |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -460,6 +461,20 @@ campo»*.
      el cuerpo, desde encima de una tarjeta y desde la línea, en las dos pieles.
   6. La franja del `hitSlop` del asa medida en dp con el inset real del device.
 
+### SM-P18 · `sin-issue` — El aviso de «no se entendió el audio» se superpone a la burbuja y queda ILEGIBLE
+
+- **Estado:** DOD-PARCIAL
+- **Dueño:** frontend1 (mobile)
+- **Falta:** PIEL CLARA SIN MEDIR. El fix esta en PR #1744 (3967b1ee) y frontend1 lo midio en device antes y despues en piel OSCURA: ahora el aviso ocupa dos lineas y se lee. La clara NO la midio y NO la asume igual, que es lo correcto -- es un defecto de CONTRASTE y superposicion, o sea exactamente la clase que puede comportarse distinto entre pieles. Tambien espera que main vuelva a verde para mergear (main rojo desde 82452ad6, causa ajena a esta ficha).
+- **Qué:** hallazgo de la pasada de device del guard del STT (2026-11-06). Cuando el backend rechaza un audio que no se entendio, el aviso rosa se dibuja ENCIMA del texto de la burbuja de respuesta y el resultado es ilegible: se ven las dos capas superpuestas.
+- **🔴 Por que es defecto y no cosmetica:** un mensaje de error ilegible es PEOR que no tener ninguno. El usuario ve que algo paso, no puede leer que, y no sabe si fallo el microfono, la red o el. El aviso existe justamente para sacarlo de esa duda; superpuesto, la confirma.
+- **Causa (medida, no supuesta):** `filaEstado` sin fondo propio y el `Text` sin `flexShrink`, asi que ni tapaba lo de atras ni envolvia. Fix: fondo opaco + `flexShrink` + `maxWidth`.
+- **DoD:**
+  1. El aviso se lee completo, sin superponerse a la burbuja, **en las DOS pieles**. La oscura ya esta; falta la clara.
+  2. Test rojo-sin-fix / verde-con-fix (hecho: jest chat Composer 17 verdes con el test nuevo).
+  3. Medido en **device**, no solo en jest -- este defecto es de pintura y jest no lo ve.
+  4. Con el texto mas largo que el guard puede emitir hoy, no solo con el corto. Un aviso que entra en dos lineas puede romper en tres.
+  5. Cero facturas, usuario e2e-device, cuenta fiscal real del operador intacta.
 ### SM-P17 · `sin-issue` — Los formularios web abren con el foco en BODY: el usuario toca y no puede escribir
 
 - **Estado:** TERMINADO
