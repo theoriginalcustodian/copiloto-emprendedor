@@ -104,6 +104,16 @@ export interface ComposerProps {
    * chat (`index.html:2717`), que es el que tiene dónde mostrar la respuesta.
    */
   onTocarCampo?: () => void;
+  /**
+   * SM-P16 — el campo vive bajo un gesto de arrastre (el pie de Mi día: arrastrar hacia arriba sube el chat) y
+   * tiene que distinguir DOS gestos sin levantar el dedo: arrastrar = del panel, tocar = escribir.
+   *
+   * 🔴 Un `TextInput` nativo toma el foco con el toque ANTES de que el arrastre se decida, así que el teclado
+   * se abría en pleno arrastre (medido en device 2026-11-06). El input queda inerte al toque
+   * (`pointerEvents="none"`) y un `Pressable` encima lo enfoca SÓLO si el gesto fue un toque: si el Pan del
+   * panel se activa, el toque se cancela y no hay foco.
+   */
+  enfocarAlTocar?: boolean;
 }
 
 const PLACEHOLDER_CHAT = 'Escribí, o hablá…';
@@ -158,8 +168,10 @@ export function Composer({
   mic = null,
   enLugarDelCampo = null,
   onTocarCampo,
+  enfocarAlTocar = false,
 }: ComposerProps) {
   const tema = useTema();
+  const refInput = useRef<TextInput>(null);
   const [borrador, setBorrador] = useState('');
   // Sembrar es una función del `id`, no del objeto ni del texto: un re-render que rearma `{texto, id}` con
   // el mismo `id` no re-siembra (volvería a escribir el aviso sobre lo que el usuario ya editó), y el mismo
@@ -248,6 +260,8 @@ export function Composer({
           <View style={[styles.luzSuperior, { backgroundColor: tema.glass.hi }]} pointerEvents="none" />
           <TextInput
             testID="chat-composer"
+            ref={refInput}
+            pointerEvents={enfocarAlTocar && onTocarCampo == null ? 'none' : undefined}
             style={[styles.input, { color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.ui }]}
             placeholder={placeholder}
             placeholderTextColor={tema.color.textoTenue}
@@ -262,6 +276,15 @@ export function Composer({
               accessibilityRole="button"
               accessibilityLabel={placeholder}
               onPress={onTocarCampo}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          {enfocarAlTocar && onTocarCampo == null && !disabled && (
+            <Pressable
+              testID="chat-composer-tocar"
+              accessibilityRole="button"
+              accessibilityLabel={placeholder}
+              onPress={() => refInput.current?.focus()}
               style={StyleSheet.absoluteFill}
             />
           )}

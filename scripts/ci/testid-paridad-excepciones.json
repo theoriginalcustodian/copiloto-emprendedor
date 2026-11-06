@@ -1783,6 +1783,16 @@
       "motivo": "SM-I2 extrajo el dock (campo + mic chico al pie, D2) en mobile; la web sigue con su composer porque en el sprint de correcciones del mapa manda mobile. Campo de Mi día que sube el chat en vez de abrir teclado: la web no tiene ese dock.",
       "pantalla": "modules/chat"
     },
+    "modules/chat::chat-composer-tocar": {
+      "en": [
+        "apps/mobile/src/modules/chat/Composer.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-06",
+      "id": "chat-composer-tocar",
+      "motivo": "SM-P16: superficie de toque que enfoca el campo del pie de Mi día, que vive bajo un gesto de arrastre del panel (arrastrar sube el chat, tocar escribe). Gesto táctil del dock mobile: la web no tiene ese panel ni ese dock.",
+      "pantalla": "modules/chat"
+    },
     "modules/chat::chat-composer-campo": {
       "en": [
         "apps/mobile/src/modules/chat/Composer.tsx"
