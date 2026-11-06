@@ -70,6 +70,23 @@ REGISTRO_COBRO, FICHA_CLIENTE = "RegistroCobro", "FichaCliente"
 # son el mismo hecho («esta entidad quedó registrada así») sobre entidades distintas. Los alias se
 # conservan para que el código lea qué eje escribe; el acumulador de cada uno tiene clave propia.
 MAX_EDGE_TYPES = 20
+# Rótulo del negocio cuando el perfil no tiene `nombre_comercial`: nunca el `cliente_id` (un UUID en
+# un fact es ruido que el LLM le repite al usuario — medido en prod el 2026-11-06).
+NEGOCIO_SIN_NOMBRE = "el negocio"
+# Códigos AFIP de tipo de comprobante → nombre legible. Un código que no está acá se muestra como
+# «comprobante tipo N»: nunca se inventa una letra.
+_TIPO_CBTE = {1: "factura A", 6: "factura B", 11: "factura C", 51: "factura M",
+              3: "nota de crédito A", 8: "nota de crédito B", 13: "nota de crédito C",
+              2: "nota de débito A", 7: "nota de débito B", 12: "nota de débito C"}
+
+
+def _nombre_cbte(tipo) -> str:
+    try:
+        return _TIPO_CBTE.get(int(tipo), f"comprobante tipo {int(tipo)}")
+    except (TypeError, ValueError):
+        # degradar es correcto: un tipo ausente/no numérico sólo cambia el rótulo legible del nodo
+        # (la identidad sale de `comprobante_key`), y el genérico «comprobante» no inventa una letra.
+        return "comprobante"
 E_TIENE_REGISTRO, ESTADO_CONCEPTO = "TIENE_REGISTRO", "ESTADO_CONCEPTO"
 E_REGISTRO_COBRO = E_FICHA_CLIENTE = E_TIENE_REGISTRO
 CAMPO_REGISTRO = "registro"
@@ -300,7 +317,7 @@ class MapeadorEvento:
     def _comprobante_emitido(self, ev) -> None:
         d = ev.datos
         pto, nro = d.get("punto_venta"), d.get("nro")
-        label = f"factura {d.get('tipo_cbte')} {pto}-{nro}"
+        label = f"{_nombre_cbte(d.get('tipo_cbte'))} {pto}-{nro}"
         fecha = _fecha(ev.ocurrido_en)
         valid_at = ev.ocurrido_en.isoformat()
         comp = {"comprobante_key": ev.entidad_id, "comprobante_label": label}
@@ -329,7 +346,8 @@ class MapeadorEvento:
                                     "cobro_key": ev.entidad_id, "cobro_label": label,
                                     "valid_at": ev.ocurrido_en.isoformat(),
                                     "monto": d.get("monto"), "fecha": fecha,
-                                    "medio": d.get("medio"), "origen": d.get("origen")})
+                                    "medio": d.get("medio") or "medio no informado",
+                                    "origen": d.get("origen") or "carga manual"})
         cliente = d.get("cliente_nombre")
         cli_key = _clave_cliente(cliente)
         if cli_key:
@@ -381,7 +399,8 @@ class MapeadorEvento:
         label = f"presupuesto {numero}"
         presu = {"presupuesto_key": ev.entidad_id, "presupuesto_label": label}
         self._acc[E_PRESUPUESTO].agregar({**self._base_negocio(), **presu, "valid_at": valid_at,
-                                          "total": total, "concepto": concepto, "fecha": fecha})
+                                          "total": total, "concepto": concepto or "sin concepto",
+                                          "fecha": fecha})
         cliente = d.get("receptor_nombre")
         cli_key = _clave_cliente(cliente)
         if cli_key:
@@ -446,11 +465,22 @@ class MapeadorEstado:
         self._neg_nombre = negocio_nombre
         self._acc: dict[str, _AcumuladorArista] = {}
         self._edge_uuid_por_orden: dict[int, str] = {}   # LOG_EVENT_ID → edge_uuid de SU transición
+        # 🔴 Los SEGUNDOS SALTOS de una transición (`AL_TRABAJO` de la imputación, `DE_CONCEPTO` del
+        # precio). Antes se declaraban «nunca se invalida» y eso dejaba vigentes TODAS las imputaciones
+        # y precios viejos: medido en prod el 2026-11-06, «gasto 246 → comprobante 421» aparecía dos
+        # veces vigente tras una re-imputación. Se invalidan junto con la arista principal.
+        self._acomp_por_orden: dict[int, list[str]] = {}
 
     def _acumulador(self, clave: str, **kw) -> _AcumuladorArista:
         if clave not in self._acc:
             self._acc[clave] = _AcumuladorArista(**kw)
         return self._acc[clave]
+
+    def _acompaniante(self, group_logico: str, orden: int, *, source_type: str, source_key: str,
+                      edge_type: str, target_type: str, target_key: str) -> None:
+        src = node_uuid(group_logico, source_type, source_key)
+        tgt = node_uuid(group_logico, target_type, target_key)
+        self._acomp_por_orden.setdefault(orden, []).append(edge_uuid(group_logico, src, edge_type, tgt))
 
     def _base_negocio(self) -> dict:
         return {"negocio_key": self._neg_key, "negocio_nombre": self._neg_nombre}
@@ -531,7 +561,9 @@ class MapeadorEstado:
                   "valid_at": valid_at, "valor": valor, "fecha": fecha})
         self._registrar(group_logico, orden, source_type=NEGOCIO, source_key=self._neg_key,
                         edge_type=PRECIO_DE, target_type=PRECIO, target_key=precio_key)
-        # segundo salto: Precio → Concepto (evento, nunca se invalida — el Concepto sigue estable/dedup)
+        # segundo salto: Precio → Concepto. Se invalida con su PRECIO_DE (ver `_acomp_por_orden`).
+        self._acompaniante(group_logico, orden, source_type=PRECIO, source_key=precio_key,
+                           edge_type=DE_CONCEPTO, target_type=CONCEPTO, target_key=concepto_key)
         self._acumulador(
             DE_CONCEPTO, edge_type=DE_CONCEPTO, source_type=PRECIO,
             source_name_col="precio_label", source_id_col="precio_key",
@@ -564,13 +596,15 @@ class MapeadorEstado:
                   "valid_at": valid_at, "fecha": fecha})
         self._registrar(group_logico, orden, source_type=GASTO, source_key=gasto_key,
                         edge_type=IMPUTADO_A, target_type=IMPUTACION, target_key=imp_key)
-        # segundo salto: Imputacion → ref (evento, nunca se invalida — el ref sigue estable)
+        # segundo salto: Imputacion → ref. Se invalida con su IMPUTADO_A (ver `_acomp_por_orden`).
+        self._acompaniante(group_logico, orden, source_type=IMPUTACION, source_key=imp_key,
+                           edge_type=AL_TRABAJO, target_type=tipo_ref, target_key=ref)
         clave_bucket = f"{AL_TRABAJO}:{tipo_ref}"
         self._acumulador(
             clave_bucket, edge_type=AL_TRABAJO, source_type=IMPUTACION,
             source_name_col="imputacion_label", source_id_col="imputacion_key",
             target_type=tipo_ref, target_col="ref_label", target_id_col="ref_key",
-            fact_template="La imputación de {source} apunta al trabajo {target}",
+            fact_template="La {source} apunta a {target}",   # el label ya dice «imputación de gasto…»
             property_cols=(),
         ).agregar({"imputacion_key": imp_key, "imputacion_label": imp_label,
                   "ref_key": ref, "ref_label": f"{eslabon} {ref}", "valid_at": valid_at})
@@ -633,8 +667,23 @@ class MapeadorEstado:
         transición de estado (evento puro, o eje fuera de la ontología congelada)."""
         return self._edge_uuid_por_orden.get(orden)
 
+    def edge_uuids_de(self, orden: int) -> list[str]:
+        """TODAS las aristas que la transición `orden` materializó (principal + segundos saltos): lo
+        que hay que invalidar cuando otra transición la supera."""
+        principal = self._edge_uuid_por_orden.get(orden)
+        return ([principal] if principal else []) + self._acomp_por_orden.get(orden, [])
+
     def datasets(self, group_logico: str) -> list[Dataset]:
         return [acc.dataset(group_logico) for acc in self._acc.values() if not acc.vacio]
+
+
+def edge_uuids_de_transicion(orden: int, ev, *, group_logico: str, negocio_key: str,
+                             negocio_nombre: str) -> list[str]:
+    """Las aristas de una transición de estado de una corrida ANTERIOR, recalculadas desde su evento
+    — la MISMA cuenta que hizo `MapeadorEstado` al postearla (patrón de `edge_uuids_del_alta`)."""
+    m = MapeadorEstado(negocio_key=negocio_key, negocio_nombre=negocio_nombre)
+    m.procesar(orden, ev, group_logico=group_logico)
+    return m.edge_uuids_de(orden)
 
 
 def construir_datasets_estado(eventos, *, group_logico: str, negocio_key: str,
@@ -656,9 +705,9 @@ def construir_datasets_estado(eventos, *, group_logico: str, negocio_key: str,
     for i, ev in enumerate(ordenados):
         mapeador.procesar(i, ev, group_logico=group_logico)
     invalidaciones = [
-        Invalidacion(edge_uuid=mapeador.edge_uuid_de(s.superado), invalid_at=s.invalid_at.isoformat())
+        Invalidacion(edge_uuid=u, invalid_at=s.invalid_at.isoformat())
         for s in invalidaciones_historico(logs)
-        if mapeador.edge_uuid_de(s.superado) is not None
+        for u in mapeador.edge_uuids_de(s.superado)
     ]
     return mapeador.datasets(group_logico), invalidaciones
 

@@ -22,8 +22,8 @@ from typing import Callable
 from temporalio import activity
 
 from contexto_tenant import conexion_con_tenant, tenant
-from grafo_mapeo import (CAMPO_REGISTRO, REVISABLES, MapeadorEstado, MapeadorEvento,
-                         edge_uuids_del_alta, ontologia)
+from grafo_mapeo import (CAMPO_REGISTRO, NEGOCIO_SIN_NOMBRE, REVISABLES, MapeadorEstado,
+                         MapeadorEvento, edge_uuids_de_transicion, edge_uuids_del_alta, ontologia)
 from grafo_sync_store import GrafoSyncStore
 from grafo_writer import GrafoWriter, Invalidacion
 from graphity_structured_client import GraphityStructuredClient
@@ -85,6 +85,21 @@ def _leer_alta(conn_tenant: Callable, cliente_id: str, entidad_tipo: str,
                       valor_a=r[5], datos=r[6] or {}, ocurrido_en=r[7])
 
 
+def _leer_evento(conn_tenant: Callable, cliente_id: str, orden: int) -> _EventoRow | None:
+    """Un evento por su id: la transición vigente de una corrida ANTERIOR, para recalcular todas sus
+    aristas con `edge_uuids_de_transicion`."""
+    conn = conn_tenant()
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, entidad_tipo, entidad_id, evento, campo, valor_a, datos, ocurrido_en "
+            "FROM uc_factory.copiloto_eventos WHERE cliente_id=%s AND id=%s", (cliente_id, orden))
+        r = cur.fetchone()
+    if r is None:
+        return None
+    return _EventoRow(orden=r[0], entidad_tipo=r[1], entidad_id=r[2], evento=r[3], campo=r[4],
+                      valor_a=r[5], datos=r[6] or {}, ocurrido_en=r[7])
+
+
 def sincronizar_tenant(conn_factory: Callable, cliente_id: str, *, negocio_nombre: str,
                        client: GraphityStructuredClient | None = None) -> dict:
     """La función SYNC real (testeable sin Temporal ni red: inyectar `client` con un
@@ -119,6 +134,7 @@ def sincronizar_tenant(conn_factory: Callable, cliente_id: str, *, negocio_nombr
         invalidaciones: list[Invalidacion] = []
         ultimo_edge_por_clave: dict[tuple[str, str, str], str] = {}
         ultimo_orden_por_clave: dict[tuple[str, str, str], int] = {}
+        acomp_por_clave: dict[tuple[str, str, str], list[str]] = {}   # segundos saltos de la vigente
         revisado_en_batch: set[tuple[str, str, str]] = set()
         for ev in eventos:
             if ev.campo is None:
@@ -129,6 +145,16 @@ def sincronizar_tenant(conn_factory: Callable, cliente_id: str, *, negocio_nombr
                 vigente_db = store.vigente(*clave)
                 if vigente_db is not None:
                     ultimo_edge_por_clave[clave] = vigente_db
+                    # los segundos saltos de esa transición (AL_TRABAJO / DE_CONCEPTO) no están en la
+                    # fila durable: se recalculan desde su evento.
+                    orden_db = store.vigente_orden(*clave)
+                    ev_db = _leer_evento(conn_tenant, cliente_id, orden_db) if orden_db else None
+                    if ev_db is not None:
+                        acomp = [u for u in edge_uuids_de_transicion(
+                            orden_db, ev_db, group_logico=group, negocio_key=cliente_id,
+                            negocio_nombre=negocio_nombre) if u != vigente_db]
+                        if acomp:
+                            acomp_por_clave[clave] = acomp
                 elif ev.entidad_tipo in REVISABLES and ev.campo == CAMPO_REGISTRO:
                     # 1ª revisión de un cobro/cliente: lo vigente hasta acá es el ALTA (arista de
                     # EVENTO con el monto/los datos viejos en su fact). Sin invalidarla, el grafo
@@ -149,16 +175,22 @@ def sincronizar_tenant(conn_factory: Callable, cliente_id: str, *, negocio_nombr
                     nuevo_edge is not None or ev.valor_a is None):
                 # `nuevo_edge is None` con `valor_a=None` es una BAJA (cobro borrado, precio
                 # quitado): no hay versión nueva, pero la anterior deja de valer igual.
-                invalidaciones.append(Invalidacion(edge_uuid=anterior_edge,
-                                                   invalid_at=ev.ocurrido_en.isoformat()))
+                nuevos = set(mapeador_es.edge_uuids_de(ev.orden))
+                for u in [anterior_edge] + acomp_por_clave.get(clave, []):
+                    if u not in nuevos:
+                        invalidaciones.append(Invalidacion(edge_uuid=u,
+                                                           invalid_at=ev.ocurrido_en.isoformat()))
             if nuevo_edge is not None:
                 ultimo_edge_por_clave[clave] = nuevo_edge
                 ultimo_orden_por_clave[clave] = ev.orden
+                acomp_por_clave[clave] = [u for u in mapeador_es.edge_uuids_de(ev.orden)
+                                          if u != nuevo_edge]
             elif ev.valor_a is None:
                 # baja: nada vigente. Se olvida en el batch para no re-invalidar; la fila durable
                 # queda apuntando al edge ya invalidado (re-invalidarlo sería idempotente).
                 ultimo_edge_por_clave.pop(clave, None)
                 ultimo_orden_por_clave.pop(clave, None)
+                acomp_por_clave.pop(clave, None)
         datasets_estado = mapeador_es.datasets(group)
 
         client = client or GraphityStructuredClient.from_env()
@@ -190,7 +222,8 @@ async def sincronizar_grafo_negocio(cliente_id: str) -> dict:
 
     def _resolver_y_sincronizar():
         perfil = PerfilNegocioStore(_conn_factory, cliente_id).get()
-        nombre = (perfil or {}).get("nombre_comercial") or cliente_id
+        # Nunca el `cliente_id`: un UUID dentro de un fact es ruido que el LLM repite al usuario.
+        nombre = (perfil or {}).get("nombre_comercial") or NEGOCIO_SIN_NOMBRE
         return sincronizar_tenant(_conn_factory, cliente_id, negocio_nombre=nombre)
 
     return await asyncio.to_thread(_resolver_y_sincronizar)
