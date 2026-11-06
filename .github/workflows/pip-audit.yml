@@ -1,0 +1,18 @@
+# Auditoría recurrente de dependencias Python. La definición vive en scripts/ci/pip-audit.sh (ADR-001);
+# este archivo sólo la invoca. Semanal + manual. Repo público => Actions gratis.
+name: pip-audit
+on:
+  schedule:
+    - cron: "17 6 * * 1"   # lunes 06:17 UTC
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pip-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: bash scripts/ci/pip-audit.sh

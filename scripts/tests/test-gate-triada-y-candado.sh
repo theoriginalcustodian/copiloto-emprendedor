@@ -86,7 +86,12 @@ wait "$p1"; r1=$?; wait "$p2"; r2=$?
 solapan="$(sort -n "$STUB_VENTANAS" | awk 'NR==1{f=$2} NR==2{print ($1 < f) ? "SI" : "NO"}')"
 if [ "$r1" -eq 0 ] && [ "$r2" -eq 0 ] && [ "$(wc -l < "$STUB_VENTANAS")" -eq 2 ] && [ "$solapan" = "NO" ] && [ ! -d "$LOCK" ]; then
   ok "5 CARRERA · dos gates simultáneos: ambos ok, en serie (ventanas sin solape), candado suelto"
-else fail "5 CARRERA · r1=$r1 r2=$r2 ventanas=<$(cat "$STUB_VENTANAS")> solapan=$solapan"; fi
+else fail "5 CARRERA · r1=$r1 r2=$r2 ventanas=<$(tr '
+' ' ' < "$STUB_VENTANAS")> solapan=$solapan lock=$([ -d "$LOCK" ] && echo QUEDO || echo suelto)"
+  # Diagnostico del flake (medido en CI 2 veces, no reproducible en 88 corridas locales): que gate dijo TOMADO/VENCIDO/espero,
+  # para distinguir "dos tomaron el candado" de "uno lo tomo y el otro nunca lo pidio".
+  for x in "$T/o5a" "$T/o5b"; do echo "     --- $(basename "$x"): $(grep -E 'candado|ocupado' "$x" | tr '
+' '|')"; done; fi
 
 echo
 [ "$fallos" -eq 0 ] && { echo "✅ test-gate-triada-y-candado: todo verde"; exit 0; }
