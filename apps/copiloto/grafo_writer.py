@@ -24,11 +24,19 @@ Idempotente por diseño (uuid5 + `Idempotency-Key`): re-postear el log entero co
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import time
 from dataclasses import dataclass, field
 from typing import Callable
 
 from graphity_structured_client import GrafoIngestError, GraphityStructuredClient
+
+
+def _digest(mapping: dict, filas: list[dict]) -> str:
+    """Huella estable del POST (orden de claves normalizado; `default=str` para Decimal/fechas)."""
+    crudo = json.dumps({"m": mapping, "r": filas}, sort_keys=True, default=str, ensure_ascii=False)
+    return hashlib.sha256(crudo.encode("utf-8")).hexdigest()[:16]
 
 
 @dataclass(frozen=True)
@@ -95,9 +103,13 @@ class GrafoWriter:
 
         # ── FASE 1 — POST + poll de TODOS los datasets, antes de cualquier PATCH ──────────────────────
         for i, (ds, filas) in enumerate(preparados):
+            # 🔴 La key lleva el DIGEST del contenido: con sólo `{prefix}:{i}`, un replay del mismo rango
+            # con el mapeo CORREGIDO reusaba la key del replay anterior y el server devolvía la migración
+            # cacheada — los facts nuevos nunca se escribían (medido en prod 2026-11-06: tras #1766 los
+            # facts seguían con el UUID del negocio). Mismo contenido ⇒ misma key (reintento idempotente).
             resp = self._client.post_structured(
                 ds.mapping, filas, group_id=group_id,
-                idempotency_key=f"{idem_prefix}:{i}")
+                idempotency_key=f"{idem_prefix}:{i}:{_digest(ds.mapping, filas)}")
             migration_id = resp.get("migration_id")
             if not migration_id:
                 raise GrafoIngestError(f"POST del dataset {i} no devolvió migration_id: {resp}")
