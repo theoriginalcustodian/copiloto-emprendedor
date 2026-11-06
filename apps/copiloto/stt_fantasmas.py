@@ -23,7 +23,13 @@ FANTASMAS_STT: dict[str, str] = {
     "el el": "chat general, canario de silencio, 2026-11-06",
     # frontend1, mismo canario, dock de Facturación, 2026-11-06 (también «Gracias por ver el video.» clásico de Whisper)
     "gracias por ver el video": "dock de Facturación, canario de silencio, 2026-11-06",
-    # frontend1, ítem «El» (1x0) que entró al formulario de factura, 2026-11-05 12:55
+    # ⚠️ LA ENTRADA MÁS DISCUTIBLE de las tres (y la de más chance de dispararse por accidente): «el» es una
+    # palabra legítima. Entró porque una transcripción que es SOLO «el» no tiene contenido utilizable en ningún
+    # flujo (ni ítem, ni mensaje, ni nombre de cliente), y dejarla pasar fabricó una línea basura «El» (1x0) en
+    # el formulario de factura (frontend1, 2026-11-05 12:55). Entre descartar un dictado sin contenido y fabricar
+    # un ítem falso en una factura, el daño está del lado de dejarla pasar (decisión de planificación 2026-11-06).
+    # CONDICIÓN: el rechazo tiene que ser VISIBLE (422 -> «No se entendió el audio. Probá de nuevo.»). Si algún
+    # camino devuelve ese 422 sin aviso al usuario, el defecto es ese camino, no esta línea.
     "el": "ítem de factura por dictado, 2026-11-05",
 }
 
