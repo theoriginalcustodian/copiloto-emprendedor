@@ -52,12 +52,22 @@ EMITIO, FACTURADO_A = "EMITIO", "FACTURADO_A"
 REGISTRO_GASTO, PAGADO_A = "REGISTRO_GASTO", "PAGADO_A"
 E_PRESUPUESTO, DIRIGIDO_A, INCLUYE, REEMPLAZA_A = "PRESUPUESTO", "DIRIGIDO_A", "INCLUYE", "REEMPLAZA_A"
 E_COBRO = "COBRO"
+# huecos de ingesta del 2026-11-06 (inventario de acciones de negocio → grafo)
+TIENE_CLIENTE, COBRADO_A, FACTURADO_EN = "TIENE_CLIENTE", "COBRADO_A", "FACTURADO_EN"
 
 # ── nodos-evento de estado (decisión planificación 00:07) y sus aristas ────────────────────────────
 ESTADO, PRECIO, IMPUTACION = "Estado", "Precio", "Imputacion"
 ESTADO_PRESUPUESTO, ESTADO_COMPROBANTE = "ESTADO_PRESUPUESTO", "ESTADO_COMPROBANTE"
 PRECIO_DE, DE_CONCEPTO = "PRECIO_DE", "DE_CONCEPTO"
 IMPUTADO_A, AL_TRABAJO = "IMPUTADO_A", "AL_TRABAJO"
+# eje `registro`: la versión vigente de una entidad cuyo alta es un EVENTO con snapshot (cobro, cliente).
+# Corregir/editar crea un nodo-evento nuevo y supersede al anterior; borrar sólo invalida (ver
+# `grafo_sync_activities` — la primera revisión invalida las aristas del ALTA).
+REGISTRO_COBRO, FICHA_CLIENTE = "RegistroCobro", "FichaCliente"
+E_REGISTRO_COBRO, E_FICHA_CLIENTE, ESTADO_CONCEPTO = "REGISTRO_COBRO", "FICHA_CLIENTE", "ESTADO_CONCEPTO"
+CAMPO_REGISTRO = "registro"
+# entidades cuyo alta (`creado`) es una arista de EVENTO que la revisión tiene que invalidar.
+REVISABLES = ("cobro", "cliente")
 
 # valor_a de "gasto/imputado" trae {"eslabon": "...", "ref": "..."} — el eslabon nombra el tipo del ref.
 _ESLABON_A_TIPO = {"comprobante": COMPROBANTE, "presupuesto": PRESUPUESTO, "cobro": COBRO}
@@ -237,6 +247,24 @@ class MapeadorEvento:
                 target_col="reemplazado_label", target_id_col="reemplazado_key",
                 fact_template="El presupuesto {numero} reemplaza al presupuesto {reemplazado_numero} el {fecha}",
                 property_cols=("numero", "reemplazado_numero", "fecha")),
+            TIENE_CLIENTE: _AcumuladorArista(
+                **ng, edge_type=TIENE_CLIENTE, target_type=CLIENTE, target_col="cliente_nombre",
+                target_id_col="cliente_key",
+                fact_template="{source} sumó a {target} como cliente el {fecha} "
+                              "(documento {documento}, IVA {condicion_iva})",
+                property_cols=("documento", "condicion_iva", "fecha")),
+            COBRADO_A: _AcumuladorArista(
+                source_type=COBRO, source_name_col="cobro_label", source_id_col="cobro_key",
+                edge_type=COBRADO_A, target_type=CLIENTE, target_col="cliente_nombre",
+                target_id_col="cliente_key",
+                fact_template="El cobro de ${monto} del {fecha} fue de {target} ({concepto})",
+                property_cols=("monto", "fecha", "concepto")),
+            FACTURADO_EN: _AcumuladorArista(
+                source_type=PRESUPUESTO, source_name_col="presupuesto_label",
+                source_id_col="presupuesto_key", edge_type=FACTURADO_EN, target_type=COMPROBANTE,
+                target_col="comprobante_label", target_id_col="comprobante_key",
+                fact_template="El {source} se facturó en la factura {pto}-{nro} por ${total} el {fecha}",
+                property_cols=("pto", "nro", "total", "fecha")),
         }
 
     # ── despacho por (entidad_tipo, evento) ───────────────────────────────────────────────────────
@@ -252,7 +280,12 @@ class MapeadorEvento:
             self._gasto_creado(ev)
         elif clave == ("presupuesto", "creado"):
             self._presupuesto_creado(ev)
-        # otros (concepto/precio, estado_cambiado, imputado) = ESTADO → otra mitad.
+        elif clave == ("cliente", "creado"):
+            self._cliente_creado(ev)
+        # otros (concepto/precio, estado_cambiado, imputado, registro) = ESTADO → otra mitad. Ojo: un
+        # evento puede tener las DOS mitades (`comprobante/emitido` y `presupuesto/creado` traen
+        # `campo="estado"` Y son altas) — el caller pasa TODOS los eventos por acá, no sólo los de
+        # `campo is None` (ese filtro dejaba sin EMITIO/PRESUPUESTO al sync incremental real).
 
     def _base_negocio(self) -> dict:
         return {"negocio_key": self._neg_key, "negocio_nombre": self._neg_nombre}
@@ -273,6 +306,13 @@ class MapeadorEvento:
             self._acc[FACTURADO_A].agregar({**comp, "cliente_nombre": cliente, "cliente_key": cli_key,
                                             "valid_at": valid_at, "pto": str(pto), "nro": str(nro),
                                             "total": d.get("total"), "fecha": fecha})
+        presu_ref = d.get("presupuesto_ref")
+        if presu_ref:
+            # la clave del nodo Presupuesto es su `entidad_id` del log (= id de fila, como texto).
+            self._acc[FACTURADO_EN].agregar({"presupuesto_key": str(presu_ref),
+                                             "presupuesto_label": f"presupuesto {presu_ref}", **comp,
+                                             "valid_at": valid_at, "pto": str(pto), "nro": str(nro),
+                                             "total": d.get("total"), "fecha": fecha})
 
     def _cobro_creado(self, ev) -> None:
         d = ev.datos
@@ -283,6 +323,30 @@ class MapeadorEvento:
                                     "valid_at": ev.ocurrido_en.isoformat(),
                                     "monto": d.get("monto"), "fecha": fecha,
                                     "medio": d.get("medio"), "origen": d.get("origen")})
+        cliente = d.get("cliente_nombre")
+        cli_key = _clave_cliente(cliente)
+        if cli_key:
+            self._acc[COBRADO_A].agregar({"cobro_key": ev.entidad_id, "cobro_label": label,
+                                          "cliente_nombre": cliente, "cliente_key": cli_key,
+                                          "valid_at": ev.ocurrido_en.isoformat(),
+                                          "monto": d.get("monto"), "fecha": fecha,
+                                          "concepto": d.get("concepto") or "sin concepto"})
+
+    def _cliente_creado(self, ev) -> None:
+        """El nodo `Cliente` nace con la MISMA clave que ya usan FACTURADO_A/DIRIGIDO_A/COBRADO_A
+        (`_clave_cliente(nombre)`, sin documento): si el alta usara el CUIT y las otras el nombre, el
+        mismo cliente serían dos nodos y «¿qué pasó con X?» vería la mitad."""
+        d = ev.datos
+        nombre = d.get("nombre")
+        cli_key = _clave_cliente(nombre)
+        if not cli_key:
+            return
+        self._acc[TIENE_CLIENTE].agregar({**self._base_negocio(), "cliente_nombre": nombre,
+                                          "cliente_key": cli_key,
+                                          "valid_at": ev.ocurrido_en.isoformat(),
+                                          "documento": d.get("doc_nro") or "sin documento",
+                                          "condicion_iva": str(d.get("condicion_iva") or "sin dato"),
+                                          "fecha": _fecha(ev.ocurrido_en)})
 
     def _gasto_creado(self, ev) -> None:
         d = ev.datos
@@ -354,6 +418,16 @@ def construir_datasets_evento(eventos, *, group_logico: str, negocio_key: str,
     return mapeador.datasets(group_logico)
 
 
+def edge_uuids_del_alta(ev_alta, *, group_logico: str, negocio_key: str,
+                        negocio_nombre: str) -> list[str]:
+    """Los `edge_uuid` que el ALTA (`<entidad>/creado`) materializó — la MISMA cuenta que el
+    `MapeadorEvento` hizo al postearla, así que no hay una segunda fórmula que pueda divergir. Lo usa el
+    sync para invalidar el alta cuando llega la primera revisión (corrección/edición/borrado)."""
+    m = MapeadorEvento(negocio_key=negocio_key, negocio_nombre=negocio_nombre)
+    m.procesar(ev_alta)
+    return m.edge_uuids(group_logico)
+
+
 # ── el mapeo de ESTADO ──────────────────────────────────────────────────────────────────────────────
 class MapeadorEstado:
     """Recorre las transiciones de estado del log (evento con `campo` seteado) y acumula las 4 aristas
@@ -399,6 +473,15 @@ class MapeadorEstado:
             self._precio(orden, ev, group_logico=group_logico)
         elif ev.entidad_tipo == "gasto" and ev.campo == "imputacion":
             self._imputacion(orden, ev, group_logico=group_logico)
+        elif ev.entidad_tipo == "concepto" and ev.campo == "activo":
+            self._estado_generico(orden, ev, group_logico=group_logico,
+                                  edge_key=ESTADO_CONCEPTO, source_type=CONCEPTO,
+                                  source_name=(ev.datos or {}).get("nombre", ev.entidad_id),
+                                  fact_sujeto="El concepto")
+        elif ev.entidad_tipo == "cobro" and ev.campo == CAMPO_REGISTRO:
+            self._registro_cobro(orden, ev, group_logico=group_logico)
+        elif ev.entidad_tipo == "cliente" and ev.campo == CAMPO_REGISTRO:
+            self._ficha_cliente(orden, ev, group_logico=group_logico)
         # cualquier otro (entidad_tipo, campo) no está en la ontología congelada — se ignora, no inventa.
 
     def _estado_generico(self, orden: int, ev, *, group_logico: str, edge_key: str, source_type: str,
@@ -485,6 +568,59 @@ class MapeadorEstado:
         ).agregar({"imputacion_key": imp_key, "imputacion_label": imp_label,
                   "ref_key": ref, "ref_label": f"{eslabon} {ref}", "valid_at": valid_at})
 
+    def _registro_cobro(self, orden: int, ev, *, group_logico: str) -> None:
+        """La versión corregida de un cobro. `valor_a=None` es un BORRADO: no hay versión nueva que
+        materializar — la invalidación de la anterior la hace el caller (baja)."""
+        d = ev.valor_a
+        if not d:
+            return
+        cobro_key = ev.entidad_id
+        fecha = d.get("fecha") or _fecha(ev.ocurrido_en)
+        reg_key = f"{cobro_key}|{orden}"
+        self._acumulador(
+            E_REGISTRO_COBRO, edge_type=E_REGISTRO_COBRO, source_type=COBRO,
+            source_name_col="cobro_label", source_id_col="cobro_key",
+            target_type=REGISTRO_COBRO, target_col="registro_label", target_id_col="registro_key",
+            fact_template="El cobro quedó corregido: ${monto} por {medio}, de {cliente}, "
+                          "por {concepto}, con fecha {fecha}",
+            property_cols=("monto", "medio", "cliente", "concepto", "fecha"),
+        ).agregar({"cobro_key": cobro_key, "cobro_label": f"cobro {cobro_key}",
+                  "registro_key": reg_key, "registro_label": f"registro del cobro {cobro_key}",
+                  "valid_at": ev.ocurrido_en.isoformat(), "monto": d.get("monto"),
+                  "medio": d.get("medio") or "sin medio",
+                  "cliente": d.get("cliente_nombre") or "sin cliente",
+                  "concepto": d.get("concepto") or "sin concepto", "fecha": fecha})
+        self._registrar(group_logico, orden, source_type=COBRO, source_key=cobro_key,
+                        edge_type=E_REGISTRO_COBRO, target_type=REGISTRO_COBRO, target_key=reg_key)
+
+    def _ficha_cliente(self, orden: int, ev, *, group_logico: str) -> None:
+        """La ficha vigente de un cliente editado. El source es el nodo `Cliente` por su clave de
+        NOMBRE (la misma de todas las aristas): si el emprendedor lo renombró, la ficha nueva cuelga
+        del nombre nuevo y el fact lo dice."""
+        d = ev.valor_a
+        if not d:
+            return
+        nombre = d.get("nombre")
+        cli_key = _clave_cliente(nombre)
+        if not cli_key:
+            return
+        ficha_key = f"{ev.entidad_id}|{orden}"
+        self._acumulador(
+            E_FICHA_CLIENTE, edge_type=E_FICHA_CLIENTE, source_type=CLIENTE,
+            source_name_col="cliente_nombre", source_id_col="cliente_key",
+            target_type=FICHA_CLIENTE, target_col="ficha_label", target_id_col="ficha_key",
+            fact_template="Los datos de {source} se actualizaron el {fecha}: documento {documento}, "
+                          "IVA {condicion_iva}, email {email}, teléfono {telefono}, domicilio {domicilio}",
+            property_cols=("documento", "condicion_iva", "email", "telefono", "domicilio", "fecha"),
+        ).agregar({"cliente_key": cli_key, "cliente_nombre": nombre, "ficha_key": ficha_key,
+                  "ficha_label": f"ficha de {nombre}", "valid_at": ev.ocurrido_en.isoformat(),
+                  "documento": d.get("doc_nro") or "sin documento",
+                  "condicion_iva": str(d.get("condicion_iva") or "sin dato"),
+                  "email": d.get("email") or "sin email", "telefono": d.get("telefono") or "sin teléfono",
+                  "domicilio": d.get("domicilio") or "sin domicilio", "fecha": _fecha(ev.ocurrido_en)})
+        self._registrar(group_logico, orden, source_type=CLIENTE, source_key=cli_key,
+                        edge_type=E_FICHA_CLIENTE, target_type=FICHA_CLIENTE, target_key=ficha_key)
+
     def edge_uuid_de(self, orden: int) -> str | None:
         """El `edge_uuid` que la transición `orden` materializó, o `None` si `orden` no era una
         transición de estado (evento puro, o eje fuera de la ontología congelada)."""
@@ -551,6 +687,8 @@ def ontologia() -> tuple[list[dict], list[dict]]:
         _et(ESTADO, ("estado", "fecha")),
         _et(PRECIO, ("valor", "fecha")),
         _et(IMPUTACION, ("fecha",)),
+        _et(REGISTRO_COBRO, ("monto", "medio", "cliente", "concepto", "fecha")),
+        _et(FICHA_CLIENTE, ("documento", "condicion_iva", "email", "telefono", "domicilio", "fecha")),
     ]
     edge_types = [
         _edt(EMITIO, ("tipo", "pto", "nro", "total", "fecha"), ((NEGOCIO, COMPROBANTE),)),
@@ -568,5 +706,13 @@ def ontologia() -> tuple[list[dict], list[dict]]:
         _edt(DE_CONCEPTO, ("valor", "fecha"), ((PRECIO, CONCEPTO),)),
         _edt(IMPUTADO_A, ("fecha",), ((GASTO, IMPUTACION),)),
         _edt(AL_TRABAJO, (), ((IMPUTACION, COMPROBANTE), (IMPUTACION, PRESUPUESTO), (IMPUTACION, COBRO))),
+        _edt(TIENE_CLIENTE, ("documento", "condicion_iva", "fecha"), ((NEGOCIO, CLIENTE),)),
+        _edt(COBRADO_A, ("monto", "fecha", "concepto"), ((COBRO, CLIENTE),)),
+        _edt(FACTURADO_EN, ("pto", "nro", "total", "fecha"), ((PRESUPUESTO, COMPROBANTE),)),
+        _edt(ESTADO_CONCEPTO, ("estado", "fecha"), ((CONCEPTO, ESTADO),)),
+        _edt(E_REGISTRO_COBRO, ("monto", "medio", "cliente", "concepto", "fecha"),
+             ((COBRO, REGISTRO_COBRO),)),
+        _edt(E_FICHA_CLIENTE, ("documento", "condicion_iva", "email", "telefono", "domicilio", "fecha"),
+             ((CLIENTE, FICHA_CLIENTE),)),
     ]
     return entity_types, edge_types

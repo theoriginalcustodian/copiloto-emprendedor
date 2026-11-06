@@ -13,6 +13,7 @@ import unicodedata
 from typing import Callable
 
 from afip_rules import NOTAS_CREDITO, facturado_filtro_sql, facturado_monto_sql
+from evento_store import registrar_evento
 from gasto_store import ZONA_DEL_NEGOCIO, hoy_del_negocio
 
 _SCHEMA = "uc_factory"
@@ -77,6 +78,13 @@ _FACTURADO_DEL_CLIENTE_JOIN = (
     f"AND {_facturas_del_documento_sql('a', 'c.doc_tipo', _DOC_DEL_CLIENTE_SQL)}) f")
 # Las dos últimas columnas del SELECT, en este orden: `f.cantidad`, `f.monto`.
 _COLS_CON_FACTURADO = ", ".join(f"c.{col}" for col in _COLS) + ", f.cantidad, f.monto"
+
+
+def _snapshot_grafo(fila: dict) -> dict:
+    """Lo que el grafo de negocio lee de un cliente (`grafo_mapeo._cliente_creado`/`_ficha_cliente`).
+    Sin `notas`: es texto libre del emprendedor, no un dato de negocio que se consulte."""
+    return {k: fila.get(k) for k in ("nombre", "doc_tipo", "doc_nro", "condicion_iva",
+                                     "domicilio", "email", "telefono", "origen")}
 
 
 def normalizar_nombre(nombre: str) -> str:
@@ -402,7 +410,14 @@ class ClienteStore:
                         (self._cliente_id, nombre, normalizado, doc_tipo, doc, condicion_iva,
                          domicilio or "", email or "", telefono or "", notas or "", origen,
                          homonimo))
-                    return self._fila(cur.fetchone())
+                    fila = self._fila(cur.fetchone())
+                    # El nodo `Cliente` del grafo nace acá (`TIENE_CLIENTE`). Sólo en el INSERT real:
+                    # el choque 23505 sale por el except y no loggea — el cliente ya existía. Cubre
+                    # también el backfill (`_asegurar_derivado` entra por este mismo método).
+                    registrar_evento(cur, self._cliente_id, entidad_tipo="cliente",
+                                     entidad_id=fila["id"], evento="creado",
+                                     datos=_snapshot_grafo(fila))
+                    return fila
             except Exception as exc:
                 # `23505` es `unique_violation` en SQLSTATE. Se compara el CÓDIGO y no se importa
                 # `psycopg2.errors` para que este módulo siga importándose sin la librería instalada
@@ -456,7 +471,18 @@ class ClienteStore:
                                 f"RETURNING {', '.join(_COLS)}",
                                 (*campos.values(), self._cliente_id, cliente))
                     row = cur.fetchone()
-                    return self._fila(row) if row else None
+                    if row is None:
+                        return None
+                    fila = self._fila(row)
+                    # Eje `registro` del grafo: la ficha vigente pasa a ser ésta y la anterior (o el
+                    # alta) se invalida. `valor_a` es la ficha COMPLETA, no el delta: el mapeo arma el
+                    # fact con lo que hay ahora, no con lo que cambió.
+                    registrar_evento(cur, self._cliente_id, entidad_tipo="cliente",
+                                     entidad_id=fila["id"], evento="editado", campo="registro",
+                                     valor_a=_snapshot_grafo(fila),
+                                     datos={"cambios": sorted(k for k in campos
+                                                              if k != "nombre_normalizado")})
+                    return fila
             except Exception as exc:
                 if getattr(exc, "pgcode", None) != "23505":
                     raise

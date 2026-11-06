@@ -137,6 +137,17 @@ def factura_id_de_presupuesto(presupuesto_id: int) -> str:
     return f"presu-{presupuesto_id}"
 
 
+def presupuesto_de_workflow(cliente_id: str, workflow_id: str | None) -> int | None:
+    """La inversa de `workflow_id_de_factura(cid, factura_id_de_presupuesto(N))`: el id del presupuesto
+    del que nació una factura, o `None` si la factura no salió de un presupuesto. Se arma con las DOS
+    funciones de arriba, no con otro literal: si cambia el formato, esto cambia con él."""
+    prefijo = workflow_id_de_factura(cliente_id, factura_id_de_presupuesto(0))[:-1]
+    if not workflow_id or not workflow_id.startswith(prefijo):
+        return None
+    resto = workflow_id[len(prefijo):]
+    return int(resto) if resto.isdigit() else None
+
+
 # `facturado` cruza contra el comprobante REAL (el que tiene CAE), no contra el borrador. El link no
 # necesitó ninguna columna nueva ni tocar el workflow de facturación: `afip_comprobantes.workflow_id`
 # ya existía. Se arma en SQL el mismo id que construye `workflow_id_de_factura`.

@@ -16,6 +16,7 @@ from psycopg2.extras import Json
 from afip_rules import NOTAS_CREDITO, facturado_filtro_sql, facturado_monto_sql
 from evento_store import registrar_evento
 from gasto_store import dos_decimales, hoy_del_negocio
+from presupuesto_store import presupuesto_de_workflow
 
 _TABLE = "uc_factory.afip_comprobantes"
 
@@ -100,7 +101,11 @@ class AfipComprobanteStore:
                                         "fecha_emision": (fecha_emision.isoformat()
                                                           if fecha_emision else None),
                                         "receptor_nombre": receptor_nombre or "",
-                                        "doc_tipo": doc_tipo, "doc_nro": doc_nro, "cae": cae})
+                                        "doc_tipo": doc_tipo, "doc_nro": doc_nro, "cae": cae,
+                                        # `FACTURADO_EN` (Presupuesto→Comprobante): la factura que
+                                        # nace de un presupuesto lleva su id en el workflow_id.
+                                        "presupuesto_ref": presupuesto_de_workflow(self._cid,
+                                                                                   workflow_id)})
         return comprobante_id
 
     def adjuntar_pdf(self, *, cuit: str, tipo_cbte: int, punto_venta: int, nro: int,

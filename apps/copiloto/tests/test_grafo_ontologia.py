@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import datetime
 
+from grafo_mapeo import (COBRADO_A, E_FICHA_CLIENTE, E_REGISTRO_COBRO, ESTADO_CONCEPTO, FACTURADO_EN,
+                         TIENE_CLIENTE)
 from grafo_mapeo import (AL_TRABAJO, COBRO, COMPROBANTE, CONCEPTO, DE_CONCEPTO, DIRIGIDO_A, E_COBRO,
                          E_PRESUPUESTO, EMITIO, ESTADO, ESTADO_COMPROBANTE, ESTADO_PRESUPUESTO,
                          FACTURADO_A, GASTO, IMPUTACION, IMPUTADO_A, INCLUYE, MapeadorEstado,
@@ -21,11 +23,12 @@ def _todos_los_edge_types_del_mapeo() -> set[str]:
     propios acumuladores, no transcritos a mano (si el mapeo agrega un tipo, este set lo sigue solo)."""
     ev = MapeadorEvento(negocio_key="t-1", negocio_nombre="Mi Negocio")
     tipos = {EMITIO, FACTURADO_A, REGISTRO_GASTO, PAGADO_A, E_PRESUPUESTO, DIRIGIDO_A, INCLUYE,
-            E_COBRO, REEMPLAZA_A}
+            E_COBRO, REEMPLAZA_A, TIENE_CLIENTE, COBRADO_A, FACTURADO_EN}
     assert set(ev._acc.keys()) == tipos, "el set de arriba no coincide con los acumuladores reales"
-    # MapeadorEstado arma sus acumuladores lazy (recién al procesar), así que los 5 tipos de estado se
+    # MapeadorEstado arma sus acumuladores lazy (recién al procesar), así que los tipos de estado se
     # declaran acá directo desde las constantes del módulo — son los únicos edge_type que emite.
-    tipos |= {ESTADO_PRESUPUESTO, ESTADO_COMPROBANTE, PRECIO_DE, DE_CONCEPTO, IMPUTADO_A, AL_TRABAJO}
+    tipos |= {ESTADO_PRESUPUESTO, ESTADO_COMPROBANTE, PRECIO_DE, DE_CONCEPTO, IMPUTADO_A, AL_TRABAJO,
+              ESTADO_CONCEPTO, E_REGISTRO_COBRO, E_FICHA_CLIENTE}
     return tipos
 
 

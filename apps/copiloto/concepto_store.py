@@ -150,6 +150,7 @@ class ConceptoStore:
         if not sets:
             return self.obtener(concepto_id)
         precio_venia = "precio_referencia" in datos
+        activo_venia = "activo" in datos
         sets.append("updated_at = now()")
         with self._conn_factory() as conn, conn.cursor() as cur:
             # El precio ANTERIOR, para el de→a del log. Se lee sobre el mismo cursor justo antes del
@@ -160,6 +161,12 @@ class ConceptoStore:
             # best-effort (ver evento_store). Sólo se lee si el precio viene en la edición: un `editar`
             # de nombre o `activo` (o el `desactivar`) no toca la serie de precios.
             precio_previo = None
+            activo_previo = None
+            if activo_venia:
+                cur.execute(f"SELECT activo FROM {_TABLE} "
+                            f"WHERE cliente_id = %s AND id = %s", (self._cliente_id, concepto_id))
+                prev = cur.fetchone()
+                activo_previo = None if prev is None else bool(prev[0])
             if precio_venia:
                 cur.execute(f"SELECT precio_referencia FROM {_TABLE} "
                             f"WHERE cliente_id = %s AND id = %s", (self._cliente_id, concepto_id))
@@ -198,6 +205,16 @@ class ConceptoStore:
                                      valor_de=(None if anterior is None else str(anterior)),
                                      valor_a=(None if nuevo is None else str(nuevo)),
                                      datos={"nombre": crow["nombre"]})
+            # Alta/baja del catálogo → `ESTADO_CONCEPTO` (activo/inactivo). NO toca la serie de
+            # precios: desactivar no borra la historia (ver `desactivar`). Sólo si cambió de verdad.
+            if activo_venia and activo_previo is not None and bool(crow["activo"]) != activo_previo:
+                registrar_evento(cur, self._cliente_id, entidad_tipo="concepto",
+                                 entidad_id=crow["nombre_normalizado"],
+                                 evento=("reactivado" if crow["activo"] else "desactivado"),
+                                 campo="activo",
+                                 valor_de=("activo" if activo_previo else "inactivo"),
+                                 valor_a=("activo" if crow["activo"] else "inactivo"),
+                                 datos={"nombre": crow["nombre"]})
             return self._fila(fila)
 
     def desactivar(self, concepto_id: int) -> dict | None:

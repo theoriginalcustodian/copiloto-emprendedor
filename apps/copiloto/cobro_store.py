@@ -73,6 +73,20 @@ def _decimal(valor, campo: str) -> Decimal:
         raise CobroInvalido(f"{campo} no es un número válido")
 
 
+def _snapshot_grafo(cobro: dict) -> dict:
+    """Lo que el grafo lee de un cobro corregido (`grafo_mapeo._registro_cobro`)."""
+    return {k: cobro.get(k) for k in ("monto", "medio", "fecha", "origen", "cliente_nombre",
+                                      "concepto", "cliente_ref", "presupuesto_ref")}
+
+
+def _loggear_baja(cur, cliente_id: str, cobro_id) -> None:
+    """Un cobro borrado deja de valer en el grafo: `valor_a=None` en el eje `registro` es BAJA (el
+    sync invalida la versión vigente, o las aristas del alta si nunca se corrigió). Sólo se llama
+    cuando el DELETE devolvió fila: un id ajeno o inexistente no loggea nada."""
+    registrar_evento(cur, cliente_id, entidad_tipo="cobro", entidad_id=cobro_id, evento="borrado",
+                     campo="registro", valor_a=None)
+
+
 def estado_de_cobro(total, cobrado) -> str:
     """`impaga` · `parcial` · `cobrada`, derivados. Función pura, testeable sin base."""
     t, c = Decimal(str(total or 0)), Decimal(str(cobrado or 0))
@@ -466,9 +480,13 @@ class CobroStore:
         """
         with self._conn_factory() as conn, conn.cursor() as cur:
             cur.execute(f"DELETE FROM {_TABLE} "
-                        f"WHERE cliente_id = %s AND id = %s AND origen = 'manual'",
+                        f"WHERE cliente_id = %s AND id = %s AND origen = 'manual' RETURNING id",
                         (self._cliente_id, ingreso_id))
-            return cur.rowcount > 0
+            fila = cur.fetchone()
+            if fila is None:
+                return False
+            _loggear_baja(cur, self._cliente_id, fila[0])
+            return True
 
     def completar(self, ingreso_id: int, datos: dict) -> dict | None:
         """Completa un ingreso ya guardado — la respuesta al aviso de *«no me dijiste de quién»*.
@@ -528,24 +546,30 @@ class CobroStore:
             # 🔴 Corregir un ingreso ES un evento de negocio, aunque no sea un alta. El grafo se
             # re-deriva del log (§3) y el DoD exige que re-derivar dé el estado ACTUAL (§5): si el
             # dictado oyó «quince mil» por «cincuenta mil» y sólo loggeáramos el alta, el grafo
-            # respondería el monto equivocado para siempre. El derivador (§1.2) aplica el 'corregido'
-            # sobre el 'creado' del mismo `entidad_id`.
+            # respondería el monto equivocado para siempre.
+            #
+            # ⚠️ Hasta el 2026-11-06 esto se loggeaba SIN `campo` y el comentario afirmaba que «el
+            # derivador aplica el 'corregido' sobre el 'creado'». Era falso: el derivador sólo encadena
+            # eventos CON `campo`, y el mapeo no despachaba `corregido` — el grafo se quedaba con el
+            # monto del alta. Ahora va por el eje `registro` (`grafo_mapeo.REGISTRO_COBRO`), y la 1ª
+            # corrección invalida las aristas del alta (`grafo_sync_activities`). `valor_a` es el
+            # cobro COMPLETO; el delta pedido queda en `datos.cambios`.
             registrar_evento(cur, self._cliente_id, entidad_tipo="cobro", entidad_id=cobro["id"],
-                             evento="corregido", ocurrido_en=cobro["fecha"], valor_a=datos,
-                             datos={"monto": cobro["monto"], "medio": cobro["medio"],
-                                    "fecha": cobro["fecha"], "origen": cobro["origen"],
-                                    "cliente_nombre": cobro["cliente_nombre"],
-                                    "concepto": cobro["concepto"]})
+                             evento="corregido", campo="registro", ocurrido_en=None,
+                             valor_a=_snapshot_grafo(cobro),
+                             datos={"cambios": sorted(datos)})
             return cobro
 
     def borrar(self, comprobante_id: int, cobro_id: int) -> dict | None:
         """Deshace un cobro. Alguien se equivoca, y sin esto la única salida sería tocar la base."""
         with self._conn_factory() as conn, conn.cursor() as cur:
             cur.execute(f"DELETE FROM {_TABLE} "
-                        f"WHERE cliente_id = %s AND comprobante_id = %s AND id = %s",
+                        f"WHERE cliente_id = %s AND comprobante_id = %s AND id = %s RETURNING id",
                         (self._cliente_id, comprobante_id, cobro_id))
-            if cur.rowcount == 0:
+            fila = cur.fetchone()
+            if fila is None:
                 return None
+            _loggear_baja(cur, self._cliente_id, fila[0])
             return self._resumen(cur, comprobante_id)
 
     # ── helpers ──────────────────────────────────────────────────────────────────────────────────
