@@ -39,8 +39,10 @@ _EVENTOS = "uc_factory.copiloto_eventos"
 # gancho —'concepto'/'conceptos', 'creado'/'creada'— escribiría un par fuera de este set, y lo rompe
 # ESTE test, no el derivador tres capas más arriba leyendo un entidad_tipo que no reconoce.
 PARES_ESPERADOS = {
-    ("cobro", "creado"), ("cobro", "corregido"),
+    ("cobro", "creado"), ("cobro", "corregido"), ("cobro", "borrado"),
+    ("cliente", "creado"), ("cliente", "editado"),
     ("concepto", "creado"), ("concepto", "precio_cambiado"),
+    ("concepto", "desactivado"), ("concepto", "reactivado"),
     ("gasto", "creado"), ("gasto", "imputado"), ("gasto", "desimputado"),
     ("presupuesto", "creado"), ("presupuesto", "estado_cambiado"),
     ("comprobante", "emitido"), ("comprobante", "estado_cambiado"),
@@ -57,7 +59,8 @@ def tenants(conn_de_tenant):
         conn = conn_de_tenant(cid)()
         with conn.cursor() as cur:
             for t in ("copiloto_eventos", "copiloto_cobros", "copiloto_conceptos", "copiloto_gastos",
-                      "copiloto_presupuesto_items", "copiloto_presupuestos", "afip_comprobantes"):
+                      "copiloto_presupuesto_items", "copiloto_presupuestos", "afip_comprobantes",
+                      "copiloto_clientes"):
                 cur.execute(f"DELETE FROM uc_factory.{t} WHERE cliente_id = %s", (cid,))
         conn.close()
 
@@ -124,7 +127,96 @@ def test_cobro_suelto_y_correccion(conn_de_tenant, tenants):
     store.completar(cobro["id"], {"monto": "50000"})
     ev = _eventos(cf, a, entidad_tipo="cobro")
     assert [e["evento"] for e in ev] == ["creado", "corregido"]
-    assert Decimal(ev[1]["datos"]["monto"]) == Decimal("50000.00")
+    # Eje `registro`: con `campo`, el sync lo encadena (antes iba sin campo y nadie lo leía).
+    assert ev[1]["campo"] == "registro"
+    assert Decimal(ev[1]["valor_a"]["monto"]) == Decimal("50000.00")
+    assert ev[1]["valor_a"]["cliente_nombre"] == "Panadería"     # snapshot COMPLETO, no el delta
+    assert ev[1]["datos"]["cambios"] == ["monto"]
+
+
+@necesita_pg
+def test_cobro_borrado_deja_baja_y_el_ajeno_no_loggea(conn_de_tenant, tenants):
+    a, b = tenants
+    cf_a = conn_de_tenant(a)
+    store = CobroStore(cf_a, a)
+    cobro = store.registrar_suelto(monto="1000", medio="efectivo")
+    # Caso hostil: B intenta borrar el ingreso de A → no borra NI loggea una baja en el log de nadie.
+    assert CobroStore(conn_de_tenant(b), b).borrar_ingreso(cobro["id"]) is False
+    assert _eventos(conn_de_tenant(b), b) == []
+    assert store.borrar_ingreso(cobro["id"]) is True
+    ev = _eventos(cf_a, a, entidad_tipo="cobro")
+    assert [e["evento"] for e in ev] == ["creado", "borrado"]
+    assert ev[1]["campo"] == "registro" and ev[1]["valor_a"] is None
+    # Borrar de nuevo (ya no existe) no agrega otra baja.
+    assert store.borrar_ingreso(cobro["id"]) is False
+    assert len(_eventos(cf_a, a, entidad_tipo="cobro")) == 2
+
+
+@necesita_pg
+def test_cobro_de_factura_borrado_deja_baja(conn_de_tenant, tenants):
+    a, _ = tenants
+    cf = conn_de_tenant(a)
+    comp_id = _comprobante_directo(cf, a, "1000.00", nro=31)
+    store = CobroStore(cf, a)
+    cobro, _ = store.registrar(comp_id, monto="400.00", medio="efectivo")
+    assert store.borrar(comp_id, cobro["id"]) is not None
+    ev = _eventos(cf, a, entidad_tipo="cobro")
+    assert [e["evento"] for e in ev] == ["creado", "borrado"]
+
+
+@necesita_pg
+def test_cliente_alta_y_edicion_loggean(conn_de_tenant, tenants):
+    from cliente_store import ClienteDuplicado, ClienteStore
+    a, _ = tenants
+    cf = conn_de_tenant(a)
+    store = ClienteStore(cf, a)
+    c = store.crear(nombre="Panadería Lola", doc_tipo=80, doc_nro="20123456786", email="lola@x.test")
+    ev = _eventos(cf, a, entidad_tipo="cliente")
+    assert len(ev) == 1 and ev[0]["evento"] == "creado" and ev[0]["campo"] is None
+    assert ev[0]["entidad_id"] == str(c["id"]) and ev[0]["datos"]["nombre"] == "Panadería Lola"
+    assert "notas" not in ev[0]["datos"]
+    # El duplicado (23505) NO loggea un alta: el cliente ya existía. Choque por DOCUMENTO — el índice
+    # por nombre sólo cubre a los clientes sin documento, y éste lo tiene.
+    with pytest.raises(ClienteDuplicado):
+        store.crear(nombre="Otra razón social", doc_tipo=80, doc_nro="20-12345678-6")
+    assert len(_eventos(cf, a, entidad_tipo="cliente")) == 1
+    store.editar(c["id"], {"telefono": "1155550000"})
+    ev = _eventos(cf, a, entidad_tipo="cliente")
+    assert [e["evento"] for e in ev] == ["creado", "editado"]
+    assert ev[1]["campo"] == "registro" and ev[1]["valor_a"]["telefono"] == "1155550000"
+    assert ev[1]["valor_a"]["email"] == "lola@x.test"          # ficha COMPLETA
+    assert ev[1]["datos"]["cambios"] == ["telefono"]
+
+
+@necesita_pg
+def test_concepto_desactivar_y_reactivar_es_estado_activo(conn_de_tenant, tenants):
+    a, _ = tenants
+    cf = conn_de_tenant(a)
+    store = ConceptoStore(cf, a)
+    c = store.crear("Flete", precio_referencia="5000")
+    store.desactivar(c["id"])
+    store.desactivar(c["id"])                       # ya inactivo: no es un cambio, no loggea
+    store.editar(c["id"], {"activo": True})
+    ev = _eventos(cf, a, entidad_tipo="concepto")
+    assert [e["evento"] for e in ev] == ["creado", "desactivado", "reactivado"]
+    assert [(e["valor_de"], e["valor_a"]) for e in ev[1:]] == [("activo", "inactivo"),
+                                                               ("inactivo", "activo")]
+    assert all(e["campo"] == "activo" for e in ev[1:])   # no toca la serie de PRECIO
+
+
+@necesita_pg
+def test_factura_de_presupuesto_lleva_presupuesto_ref(conn_de_tenant, tenants):
+    from presupuesto_store import factura_id_de_presupuesto, workflow_id_de_factura
+    a, _ = tenants
+    cf = conn_de_tenant(a)
+    store = AfipComprobanteStore(cf, a)
+    kw = dict(cuit="30712345678", tipo_cbte=6, punto_venta=1, cae="CAE-P", cae_vto=None,
+              fecha_emision=None, doc_tipo=80, doc_nro="30712345678", total=Decimal("1000"),
+              receptor_nombre="Panadería")
+    store.registrar(nro=41, workflow_id=workflow_id_de_factura(a, factura_id_de_presupuesto(77)), **kw)
+    store.registrar(nro=42, workflow_id=workflow_id_de_factura(a, "abc123"), **kw)
+    ev = _eventos(cf, a, entidad_tipo="comprobante")
+    assert [e["datos"]["presupuesto_ref"] for e in ev] == [77, None]
 
 
 @necesita_pg

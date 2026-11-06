@@ -22,7 +22,8 @@ from typing import Callable
 from temporalio import activity
 
 from contexto_tenant import conexion_con_tenant, tenant
-from grafo_mapeo import MapeadorEstado, MapeadorEvento, ontologia
+from grafo_mapeo import (CAMPO_REGISTRO, REVISABLES, MapeadorEstado, MapeadorEvento,
+                         edge_uuids_del_alta, ontologia)
 from grafo_sync_store import GrafoSyncStore
 from grafo_writer import GrafoWriter, Invalidacion
 from graphity_structured_client import GraphityStructuredClient
@@ -65,6 +66,25 @@ def _leer_eventos_nuevos(conn_tenant: Callable, cliente_id: str, desde_id: int) 
                        valor_a=r[5], datos=r[6] or {}, ocurrido_en=r[7]) for r in rows]
 
 
+def _leer_alta(conn_tenant: Callable, cliente_id: str, entidad_tipo: str,
+               entidad_id: str) -> _EventoRow | None:
+    """El evento `creado` de una entidad, cuando su revisión llega en una corrida POSTERIOR al alta.
+    Mismas columnas que `_leer_eventos_nuevos`: se reconstruye con el mismo `_EventoRow` para que
+    `edge_uuids_del_alta` haga la cuenta exacta que hizo el mapeador al postearla."""
+    conn = conn_tenant()
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, entidad_tipo, entidad_id, evento, campo, valor_a, datos, ocurrido_en "
+            "FROM uc_factory.copiloto_eventos WHERE cliente_id=%s AND entidad_tipo=%s "
+            "AND entidad_id=%s AND evento='creado' ORDER BY id LIMIT 1",
+            (cliente_id, entidad_tipo, entidad_id))
+        r = cur.fetchone()
+    if r is None:
+        return None
+    return _EventoRow(orden=r[0], entidad_tipo=r[1], entidad_id=r[2], evento=r[3], campo=r[4],
+                      valor_a=r[5], datos=r[6] or {}, ocurrido_en=r[7])
+
+
 def sincronizar_tenant(conn_factory: Callable, cliente_id: str, *, negocio_nombre: str,
                        client: GraphityStructuredClient | None = None) -> dict:
     """La función SYNC real (testeable sin Temporal ni red: inyectar `client` con un
@@ -81,11 +101,16 @@ def sincronizar_tenant(conn_factory: Callable, cliente_id: str, *, negocio_nombr
 
         group = f"negocio-{cliente_id}"
 
+        # TODOS los eventos, no sólo los de `campo is None`: `comprobante/emitido` y `presupuesto/creado`
+        # son altas CON `campo="estado"` (arrancan su serie de estado), y el filtro viejo los dejaba sin
+        # EMITIO/FACTURADO_A/PRESUPUESTO/DIRIGIDO_A/INCLUYE en el sync real — sólo llegaba su estado.
+        # `MapeadorEvento.procesar` despacha por (entidad_tipo, evento) e ignora lo que no es alta.
         mapeador_ev = MapeadorEvento(negocio_key=cliente_id, negocio_nombre=negocio_nombre)
         for ev in eventos:
-            if ev.campo is None:
-                mapeador_ev.procesar(ev)
+            mapeador_ev.procesar(ev)
         datasets_evento = mapeador_ev.datasets(group)
+        altas_del_batch = {(ev.entidad_tipo, ev.entidad_id): ev for ev in eventos
+                           if ev.evento == "creado" and ev.entidad_tipo in REVISABLES}
 
         # ── mitad ESTADO: loop propio (ver docstring del módulo) — sembrado con lo vigente en DB,
         # encadenado con lo que este mismo batch supersede. `ultimo_edge_por_clave`/`ultimo_orden_por_
@@ -94,23 +119,46 @@ def sincronizar_tenant(conn_factory: Callable, cliente_id: str, *, negocio_nombr
         invalidaciones: list[Invalidacion] = []
         ultimo_edge_por_clave: dict[tuple[str, str, str], str] = {}
         ultimo_orden_por_clave: dict[tuple[str, str, str], int] = {}
+        revisado_en_batch: set[tuple[str, str, str]] = set()
         for ev in eventos:
             if ev.campo is None:
                 continue
             clave = (ev.entidad_tipo, ev.entidad_id, ev.campo)
-            if clave not in ultimo_edge_por_clave:
+            primera_vez = clave not in ultimo_edge_por_clave and clave not in revisado_en_batch
+            if primera_vez:
                 vigente_db = store.vigente(*clave)
                 if vigente_db is not None:
                     ultimo_edge_por_clave[clave] = vigente_db
+                elif ev.entidad_tipo in REVISABLES and ev.campo == CAMPO_REGISTRO:
+                    # 1ª revisión de un cobro/cliente: lo vigente hasta acá es el ALTA (arista de
+                    # EVENTO con el monto/los datos viejos en su fact). Sin invalidarla, el grafo
+                    # contestaría el monto equivocado y el corregido a la vez.
+                    alta = (altas_del_batch.get((ev.entidad_tipo, ev.entidad_id))
+                            or _leer_alta(conn_tenant, cliente_id, ev.entidad_tipo, ev.entidad_id))
+                    if alta is not None:
+                        for uuid_alta in edge_uuids_del_alta(alta, group_logico=group,
+                                                             negocio_key=cliente_id,
+                                                             negocio_nombre=negocio_nombre):
+                            invalidaciones.append(Invalidacion(edge_uuid=uuid_alta,
+                                                               invalid_at=ev.ocurrido_en.isoformat()))
+            revisado_en_batch.add(clave)
             mapeador_es.procesar(ev.orden, ev, group_logico=group)
             nuevo_edge = mapeador_es.edge_uuid_de(ev.orden)
             anterior_edge = ultimo_edge_por_clave.get(clave)
-            if anterior_edge is not None and nuevo_edge is not None and anterior_edge != nuevo_edge:
+            if anterior_edge is not None and anterior_edge != nuevo_edge and (
+                    nuevo_edge is not None or ev.valor_a is None):
+                # `nuevo_edge is None` con `valor_a=None` es una BAJA (cobro borrado, precio
+                # quitado): no hay versión nueva, pero la anterior deja de valer igual.
                 invalidaciones.append(Invalidacion(edge_uuid=anterior_edge,
                                                    invalid_at=ev.ocurrido_en.isoformat()))
             if nuevo_edge is not None:
                 ultimo_edge_por_clave[clave] = nuevo_edge
                 ultimo_orden_por_clave[clave] = ev.orden
+            elif ev.valor_a is None:
+                # baja: nada vigente. Se olvida en el batch para no re-invalidar; la fila durable
+                # queda apuntando al edge ya invalidado (re-invalidarlo sería idempotente).
+                ultimo_edge_por_clave.pop(clave, None)
+                ultimo_orden_por_clave.pop(clave, None)
         datasets_estado = mapeador_es.datasets(group)
 
         client = client or GraphityStructuredClient.from_env()
