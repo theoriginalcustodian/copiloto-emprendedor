@@ -6,7 +6,7 @@
  *
  * ⚠️ Todo `fireEvent` va con `await` — ver el docstring de `jest.config.js`.
  */
-jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn() }, useFocusEffect: () => {} }));
+jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn(), dismissAll: jest.fn() }, useFocusEffect: () => {} }));
 
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
@@ -215,7 +215,7 @@ describe('PantallaIngresos — el listado', () => {
       await fireEvent.press(screen.getByTestId('chat-enviar'));
 
       expect(despacho.texto).toHaveBeenCalledWith('cobré 20000 a Pérez');
-      expect(router.back).toHaveBeenCalled();
+      expect(router.dismissAll).toHaveBeenCalled();
       expect(screen.queryByTestId('dock-funcion-confirmar')).toBeNull();
     } finally {
       baja();

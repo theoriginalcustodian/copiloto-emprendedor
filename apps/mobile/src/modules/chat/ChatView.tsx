@@ -170,11 +170,20 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
   // estado hidratado, por la misma razón que arriba: `send`/`enviarAudio` descartan en silencio mientras sea `null`.
   useEffect(() => {
     if (!hidratado) return;
+    // Tras mandar, el shell SUBE el chat y cierra el escritorio (`onPendienteMandado`): sin eso el mensaje se manda pero el
+    // emprendedor queda viendo Funciones, con el chat abajo (medido en device 2026-11-06, SM-P14). Es el mismo aviso que ya
+    // da el camino `dejarPendiente`.
     return registrarDespachoChat({
-      texto: (t) => void send(t, { kind: 'text' }),
-      audio: (a, d) => void enviarAudio(a, d),
+      texto: (t) => {
+        void send(t, { kind: 'text' });
+        onPendienteMandado?.();
+      },
+      audio: (a, d) => {
+        void enviarAudio(a, d);
+        onPendienteMandado?.();
+      },
     });
-  }, [hidratado, send, enviarAudio]);
+  }, [hidratado, send, enviarAudio, onPendienteMandado]);
 
   useFocusEffect(
     useCallback(() => {

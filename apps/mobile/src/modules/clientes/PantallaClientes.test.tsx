@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { Gesture } from 'react-native-gesture-handler';
 
-jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn() }, useFocusEffect: () => {} }));
+jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn(), dismissAll: jest.fn() }, useFocusEffect: () => {} }));
 
 /** Partial mock: sólo la red. `formatearImporte` y las clases de error, REALES. */
 jest.mock('@copiloto/core', () => {
@@ -570,7 +570,7 @@ describe('PantallaClientes', () => {
       await fireEvent.press(screen.getByTestId('chat-enviar'));
 
       expect(despacho.texto).toHaveBeenCalledWith('cliente nuevo Pérez');
-      expect(router.back).toHaveBeenCalled();
+      expect(router.dismissAll).toHaveBeenCalled();
       expect(screen.queryByTestId('dock-funcion-confirmar')).toBeNull();
     } finally {
       baja();

@@ -17,6 +17,8 @@ export interface DockAlChatProps {
   onError?: (mensaje: string) => void;
 }
 
+// `dismissAll` y no `back`: la función es un 2º glass sobre Funciones (que a su vez está sobre el chat); `back()` dejaba al
+// emprendedor en Funciones con el mensaje ya mandado. Medido en device 2026-11-06.
 const CHAT_NO_LISTO = 'El chat todavía no está listo. Probá de nuevo en un momento.';
 
 /**
@@ -59,7 +61,7 @@ export function DockAlChat({ contexto, origen: _origen, placeholder, onError }: 
             decir(CHAT_NO_LISTO);
             return;
           }
-          router.back();
+          router.dismissAll();
         }}
         onAudioCrudo={(audio, duracionSeg) => {
           if (!despacharAudioAlChat(audio, duracionSeg)) {
@@ -67,7 +69,7 @@ export function DockAlChat({ contexto, origen: _origen, placeholder, onError }: 
             void borrarArchivoLocal(audio);
             return;
           }
-          router.back();
+          router.dismissAll();
         }}
       />
     </>

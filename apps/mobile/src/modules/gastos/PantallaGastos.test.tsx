@@ -7,7 +7,7 @@ import { Gesture } from 'react-native-gesture-handler';
  * falsa declarada acá rompe ese chequeo (la factory corre antes de que la `class` salga de su zona
  * muerta temporal). Ya se pagó ese error una vez en esta sesión.
  */
-jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn() }, useFocusEffect: () => {} }));
+jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn(), dismissAll: jest.fn() }, useFocusEffect: () => {} }));
 
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
@@ -371,7 +371,7 @@ describe('PantallaGastos', () => {
       await fireEvent.press(screen.getByTestId('chat-enviar'));
 
       expect(despacho.texto).toHaveBeenCalledWith('café 1500');
-      expect(router.back).toHaveBeenCalled();
+      expect(router.dismissAll).toHaveBeenCalled();
       expect(screen.queryByTestId('dock-funcion-confirmar')).toBeNull();
     } finally {
       baja();
