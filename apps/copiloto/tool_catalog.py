@@ -68,6 +68,8 @@ from afip_rules import (BorradorFactura, Concepto, CondicionIVA, DatosVenta,  # 
 from dispatcher_emprendedor import _friendly_toolkit  # noqa: E402
 # C-D3: `card.detalle` / `card.recibo` del gate HITL (piloto Gmail). Del dominio: el motor sólo re-empaqueta.
 from hitl_card import detalle_de, recibo_de  # noqa: E402
+# RAG al chat (contrato 2026-11-05): la MISMA ejecución que el worker de soporte, sin duplicarla.
+from soporte_agent_tools import CONSULTAR_KB_SCHEMA, _run_consultar_kb  # noqa: E402
 # preg-datos (C-D5): la card `datos_negocio`. `plata` vive ahí y se re-exporta como `_plata` (lo usan
 # `consultar_cliente` y los tests): una sola definición de cómo se escribe la plata acá.
 from datos_card import (CONSULTAS as CONSULTAS_NEGOCIO, KIND as KIND_DATOS_NEGOCIO,  # noqa: E402
@@ -485,6 +487,21 @@ def _required_of(tool_name: str) -> list:
     return []
 
 
+#: `consultar_base_de_conocimiento` para el chat del EMPRENDEDOR. Mismo nombre y parámetros que la de
+#: soporte (misma ejecución), pero la descripción se acota: la de soporte dice «SIEMPRE antes de responder
+#: cualquier pregunta», y en un chat que opera (facturar, cobrar, agendar) eso la dispararía en cada turno.
+#: Acá SOLO responde «cómo se usa la app»; los números y las acciones siguen en sus tools.
+CONSULTAR_KB_EMPRENDEDOR_SCHEMA = {"type": "function", "function": {
+    "name": CONSULTAR_KB_SCHEMA["function"]["name"],
+    "description": "Responde preguntas sobre CÓMO USAR LA APP del copiloto (dónde está una función, cómo "
+                   "se hace algo en la app, qué significa una pantalla o un botón) desde la base de "
+                   "conocimiento del producto. Usala SOLO para esa clase de pregunta. NO la uses para "
+                   "operar (facturar, cobrar, registrar, agendar) ni para consultar números o datos del "
+                   "negocio del usuario: eso tiene sus propias tools. Si devuelve que no sabe, decíselo "
+                   "al usuario tal cual; nunca inventes una respuesta sobre la app.",
+    "parameters": CONSULTAR_KB_SCHEMA["function"]["parameters"]}}
+
+
 def build_tool_catalog() -> list[dict]:
     # Poda del hito 2 — «el copiloto ejecuta, Inteligencia de Negocio explica»: las dos tools
     # CONSULTIVAS se fueron. Actividad y Clientes ya son pantallas propias, y preguntárselas al agente
@@ -500,7 +517,7 @@ def build_tool_catalog() -> list[dict]:
                REGISTRAR_PRESUPUESTO_SCHEMA,
                EMITIR_FACTURA_SCHEMA, CANCELAR_FACTURA_SCHEMA,
                CREAR_TARJETA_MI_DIA_SCHEMA, MOVER_TARJETA_MI_DIA_SCHEMA,
-               BORRAR_TARJETA_MI_DIA_SCHEMA]
+               BORRAR_TARJETA_MI_DIA_SCHEMA, CONSULTAR_KB_EMPRENDEDOR_SCHEMA]
     for mod in services.modules().values():
         schemas.extend(mod.TOOL_SCHEMAS)
     return schemas
@@ -514,6 +531,9 @@ TOOL_INDEX = {**_service_index(), "calendar_book": ("calendar",), "mp_charge": (
               "registrar_cliente": ("cliente",), "consultar_cliente": ("cliente_consulta",),
               # `consultar_negocio`: read puro (card de datos), tampoco va en WRITE_TOOLS.
               "consultar_negocio": ("negocio",),
+              # `consultar_base_de_conocimiento` (RAG al chat): read puro, sin gate HITL. Los datos del
+              # negocio NO viajan al RAG (la pregunta sale tal cual, sin cliente_id).
+              "consultar_base_de_conocimiento": ("kb",),
               # De las cuatro del hito 3, sólo `marcar_factura_cobrada`/`marcar_presupuesto` PERSISTEN
               # directo (transiciones de estado, no formularios). `registrar_ingreso` pasó a PROPONER
               # (hito 8 §1, revierte el guarda-primero de §2.bis — relocalizado al modo automático,
@@ -1853,7 +1873,8 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
                        abrir_borrador_dictado=None, consultar_factura_dictado=None,
                        signal_factura_dictado=None, buscar_borrador_dictado=None,
                        buscar_borrador_cancelable=None, cancelar_factura_dictado=None,
-                       trauma_store_factory=None, inteligencia_queries_factory=None):
+                       trauma_store_factory=None, inteligencia_queries_factory=None,
+                       rag_client_factory=None):
     """Ejecuta UNA tool y devuelve ToolResult. El gate lo abre el propio executor (write sin confirmed →
     needs_confirmation SIN ejecutar). Errores de negocio → status='error' (nunca excepción → retry ∞).
     `llm` (opcional): el LlmProvider compartido que usa `consultar_actividad` para resumir la actividad.
@@ -1899,6 +1920,11 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
             # ── 1ra clase: preg-datos — los números del negocio como card (READ puro → sin gate) ──
             if kind == "negocio":
                 return _run_consultar_negocio(arguments, ctx, idem_key, inteligencia_queries_factory)
+            # ── 1ra clase: RAG al chat — «cómo uso la app» (READ puro → sin gate). Sin factory = apagado
+            #    explícito: `_run_consultar_kb` devuelve outcome=unavailable, el agente lo dice y no inventa.
+            if kind == "kb":
+                return _run_consultar_kb(arguments, ctx, idem_key, rag_client_factory or (lambda: None),
+                                         trauma_store_factory)
             # ── 1ra clase: hito 3 — la plata se registra hablando (persisten; sin gate, ver TOOL_INDEX) ─
             if kind == "ingreso":
                 return _run_registrar_ingreso(arguments, ctx, idem_key, now_iso_provider,

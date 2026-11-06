@@ -118,6 +118,15 @@ def _es_json(resp: httpx.Response) -> bool:
         # un error a reportar -- el llamador ya degrada a `reason` default en ese caso
 
 
+#: Namespace del corpus «cómo usar la app». Lo comparten el worker de soporte y el chat del emprendedor
+#: (una sola fuente; `RAG_ORQUESTADOR_NAMESPACE` lo pisa si hay que apuntar a otro corpus).
+NAMESPACE_HOWTO_DEFAULT = "copiloto-howto"
+
+
+def rag_namespace_de(env) -> str:
+    return (env.get("RAG_ORQUESTADOR_NAMESPACE") if env is not None else None) or NAMESPACE_HOWTO_DEFAULT
+
+
 def build_rag_client_factory(namespace: str, env: dict | None = None) -> Callable[[], OrquestadorRagClient | None]:
     """`() -> OrquestadorRagClient | None` -- boundary para el composition root del worker de soporte.
     `None` si el env no está completo (apagado explícito, ver `from_env`); la tool lo maneja como

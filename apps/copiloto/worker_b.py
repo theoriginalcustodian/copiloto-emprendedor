@@ -46,6 +46,7 @@ from trauma_de_turno_activities import registrar_trauma_de_turno, set_trauma_de_
 from dictado_destinos import scope_de_sesion
 from interceptor_errores import CapturaDeErroresInterceptor
 from metering_store import MeteringStore
+from orquestador_rag_client import build_rag_client_factory, rag_namespace_de
 from perfil_negocio_prompt import bloque_de_contexto
 from perfil_negocio_store import PerfilNegocioStore
 from afip_anulacion_workflow import AnulacionWorkflow
@@ -286,7 +287,10 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
         buscar_borrador_cancelable=buscar_borrador_cancelable,
         cancelar_factura_dictado=cancelar_factura_dictado,
         trauma_store_factory=fabrica_desde(conn_factory),
-        inteligencia_queries_factory=_inteligencia_queries_factory)
+        inteligencia_queries_factory=_inteligencia_queries_factory,
+        # RAG al chat (contrato 2026-11-05): mismo orquestador y corpus «cómo usar la app» que el
+        # worker de soporte. Sin RAG_ORQUESTADOR_* en el env la factory da None → outcome=unavailable.
+        rag_client_factory=build_rag_client_factory(rag_namespace_de(env), env))
     register_domain("emprendedor", system_prompt=system_prompt_react, llm_provider=llm,
                     dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso, llm=llm,
                                                mp_dedup_factory=_mp_dedup_factory),  # C1: mismo dedup que
