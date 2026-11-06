@@ -2851,26 +2851,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/facturacion"
     },
-    "modules/facturacion::facturacion-dictado": {
-      "en": [
-        "apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-11-04",
-      "id": "facturacion-dictado",
-      "motivo": "SM-P13: indicador «interpretando» del dock de Facturacion mientras el motor arma la card (dictado:factura). Lo pinta AvisoDictado en mobile; el par web es de frontend2 (su rama frontend2/p13-factura-dictado) y puede usar otro id. Disparador para sacarla: que el lado web de SM-P13 mergee con su par o lo declare no aplicable.",
-      "pantalla": "modules/facturacion"
-    },
-    "modules/facturacion::facturacion-dictado-pregunta": {
-      "en": [
-        "apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-11-04",
-      "id": "facturacion-dictado-pregunta",
-      "motivo": "SM-P13: la PREGUNTA del copiloto en un dictado incompleto (hilo abierto, la proxima frase la contesta). En web la pinta DockEntrada como su `aviso` {texto, alerta:false}, sin id propio (apps/copiloto-web/src/modules/facturacion/PantallaFacturacion.tsx:605-611): el par existe, solo que dentro de un componente compartido. Dueno: frontend2. Disparador para sacarla: que DockEntrada web exponga un id para el aviso, o que mobile reuse un componente de aviso con id comun.",
-      "pantalla": "modules/facturacion"
-    },
     "modules/facturacion::facturacion-error-borrador-botones": {
       "en": [
         "apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx"
@@ -2889,16 +2869,6 @@
       "fecha": "2026-09-22",
       "id": "facturacion-lista",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/facturacion"
-    },
-    "modules/facturacion::facturacion-mic-error": {
-      "en": [
-        "apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-11-04",
-      "id": "facturacion-mic-error",
-      "motivo": "SM-P13: aviso del degradado del dictado de Facturacion (no se pudo consultar / tardo / no alcanzo a armar la factura) o error de permiso de microfono. En web el mismo aviso lo pinta DockEntrada como `aviso` {alerta:true} sin id propio (PantallaFacturacion.tsx:608-609). Dueno: frontend2. Disparador para sacarla: que DockEntrada web exponga un id para el aviso.",
       "pantalla": "modules/facturacion"
     },
     "modules/facturacion::facturacion-nueva-factura-fila": {
@@ -4695,46 +4665,6 @@
       "fecha": "2026-11-02",
       "id": "dock-funcion-chip",
       "motivo": "SM-I2 extrajo el dock (campo + mic chico al pie, D2) en mobile; la web sigue con su composer porque en el sprint de correcciones del mapa manda mobile. Chip «Por voz» del dock de función.",
-      "pantalla": "modules/voz"
-    },
-    "modules/voz::dock-funcion-confirmar": {
-      "en": [
-        "apps/mobile/src/modules/voz/DockFuncion.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-11-05",
-      "id": "dock-funcion-confirmar",
-      "motivo": "SM-P14 (2026-11-05): confirmacion del dictado en el dock de funcion, solo mobile. La web no tiene dock de voz con transcript intermedio: dicta con el mismo mic sin paso de confirmacion; llevar el criterio a web es decision de frontend2 (contrato planificacion 2026-11-05, el corte va en la UI). Dueno: frontend1. Disparador: cuando frontend2 tome el mismo criterio en web, sacar estas cuatro.",
-      "pantalla": "modules/voz"
-    },
-    "modules/voz::dock-funcion-confirmar-descartar": {
-      "en": [
-        "apps/mobile/src/modules/voz/DockFuncion.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-11-05",
-      "id": "dock-funcion-confirmar-descartar",
-      "motivo": "SM-P14 (2026-11-05): confirmacion del dictado en el dock de funcion, solo mobile. La web no tiene dock de voz con transcript intermedio: dicta con el mismo mic sin paso de confirmacion; llevar el criterio a web es decision de frontend2 (contrato planificacion 2026-11-05, el corte va en la UI). Dueno: frontend1. Disparador: cuando frontend2 tome el mismo criterio en web, sacar estas cuatro.",
-      "pantalla": "modules/voz"
-    },
-    "modules/voz::dock-funcion-confirmar-enviar": {
-      "en": [
-        "apps/mobile/src/modules/voz/DockFuncion.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-11-05",
-      "id": "dock-funcion-confirmar-enviar",
-      "motivo": "SM-P14 (2026-11-05): confirmacion del dictado en el dock de funcion, solo mobile. La web no tiene dock de voz con transcript intermedio: dicta con el mismo mic sin paso de confirmacion; llevar el criterio a web es decision de frontend2 (contrato planificacion 2026-11-05, el corte va en la UI). Dueno: frontend1. Disparador: cuando frontend2 tome el mismo criterio en web, sacar estas cuatro.",
-      "pantalla": "modules/voz"
-    },
-    "modules/voz::dock-funcion-confirmar-texto": {
-      "en": [
-        "apps/mobile/src/modules/voz/DockFuncion.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-11-05",
-      "id": "dock-funcion-confirmar-texto",
-      "motivo": "SM-P14 (2026-11-05): confirmacion del dictado en el dock de funcion, solo mobile. La web no tiene dock de voz con transcript intermedio: dicta con el mismo mic sin paso de confirmacion; llevar el criterio a web es decision de frontend2 (contrato planificacion 2026-11-05, el corte va en la UI). Dueno: frontend1. Disparador: cuando frontend2 tome el mismo criterio en web, sacar estas cuatro.",
       "pantalla": "modules/voz"
     },
     "src/auth::legal-screen-descargo": {
