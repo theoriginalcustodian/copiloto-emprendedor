@@ -686,6 +686,34 @@ Hasta el mes 8 todo el neto va a publicidad. Cada socio pasa los **US$10 mil por
 Neto después de Ganancias (14% con el régimen mientras rige, 35% después, con quebranto) y del 7% del dividendo; dos socios en partes iguales. La baja del mes 37 es el vencimiento del régimen. Venta en el mes 22: ~US$1,96 M a 4,5× el beneficio de 12 meses, 15% cedular; un comprador con 4 meses de historia en la meta puede pagar menos. Sin expansión internacional.
 <!-- SOCIOS:FIN -->
 
+<!-- MONO:INI -->
+### 14.3 Esquema impositivo y cobro de los socios por monotributo (agregado 2026-11-05)
+
+| Impuesto | Quién cobra | Cómo |
+|---|---|---|
+| IVA | Nación | 21% de lo cobrado menos el IVA de las compras (publicidad, IA, servidores, MercadoPago) |
+| Ganancias de la SAS | Nación | 14% del beneficio con Economía del Conocimiento (35% sin el régimen), con quebranto |
+| Ingresos Brutos | Provincias (Convenio Multilateral) | ~2,8% de la venta sin IVA; Santa Fe exenta, el resto ~3% |
+| Dividendos (7%) | Nación, retenido por la SAS | 7% de lo que se reparte; pago único y definitivo del socio |
+| Monotributo de cada socio | Nación + Santa Fe | cuota fija por categoría; incluye jubilación y obra social |
+| Impuesto al cheque | Nación | 0,6% + 0,6%; con Certificado MiPyME se computa 100% contra Ganancias |
+| DReI de Rosario | Municipio | no aplica: sin local ni personal en Rosario |
+
+Los socios cobran por dos vías: el **dividendo** (beneficio de la SAS después de Ganancias, con el 7%) y **honorarios de monotributo** por servicios técnicos reales (programación, community manager) facturados a la SAS. El honorario es gasto deducible: cada dólar que pasa de dividendo a honorario ahorra ~20% (14% de Ganancias + 7%), menos la cuota. Hasta el mes 9 no se factura (la SAS no tiene caja y no paga Ganancias); el honorario crece por trimestre con el beneficio y llega al tope de la categoría H (~US$4.400 por socio) en el mes 22: desde ahí suma ~US$544 por mes a cada socio, y ~US$1.403 si vence el régimen.
+
+| Mes | Beneficio de la SAS | Honorario por socio | Bolsillo por socio, solo dividendos | Bolsillo por socio, con honorarios | Diferencia |
+|---|---|---|---|---|---|
+| 9 | 3.064 | 0 | 1.284 | 1.284 | +0 |
+| 10–12 | 4.173 a 7.066 | 128 | 1.669 a 2.826 | 1.685 a 2.841 | +16 |
+| 13–15 | 9.388 a 15.854 | 706 | 3.754 a 6.340 | 3.842 a 6.427 | +87 |
+| 16–18 | 19.493 a 29.574 | 1.563 | 7.795 a 11.827 | 7.989 a 12.020 | +193 |
+| 19–21 | 74.781 a 81.849 | 3.053 | 29.905 a 32.731 | 30.282 a 33.109 | +377 |
+| 22–36 | 83.374 a 106.762 | 4.400 | 33.341 a 42.694 | 33.885 a 43.238 | +544 |
+| 37–60 | 108.571 a 153.382 | 4.400 | 32.816 a 46.360 | 34.219 a 47.763 | +1.403 |
+
+Regla: honorario por socio = 25% del beneficio mensual entre dos, con techo en el tope de H (US$4.400 = $81.924.660 anuales / 12 al dólar 1.550), fijado cada trimestre con el promedio del anterior; cuota incremental ≈ 7.7% de lo facturado. Supuestos sin verificar con el contador: que el honorario de un socio por servicios técnicos sea deducible (no los del cargo de administrador), precio de mercado defendible, sin otra facturación propia de los socios (si la tienen, el tope baja) y dividendo repartido entero. La categoría K (tope $126.610.839, cuota $1.614.446) no conviene con Ganancias al 14%: la cuota se come el ahorro; conviene si vence el régimen. Ser empleados de la SAS deja lo mismo o menos (aguinaldo, ART y contribuciones) y superpone aportes con el monotributo.
+<!-- MONO:FIN -->
+
 ## 15. Impuestos: régimen de Economía del Conocimiento (agregado 2026-11-04)
 
 **Inscribirse en el régimen de la Ley 27.506 (modificada por la 27.570) baja Ganancias de 35% a 14%** mientras la empresa sea micro o pequeña, y a 21% como mediana. Hasta el bolsillo de los socios la carga pasa de 39,6% (35% + 7% del dividendo) a 20,0%. En los 3 años que rige son **~US$336k más**, sin salir de Argentina; si se prorroga más allá de 2029, ~US$818k en 5 años. Rinde más que operar desde Estonia mientras los socios vivan acá (el art. 130 de Ganancias atribuye igual el beneficio a los socios argentinos).
