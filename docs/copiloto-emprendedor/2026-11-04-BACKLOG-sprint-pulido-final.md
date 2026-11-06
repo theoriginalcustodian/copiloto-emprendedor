@@ -58,7 +58,7 @@ campo»*.
 | **SM-P12** | `sin-issue` | 🟧 DOD-PARCIAL | Pasada de device hecha con el APK 7d278a2c (RF8T318RN9T, e2e-device, gestos por adb motionevent). 5 de 8 puntos resue… |
 | **SM-P13** | `sin-issue` | 🟧 DOD-PARCIAL | Solo DEVICE: la pasada de SM-P12 con e2e-device sobre la card de dictado:factura. La mitad WEB esta medida en navegad… |
 | **SM-P14** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-P15** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-P15** | `sin-issue` | ✅ TERMINADO | NADA del cableado. El CONTENIDO del corpus quedo fichado aparte como issue #1728 (decision de producto del operador):… |
 | **SM-P16** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -390,7 +390,9 @@ campo»*.
      cliente B ⇒ la respuesta no filtra datos de A. Sin ese test el punto 3 queda `[UNVERIFIED]`.
 ### SM-P15 · `sin-issue` — El chat del copiloto responde «cómo usar la app» con el RAG
 
-- **Estado:** PENDIENTE
+- **Estado:** TERMINADO
+- **Falta:** NADA del cableado. El CONTENIDO del corpus quedo fichado aparte como issue #1728 (decision de producto del operador): (a) el corpus dice «Facturacion AFIP» y la app rotula «ARCA» -- el RAG ENSENA un nombre que la app no usa; (b) MercadoPago no cubre «que vas a poder ver»; (c) Mi dia contesta generico. Mas un faltante de INSTRUMENTO: el orquestador no expone stats (404), asi que no se puede contar chunks ni fecha de indexacion -- hoy sabemos que CONTESTA, no cuando se indexo.
+- **Cierre:** @30f9c861 (#1718, CI 6/6, desplegado, durabilidad VERDE; ancestro de origin/main verificado con control negativo). Verificado tambien por CONTENIDO y no por el sha: tool_catalog.py:520 mete CONSULTAR_KB_EMPRENDEDOR_SCHEMA en schemas y :536 la declara read puro sin gate HITL (grep con control negativo 0). DoD 1-6 cumplidos. Punto 7, el que decidia si esto sirve: CORPUS NO VACIO -- las 5 TEMAS_AYUDA volvieron answered contra el orquestador REAL. Control positivo de honestidad: pregunta ajena (Mongolia) -> refused, no invento. Control negativo del instrumento: token/URL malos -> unavailable, no un falso answered. Routing medido en prod con e2e-device: las 3 preguntas de ayuda llamaron la tool y la operativa la llamo 0 veces. Y la pregunta «el RAG interfiere con el chat principal?» quedo ZANJADA con A/B preregistrado (14 frases de /capacidades x N=5 x 2 brazos, 70 por brazo, unica variable = la tool en el catalogo): mis-routing 0/70, acierto 70/70 en ambos brazos, Fisher p=1.0 -- NO se detecta interferencia en la eleccion de tool.
 - **Dueño:** backend
 - **Qué:** orden del operador (2026-11-05, textual): *«el chat del copiloto debe poder responder
   preguntas sobre como usar la app... así que agrega el rag a las capacidades del chat»*, y después
