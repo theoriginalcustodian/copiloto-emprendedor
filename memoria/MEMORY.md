@@ -32,7 +32,6 @@
 ### Cadencia, cierre y ocio
 - [🎯📈 Un criterio que CRECE con cada medición no se puede alcanzar](un-criterio-que-crece-con-cada-medicion-no-se-puede-alcanzar.md) — `DEC-18`: sólo UN lugar mide, y un hallazgo no reabre un ✅.
 - [🗂️🏷️ El registro no se marca si su id NO CIRCULA](el-registro-no-se-marcaba-porque-su-id-no-circulaba.md) — 18/26 fichas jamás nombradas en 460 cierres.
-- [🏷️ Dueño sin el INSTRUMENTO que el Falta exige](la-ficha-esperaba-a-un-dueno-que-no-podia-tocarla.md) — 13/19.
 - [🔁 EL BUCLE CANÓNICO - dos auditorías y el enganche](bucle-canonico-dos-auditorias-y-el-enganche.md) - marco de todo sprint.
 - [🤞🚫 PROMETER no es ejecutar - y el gate medía la PALABRA](prometer-no-es-ejecutar-el-gate-media-la-palabra.md) - hacela antes de escribirla.
 - [🛑💤 Detectar la parálisis y sólo reportarla es ocio PASIVO](deteccion-de-paralisis-sin-resolucion-es-ocio-pasivo.md) - el blocker es tuyo.
@@ -133,13 +132,10 @@
 ### Coordinación entre sesiones
 - [🛑🤖 Parar nombrando UN mecanismo deja el otro armado](una-orden-de-parada-que-nombra-un-mecanismo-deja-el-otro-armado.md) — el monitor sobrevive y ACTUA.
 - [📋🔃 El contrato que manda a hacer algo YA HECHO](el-contrato-que-manda-a-hacer-algo-ya-hecho.md) - medí estado y dueño de cada id ANTES de citarlo.
-- [📬🗃️ El `mv` archiva el archivo, no la ORDEN](un-mv-que-archiva-un-contrato-silencia-el-gate-no-la-orden.md) — con un `dato_`.
-- [📭🕳️ Buzón no versionado, ruta RELATIVA = 0](leer-un-buzon-no-versionado-por-ruta-relativa-da-cero.md) — absoluta + control+.
 - [📬 Un mensaje entregado DONDE NADIE MIRA no fue entregado](mensaje-entregado-donde-nadie-mira.md) - probá el cable.
 - [📮🕳️ El TIPO de mensaje decide si lo PERSIGUEN](el-tipo-de-mensaje-decide-si-alguien-lo-persigue.md) - `dato_` NO escala; ¿querés reclamo? → `pedido_`.
 - [📢📋 De dos artefactos, gana el que CIRCULA](de-dos-artefactos-con-distinta-precision-gana-el-que-circula.md) - appendear deja el titular refutado al frente.
 - [🧹🤖 El buzón se ordena por JANITOR, no por disciplina](buzon-se-ordena-por-janitor-no-por-disciplina.md) - nunca a mano.
-- [`>>` a ruta supuesta + `mv` pisa el contrato](append-a-ruta-supuesta-del-buzon-crea-un-stub-y-el-mv-pisa-el-contrato.md) - perdí 4: `find` + `mv -n`.
 - [📱🛑 El TELÉFONO exige dueño único - y ESCRIBE en la base](device-fisico-exige-dueno-unico.md) - dos ADB fabrican evidencia falsa.
 - [📱🍳 Un gate de device se corre con RECETA async](gate-de-device-se-corre-con-receta-no-con-ventana-viva.md) - gestos escritos, no ventana viva.
 - [📋🟢 Una receta con PREMISA VENCIDA da un falso VERDE](una-receta-con-premisa-vencida-produce-un-falso-VERDE.md) - el defecto pasa a ser lo esperado; nadie revisa un verde.

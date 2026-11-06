@@ -571,3 +571,17 @@ el cierre del sprint en curso. Esta se busca por tema y sigue citada desde la fi
 - [🗓️🕳️ `--since=<hoy>` dio CERO con seis commits de hoy](el-filtro-de-fecha-da-cero-en-el-borde-del-dia.md) — el filtro miente en el borde del dia; usa `-N`.
 - [🚧✂️ Un `Falta:` que no se RECORTA al pagarse fabrica cola inexistente](un-falta-que-no-se-recorta-al-pagarse-fabrica-cola-inexistente.md) — dos clasificadores, el corpus añejo.
 - [🚧🔧 Un `Falta:` que dice IMPOSIBLE describe el INSTRUMENTO del dia](un-falta-que-dice-imposible-describe-el-instrumento-del-dia.md) — una tenencia nueva destrabo 4 fichas sin tocar codigo.
+
+## Bajadas del índice 2026-11-06 — vigentes, pero no del turno siguiente
+
+El índice llegó a 23996 de 24000 bytes: la próxima entrada lo truncaba, y un índice truncado
+fabrica duplicados. Estas cuatro NO se bajaron por estar muertas -- las cuatro siguen siendo
+ciertas. Se bajaron porque bajar no es borrar: HISTORIA no se carga y sigue siendo buscable, así
+que el criterio fue «menos probable de necesitar en el próximo turno», no «menos valiosa».
+Las tres primeras son mecánica fina del buzón; la cuarta es un episodio del sprint ya cerrado.
+Si alguna vuelve a morder, subila de nuevo: eso es la señal de que el criterio estuvo mal.
+
+- [🏷️ Dueño sin el INSTRUMENTO que el Falta exige](la-ficha-esperaba-a-un-dueno-que-no-podia-tocarla.md) — 13/19.
+- [📬🗃️ El `mv` archiva el archivo, no la ORDEN](un-mv-que-archiva-un-contrato-silencia-el-gate-no-la-orden.md) — con un `dato_`.
+- [📭🕳️ Buzón no versionado, ruta RELATIVA = 0](leer-un-buzon-no-versionado-por-ruta-relativa-da-cero.md) — absoluta + control+.
+- [`>>` a ruta supuesta + `mv` pisa el contrato](append-a-ruta-supuesta-del-buzon-crea-un-stub-y-el-mv-pisa-el-contrato.md) - perdí 4: `find` + `mv -n`.
