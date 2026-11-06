@@ -135,4 +135,32 @@ describe('PantallaComoUsarLaApp — la fusión de la guía y el «cómo uso la a
     expect(screen.getByTestId('como-usar-tema-0')).toBeTruthy();
     expect(screen.getByTestId('como-usar-pie')).toBeTruthy();
   });
+
+  it('🔴 contrato 2026-11-05: lo ESCRITO en el campo es el sexto tema — mismo destino que los cinco', async () => {
+    await montar();
+    tomarPendiente();
+    await fireEvent.changeText(screen.getByTestId('chat-composer'), 'cómo cargo un cliente nuevo?');
+    await fireEvent.press(screen.getByTestId('chat-enviar'));
+
+    expect(tomarPendiente()).toBe('cómo cargo un cliente nuevo?');
+    expect(router.dismissAll).toHaveBeenCalledTimes(1);
+    expect(router.back).not.toHaveBeenCalled();
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it('🔴 control positivo de la prohibición: esta pantalla NO monta un hilo propio (ni ListaMensajes ni useChatSoporte)', async () => {
+    // Es la decisión que la pantalla existe para sostener; un verde del happy-path no la cubre.
+    // Se lee la fuente SIN comentarios, para que el docstring que los nombra no satisfaga ni dispare el control.
+    const fs = require('fs') as typeof import('fs');
+    const path = require('path') as typeof import('path');
+    const fuente = fs
+      .readFileSync(path.join(__dirname, 'PantallaComoUsarLaApp.tsx'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    expect(fuente).not.toMatch(/ListaMensajes|useChatSoporte|sendStatus|useChat\b/);
+    // Control de que el instrumento mira: sí contiene el dock que debe tener.
+    expect(fuente).toMatch(/DockFuncion/);
+    await montar();
+    expect(screen.queryByTestId('chat-lista')).toBeNull();
+  });
 });
