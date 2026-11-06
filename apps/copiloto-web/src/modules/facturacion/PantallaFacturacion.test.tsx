@@ -166,6 +166,57 @@ describe('PantallaFacturacion (web) — adoptar un borrador ya creado (facturaId
     expect(mockCrearFactura).not.toHaveBeenCalled();
   });
 
+  /**
+   * 🔴 **SM-P13 — medido en navegador real (build ef9f9bef, usuario canónico).** Desde el resumen,
+   * «Editar y confirmar» → «Datos de venta» / «Cliente» abría el formulario **vacío** (fecha "",
+   * condición "", «Continuar» deshabilitado) aunque el backend devolvía `datos_venta` y `receptor`
+   * completos: el resumen los mostraba y los pasos de edición no. Era el gemelo del SM-H1 de mobile
+   * (`useState(cargado?.x ?? '')`), que no viajó a la web. Este test lo ejerce por el camino de
+   * producción (resumen → editar), no montando el paso suelto.
+   */
+  it('SM-P13: editar desde el resumen abre «Datos de venta» y «Cliente» PRECARGADOS con lo guardado', async () => {
+    mockEsperarEstadoEstable.mockResolvedValue({
+      convergio: true,
+      estado: estadoMock({
+        estado: 'esperando_confirmacion',
+        items: [{ descripcion: 'Mano de obra', cantidad: '1', precioUnitario: '30000.00', subtotal: '30000.00' }],
+        total: '30000.00',
+        tokenConfirmacion: 'tok-confirmar',
+        receptor: { condicionIva: 5, tipoDoc: 99, nroDoc: '0', nombre: 'Doña Repuestos SRL', domicilio: 'Av. Siempre Viva 742' },
+        datosVenta: {
+          fecha: '2026-11-05',
+          concepto: 2,
+          condicionVenta: 'contado',
+          fechaServicioDesde: '2026-11-01',
+          fechaServicioHasta: '2026-11-05',
+          fechaVtoPago: '2026-11-20',
+        },
+      }),
+    });
+
+    render(<PantallaFacturacion facturaIdInicial="presu-12" />);
+    await waitFor(() => expect(screen.getByTestId('facturacion-paso-resumen-editar')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('facturacion-paso-resumen-editar'));
+    fireEvent.click(screen.getByTestId('facturacion-paso-resumen-editar-datos-venta'));
+    expect(screen.getByTestId('facturacion-paso-datos-venta-fecha')).toHaveValue('2026-11-05');
+    expect(screen.getByTestId('facturacion-paso-datos-venta-concepto')).toHaveValue('2');
+    expect(screen.getByTestId('facturacion-paso-datos-venta-condicion-venta')).toHaveValue('contado');
+    expect(screen.getByTestId('facturacion-paso-datos-venta-servicio-desde')).toHaveValue('2026-11-01');
+    expect(screen.getByTestId('facturacion-paso-datos-venta-servicio-hasta')).toHaveValue('2026-11-05');
+    expect(screen.getByTestId('facturacion-paso-datos-venta-vto-pago')).toHaveValue('2026-11-20');
+    expect(screen.getByTestId('facturacion-paso-datos-venta-continuar')).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: /volver al resumen/i }));
+    fireEvent.click(screen.getByTestId('facturacion-paso-resumen-editar'));
+    fireEvent.click(screen.getByTestId('facturacion-paso-resumen-editar-cliente'));
+    expect(screen.getByTestId('facturacion-paso-cliente-condicion-iva')).toHaveValue('5');
+    expect(screen.getByTestId('facturacion-paso-cliente-tipo-doc')).toHaveValue('99');
+    expect(screen.getByTestId('facturacion-paso-cliente-nombre')).toHaveValue('Doña Repuestos SRL');
+    expect(screen.getByTestId('facturacion-paso-cliente-domicilio')).toHaveValue('Av. Siempre Viva 742');
+    expect(screen.getByTestId('facturacion-paso-cliente-continuar')).toBeEnabled();
+  });
+
   it('sin receptor en el borrador -- PasoResumen sigue mostrando "no disponible" (control diferencial)', async () => {
     mockEsperarEstadoEstable.mockResolvedValue({
       convergio: true,

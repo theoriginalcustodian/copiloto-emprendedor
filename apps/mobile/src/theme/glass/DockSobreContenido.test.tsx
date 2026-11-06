@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';
 
 import { ThemeProvider } from '../ThemeProvider';
@@ -19,6 +19,18 @@ describe('DockSobreContenido (SM-P5)', () => {
     expect(estilo.marginTop).toBe(-ALTO_SOLAPE);
     expect(estilo.paddingTop).toBe(ALTO_SOLAPE);
     expect(screen.getByTestId('dsc').props.pointerEvents).toBe('box-none');
+  });
+
+  it('una vez medido, su huella en el flujo es CERO: el scroll llega al borde y la lista pasa bajo todo el dock', async () => {
+    await render(
+      <ThemeProvider>
+        <DockSobreContenido testID="dsc">
+          <Text>campo</Text>
+        </DockSobreContenido>
+      </ThemeProvider>,
+    );
+    await fireEvent(screen.getByTestId('dsc'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 130 } } });
+    expect(StyleFlat(screen.getByTestId('dsc').props.style).marginTop).toBe(-130);
   });
 });
 

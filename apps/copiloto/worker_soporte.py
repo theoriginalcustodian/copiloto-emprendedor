@@ -40,7 +40,7 @@ from soporte_context import make_soporte_context_factory
 from soporte_feedback_activities import set_soporte_feedback_deps
 from soporte_store import COMO_USO_LA_APP, SOPORTE_TECNICO, TicketStore
 from soporte_system_prompts import SYSTEM_PROMPT_COMO_USO_LA_APP, SYSTEM_PROMPT_SOPORTE_TECNICO
-from orquestador_rag_client import build_rag_client_factory
+from orquestador_rag_client import build_rag_client_factory, rag_namespace_de
 from trauma_store import TraumaStore
 
 SOPORTE_TASK_QUEUE = os.environ.get("SOPORTE_TASK_QUEUE", "agent-soporte")
@@ -48,7 +48,7 @@ OPENAI_API_KEY_ENV = "OPENAI_API_KEY"
 # El namespace del RAG por función -- "cómo uso la app" busca en la KB de producto; "soporte técnico"
 # en la misma KB (comparte corpus de usuario, MAESTRO §1: un solo corpus "cómo usar la app"). Ambas
 # funciones consultan el MISMO namespace a propósito: no hay un corpus de soporte técnico separado.
-_RAG_NAMESPACE = os.environ.get("RAG_ORQUESTADOR_NAMESPACE", "copiloto-howto")
+_RAG_NAMESPACE = rag_namespace_de(os.environ)
 
 # call_llm/dispatch_intent quedan afuera: este domain SIEMPRE corre engine_mode='react' (nunca dispatch,
 # nunca clasifica por JSON-mode). warm_memory/remember_memory registradas igual que en A/B: si el

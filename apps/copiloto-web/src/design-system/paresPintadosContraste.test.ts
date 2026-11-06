@@ -185,6 +185,59 @@ function paresInline(): Par[] {
   return out;
 }
 
+/**
+ * SM-P12 punto 7 (mitad web) — SUPERFICIE contra SUPERFICIE, umbral 3:1 (WCAG 1.4.11 Non-text Contrast).
+ *
+ * Otra pregunta que la de abajo: no «¿se lee el texto sobre su fondo?» (4.5:1) sino «¿se distingue el borde
+ * del dock de lo que tiene al lado?». Hermano de `apps/mobile/src/theme/paresPintadosContraste.test.tsx`
+ * §9 (OJO: mismo nombre base, otra extensión, otro gate). Pares: la píldora del dock (`--input-bg`) contra
+ * la burbuja del asistente (`--bubble-bg`) y contra la página (`--bg`).
+ *
+ * La píldora es translúcida (blur, 74 % de `--input-bg`), así que su superficie no es un ancla estable: lo
+ * que sostiene la distinción es SU BORDE. El borde se lee de la regla real `.composer__row` en `chat.css`
+ * (no de una lista que el test declare): tiene que ser un color sólido resoluble por token y dar >= 3:1
+ * contra las dos superficies. Las burbujas NO se tocan: llevan texto y están calibradas contra 4.5:1.
+ */
+const CHAT_CSS = Object.entries(CSS_FILES).find(([k]) => k.endsWith('modules/chat/chat.css'))?.[1] ?? '';
+
+function bordeDelDock(): string | null {
+  const limpio = CHAT_CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+  const regla = [...limpio.matchAll(/(^|\})\s*\.composer__row\s*\{([^{}]*)\}/g)]
+    .map((m) => m[2])
+    .find((cuerpo) => /position\s*:\s*relative/.test(cuerpo) && /border\s*:/.test(cuerpo));
+  const borde = regla?.match(/border\s*:\s*([^;]+);/)?.[1];
+  // `border: 1px solid var(--x)` -> `var(--x)`; `border: var(--input-border)` (shorthand entero) -> null.
+  return borde?.match(/\d+px\s+solid\s+(var\(\s*--[a-z0-9-]+\s*\)|#[0-9a-fA-F]{3,6})/)?.[1] ?? null;
+}
+
+describe('SM-P12·7 web — el dock se distingue de la burbuja y de la página (>=3:1, WCAG 1.4.11)', () => {
+  it('control positivo: la regla real del dock se encuentra y es la del dock (no un no-op)', () => {
+    expect(CHAT_CSS.length).toBeGreaterThan(0);
+    expect(/\.composer__row\s*\{[^{}]*position\s*:\s*relative/.test(CHAT_CSS)).toBe(true);
+  });
+
+  for (const [tema, vars] of Object.entries(VARS)) {
+    it(`${tema}: el borde del dock da >=3:1 contra la burbuja del asistente y contra la página`, () => {
+      const borde = bordeDelDock();
+      const burbuja = resolver('var(--bubble-bg)', vars);
+      const pagina = resolver('var(--bg)', vars);
+      const pildora = resolver('var(--input-bg)', vars);
+      expect(burbuja && pagina && pildora, 'tokens de superficie resolubles').toBeTruthy();
+      const superficie = ratio(pildora!, burbuja!);
+      const colorBorde = borde ? resolver(borde, vars) : null;
+      expect(
+        colorBorde,
+        `${tema}: píldora ${pildora} vs burbuja ${burbuja} = ${superficie.toFixed(2)}:1 por superficie, y el borde ` +
+          `de .composer__row (${borde ?? 'shorthand no resoluble'}) no es un color sólido de token`,
+      ).not.toBeNull();
+      const contraBurbuja = ratio(colorBorde!, burbuja!);
+      const contraPagina = ratio(colorBorde!, pagina!);
+      expect(contraBurbuja, `borde ${colorBorde} vs burbuja ${burbuja}`).toBeGreaterThanOrEqual(3);
+      expect(contraPagina, `borde ${colorBorde} vs página ${pagina}`).toBeGreaterThanOrEqual(3);
+    });
+  }
+});
+
 describe('BL-Q4 — pares color/fondo PINTADOS en las pieles vigentes (>=4.5:1)', () => {
   const todos = pares();
   const inline = paresInline();

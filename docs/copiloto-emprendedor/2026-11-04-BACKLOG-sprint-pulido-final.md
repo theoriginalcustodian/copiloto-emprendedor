@@ -304,7 +304,7 @@ campo»*.
 
 - **Estado:** DOD-PARCIAL
 - **Dueno-activo:** frontend1 (mobile) + frontend2 (web) -- el lado backend ya esta en main
-- **Falta:** Solo DEVICE: la pasada de SM-P12 con e2e-device sobre la card de dictado:factura. La mitad WEB esta medida en navegador real contra el backend desplegado (build ae21d662, nada emitido) y el hallazgo que jsdom no veia -- card en y=999-1208 con viewport 889, detras del dock y sin scroll, foco en BODY -- esta corregido en #1683 con test rojo-sin-fix/verde-con-fix; re-medido card y=545-754 sobre el dock (772) y foco en el textarea. Queda SIN verificar en navegador que el wizard conserve el borrador en los pasos siguientes (hoy solo cubierto por jsdom). Falta actualizada en 183e8c84 (#1686).
+- **Falta:** Solo DEVICE: la pasada de SM-P12 con e2e-device sobre la card de dictado:factura. La mitad WEB esta medida en navegador real contra el backend desplegado, wizard incluido (nada emitido): card de dictado corregida en #1683 (y=545-754 sobre el dock 772, foco en el textarea) y, en el wizard, Items y Resumen conservaban el borrador pero «Editar y confirmar» -> Datos de venta / Cliente abria el formulario VACIO (gemelo del SM-H1 de mobile); corregido en #1720 (3f784033) con test rojo-sin-fix/verde-con-fix, y re-medido en el build 3f784033: ambos abren precargados con Continuar habilitado y todos los pasos quedan sobre el dock (continuar y=607, dock 772).
 - **Dueño:** backend (la línea, HECHA) + frontend1 (cableado mobile) + frontend2 (cableado web)
 - **Por qué es una ficha nueva y no SM-P6 ni SM-P11:** nace de la **segunda** decisión del operador
   del 2026-11-04, posterior a las dos. SM-P6 ya cerró su pregunta (el dock va siempre, sin

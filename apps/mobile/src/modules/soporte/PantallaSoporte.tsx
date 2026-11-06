@@ -133,13 +133,16 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
           ejemplos={SIN_EJEMPLOS}
           vacio="ninguno"
           pie={
-            <TarjetaTicketSoporte
-              vigente={tickets.vigente}
-              anteriores={tickets.anteriores}
-              cantidadAnteriores={tickets.cantidadAnteriores}
-              respuestaEstimada={tickets.respuestaEstimada}
-              onAbrirTicket={abrirTicket}
-            />
+            // paddingBottom: el dock flota sobre la lista (SM-P5) — el último ítem tiene que poder subir por encima.
+            <View style={{ paddingBottom: 120 }}>
+              <TarjetaTicketSoporte
+                vigente={tickets.vigente}
+                anteriores={tickets.anteriores}
+                cantidadAnteriores={tickets.cantidadAnteriores}
+                respuestaEstimada={tickets.respuestaEstimada}
+                onAbrirTicket={abrirTicket}
+              />
+            </View>
           }
         />
 
