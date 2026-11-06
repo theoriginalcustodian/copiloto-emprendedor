@@ -38,6 +38,15 @@ def test_ontologia_declara_todos_los_edge_types_del_mapeo():
     assert nombres == _todos_los_edge_types_del_mapeo()
 
 
+def test_ontologia_respeta_el_limite_de_edge_types_de_graphity():
+    """Graphity rechaza con 422 más de 20 edge types (medido en prod 2026-11-06 con 21): el sync de
+    TODOS los tenants quedó caído hasta reducirla. Los tests de estructura no lo veían."""
+    from grafo_mapeo import MAX_EDGE_TYPES
+    _, edge_types = ontologia()
+    assert MAX_EDGE_TYPES == 20 and len(edge_types) <= MAX_EDGE_TYPES
+    assert len({e["name"] for e in edge_types}) == len(edge_types), "edge type duplicado"
+
+
 def test_ontologia_entity_types_cubren_todos_los_source_target_referenciados():
     entity_types, edge_types = ontologia()
     declaradas = {e["name"] for e in entity_types}
