@@ -106,6 +106,7 @@
 ### Diagnóstico: leer el contrato antes de explicar
 - [🎯🕳️ Diseñar contra el riesgo TEMIDO ciega al caso NORMAL](disenar-contra-el-riesgo-temido-ciega-al-caso-normal.md) - corré el caso vacío primero.
 - [🛡️🙃 Guard tras la confirmación humana](un-guard-despues-de-la-confirmacion-humana-contradice-al-usuario-informado.md)
+- [🌍🔌 Un mecanismo CORRECTO queda inerte por un cambio de ENTORNO](un-mecanismo-correcto-queda-inerte-por-un-cambio-de-entorno.md) - 2 veces en un dia; el disparador vive donde nadie lee el codigo.
 - [🎛️ Verificar la COMPOSICIÓN ROOT, no el default](verificar-la-composicion-root-no-el-default.md) - otra capa puede sobreescribirla.
 - 🎭 El exit code MIENTE en los dos sentidos: [el pipe se lo come](el-pipe-se-come-el-exit-code.md) · [0 sin pushear; ROJO con el merge hecho](git-push-puede-salir-exit-0-sin-haber-pusheado.md) - el control es el EFECTO.
 
