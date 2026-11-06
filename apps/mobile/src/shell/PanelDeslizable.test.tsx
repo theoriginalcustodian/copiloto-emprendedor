@@ -14,6 +14,7 @@ import {
   ALTO_ZONA_ARRASTRE,
   espacioSuperior,
   holguraArrastreArriba,
+  levantarPorTeclado,
   MARGEN_TIRADOR,
   opacidadRotuloAbajo,
   PanelDeslizable,
@@ -248,6 +249,37 @@ describe('panelYAlCambiarRecorrido — el panel abajo sigue al techo cuando entr
 
   it('un techo sin medir no inventa destino', () => {
     expect(panelYAlCambiarRecorrido(300, 819, 0)).toBe(300);
+  });
+});
+
+/**
+ * SM-P5 (device 2026-11-06, build 3ff9c040): con edge-to-edge el teclado NO redimensiona la ventana — midió UN solo
+ * `onLayout` (al arrancar) y ninguno al abrir el teclado — así que `recorrido` no cambia, `panelYAlCambiarRecorrido`
+ * nunca se dispara y el campo de Mi día (`pieAbajo`, dentro del panel) quedaba DEBAJO del teclado. El fix anterior
+ * suponía una ventana que se achica; acá se levanta el panel lo que tapa el teclado.
+ */
+describe('levantarPorTeclado — el panel abajo sube lo que tapa el teclado', () => {
+  const recorrido = 724;
+
+  it('🔴 abajo y con teclado: sube el alto que el teclado ocupa de la ventana (medido: 358 dp)', () => {
+    expect(levantarPorTeclado(recorrido, recorrido, 358)).toBe(358);
+  });
+
+  it('sin teclado no levanta nada', () => {
+    expect(levantarPorTeclado(recorrido, recorrido, 0)).toBe(0);
+  });
+
+  it('arriba (chat abierto) no levanta: ahí manda el KeyboardAvoidingView del chat', () => {
+    expect(levantarPorTeclado(0, recorrido, 358)).toBe(0);
+  });
+
+  it('a mitad de camino levanta en proporción a cuánto de campo se ve', () => {
+    expect(levantarPorTeclado(recorrido * 0.5, recorrido, 358)).toBeCloseTo(179, 5);
+    expect(levantarPorTeclado(recorrido * 0.8, recorrido, 358)).toBe(358);
+  });
+
+  it('sin recorrido medido no inventa nada', () => {
+    expect(levantarPorTeclado(0, 0, 358)).toBe(0);
   });
 });
 
