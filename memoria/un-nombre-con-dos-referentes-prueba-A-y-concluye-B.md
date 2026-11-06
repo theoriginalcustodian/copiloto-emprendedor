@@ -282,3 +282,33 @@ a cada archivo. Los otros 19 quedan abiertos **a propósito**: su norma puede es
 criterio mecánico de hoy puede decidirlo. Medición y propuesta de protocolo →
 `coordinacion/abierto/2026-10-16_hallazgo_…19-broadcasts-nunca-se-cierran…`
 (no versionada; el hallazgo es de ese día).
+
+## Refuerzo 2026-11-06 — y esta vez el nombre colapsado CERRO un punto del DoD
+
+«Funciones» en el punto 8 de SM-P12. Dos referentes:
+
+- `apps/mobile/src/modules/escritorio/EscritorioFunciones.tsx` — la **grilla de iconos**. Sin mic:
+  0 coincidencias de `mic|Composer|Dock|dictad` en 331 lineas.
+- el **pie de cada pantalla de funcion** — `modules/voz/DockFuncion.tsx:37`, que se documenta solo
+  como «`DockEntrada` al pie de una funcion (Gastos; SM-J1 suma las otras)»: transcribe por dictado,
+  pide permiso de microfono, alimenta el chip «Por voz · m:ss». El mismo grep da 10 en
+  `PantallaGastos`, 7 en `PantallaIngresos`, 7 en `PantallaClientes`.
+
+Medi la grilla, y con ese 0 **cerre el punto por «inexistencia del sujeto»** contradiciendo a la
+sesion que lo tenia abierto — que tenia razon. La diferencia con los casos anteriores de esta
+entrada: aca el nombre colapsado no produjo una medicion confusa, produjo **un cierre**. Un `Falta:`
+recortado es mas dificil de revertir que un dato mal leido, porque nadie vuelve a mirar lo que ya no
+figura como pendiente ([[el-marcador-de-pendencia-sobrevive-a-su-propia-refutacion]]).
+
+### El control que lo habria cazado, y es generico
+
+Mi grep nunca se probo capaz de **encontrar un mic donde si hay**. El control positivo que corri
+despues —el grep IDENTICO sobre `Composer.tsx` (28), `DockEntrada.tsx` (23), `BotonVoz.tsx` (14)—
+habria mostrado en el acto que el patron funciona y que entonces el `0` significaba *«esta pantalla
+no»*, no *«esto no existe»*. Regla: **un `0` que va a cerrar algo necesita el mismo instrumento
+dando distinto de `0` en otro lado**, y si no hay candidato obvio, eso ya es la senal de que el
+sujeto esta mal elegido ([[el-control-positivo-cubre-la-mitad-que-sospechas-y-la-otra-queda-muda]]).
+
+Y el tell barato que estaba a la vista: `EscritorioFunciones.tsx` era el **unico** archivo
+`Escritorio*.tsx`. Un sujeto sin hermanos, en un patron que la ficha describe en plural («paridad
+del mic»), es un sujeto sospechoso.
