@@ -93,6 +93,19 @@ if [ "$rc" -eq 0 ] && [ -s "$STUB_VENTANAS" ] && [ ! -d "$LOCK" ] && grep -q "VE
   ok "4 VENCIDO · candado de un gate muerto -> se toma, corre y se suelta"
 else fail "4 VENCIDO · rc=$rc lock=$([ -d "$LOCK" ] && echo QUEDÓ || echo suelto) salida=<$(tail -5 "$T/o4")>"; fi
 
+# 5.0 ATOMICIDAD de mkdir en ESTE filesystem. Todo el candado descansa en que, de dos mkdir simultáneos sobre el
+# mismo path, uno falle. En CI el caso 5 dio DOS `TOMADO` con el candado `libre` en ambas llamadas (bitácora, run
+# 42233323351, dos mkdir con 1 µs de diferencia): o el código del candado, o un filesystem que no lo garantiza. Este
+# microtest separa las dos: sin gate.sh ni candado de por medio, 400 pares de `mkdir` a la vez sobre el mismo path.
+dobles=0
+for i in $(seq 1 400); do
+  d="$T/atom-$i"
+  ( mkdir "$d" 2>/dev/null && : > "$d.a" ) & ( mkdir "$d" 2>/dev/null && : > "$d.b" ) & wait
+  [ -e "$d.a" ] && [ -e "$d.b" ] && dobles=$((dobles + 1))
+done
+if [ "$dobles" -eq 0 ]; then ok "5.0 ATOMICIDAD · 400 pares de mkdir simultáneos: nunca dos ganadores"
+else fail "5.0 ATOMICIDAD · $dobles de 400 pares de mkdir dieron DOS ganadores sobre el mismo path — este filesystem no garantiza la exclusión mutua del candado ($(df -PT "$T" 2>/dev/null | tail -1))"; fi
+
 # 5. CARRERA: dos gates de la misma tríada a la vez
 rm -rf "$T/rec" "$LOCK"; : > "$STUB_VENTANAS"; : > "$SSH_LOG"
 gate "$T/o5a" UC_SESION=backend UC_TEST_STAGE="$STAGE" STUB_SYNC_SEG=3 UC_GATE_LOCK_POLL=1 & p1=$!
