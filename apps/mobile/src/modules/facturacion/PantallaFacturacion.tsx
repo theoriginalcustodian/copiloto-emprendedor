@@ -620,7 +620,7 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
       <ScrollFormulario
         style={styles.scroll}
         testID="facturacion-lista"
-        contentContainerStyle={[styles.contenido, { padding: tema.espacio.lg, gap: tema.espacio.lg }]}
+        contentContainerStyle={[styles.contenido, { padding: tema.espacio.lg, gap: tema.espacio.lg, paddingBottom: 120 }]}
         refreshControl={
           <RefreshControl
             testID="facturacion-refresco"
