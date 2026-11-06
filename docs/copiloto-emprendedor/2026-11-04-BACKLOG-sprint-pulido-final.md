@@ -60,7 +60,7 @@ campo»*.
 | **SM-P14** | `sin-issue` | ✅ TERMINADO | sin-codigo — el defecto NO se reproduce por el mecanismo que la ficha le atribuia, y el fix propuesto quedo SIN respa… |
 | **SM-P15** | `sin-issue` | ✅ TERMINADO | NADA del cableado. El CONTENIDO del corpus quedo fichado aparte como issue #1728 (decision de producto del operador):… |
 | **SM-P16** | `sin-issue` | 🟧 DOD-PARCIAL | CODIGO EN MAIN: #1733 (2d50aa8a, ancestro de origin/main con control negativo). MEDIDO EN DEVICE por frontend1 el 202… |
-| **SM-P18** | `sin-issue` | 🟧 DOD-PARCIAL | PIEL CLARA SIN MEDIR. El fix esta en PR #1744 (3967b1ee) y frontend1 lo midio en device antes y despues en piel OSCUR… |
+| **SM-P18** | `sin-issue` | ✅ TERMINADO | c16b989ff2e76032e0e52cb18ad4df22f301997e (#1744, ancestro de origin/main). DoD completo en device RF8T318RN9T, e2e-de… |
 | **SM-P17** | `sin-issue` | ✅ TERMINADO | NADA de lo pedido. frontend2 declaro, sin que se le pidiera, cinco superficies que NO estan cubiertas y NO estaban en… |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -462,9 +462,9 @@ campo»*.
 
 ### SM-P18 · `sin-issue` — El aviso de «no se entendió el audio» se superpone a la burbuja y queda ILEGIBLE
 
-- **Estado:** DOD-PARCIAL
+- **Estado:** TERMINADO
+- **Cierre:** c16b989ff2e76032e0e52cb18ad4df22f301997e (#1744, ancestro de origin/main). DoD completo en device RF8T318RN9T, e2e-device, 2026-11-06: piel OSCURA antes/despues (aviso a dos lineas, legible) y piel CLARA 19:49 con un tono puro grabado en el chat (el silencio no lo provoca: el STT devuelve texto, limite conocido, el operador decidio no pasar a whisper large-v3): «No se entendio el audio. Proba de nuevo hablando mas cerca del microfono.» en dos lineas sobre su propio fondo, legible, sin superponerse a la burbuja. Test Composer.avisoLegible.test.tsx.
 - **Dueño:** frontend1 (mobile)
-- **Falta:** PIEL CLARA SIN MEDIR. El fix esta en PR #1744 (3967b1ee) y frontend1 lo midio en device antes y despues en piel OSCURA: ahora el aviso ocupa dos lineas y se lee. La clara NO la midio y NO la asume igual, que es lo correcto -- es un defecto de CONTRASTE y superposicion, o sea exactamente la clase que puede comportarse distinto entre pieles. Tambien espera que main vuelva a verde para mergear (main rojo desde 82452ad6, causa ajena a esta ficha).
 - **Qué:** hallazgo de la pasada de device del guard del STT (2026-11-06). Cuando el backend rechaza un audio que no se entendio, el aviso rosa se dibuja ENCIMA del texto de la burbuja de respuesta y el resultado es ilegible: se ven las dos capas superpuestas.
 - **🔴 Por que es defecto y no cosmetica:** un mensaje de error ilegible es PEOR que no tener ninguno. El usuario ve que algo paso, no puede leer que, y no sabe si fallo el microfono, la red o el. El aviso existe justamente para sacarlo de esa duda; superpuesto, la confirma.
 - **Causa (medida, no supuesta):** `filaEstado` sin fondo propio y el `Text` sin `flexShrink`, asi que ni tapaba lo de atras ni envolvia. Fix: fondo opaco + `flexShrink` + `maxWidth`.
