@@ -11,7 +11,7 @@ es coincidencia: es un modo de falla con forma propia.
 | | El guard del STT | El candado de los gates |
 |---|---|---|
 | El codigo | correcto, umbral bien elegido | correcto, `mkdir` dentro del `if`, TTL exigido, owner verificado |
-| Lo que lo apago | `GROQ_STT_MODEL` paso a `turbo`, que devuelve `no_speech_prob = 0` siempre | el binario `mkdir` del runner (Ubuntu 26.04, sospecha: uutils) no serializa bajo carrera |
+| Lo que lo apago | `GROQ_STT_MODEL` paso a `turbo`, que devuelve `no_speech_prob = 0` siempre | el binario `mkdir` del runner (Ubuntu 26.04 ⇒ **uutils coreutils 0.10.0**) no serializa bajo carrera |
 | Sintoma | **ninguno**: un guard roto hacia el «no» nunca dispara | **ninguno en prod**; en CI un flake que se lee como ruido |
 | Quien lo rompio | quien cambio el modelo por costo y cupo | quien eligio la imagen del runner |
 | Quien podia verlo | nadie que leyera `stt.py` | nadie que leyera `candado-stage.sh` |
@@ -61,3 +61,32 @@ de main) se instrumento en vez de reintentarse. **Las dos veces el sintoma fue u
 dos mediciones, no un fallo.** Y la del candado casi se perdio: a esa tasa el reflejo es «reintenta»,
 y ahi es donde un rojo real se cuela sin que nadie lo mire
 ([[un-instrumento-compartido-intermitente-fabrica-una-excusa-lista]]).
+
+## Cierre del 2026-11-06: causa PROBADA y fix mergeado (#1755 → `02abc4fc`)
+
+El contraste que lo ataja en una linea, con **una sola variable movida**: sobre el **mismo** fs ext4
+del **mismo** runner, el binario `mkdir` de uutils 0.10.0 dio **dos ganadores en 10 de 400 pares**
+(346/400 en una corrida con mas carga: la tasa varia, el defecto no), y la **syscall `mkdir(2)` via
+python** dio **0 de 150**. El VPS con GNU coreutils 9.4: **0 de 400**. No es el kernel, no es ext4,
+no es la logica del candado — **es la herramienta**.
+
+Fix: `_candado_intento` llama `os.mkdir` de python3 en vez del binario. Se eligio sobre `flock`
+porque conserva el protocolo que los casos 2/3/4 ya ejercitan (dir + owner + TTL + soltar
+solo-el-dueno); `flock` seria un rediseno que se lleva TTL y owner, y queda como mejora posible.
+Sin `python3` el gate sale `SIN_PYTHON3` y **falla explicito**, en vez de caer a un `mkdir` sin medir.
+
+**El control que faltaba, y su limite escrito:** el caso 5.0 ejercita `_candado_intento` REAL en 150
+pares simultaneos y exige cero dobles. Acredita en los dos sentidos: con una primitiva
+check-then-create da **119/150 dobles** (control positivo), y con la real **0/150** en el VPS (3
+corridas) y en el runner uutils. 🔴 **Pero corre en el runner de CI y en los gates locales, NO en el
+VPS.** Si el VPS pasa a 26.04, el 5.0 **no se entera** — por eso la deuda de arriba sigue abierta
+despues del fix: el control mide el entorno donde corre, no el entorno que importa.
+
+## Y la trampa del diagnostico: la biseccion acuso a un commit
+
+El flake arranco a las ~12:00 de hoy porque **`lint` paso a `ubuntu-26.04` por un cambio de imagen
+del runner**, no por ningun diff. Los 3 verdes anteriores a `82452ad6` eran de la imagen vieja. Yo
+bise que y sali con un commit culpable, y era **coincidencia temporal**: cuando lo que cambia es el
+entorno, `git bisect` siempre va a nombrar al commit que cayo ese dia, con total confianza y la
+forma de una respuesta correcta. Antes de acusar a un diff por un fallo que empieza en una hora
+concreta: **preguntar que mas cambio a esa hora y no esta en el repo.**
