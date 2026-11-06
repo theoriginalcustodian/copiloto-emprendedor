@@ -62,5 +62,32 @@ metros de la causa. Relacionado: [[instrumentos-que-confirman-en-vez-de-verifica
 4. **Recarga completa para no dudar:** `am force-stop` + relanzar baja el bundle de cero. El
    fast-refresh puede no propagar y deja el estado ambiguo.
 
+## Refuerzo 2026-11-06 — y el que mira puede ser EL OPERADOR, sobre un reporte que parece un bug
+
+El operador fotografió el panel de Mi día **trabado arriba** (campo sobre el encabezado, teclado
+cerrado) en su propio teléfono y lo reportó. Yo lo despaché como defecto en dos minutos: lo até a la
+ficha del teclado, escribí la hipótesis del evento de cierre que no llega, y le puse prioridad alta.
+
+**No era un defecto del producto.** A esa hora frontend1 estaba probando el arrastre del panel en
+**ese mismo teléfono** con su WIP sin mergear, su captura de la misma hora muestra el estado
+idéntico, y el log de Metro trae un `ReferenceError` lanzado **dentro del worklet del gesto** en
+pleno arrastre, que dejó `panelY` y la opacidad a mitad de camino. Con el bundle final no aparece, y
+el mismo trabado se reproduce tras un Fast Refresh.
+
+**La regla, entonces, no es sólo «el device corre lo que Metro sirve» — es que el dueño del teléfono
+no sabe qué le están sirviendo.** El operador abre la app creyendo que mira el producto; mira el
+working tree de una sesión. Y su reporte llega con la autoridad de un reporte del usuario real, que
+es justo lo que apaga la pregunta por la atribución.
+
+**Qué hacer antes de convertir en ficha un reporte del operador sobre el device compartido:**
+preguntar **quién estaba sirviendo ese bundle a esa hora**. Es una pregunta, no una medición: la
+dueña del device lo sabe de memoria y contesta en un mensaje. Me costó un pedido_ con prioridad
+alta por encima de otra ficha, y lo que lo resolvió fue que ella tenía su propia captura del mismo
+minuto.
+
+**Y el reverso, que es el error espejo:** este episodio **no absuelve** al intermitente del teclado
+que sigue sin reproducir. Usar un hallazgo explicado para cerrar otro que no lo está es cómo un
+intermitente conocido se vuelve la excusa lista para el próximo fallo real.
+
 Relacionado: [[iterar-en-device-es-metro-local-con-dev-client-ya-instalado]] ·
 [[una-orden-cerrada-exige-evidencia-de-device]] · [[instrumentos-que-confirman-en-vez-de-verificar]]
