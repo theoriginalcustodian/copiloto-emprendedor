@@ -184,7 +184,7 @@ function FondoFinal({ reducido }: { reducido: boolean }) {
   }, []);
   const estilo = useAnimatedStyle(() => ({ opacity: opacidad.value }));
   return (
-    <Animated.View testID="identidad-entrada-fondo-final" style={[StyleSheet.absoluteFill, estilo]} pointerEvents="none">
+    <Animated.View style={[StyleSheet.absoluteFill, estilo]} pointerEvents="none">
       <FondoDegradado
         colors={[COLOR_SPLASH_FONDO_ARRIBA, COLOR_SPLASH_FONDO_ABAJO]}
         start={{ x: 0.5, y: 0 }}
@@ -211,7 +211,6 @@ export function IdentidadEntrada({ children, ox = 0 }: { children: React.ReactNo
   return (
     <View testID="identidad-entrada" style={[styles.raiz, { width, height }]}>
       <FondoDegradado
-        testID="identidad-entrada-fondo"
         colors={[COLOR_SPLASH_FONDO_ARRIBA, COLOR_SPLASH_FONDO_ABAJO]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
