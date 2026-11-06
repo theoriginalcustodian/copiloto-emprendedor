@@ -69,6 +69,7 @@ from errores_web import (EMAIL_YA_REGISTRADO, LEGAL_VERSION_DESACTUALIZADA, PERF
 from onboarding import GoTrueUserError, InvalidCredentials, provision_oauth_tenant, signup_and_provision
 from reply_store import read_replies as _read_replies
 from soporte_store import CANALES_VALIDOS as SOPORTE_FUNCIONES_VALIDAS
+from stt_fantasmas import es_fantasma
 from upload_validacion import FIRMAS_AUDIO, FIRMAS_IMAGEN, magic_bytes_validos
 from soporte_store import ESTADOS_VALIDOS as SOPORTE_ESTADOS_VALIDOS
 from soporte_store import MAX_ADJUNTOS_POR_TICKET, TicketStore
@@ -964,6 +965,12 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         if not transcript:
             # Vacío O solo-espacios (el STT no captó nada útil) -> 422; nunca despachamos un
             # mensaje en blanco al agente.
+            raise HTTPException(status_code=422, detail="no se entendió el audio")
+        if es_fantasma(transcript):
+            # Salida CONOCIDA de Whisper ante ruido/silencio («El El», «Gracias por ver el video»): mismo 422 y
+            # mismo detail que el vacío, así la UI (MicFuncion: «No se entendió el audio. Probá de nuevo.»)
+            # lo muestra sin código nuevo. Frase COMPLETA normalizada; ver stt_fantasmas.py.
+            logging.getLogger(__name__).info("stt_fantasma_rechazado")
             raise HTTPException(status_code=422, detail="no se entendió el audio")
         return transcript
 
