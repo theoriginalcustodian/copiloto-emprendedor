@@ -23,4 +23,4 @@
 | Gestión de cambios (PR + CI propio + recibos) | CC8.1 | 8.32 | — | OK | ADR-001, `gate.sh`, ruleset `main-exige-pull-request` |
 | Detección de vulnerabilidades en CI | CC7.1 | 8.8 | — | PARCIAL | gitleaks + secret scanning; pip-audit/npm audit aún no en `lint.sh` |
 | Respuesta a incidentes | CC7.3–7.5 | 5.24–5.26 | 6.13.1 | PARCIAL | autosanación/DLQ existen; runbook G6 en BORRADOR |
-| Gobierno documental | CC1–CC5 | 5.1, 5.2, 6.1 | 6.2 | PARCIAL | G1–G12 en BORRADOR, pendientes de aprobación |
+| Gobierno documental | CC1–CC5 | 5.1, 5.2, 6.1 | 6.2 | CUBIERTO (con reserva) | G1–G12 APROBADOS por el operador el 2026-11-06; sin la pasada ciega independiente (ver INFORME-DE-CIERRE) |

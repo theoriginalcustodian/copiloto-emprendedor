@@ -40,3 +40,15 @@ SEC-D8 (borrado/exportación por tenant) es código de aplicación · SEC-D3 (si
 | Speechmatics | `SPEECHMATICS_API_KEY` | `documed.env` | documed | **vigencia NO medida** (sin endpoint inocuo) | transcripción de documed |
 | Google Cloud | credenciales GCP (`DOCUMED_GCP_CREDENTIALS_PATH`) | `documed.env` | documed | **vigencia NO medida** | procesador de layout de documed |
 Orden recomendado: confirmar que cada app está retirada → revocar en el proveedor → recién entonces borrar el `.env`. Las dos filas «EN USO» de `copiloto.env` quedan fuera de esta limpieza.
+
+## Resoluciones del operador — 2026-11-06
+> Decididas por el operador el 2026-11-06. Registro de lo que se aprobó, se mantuvo diferido o se dejó para después del build #2.
+
+| Tema | Decisión | Disparador de reapertura |
+|---|---|---|
+| **G1–G12** (11 docs en `Seguridad/gobierno/` + `SECURITY.md`) | **APROBADOS.** Encabezados pasados de BORRADOR a APROBADO. Reserva: la pasada ciega independiente (Fable/Opus) sigue sin hacerse; solo hubo revisión determinista de cifras. | Pasada ciega, cuando se arregle el contexto base de headless |
+| **SEC-D3** (registro abierto en GoTrue) | **Se mantiene ABIERTO.** Rate-limit de GoTrue y MFA del admin quedan para después del build #2. | Build #2 / fin de la beta pública |
+| **SEC-D1, D2, D6, D7, D9** | **Diferido CONFIRMADO.** Sin cambios. | Migración post-beta a los 4 VPS (D9: cutover a la beta definitiva) |
+| **SEC-D11** (`expo-router` / `decode-uri-component`) | **Después del build #2.** | Build #2 + aprobación `NATIVO-APROBADO` |
+| **#1725** (dependabot: Expo 57.0.31, react-native 0.88.1) | **Después del build #2.** No se mergea antes: toca el nativo y choca con `nativo-freeze`. | Build #2 |
+| **Majors de dependencias** (`vitest` 3→4, `zod`, `uuid`, transitivos de Expo) | **Después del build #2**, agrupados con SEC-D11. Ninguno está en el camino de request del backend. | Build #2 |

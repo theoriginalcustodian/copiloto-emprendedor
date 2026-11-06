@@ -1,5 +1,5 @@
 # G1 — Política de seguridad de la información
-> **BORRADOR — pendiente de aprobación del operador.** Estado medido @ff5fb289 (2026-11-05). Marcos citados como referencia de mapeo, no como certificación. Evidencia: `docs/copiloto-emprendedor/Auditorias/Seguridad/`.
+> **APROBADO por el operador el 2026-11-06.** Estado medido @ff5fb289 (2026-11-05). Marcos citados como referencia de mapeo, no como certificación. Evidencia: `docs/copiloto-emprendedor/Auditorias/Seguridad/`.
 
 **Alcance:** Copiloto del Emprendedor (backend, PWA, mobile, VPS `unreal-copilot`, GoTrue, Temporal, Postgres de fusion, Graphity, integraciones Composio/MercadoPago/ARCA).
 **Roles:** el operador (David Lin) es dueño de riesgo y aprueba lo MAYOR; las sesiones IA ejecutan lo táctico con evidencia verificable.
