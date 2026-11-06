@@ -696,7 +696,10 @@ a.artifact:focus-visible {
   background: var(--dock-campo-bg, var(--input-bg));
   -webkit-backdrop-filter: blur(var(--dock-blur, 0px));
   backdrop-filter: blur(var(--dock-blur, 0px));
-  border: var(--input-border);
+  /* SM-P12·7 — la píldora (--input-bg) y la burbuja del asistente (--bubble-bg) dan 1,10:1 por superficie, y
+     la píldora es translúcida: lo que la distingue es su borde. `--mono` (token existente, sólido) da >= 3:1
+     contra burbuja y página en las 2 pieles (WCAG 1.4.11); lo mide `paresPintadosContraste.test.ts`. */
+  border: 1px solid var(--mono);
   box-shadow: var(--input-shadow);
 }
 
