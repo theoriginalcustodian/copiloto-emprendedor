@@ -32,12 +32,16 @@ export function PasoDatosVenta({
   onVolverResumen,
   testID = 'facturacion-paso-datos-venta',
 }: PasoDatosVentaProps) {
-  const [fecha, setFecha] = useState('');
-  const [concepto, setConcepto] = useState('1');
-  const [condicionVenta, setCondicionVenta] = useState('');
-  const [fechaServicioDesde, setFechaServicioDesde] = useState('');
-  const [fechaServicioHasta, setFechaServicioHasta] = useState('');
-  const [fechaVtoPago, setFechaVtoPago] = useState('');
+  // SM-P13 (gemelo del SM-H1 de mobile) — arranca con lo cargado: «Editar y confirmar» desde el resumen
+  // abría este formulario VACÍO aunque el backend ya tenía los datos (medido en navegador real), y para
+  // cambiar un dato había que volver a tipear todos. Un borrador nuevo no trae `datosVenta` → mismo vacío.
+  const cargado = estado.datosVenta;
+  const [fecha, setFecha] = useState(cargado?.fecha ?? '');
+  const [concepto, setConcepto] = useState(cargado ? String(cargado.concepto) : '1');
+  const [condicionVenta, setCondicionVenta] = useState(cargado?.condicionVenta ?? '');
+  const [fechaServicioDesde, setFechaServicioDesde] = useState(cargado?.fechaServicioDesde ?? '');
+  const [fechaServicioHasta, setFechaServicioHasta] = useState(cargado?.fechaServicioHasta ?? '');
+  const [fechaVtoPago, setFechaVtoPago] = useState(cargado?.fechaVtoPago ?? '');
   const [enviando, setEnviando] = useState(false);
 
   const requiereFechasServicio = concepto === '2' || concepto === '3';

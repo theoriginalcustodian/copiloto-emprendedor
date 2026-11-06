@@ -27,11 +27,13 @@ export function PasoCliente({
   onVolverResumen,
   testID = 'facturacion-paso-cliente',
 }: PasoClienteProps) {
-  const [condicionIva, setCondicionIva] = useState('');
-  const [tipoDoc, setTipoDoc] = useState('');
-  const [nroDoc, setNroDoc] = useState('');
-  const [nombre, setNombre] = useState('');
-  const [domicilio, setDomicilio] = useState('');
+  // SM-P13 (gemelo del SM-H1 de mobile) — arranca con lo cargado, por lo mismo que `PasoDatosVenta`.
+  const cargado = estado.receptor;
+  const [condicionIva, setCondicionIva] = useState(cargado ? String(cargado.condicionIva) : '');
+  const [tipoDoc, setTipoDoc] = useState(cargado ? String(cargado.tipoDoc) : '');
+  const [nroDoc, setNroDoc] = useState(cargado?.nroDoc ?? '');
+  const [nombre, setNombre] = useState(cargado?.nombre ?? '');
+  const [domicilio, setDomicilio] = useState(cargado?.domicilio ?? '');
   const [enviando, setEnviando] = useState(false);
 
   /**
