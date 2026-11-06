@@ -327,3 +327,22 @@ arreglo es un umbral nuevo y gratis; si devuelve 0 para todo, el campo está mue
 pagar large-v3 sería comprar un modelo para que un campo tenga valores. Lo urgente nunca fue activar
 la defensa: era **dejar de afirmar en el código que la defensa existía** — el territorio estaba
 cubierto por las otras dos defensas, lo que estaba roto era el mapa.
+
+### Cierre de la medición (mismo día, unas horas después)
+
+Se midió lo que faltaba y el resultado reencuadra el hallazgo: **con turbo, `no_speech_prob` da 0
+también sobre VOZ** (4 clips es-ES por TTS: 0/0/0/0). Es un **campo MUERTO con turbo** — no
+discrimina nada, así que el «umbral nuevo y gratis» no existía.
+
+Pero con `large-v3` los mismos 4 clips dan **0,0015 / 0,028 / 0,0041 / 0,0684** contra **0,701** del
+silencio: **separa por un orden de magnitud**, con el umbral 0,6 cómodamente en el medio.
+
+**Eso cambia qué se aprendió.** El diseño del guard era correcto y el umbral estaba bien elegido;
+lo que lo mató fue **un cambio de modelo que nadie conectó con él**. No es un mecanismo mal
+pensado que haya que rediseñar: es una decisión **reversible** —volver a large-v3 lo reactiva sin
+tocar una línea— y por eso lo que hay que dejar escrito en el código no es «este guard no sirve»
+sino «este guard depende del modelo, y con cuál funciona».
+
+La diferencia es práctica, no retórica: «no sirve» hace que el próximo lo borre; «depende de X»
+hace que el próximo que cambie X sepa qué está apagando. El cambio de modelo se hizo por costo y
+cupo, razones legítimas, y el costo oculto fue apagar una defensa sin que nada lo dijera.
