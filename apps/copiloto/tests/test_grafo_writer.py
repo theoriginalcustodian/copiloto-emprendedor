@@ -75,6 +75,28 @@ def test_invalida_una_arista_ajena_a_lo_escrito():
     assert fake.orden == ["post", "poll", "patch:edge-vieja"]
 
 
+class _FakeKeys(ClienteFake):
+    def __init__(self):
+        super().__init__()
+        self.keys: list[str] = []
+
+    def post_structured(self, mapping, rows, *, idempotency_key=None, **kw):
+        self.keys.append(idempotency_key)
+        return super().post_structured(mapping, rows, idempotency_key=idempotency_key, **kw)
+
+
+def test_la_idempotency_key_cambia_si_cambia_el_contenido_y_no_si_se_reintenta():
+    """Regresión prod 2026-11-06: un replay del MISMO rango con el mapeo corregido reusaba la key y el
+    server devolvía la migración cacheada — el fix de los facts nunca llegaba al grafo."""
+    fake = _FakeKeys()
+    for filas in ([{"n": "viejo"}], [{"n": "viejo"}], [{"n": "corregido"}]):
+        _writer(fake).write([_ds(filas)], [], group_id="g", idem_prefix="grafo-sync-t-0-853")
+    reintento, igual, corregido = fake.keys
+    assert reintento == igual
+    assert corregido != reintento
+    assert all(k.startswith("grafo-sync-t-0-853:0:") for k in fake.keys)
+
+
 # ── CRITICAL-1: nunca invalidar lo que esta corrida escribió ─────────────────────────────────────
 
 def test_no_invalida_una_arista_que_este_write_acaba_de_escribir():
