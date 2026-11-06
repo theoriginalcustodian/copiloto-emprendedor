@@ -1,0 +1,7 @@
+# medido 2026-11-06T13:42:04Z @ b03bebb1
+## rulesets
+24960700	main-exige-pull-request	active	branch
+## security_and_analysis
+{"dependabot_security_updates":"enabled","push_protection":"enabled","secret_scanning":"enabled"}
+## alertas dependabot abiertas (existe el endpoint = alerts ON)
+/usr/bin/bash: line 28: bc: command not found
