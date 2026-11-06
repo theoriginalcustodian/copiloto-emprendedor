@@ -40,11 +40,32 @@ NO_SPEECH_MAX_DEFAULT = 0.6
 _log_stt = logging.getLogger(__name__ + ".sin_voz")
 
 
+def _num(v):
+    """Número del proveedor o None (bool no cuenta: `True` es int en Python)."""
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+
+def _log_metricas(d: dict, texto: str, segmentos: list) -> None:
+    """Instrumentación (2026-11-06): UNA línea por transcripción con lo que el proveedor midió, para calibrar el guard
+    contra tráfico real en vez de audio fabricado. Sin audio ni texto (sólo el largo). Nunca puede romper el dictado."""
+    try:
+        nsp = [p for p in (_num(s.get("no_speech_prob")) for s in segmentos if isinstance(s, dict)) if p is not None]
+        lp = [p for p in (_num(s.get("avg_logprob")) for s in segmentos if isinstance(s, dict)) if p is not None]
+        _log_stt.info(json.dumps({
+            "evento": "stt_metricas", "n_segmentos": len(segmentos), "len_texto": len(texto),
+            "duracion": _num(d.get("duration")),
+            "no_speech_prob_min": min(nsp) if nsp else None, "no_speech_prob_max": max(nsp) if nsp else None,
+            "avg_logprob_min": min(lp) if lp else None, "avg_logprob_max": max(lp) if lp else None}))
+    except Exception:  # noqa: BLE001 — el log es observación: si falla, el dictado sigue
+        pass
+
+
 def _texto_si_hay_voz(d: dict) -> str:
     """Texto del STT, o "" si el proveedor declara que ningún segmento tiene voz. Sin `segments` o sin el campo
     `no_speech_prob` NO se descarta nada: ante lo que no se puede medir, decide el texto."""
     texto = (d.get("text") or "").strip()
     segmentos = d.get("segments") or []
+    _log_metricas(d, texto, segmentos)
     if not texto or not segmentos:
         return texto
     try:

@@ -1,6 +1,6 @@
 # Política de seguridad
 
-> **BORRADOR — pendiente de aprobación del operador** (G11).
+> **APROBADO por el operador el 2026-11-06** (G11).
 
 ## Cómo reportar una vulnerabilidad
 Usá **GitHub → Security → Report a vulnerability** (reporte privado). No abras un issue público ni publiques credenciales o datos de terceros. Contacto alternativo: **[PENDIENTE operador]**.

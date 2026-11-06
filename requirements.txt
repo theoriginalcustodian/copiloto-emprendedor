@@ -7,7 +7,7 @@ charset-normalizer==3.4.7
 click==8.4.2
 composio==0.17.1
 composio-client==1.41.0
-cryptography==50.0.0
+cryptography==50.0.2
 distro==1.9.0
 fastapi==0.138.2
 h11==0.16.0
@@ -28,7 +28,7 @@ pycparser==3.0
 pydantic==2.13.4
 pydantic_core==2.46.4
 Pygments==2.20.0
-PyJWT==2.15.0
+PyJWT==2.15.1
 Pysher==1.0.8
 pytest==9.1.1
 pytest-asyncio==1.4.0

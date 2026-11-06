@@ -198,12 +198,13 @@ export function Composer({
   return (
     <View style={[styles.contenedor, { paddingTop: 10, paddingHorizontal: 18, paddingBottom: 18, gap: tema.espacio.sm }]}>
       {hint && (
-        <View testID="composer-status" style={styles.filaEstado}>
+        <View testID="composer-status" style={[styles.filaEstado, { backgroundColor: tema.color.superficieAlta }]}>
           {/* `timeout` no se pinta de rojo: con el polling que no abandona, seguir esperando es el
               curso NORMAL, no una anomalía. Rojo queda sólo para `error`. */}
           <PuntoEstado color={sendStatus === 'error' ? tema.color.peligro : tema.color.acento} />
           <Text
             style={{
+              flexShrink: 1, // sin esto el texto largo no envuelve y se sale de la pantalla
               color: sendStatus === 'error' ? tema.color.peligro : tema.color.texto,
               fontSize: tema.tipo.chico,
               fontFamily: tema.fuente.mono,
@@ -329,7 +330,17 @@ const ALFA_BASE_CAMPO = 0.99;
 
 const styles = StyleSheet.create({
   contenedor: {},
-  filaEstado: { flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start' },
+  // Fondo opaco: el aviso flota sobre la última burbuja y sin él se leían los dos textos superpuestos.
+  filaEstado: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
   punto: { width: 8, height: 8, borderRadius: 4 },
   // `flex-end`: si el texto crece a varias líneas, el mic y el avión se quedan abajo, bajo el pulgar.
   fila: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },

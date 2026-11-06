@@ -1,5 +1,5 @@
 # G4 — Procedimiento de gestión de accesos
-> **BORRADOR — pendiente de aprobación del operador.** Estado medido @ff5fb289 (2026-11-05). Marcos citados como referencia de mapeo, no como certificación. Evidencia: `docs/copiloto-emprendedor/Auditorias/Seguridad/`.
+> **APROBADO por el operador el 2026-11-06.** Estado medido @ff5fb289 (2026-11-05). Marcos citados como referencia de mapeo, no como certificación. Evidencia: `docs/copiloto-emprendedor/Auditorias/Seguridad/`.
 
 - **Admin de aplicación:** alta/baja con `asignar-claim-admin.sh`; se registra en BITACORA.
 - **SSH:** sólo llaves (`sshd-00-hardening.conf`); alta/baja editando `authorized_keys` de root y registrando huella. Medido 2026-11-05: 2 llaves en `root` y 1 en el usuario `kaggle-tunnel` (túnel de la fábrica; revisar si sigue en uso al hacer la revisión trimestral).
