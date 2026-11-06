@@ -42,8 +42,10 @@ ENV_E2E = RAIZ / ".env.e2e"
 # Tenant B: adversario desechable, provisionado por el propio /auth/signup (idempotente por email
 # -- correr el script 2 veces no duplica ni rompe). Nombrado a-fuego para que se vea que es un
 # artefacto de test, igual que los demás tenants e2e-* existentes.
-ADVERSARY_EMAIL = "e2e-adversary-g6@copiloto.test"
-ADVERSARY_PASSWORD = "AdversaryG6-" + uuid.uuid4().hex[:16]
+# La clave se DERIVA (HMAC) del secreto e2e, no es aleatoria por corrida: /auth/signup es idempotente por
+# email y NO cambia la clave de una cuenta existente, así que una clave nueva por corrida daba 401 en el
+# login de la 2ª corrida (medido 2026-11-06). Email v2: la cuenta v1 quedó con una clave aleatoria perdida.
+ADVERSARY_EMAIL = "e2e-adversary-g6-v2@copiloto.test"
 
 
 def log(msg: str) -> None:
@@ -70,6 +72,9 @@ def login_canonico() -> tuple[str, str]:
 
 
 def provisionar_y_loguear_adversario() -> tuple[str, str]:
+    import hashlib, hmac
+    semilla = _leer_env_e2e()["E2E_DEVICE_PASSWORD"].encode()
+    ADVERSARY_PASSWORD = "AdvG6-" + hmac.new(semilla, ADVERSARY_EMAIL.encode(), hashlib.sha256).hexdigest()[:24]
     # SM-C2 (2026-10-14, orden del operador): /auth/signup NO exige invite_token -- el alta por email es
     # abierta. Este alta es el medio para tener un segundo tenant, no un control bajo prueba: lo que se
     # prueba abajo es el aislamiento entre tenants, no el alta.

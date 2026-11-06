@@ -45,7 +45,7 @@ campo»*.
 | Ficha | Issue | Estado | Que falta del DoD / evidencia de cierre |
 |---|---|---|---|
 | **SM-P1** | `sin-issue` | ✅ TERMINADO | d9cbb1a6 (#1685, ancestro de origin/main con control negativo). MEDIDO EN DEVICE las dos pieles por frontend1 el 2026… |
-| **SM-P2** | `sin-issue` | 🟧 DOD-PARCIAL | NO ACREDITADO, y el motivo es del INSTRUMENTO, no del fix: el isotipo a 96 px solo existe en login y en chat vacio, y… |
+| **SM-P2** | `sin-issue` | ✅ TERMINADO | DoD COMPLETO en device el 2026-11-06, @6a1ae914 (ancestro de origin/main, control negativo deadbeef NO). frontend1, R… |
 | **SM-P3** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA. La Falta que esta ficha arrastraba («pasada de device, el release fb0fb9d3 no trae estos fixes») era de cuando … |
 | **SM-P4** | `sin-issue` | ✅ TERMINADO | 6a1ae914 (#1650, ancestro de origin/main; contenido verificado presente en 3ff9c040 y b06c78b5, los dos bundles que M… |
 | **SM-P5** | `sin-issue` | ✅ TERMINADO | @2235f543 (#1714, CI 6/6). Causa raiz medida en device por frontend1: NO era color (campo pixel-identico al del chat)… |
@@ -99,9 +99,8 @@ campo»*.
 
 ### SM-P2 · `sin-issue` — El isotipo de mobile sale 4× más fino que el del mapa
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** NO ACREDITADO, y el motivo es del INSTRUMENTO, no del fix: el isotipo a 96 px solo existe en login y en chat vacio, y en las superficies que e2e-device alcanza SIN cerrar sesion el isotipo es el avatar chico de las burbujas -- a ese tamano 1,3 px vs 5,2 px NO SE DISCRIMINA A OJO (p2zoom). O sea la pasada no dio verde ni rojo: dio «no medible con esta superficie», que es lo correcto y no un CUMPLE a ojo. DISPARADOR: mirar el isotipo GRANDE en las dos pieles, lo que exige cerrar sesion o un usuario sin historial. frontend1 NO cerro sesion para no romper el estado del device, y eso fue bien decidido: el logout lo autoriza el operador, no una sesion. DUENO del disparador: operador (autorizar el logout) + frontend1 (la corrida). El fix 6a1ae914 esta en main y nadie lo discute; lo que falta es poder VERLO.
-- **Cierre:** 6a1ae914 (#1650): Marca.tsx corrige el trazo del isotipo (strokeWidth en unidades del viewBox, sin predividir por la escala); Marca.test.tsx.
+- **Estado:** TERMINADO
+- **Cierre:** DoD COMPLETO en device el 2026-11-06, @6a1ae914 (ancestro de origin/main, control negativo deadbeef NO). frontend1, RF8T318RN9T, e2e-device, con el permiso de LOGOUT que el operador concedio hoy -- la ficha estaba trabada en ese permiso, no en codigo. Logout y login ejercitados en las DOS pieles (oscura y clara) y el tema restaurado a Oscuro al terminar. MEDICION: el isotipo grande mide 5-6 px en ambas pieles, ~5,5 % del tamano, o sea proporcional. POR QUE ESTO ABSUELVE Y NO SOLO 'se ve bien': el defecto que se buscaba daria ~2,6 px, asi que la medicion DISTINGUE el caso sano del defectuoso en vez de confirmar el esperado -- 5-6 contra 2,6 no es un margen de apreciacion. Cero facturas, cuenta fiscal del operador intacta.
 - **Dueño:** frontend1
 - **Reportado por el operador (2026-11-04):** «el isologo es diferente, tiene líneas más finas»,
   comparando el mapa de pantallas con el device.
