@@ -77,4 +77,22 @@ Ningún bump, ningún `dismiss`, ninguna PR de Dependabot tocada.
 
 ## Nota: `.github/dependabot.yml` y su control positivo
 
-Creado con tres jobs semanales (pip raíz, npm raíz, npm `apps/copiloto-web`), agrupados en minor/patch y sin majors. **Control positivo exigido:** que exista no prueba que dispare. Se comprueba, tras el merge, con (a) una corrida «Dependabot Updates» en Actions por cada ecosistema y (b) al menos un PR de `dependabot[bot]` de pip. **Resultado medido (2026-11-06 ~02:50Z):** corridas «Dependabot Updates» creadas para los tres ecosistemas (npm `apps/copiloto-web` success, pip e npm raíz en curso al medir) y PR #1721 de `dependabot[bot]` abierto para npm web. El PR de pip no se había visto al cierre de esta medición: pendiente de comprobar.
+Creado con tres jobs semanales (pip raíz, npm raíz, npm `apps/copiloto-web`), agrupados en minor/patch y sin majors. **Control positivo exigido:** que exista no prueba que dispare. Se comprueba, tras el merge, con (a) una corrida «Dependabot Updates» en Actions por cada ecosistema y (b) al menos un PR de `dependabot[bot]` de pip. **Resultado medido (2026-11-06 ~02:50Z):** corridas «Dependabot Updates» creadas para los tres ecosistemas (npm `apps/copiloto-web` success, pip e npm raíz en curso al medir) y PR #1721 de `dependabot[bot]` abierto para npm web. Medido después (2026-11-06): también abrió el PR de pip (#1722) y el de npm raíz (#1725): disparo comprobado en los tres ecosistemas.
+
+## Triage de los PRs de bump abiertos (2026-11-06; ninguno mergeado)
+
+Pregunta: ¿cuáles se pueden mergear sin riesgo para el gate y cuáles son decisión? CI = checks de GitHub de cada PR.
+
+| PR | Contenido | Veredicto | Por qué |
+|---|---|---|---|
+| **#1670** | `node-forge` 1.4.0→1.4.3 (solo `package-lock.json` raíz) | **Mergeable, patch** | Transitivo de `@expo/cli`. CI 6/6 verde. Cierra las 12 alertas de node-forge. Base vieja: dependabot rebasea. |
+| **#1721** | web: `vite` 6.4.3→6.4.5, `vitest` 3.2.6→3.2.7, `@tanstack/react-virtual`, `@testing-library/react` (todo patch) | **Mergeable, patch** | CI 6/6 verde. Se queda en vitest 3.x: **no** toca la alerta major de `tinypool` (vitest 4). |
+| **#1722** | pip: grupo de 37 bumps | **NO mergeable así** | `backend` falla al instalar: `composio 0.30.0` exige `composio-client==2.0.0rc19` y el PR deja `composio-client==1.43.0` → `ResolutionImpossible`. Además agrupa riesgo real: `temporalio` 1.28→1.35 (el moat: exige replay gate), `composio` 0.17→0.30 (pre-1.0, un minor puede romper), `fastapi` 0.138→0.162, `starlette` 1.3→1.10, `pydantic`/`pydantic_core`, `mercadopago` 3.3→3.6, `openai` 2.44→2.54, `psycopg2-binary`. Dividir por paquete; `pyjwt` 2.15.0→2.15.1 y `cryptography` 50.0.0→50.0.2 son patch seguros pero van tras el gate de backend en el VPS (regla 2). |
+| **#1725** | npm raíz/mobile: 35 bumps (`expo` 57.0.7→57.0.31, `expo-router` →57.0.29, **`react-native` 0.86.0→0.88.1**, `typescript-eslint`, etc.) | **Decisión, no tarea** | Toca el nativo: exige build EAS. `mobile` falla por `nativo-freeze` («cambian archivos que pueden traer código nativo y no hay NATIVO-APROBADO», congelamiento hasta el build #2). Es el bump de **SEC-D11**. `react-native` saltando dos minors no es «minor sin cambio de contrato». No verificado si cierra las alertas de `decode-uri-component`. |
+
+**El `lint` rojo en #1722 y #1725** falla en `test-nativo-freeze-evalua.sh` (1 de 88 tests de coordinación). #1721 y #1670 pasan lint, así que no lo causa el contenido de un bump de npm web/lock; **no diagnosticado** (probable dependencia del estado de la rama de dependabot). No se tocó.
+
+**Cobertura del gate propio:** `scripts/gate.sh` corre backend/core/web/mobile/lint. Cubre #1670 y #1721. Para #1722 el gate de backend corre en el VPS y un `temporalio` nuevo necesita además el replay gate; un `composio` pre-1.0 no está cubierto por ningún test adversarial conocido de contrato externo (no medido). #1725 no se prueba sin build nativo.
+
+**Orden sugerido:** #1670 y #1721 ya (no frenan a nadie); #1722 se reemplaza por bumps individuales (patch primero); #1725 espera al build #2 y a la aprobación del operador (SEC-D11).
+
