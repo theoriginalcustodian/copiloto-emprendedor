@@ -10,6 +10,7 @@ import {
 } from '@copiloto/core';
 
 import { dejarPendiente } from '../chat/mensajePendiente';
+import { DockFuncion } from '../voz';
 import { ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
@@ -46,6 +47,9 @@ import { useTema } from '../../theme/ThemeProvider';
  * fuentes independientes: los temas son del producto (no cambian con el deploy del backend), los
  * ejemplos son del contrato. Que se caiga una no puede llevarse la otra.
  */
+
+/** El campo del dock: el SEXTO tema, el de texto libre. */
+const PLACEHOLDER_DOCK = 'Preguntame lo que quieras…';
 
 type Estado = 'cargando' | 'ok' | 'no_disponible';
 
@@ -214,6 +218,10 @@ export function PantallaComoUsarLaApp() {
           </>
         )}
       </ScrollFormulario>
+
+      {/* Contrato 2026-11-05: el campo y el mic son el sexto tema (texto libre). Escrito o dictado cae en el
+          MISMO `preguntar` que los cinco temas: cero hilo propio, cero `sendStatus`. */}
+      <DockFuncion contexto="bi" placeholder={PLACEHOLDER_DOCK} onTexto={(t) => preguntar(t)} />
     </MarcoGlass>
   );
 }
