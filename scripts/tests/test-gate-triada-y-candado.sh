@@ -104,7 +104,18 @@ for i in $(seq 1 400); do
   [ -e "$d.a" ] && [ -e "$d.b" ] && dobles=$((dobles + 1))
 done
 if [ "$dobles" -eq 0 ]; then ok "5.0 ATOMICIDAD · 400 pares de mkdir simultáneos: nunca dos ganadores"
-else fail "5.0 ATOMICIDAD · $dobles de 400 pares de mkdir dieron DOS ganadores sobre el mismo path — este filesystem no garantiza la exclusión mutua del candado ($(df -PT "$T" 2>/dev/null | tail -1))"; fi
+else
+  # Separa HERRAMIENTA de KERNEL: el mismo experimento con la syscall mkdir(2) directa (python os.mkdir). Si el kernel
+  # da 0 dobles y el binario `mkdir` da muchos, el defecto es del binario (p. ej. coreutils reimplementado), no del fs.
+  kd=-; if command -v python3 >/dev/null; then kd=0
+    for i in $(seq 1 150); do
+      d="$T/katom-$i"
+      ( python3 -c 'import os,sys; os.mkdir(sys.argv[1])' "$d" 2>/dev/null && : > "$d.a" ) & \
+      ( python3 -c 'import os,sys; os.mkdir(sys.argv[1])' "$d" 2>/dev/null && : > "$d.b" ) & wait
+      [ -e "$d.a" ] && [ -e "$d.b" ] && kd=$((kd + 1))
+    done; fi
+  fail "5.0 ATOMICIDAD · el binario mkdir dio DOS ganadores en $dobles/400 pares; syscall mkdir(2) vía python: $kd/150 · mkdir=$(command -v mkdir) <$(mkdir --version 2>&1 | head -1)> · fs: $(df -PT "$T" 2>/dev/null | tail -1) · $(. /etc/os-release 2>/dev/null; echo "$PRETTY_NAME")"
+fi
 
 # 5. CARRERA: dos gates de la misma tríada a la vez
 rm -rf "$T/rec" "$LOCK"; : > "$STUB_VENTANAS"; : > "$SSH_LOG"
