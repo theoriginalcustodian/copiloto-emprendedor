@@ -287,3 +287,43 @@ tranquilidad.
 anterior. Y el caso 8 mide que el separador laxo **no** reabrió el caso hostil (la plantilla con pipes
 sigue sin matchear, ahora probada también con guion ASCII) — relajar un patrón obliga a re-ejercitar
 lo que el patrón estricto cubría, no a suponerlo.
+
+## Refuerzo 2026-11-06 — la fixture era REAL, medida de verdad… de OTRO modelo
+
+El caso de hoy agrega la variante que más cuesta ver, porque no hay mock en ninguna parte.
+`test_stt_sin_voz` afirmaba el guard de silencio del dictado con una fixture de
+`no_speech_prob = 0,701` **medida empíricamente** el 2026-11-05 contra Groq. Verde, sin trampa.
+
+Pero **prod corre `GROQ_STT_MODEL=whisper-large-v3-turbo`**, y turbo devuelve `no_speech_prob = 0`
+**siempre** sobre silencio. Medido hoy en el VPS con el mismo WAV de ceros y una sola variable
+movida: `large-v3` → 0,701 en las 8 combinaciones de duración y sample rate (1–8 s; 8k/16k/44,1k/48k);
+`turbo` → 0 en todas. O sea el guard, con umbral 0,6, **nunca puede disparar en producción**: estuvo
+inerte desde el cambio de modelo, con su test en verde todo el tiempo.
+
+**Lo que vuelve a este caso peor que un mock:** un mock se puede buscar. Una fixture medida contra
+el proveedor real tiene toda la apariencia de evidencia de campo —y lo es— sólo que **de otro
+sujeto**. El eje que el nombre del archivo no distinguía era el **modelo**, y el modelo vivía en una
+variable de entorno de prod que el test nunca consultaba. Mismo proveedor, misma API, mismo campo,
+distinto modelo: la fixture y el camino real coincidían en todo menos en lo único que mandaba
+([[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]).
+
+**Cómo se cazó, y no fue por el test:** se cazó porque alguien preguntó por qué el número del
+comentario (0,7) no coincidía con lo que medía un spike (0). Esa discrepancia entre **dos
+mediciones del mismo campo** fue el único síntoma que el sistema emitió en semanas. No hubo
+usuario afectado, no hubo rojo, no hubo log raro: un guard roto hacia el «no» no da síntoma
+([[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]).
+
+**El control que faltaba, barato y concreto:** un test que depende de un modelo, una versión o un
+flag de runtime **tiene que nombrarlo y fallar si el entorno no coincide**. Un test que se declara
+inaplicable vale muchísimo más que uno que pasa midiendo otro sujeto. El corolario para toda fixture
+capturada: guardar **con qué** se capturó —modelo, versión, fecha— al lado del valor, porque el valor
+sin su procedencia se cita después para cualquier pregunta
+([[una-cifra-sin-unidad-se-deja-citar-para-cualquier-pregunta]]).
+
+**Y la trampa en la que NO había que caer al arreglarlo:** la reacción obvia era volver al modelo
+caro para «activar el guard». El operador decidió medir primero, y el razonamiento es el correcto:
+nadie sabía todavía si turbo discrimina voz de silencio con **otros** valores. Si los discrimina, el
+arreglo es un umbral nuevo y gratis; si devuelve 0 para todo, el campo está muerto con ese modelo y
+pagar large-v3 sería comprar un modelo para que un campo tenga valores. Lo urgente nunca fue activar
+la defensa: era **dejar de afirmar en el código que la defensa existía** — el territorio estaba
+cubierto por las otras dos defensas, lo que estaba roto era el mapa.
