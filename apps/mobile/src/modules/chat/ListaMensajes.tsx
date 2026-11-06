@@ -1,8 +1,10 @@
-import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { forwardRef, memo, useCallback, useContext, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import type { ReactElement } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { FlatList, Pressable } from 'react-native-gesture-handler';
-import type { ListRenderItemInfo } from 'react-native';
+import type { ListRenderItemInfo, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+
+import { ArrastreCuerpoContext, TOLERANCIA_TOPE } from '../../shell/arrastreCuerpo';
 
 import {
   clasificarChoices,
@@ -664,10 +666,23 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
     );
     const keyExtractor = useCallback((item: ChatMessage) => item.id, []);
 
+    // SM-P16: dentro del panel, avisarle si la lista está en su tope — ahí un arrastre hacia abajo es del panel.
+    const arrastre = useContext(ArrastreCuerpoContext);
+    const alScrollear = useCallback(
+      (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+        if (arrastre != null) arrastre.enTope.value = e.nativeEvent.contentOffset.y <= TOLERANCIA_TOPE;
+      },
+      [arrastre],
+    );
+
     return (
       <FlatList
         testID="lista-mensajes"
         ref={listRef}
+        onScroll={arrastre != null ? alScrollear : undefined}
+        // SM-P16: el scroll de la lista y el Pan del panel corren a la vez (ver `ArrastreCuerpo.refGestoCuerpo`).
+        simultaneousHandlers={arrastre?.refGestoCuerpo as never}
+        scrollEventThrottle={16}
         data={messages}
         renderItem={renderItem}
         keyExtractor={keyExtractor}

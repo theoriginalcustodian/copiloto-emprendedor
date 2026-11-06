@@ -271,7 +271,7 @@ export function PantallaPrincipal() {
       arrancaAbajo
       ocultarTira={progresoFunciones}
       // SM-N22: el asa queda ENCIMA del campo (mapa). El campo vive en el panel, bajo el asa.
-      pieAbajo={<DockEntrada onEnviarTexto={alTextoDesdeMiDia} onAudio={alAudioDesdeMiDia} />}
+      pieAbajo={<DockEntrada onEnviarTexto={alTextoDesdeMiDia} onAudio={alAudioDesdeMiDia} enfocarAlTocar />}
       altoPieAbajo={ALTO_COMPOSER_REPOSO}
       fondo={
         <PanelFunciones
