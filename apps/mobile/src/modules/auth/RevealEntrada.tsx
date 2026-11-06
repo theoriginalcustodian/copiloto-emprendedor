@@ -187,7 +187,8 @@ export function RevealEntrada({
     color: COLOR_PALABRA_MARCA,
     fontSize: FONT_WORDMARK,
     fontFamily: tema.fuente.display,
-    fontWeight: '800' as const,
+    // Sin `fontWeight`: la familia YA es la Bold (`PlusJakartaSans-Bold`, `@font-face{font-weight:700}` del prototipo).
+    // Con '800' Android no encuentra ese peso en la familia y cae a la fuente del sistema: la «O» dejaba de ser el aro de PJ.
     letterSpacing: -0.02 * FONT_WORDMARK,
   };
 
