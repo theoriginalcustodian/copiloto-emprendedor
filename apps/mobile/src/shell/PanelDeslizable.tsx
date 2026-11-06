@@ -542,8 +542,7 @@ export function PanelDeslizable({
         // El scroll nativo de la lista y este Pan corren A LA VEZ (quién se queda con el dedo lo decide
         // `decidirArrastreCuerpo`, vía `activate()`/`fail()`). La simultaneidad la declara la LISTA con
         // `simultaneousHandlers={refGestoCuerpo}`: ver `ArrastreCuerpo.refGestoCuerpo`.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .withRef(refGestoCuerpo as any)
+        .withRef(refGestoCuerpo as never)
         // 🔴 `'worklet'` EXPLÍCITO: el plugin de Babel sólo auto-workletiza las cadenas que ARRANCAN en
         // `Gesture.Pan()`; éstas cuelgan de `crearPan()`, y sin la directiva el handler tira «Some of the
         // callbacks in the gesture are worklets and some are not» (medido en device, 2026-11-06).

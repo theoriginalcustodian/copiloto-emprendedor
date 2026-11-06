@@ -28,6 +28,8 @@ export interface DockEntradaProps {
   scrollRef?: React.RefObject<FlatList | null>;
   /** Ver `Composer.onTocarCampo`. */
   onTocarCampo?: () => void;
+  /** Ver `Composer.enfocarAlTocar`. */
+  enfocarAlTocar?: boolean;
 }
 
 /**
@@ -60,6 +62,7 @@ export function DockEntrada({
   disabled = false,
   scrollRef,
   onTocarCampo,
+  enfocarAlTocar = false,
 }: DockEntradaProps) {
   const voz = useVozComando();
   const [fijado, setFijado] = useState(false);
@@ -157,6 +160,7 @@ export function DockEntrada({
           onFoto={onFoto}
           semilla={semilla}
           onTocarCampo={onTocarCampo}
+          enfocarAlTocar={enfocarAlTocar}
           enLugarDelCampo={
             enCaptura && !fijado ? (
               <BarraSostenida segundos={voz.segundos} cancelando={cancelando} style={styles.barraEnElCampo} />
