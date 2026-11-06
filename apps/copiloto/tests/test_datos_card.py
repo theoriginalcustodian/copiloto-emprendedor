@@ -164,8 +164,9 @@ def test_consultar_negocio_esta_en_el_catalogo_y_NO_es_write():
     nombres = {s["function"]["name"] for s in tool_catalog.build_tool_catalog()}
     assert "consultar_negocio" in nombres
     assert "consultar_negocio" not in tool_catalog.WRITE_TOOLS
-    # las otras dos consultivas siguen podadas (la poda del hito 2 no se deshizo)
-    assert "consultar_actividad" not in nombres and "consultar_cliente" not in nombres
+    # `consultar_actividad` sigue podada (es memoria conversacional, no el registro del negocio);
+    # `consultar_cliente` volvió el 2026-11-06 (Inteligencia de Negocio por chat).
+    assert "consultar_actividad" not in nombres and "consultar_cliente" in nombres
 
 
 def test_la_guia_de_capacidades_publica_los_numeros_porque_la_tool_esta_viva():
