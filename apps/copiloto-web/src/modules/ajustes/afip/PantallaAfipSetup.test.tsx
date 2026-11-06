@@ -258,3 +258,26 @@ describe('PantallaAfipSetup (web) — SM-N44: al montar no manda CUIT (sin cach�
     expect(pedidos[0]).not.toContain('cuit=');
   });
 });
+
+/**
+ * Foco-en-BODY (contrato 2026-11-06). El CUIT editable se reemplaza por el chip «Bloqueado» al terminar la
+ * precarga: enfocar antes dejaría el foco en BODY. Control de timing: con la red colgada no hay foco.
+ */
+describe('PantallaAfipSetup — foco inicial recién cuando terminó la precarga', () => {
+  it('con la carga pendiente el foco no está en ningún campo; al terminar va al primer campo editable', async () => {
+    let liberar!: () => void;
+    const compuerta = new Promise<void>((r) => { liberar = r; });
+    const http: HttpPort = {
+      async enviar() {
+        await compuerta;
+        return respuesta(404, {});
+      },
+    };
+    configurarApi({ http, tokens });
+    render(<PantallaAfipSetup />);
+    expect(document.activeElement).toBe(document.body);
+    liberar();
+    const cuit = await screen.findByTestId('afip-perfil-cuit');
+    await waitFor(() => expect(document.activeElement).toBe(cuit));
+  });
+});

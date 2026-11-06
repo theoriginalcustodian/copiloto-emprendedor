@@ -10,7 +10,7 @@ import {
   type LargoRespuesta,
 } from '@copiloto/core';
 
-import { Button, Skeleton } from '../../../design-system';
+import { Button, Skeleton, useFocoAlMontar } from '../../../design-system';
 
 export const OPCIONES_FORMALIDAD: ReadonlyArray<{ valor: FormalidadCopiloto; etiqueta: string }> = [
   { valor: 'formal', etiqueta: 'Formal' },
@@ -35,6 +35,7 @@ type EstadoCarga = 'cargando' | 'ok' | 'error' | 'no_disponible';
  */
 export function PantallaTono({ onGuardado }: { onGuardado?: () => void } = {}) {
   const [estadoCarga, setEstadoCarga] = useState<EstadoCarga>('cargando');
+  const foco = useFocoAlMontar<HTMLDivElement>(estadoCarga === 'ok');
   const [formalidad, setFormalidad] = useState<FormalidadCopiloto>('cercano');
   const [largo, setLargo] = useState<LargoRespuesta>('breve');
   const [nombre, setNombre] = useState('');
@@ -96,7 +97,7 @@ export function PantallaTono({ onGuardado }: { onGuardado?: () => void } = {}) {
   }
 
   return (
-    <div className="perfil-negocio-screen" data-testid="pantalla-tono">
+    <div ref={foco} className="perfil-negocio-screen" data-testid="pantalla-tono">
       <h1 className="perfil-negocio-screen__title">Cómo hablarle</h1>
 
       {estadoCarga === 'cargando' && (
