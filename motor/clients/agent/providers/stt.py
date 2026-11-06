@@ -40,7 +40,10 @@ DEFAULT_MODEL = os.environ.get("GROQ_STT_MODEL") or "whisper-large-v3"
 # del servicio), así que acá `no_speech_prob` es un campo MUERTO y esta defensa nunca dispara. Lo que frena el silencio
 # en prod es la defensa B (`apps/copiloto/audio_sin_voz.py`, energía + dinámica, antes de llamar al STT) y la lista de
 # frases fantasma (`apps/copiloto/stt_fantasmas.py`). Cambiar de modelo es decisión de costo/cupo del operador (decidió
-# 2026-11-06 NO cambiarlo y medir primero con el log `stt_metricas`). Límite también con large-v3: sobre hiss y ruido
+# 2026-11-06 NO cambiarlo y medir primero con el log `stt_metricas`). REVERSIBLE: con large-v3 el guard funciona sin
+# tocar nada — voz 0,0015–0,068 vs silencio 0,701 separan por un orden de magnitud con el umbral 0,6 en el medio (el
+# diseño y el umbral eran correctos; lo anuló un cambio de modelo que nadie conectó con él; medido con TTS, no mic
+# real: el log con tráfico real es el juez). Límite también con large-v3: sobre hiss y ruido
 # rosa dio 0,03–0,21 CON texto alucinado — `no_speech_prob` no ve ruido real.
 MODELO_NSP_VALIDO = "whisper-large-v3"
 NO_SPEECH_MAX_DEFAULT = 0.6

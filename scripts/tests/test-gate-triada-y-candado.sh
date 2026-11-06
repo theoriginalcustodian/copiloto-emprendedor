@@ -44,8 +44,11 @@ cat > "$T/bin/ssh-local" <<'EOF'
 #!/usr/bin/env bash
 shift
 pre=$([ -d "$LOCK_DBG" ] && echo existe || echo libre)
+# mtime crudo del candado y reloj de ESTA llamada: la edad que calcularía candado-stage.sh (ahora - mtime) queda
+# a la vista. «Lo vencí porque lo vi viejo» (TTL con mtime/reloj raro) se distingue así de «no había candado».
+mt=$(stat -c %Y "$LOCK_DBG" 2>/dev/null || echo -); ahora=$(date +%s)
 t0=$(date +%s%N); out=$(bash -c "$1"); rc=$?
-echo "$t0 $(date +%s%N) pid=$$ lock_antes=$pre rc=$rc out=${out:0:60}" >> "$SSH_LOG"
+echo "$t0 $(date +%s%N) pid=$$ lock_antes=$pre mtime=$mt ahora=$ahora rc=$rc out=${out:0:60}" >> "$SSH_LOG"
 printf '%s\n' "$out"; exit $rc
 EOF
 chmod +x "$T/bin/ssh-local"
