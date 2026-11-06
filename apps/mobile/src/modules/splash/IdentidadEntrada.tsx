@@ -1,5 +1,6 @@
+import { LinearGradient as FondoDegradado } from 'expo-linear-gradient';
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -16,18 +17,29 @@ import {
   COLOR_FORMA_SQUIRCLE,
   COLOR_FORMA_SQUIRCLE_CLARO,
   COLOR_FORMA_SUPER,
+  COLOR_SPLASH_FONDO_ABAJO,
+  COLOR_SPLASH_FONDO_ARRIBA,
 } from '../../theme/identidadPalette';
 import { bordeElipticoPath, gradienteCss } from './formasPath';
 import { scallopPath } from './scallopPath';
 
-const TAMANO = 132;
+/** `#splash .blob{width:220px;height:220px}` (`index.html:1194`). */
+const TAMANO = 220;
+/** `blob-grow` termina en `scale(7.8)`: 220 × 7,8 ≈ 1716 dp, más que cualquier pantalla (la forma CUBRE el frame). */
+const ESCALA_MAX = 7.8;
+const ESCALA_MIN = 0.04;
+/** `blob-collapse` termina en `scale(.33)` (`index.html:1214`). */
+const ESCALA_FINAL = 0.33;
 const EASE_GROW = Easing.bezier(0.5, 0, 0.2, 1);
-const EASE_FIN = Easing.bezier(0.2, 0.8, 0.2, 1);
+/** `--ease-collapse` (`index.html:1191`). */
+const EASE_COLAPSO = Easing.bezier(0.32, 0, 0.16, 1);
+/** `--ease` (`index.html:50`): también el del `lockup-up` y los `fade-up`. */
+export const EASE_FIN = Easing.bezier(0.2, 0.8, 0.2, 1);
 
 // BL-X10 (H-A3-6, port fiel) — mismos tiempos y curvas que web (`modules/splash/tempos.ts` +
-// `Splash.css`, "cerrado, Martín 29/07"). El lockup (Marca = glifo "O", wordmark "dobi" letra a
-// letra) ya NO se anima acá: vive en `RevealEntrada`, que es donde está el contenido real. Estas
-// constantes se exportan para que ese componente derive T_O/T_WORDMARK sin re-declarar el tempo.
+// `Splash.css`, "cerrado, Martín 29/07") y que el prototipo (`index.html:3396`, T = {grow:1900, col:1450,
+// set:780, lstg:150, let:720}, stagger = .20 del grow). Estas constantes se exportan para que
+// `RevealEntrada` derive T_O/T_WORDMARK sin re-declarar el tempo.
 export const GROW = 1900;
 export const BLOB_STAGGER = 380;
 export const COLAPSO = 1450;
@@ -42,7 +54,7 @@ export const T_COLLAPSE_START = (N_BLOBS - 1) * BLOB_STAGGER + GROW; // 3040
 export const T_O = T_COLLAPSE_START + COLAPSO - Math.round(COLAPSO * 0.3); // 4055
 /** El wordmark "dobi" empieza a entrar. */
 export const T_WORDMARK = T_COLLAPSE_START + COLAPSO + 300; // 4790
-/** Fin del bounce de la última letra. */
+/** Fin del bounce de la última letra: arranca el estado final (lockup sube, descriptor, puerta). */
 export const T_BOUNCE_END = T_WORDMARK + LETTER_STAGGER * 3 + LETTER + 120; // 6080
 /** Duración total de la identidad (splash), primer ingreso / post-logout. Gemelo de `SPLASH_TOTAL_MS` web. */
 export const SPLASH_TOTAL_MS = 6840;
@@ -52,15 +64,6 @@ export const EASE_SETTLE = Easing.bezier(0.2, 0, 0, 1);
 /** Bounce del wordmark: mismo `cubic-bezier(.24,1.62,.4,1)` que `identidad-letra-bounce` (overshoot real, no error de transcripción). */
 export const EASE_BOUNCE = Easing.bezier(0.24, 1.62, 0.4, 1);
 
-/**
- * Colores FIJOS de marca (no salen de `tema.color`, mismo criterio que `--identidad-word` en web
- * `Splash.css` — logotipo, exento de tema por decisión Martín, `splash-port-reanimated.md §8`).
- *
- * Las formas replican las del prototipo (`index.html:1202-1204` y `2452-2456`): radios elípticos
- * asimétricos y degradé. React Native no los dibuja con estilos, así que cada forma es un `Path` SVG
- * (`formasPath.ts`). Antes eran radios uniformes + color sólido; la fila `splash` de DEVICE15 lo midió
- * como DESVÍO.
- */
 type Relleno =
   | { tipo: 'solido'; color: string }
   | { tipo: 'degradado'; anguloDeg: number; desde: string; hasta: string };
@@ -96,6 +99,8 @@ function Forma({
   relleno,
   rot0,
   rot1,
+  ultima,
+  ox,
   reducido,
 }: {
   index: number;
@@ -103,32 +108,47 @@ function Forma({
   relleno: Relleno;
   rot0: number;
   rot1: number;
+  ultima: boolean;
+  /** Desplazamiento horizontal final de la forma que colapsa (negativo: hacia donde cae la «O»). */
+  ox: number;
   reducido: boolean;
 }) {
+  // `blob-grow`: escala .04→7.8 con la curva del blob; la opacidad llega a 1 al 5 % del TIEMPO (lineal).
   const progreso = useSharedValue(reducido ? 1 : 0);
-  const colapso = useSharedValue(reducido ? 1 : 0);
+  const opacidad = useSharedValue(reducido ? 1 : 0);
+  // `blob-collapse` (sólo la última): 7.8→.33 + desplazamiento a la «O»; opacidad 1 hasta el 72 % del tiempo.
+  const colapso = useSharedValue(0);
+  const colapsoLineal = useSharedValue(0);
+  const desplazamiento = useSharedValue(ox);
+
+  useEffect(() => {
+    desplazamiento.value = ox;
+  }, [ox]);
 
   useEffect(() => {
     if (reducido) return;
-    progreso.value = withDelay(index * BLOB_STAGGER, withTiming(1, { duration: GROW, easing: EASE_GROW }));
-    // 🔴 TODAS las formas colapsan al terminar de crecer, no sólo la última (DEVICE15 H8). Antes sólo
-    // `egg` colapsaba —y terminaba en opacidad 0,15—: las otras tres quedaban fijas a opacidad 1 y se
-    // veía un disco blanco con halo terracota pegado a la «i» del wordmark, de forma permanente. Medido
-    // en device con `screencap` a ~9 s del logout. La web lo dice en `Splash.css` (H-A4-2): la forma es
-    // un tránsito hacia la «O» real, «no queda como disco permanente — si quedara opaca tapa "dobi"».
-    colapso.value = withDelay(index * BLOB_STAGGER + GROW, withTiming(1, { duration: COLAPSO, easing: EASE_FIN }));
+    const delay = index * BLOB_STAGGER;
+    progreso.value = withDelay(delay, withTiming(1, { duration: GROW, easing: EASE_GROW }));
+    opacidad.value = withDelay(delay, withTiming(1, { duration: Math.round(GROW * 0.05), easing: Easing.linear }));
+    if (ultima) {
+      colapso.value = withDelay(T_COLLAPSE_START, withTiming(1, { duration: COLAPSO, easing: EASE_COLAPSO }));
+      colapsoLineal.value = withDelay(T_COLLAPSE_START, withTiming(1, { duration: COLAPSO, easing: Easing.linear }));
+    }
   }, []);
 
   const estilo = useAnimatedStyle(() => {
-    const escala = 0.05 + progreso.value * 0.95 * (1 - colapso.value * 0.4);
-    const rot = rot0 + (rot1 - rot0) * progreso.value;
+    const c = colapso.value;
+    const crecida = ESCALA_MIN + progreso.value * (ESCALA_MAX - ESCALA_MIN);
+    const escala = c > 0 ? ESCALA_MAX + (ESCALA_FINAL - ESCALA_MAX) * c : crecida;
+    const rot = c > 0 ? rot1 * (1 - c) : rot0 + (rot1 - rot0) * progreso.value;
+    const t = colapsoLineal.value;
+    const opColapso = t <= 0.72 ? 1 : Math.max(0, 1 - (t - 0.72) / 0.28);
     return {
-      opacity: progreso.value * (1 - colapso.value),
-      transform: [{ scale: escala }, { rotate: `${rot}deg` }],
+      opacity: opacidad.value * (ultima ? opColapso : 1),
+      transform: [{ translateX: desplazamiento.value * c }, { scale: escala }, { rotate: `${rot}deg` }],
     };
   });
 
-  const tamanoForma = TAMANO * 0.62;
   const idGradiente = `identidad-entrada-grad-${index + 1}`;
   const g = relleno.tipo === 'degradado' ? gradienteCss(relleno.anguloDeg) : null;
   return (
@@ -136,7 +156,7 @@ function Forma({
       testID={`identidad-entrada-forma-${index + 1}`}
       style={[
         styles.forma,
-        { width: tamanoForma, height: tamanoForma, marginLeft: -tamanoForma / 2, marginTop: -tamanoForma / 2 },
+        { width: TAMANO, height: TAMANO, marginLeft: -TAMANO / 2, marginTop: -TAMANO / 2 },
         estilo,
       ]}
     >
@@ -155,40 +175,77 @@ function Forma({
   );
 }
 
+/** `.finalbg`: el fondo crema que se funde mientras la última forma colapsa (`bg-in`, lineal, `index.html:1206-1209`). */
+function FondoFinal({ reducido }: { reducido: boolean }) {
+  const opacidad = useSharedValue(reducido ? 1 : 0);
+  useEffect(() => {
+    if (reducido) return;
+    opacidad.value = withDelay(T_COLLAPSE_START, withTiming(1, { duration: COLAPSO, easing: Easing.linear }));
+  }, []);
+  const estilo = useAnimatedStyle(() => ({ opacity: opacidad.value }));
+  return (
+    <Animated.View style={[StyleSheet.absoluteFill, estilo]} pointerEvents="none">
+      <FondoDegradado
+        colors={[COLOR_SPLASH_FONDO_ARRIBA, COLOR_SPLASH_FONDO_ABAJO]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+    </Animated.View>
+  );
+}
+
 /**
- * BL-X10 (port fiel) — animación de entrada SOBRE el lockup de `RevealEntrada` (no hay un segundo
- * splash, ver docstring de ese componente): 4 formas creciendo con stagger, la última colapsando
- * hacia donde entra la "O" real. `children` es el lockup real (`Marca` + wordmark "dobi"), que ya
- * NO se anima acá como bloque: cada pieza tiene su propio settle/bounce en `RevealEntrada`, igual
- * que web separa la forma que colapsa (H-A4-2) del glifo de texto que aparece por debajo.
+ * Motor del splash (prototipo `#splash`, `index.html:1177-1251` y `3393-3445`), a PANTALLA COMPLETA: cada forma
+ * nace chica en el centro, crece hasta cubrir el frame y adentro ya nace la siguiente; la última no sale: se
+ * contrae y se desplaza al lugar exacto de la «O» (`ox`, de la mitad del ancho real de «dobi»). El fondo es
+ * crema (`#splash{background:...}`) y se funde (`finalbg`) mientras eso ocurre. `children` es el lockup,
+ * que va por encima (`.stage{z-index:40}`).
  */
-export function IdentidadEntrada({ children }: { children: React.ReactNode }) {
+export function IdentidadEntrada({ children, ox = 0 }: { children: React.ReactNode; ox?: number }) {
   const reducido = useReducedMotion();
+  // Las formas CUBREN el frame: la capa mide la ventana, no lo que le dé el padre (medido en device: un
+  // `absoluteFill` heredaba el alto colapsado del contenedor y el splash se veía en una caja).
+  const { width, height } = useWindowDimensions();
 
   return (
-    <View testID="identidad-entrada" style={styles.raiz}>
+    <View testID="identidad-entrada" style={[styles.raiz, { width, height }]}>
+      <FondoDegradado
+        colors={[COLOR_SPLASH_FONDO_ARRIBA, COLOR_SPLASH_FONDO_ABAJO]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
       {!reducido && (
         <View style={styles.formas} pointerEvents="none">
-          {FORMAS.map((f, i) => (
-            <Forma
-              key={f.key}
-              index={i}
-              d={f.d}
-              relleno={f.relleno}
-              rot0={f.rot0}
-              rot1={f.rot1}
-              reducido={reducido}
-            />
+          {FORMAS.slice(0, 3).map((f, i) => (
+            <Forma key={f.key} index={i} d={f.d} relleno={f.relleno} rot0={f.rot0} rot1={f.rot1} ultima={false} ox={ox} reducido={reducido} />
           ))}
         </View>
       )}
-      {children}
+      {!reducido && <FondoFinal reducido={reducido} />}
+      {!reducido && (
+        <View style={styles.formas} pointerEvents="none">
+          <Forma
+            index={3}
+            d={FORMAS[3].d}
+            relleno={FORMAS[3].relleno}
+            rot0={FORMAS[3].rot0}
+            rot1={FORMAS[3].rot1}
+            ultima
+            ox={ox}
+            reducido={reducido}
+          />
+        </View>
+      )}
+      <View style={[styles.escenario, { width, height }]}>{children}</View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  raiz: { alignItems: 'center', justifyContent: 'center' },
+  raiz: { position: 'absolute', top: 0, left: 0, overflow: 'hidden' },
   formas: {
     position: 'absolute',
     top: '50%',
@@ -197,4 +254,5 @@ const styles = StyleSheet.create({
     height: 1,
   },
   forma: { position: 'absolute', overflow: 'hidden' },
+  escenario: { position: 'absolute', top: 0, left: 0, alignItems: 'center', justifyContent: 'center' },
 });
