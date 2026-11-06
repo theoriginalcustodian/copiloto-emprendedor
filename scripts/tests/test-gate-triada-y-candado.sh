@@ -37,10 +37,22 @@ cat > "$R/deploy/copiloto/sync-test-backend.sh" <<'EOF'
 ini=$(date +%s%N); sleep "${STUB_SYNC_SEG:-0}"; fin=$(date +%s%N)
 echo "$ini $fin" >> "$STUB_VENTANAS"
 EOF
-printf '#!/usr/bin/env bash\nshift\nexec bash -c "$1"\n' > "$T/bin/ssh-local"; chmod +x "$T/bin/ssh-local"
+# El shim deja una bitácora por llamada remota (hora, pid, si el candado existía ANTES, resultado): si el caso 5 falla
+# en CI (dos gates dijeron «tomado»), la bitácora muestra si los mkdir fueron realmente simultáneos o si el candado
+# desapareció entre medio. No cambia lo que devuelve: sólo observa.
+cat > "$T/bin/ssh-local" <<'EOF'
+#!/usr/bin/env bash
+shift
+pre=$([ -d "$LOCK_DBG" ] && echo existe || echo libre)
+t0=$(date +%s%N); out=$(bash -c "$1"); rc=$?
+echo "$t0 $(date +%s%N) pid=$$ lock_antes=$pre rc=$rc out=${out:0:60}" >> "$SSH_LOG"
+printf '%s\n' "$out"; exit $rc
+EOF
+chmod +x "$T/bin/ssh-local"
 git -C "$R" init -q && git -C "$R" -c core.autocrlf=false add -A && git -C "$R" -c user.name=t -c user.email=t@t commit -qm t \
   && git -C "$R" checkout -q --detach
 STAGE="$T/stage-be"; LOCK="$STAGE.gate-lock"; export STUB_VENTANAS="$T/ventanas.txt"
+export LOCK_DBG="$LOCK" SSH_LOG="$T/ssh.log"; : > "$SSH_LOG"
 
 gate() {  # gate <salida> [VAR=valor ...] -- corre gate.sh backend en el repo temporal, entorno limpio
   local out="$1"; shift
@@ -79,7 +91,7 @@ if [ "$rc" -eq 0 ] && [ -s "$STUB_VENTANAS" ] && [ ! -d "$LOCK" ] && grep -q "VE
 else fail "4 VENCIDO · rc=$rc lock=$([ -d "$LOCK" ] && echo QUEDÓ || echo suelto) salida=<$(tail -5 "$T/o4")>"; fi
 
 # 5. CARRERA: dos gates de la misma tríada a la vez
-rm -rf "$T/rec" "$LOCK"; : > "$STUB_VENTANAS"
+rm -rf "$T/rec" "$LOCK"; : > "$STUB_VENTANAS"; : > "$SSH_LOG"
 gate "$T/o5a" UC_SESION=backend UC_TEST_STAGE="$STAGE" STUB_SYNC_SEG=3 UC_GATE_LOCK_POLL=1 & p1=$!
 gate "$T/o5b" UC_SESION=backend UC_TEST_STAGE="$STAGE" STUB_SYNC_SEG=3 UC_GATE_LOCK_POLL=1 & p2=$!
 wait "$p1"; r1=$?; wait "$p2"; r2=$?
@@ -90,6 +102,7 @@ else fail "5 CARRERA · r1=$r1 r2=$r2 ventanas=<$(tr '
 ' ' ' < "$STUB_VENTANAS")> solapan=$solapan lock=$([ -d "$LOCK" ] && echo QUEDO || echo suelto)"
   # Diagnostico del flake (medido en CI 2 veces, no reproducible en 88 corridas locales): que gate dijo TOMADO/VENCIDO/espero,
   # para distinguir "dos tomaron el candado" de "uno lo tomo y el otro nunca lo pidio".
+  echo "     --- bitácora de llamadas remotas (inicio fin pid lock_antes rc salida):"; sed 's/^/     /' "$SSH_LOG"
   for x in "$T/o5a" "$T/o5b"; do echo "     --- $(basename "$x"): $(grep -E 'candado|ocupado' "$x" | tr '
 ' '|')"; done; fi
 
