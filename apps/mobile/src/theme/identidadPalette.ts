@@ -16,3 +16,8 @@ export const COLOR_FORMA_SQUIRCLE_CLARO = '#E8A088';
 export const COLOR_PALABRA_MARCA = '#DE7250';
 export const COLOR_FORMA_SUPER = '#FFFFFF';
 export const COLOR_FORMA_EGG = '#B04A2E';
+/** Fondo del splash (`#splash{background:linear-gradient(180deg,#FFFFFF 0%,#F7F3EC 100%)}`, `index.html:1188`). Fijo: es la pieza de marca, no la piel. */
+export const COLOR_SPLASH_FONDO_ARRIBA = '#FFFFFF';
+export const COLOR_SPLASH_FONDO_ABAJO = '#F7F3EC';
+/** Descriptor del splash (`.tagline{color:var(--sec)}`, `index.html:17` + `1231`). */
+export const COLOR_SPLASH_TAGLINE = '#5C534C';
