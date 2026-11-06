@@ -64,7 +64,14 @@ IMPUTADO_A, AL_TRABAJO = "IMPUTADO_A", "AL_TRABAJO"
 # Corregir/editar crea un nodo-evento nuevo y supersede al anterior; borrar sólo invalida (ver
 # `grafo_sync_activities` — la primera revisión invalida las aristas del ALTA).
 REGISTRO_COBRO, FICHA_CLIENTE = "RegistroCobro", "FichaCliente"
-E_REGISTRO_COBRO, E_FICHA_CLIENTE, ESTADO_CONCEPTO = "REGISTRO_COBRO", "FICHA_CLIENTE", "ESTADO_CONCEPTO"
+# 🔴 Graphity acepta como mucho MAX_EDGE_TYPES edge types por ontología (`PUT /entity-types` → 422
+# «Demasiados edge types: 21 > límite 20», medido en prod el 2026-11-06). Por eso la versión corregida
+# de un cobro y la ficha de un cliente comparten UN tipo, `TIENE_REGISTRO`, con dos `source_targets`:
+# son el mismo hecho («esta entidad quedó registrada así») sobre entidades distintas. Los alias se
+# conservan para que el código lea qué eje escribe; el acumulador de cada uno tiene clave propia.
+MAX_EDGE_TYPES = 20
+E_TIENE_REGISTRO, ESTADO_CONCEPTO = "TIENE_REGISTRO", "ESTADO_CONCEPTO"
+E_REGISTRO_COBRO = E_FICHA_CLIENTE = E_TIENE_REGISTRO
 CAMPO_REGISTRO = "registro"
 # entidades cuyo alta (`creado`) es una arista de EVENTO que la revisión tiene que invalidar.
 REVISABLES = ("cobro", "cliente")
@@ -578,7 +585,7 @@ class MapeadorEstado:
         fecha = d.get("fecha") or _fecha(ev.ocurrido_en)
         reg_key = f"{cobro_key}|{orden}"
         self._acumulador(
-            E_REGISTRO_COBRO, edge_type=E_REGISTRO_COBRO, source_type=COBRO,
+            "registro_cobro", edge_type=E_REGISTRO_COBRO, source_type=COBRO,
             source_name_col="cobro_label", source_id_col="cobro_key",
             target_type=REGISTRO_COBRO, target_col="registro_label", target_id_col="registro_key",
             fact_template="El cobro quedó corregido: ${monto} por {medio}, de {cliente}, "
@@ -606,7 +613,7 @@ class MapeadorEstado:
             return
         ficha_key = f"{ev.entidad_id}|{orden}"
         self._acumulador(
-            E_FICHA_CLIENTE, edge_type=E_FICHA_CLIENTE, source_type=CLIENTE,
+            "ficha_cliente", edge_type=E_FICHA_CLIENTE, source_type=CLIENTE,
             source_name_col="cliente_nombre", source_id_col="cliente_key",
             target_type=FICHA_CLIENTE, target_col="ficha_label", target_id_col="ficha_key",
             fact_template="Los datos de {source} se actualizaron el {fecha}: documento {documento}, "
@@ -710,9 +717,10 @@ def ontologia() -> tuple[list[dict], list[dict]]:
         _edt(COBRADO_A, ("monto", "fecha", "concepto"), ((COBRO, CLIENTE),)),
         _edt(FACTURADO_EN, ("pto", "nro", "total", "fecha"), ((PRESUPUESTO, COMPROBANTE),)),
         _edt(ESTADO_CONCEPTO, ("estado", "fecha"), ((CONCEPTO, ESTADO),)),
-        _edt(E_REGISTRO_COBRO, ("monto", "medio", "cliente", "concepto", "fecha"),
-             ((COBRO, REGISTRO_COBRO),)),
-        _edt(E_FICHA_CLIENTE, ("documento", "condicion_iva", "email", "telefono", "domicilio", "fecha"),
-             ((CLIENTE, FICHA_CLIENTE),)),
+        _edt(E_TIENE_REGISTRO, ("monto", "medio", "cliente", "concepto", "documento", "condicion_iva",
+                                "email", "telefono", "domicilio", "fecha"),
+             ((COBRO, REGISTRO_COBRO), (CLIENTE, FICHA_CLIENTE))),
     ]
+    if len(edge_types) > MAX_EDGE_TYPES:   # fail-fast acá y no un 422 en cada tick del Schedule
+        raise ValueError(f"ontología con {len(edge_types)} edge types > límite {MAX_EDGE_TYPES} de Graphity")
     return entity_types, edge_types
