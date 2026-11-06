@@ -93,29 +93,21 @@ if [ "$rc" -eq 0 ] && [ -s "$STUB_VENTANAS" ] && [ ! -d "$LOCK" ] && grep -q "VE
   ok "4 VENCIDO · candado de un gate muerto -> se toma, corre y se suelta"
 else fail "4 VENCIDO · rc=$rc lock=$([ -d "$LOCK" ] && echo QUEDÓ || echo suelto) salida=<$(tail -5 "$T/o4")>"; fi
 
-# 5.0 ATOMICIDAD de mkdir en ESTE filesystem. Todo el candado descansa en que, de dos mkdir simultáneos sobre el
-# mismo path, uno falle. En CI el caso 5 dio DOS `TOMADO` con el candado `libre` en ambas llamadas (bitácora, run
-# 42233323351, dos mkdir con 1 µs de diferencia): o el código del candado, o un filesystem que no lo garantiza. Este
-# microtest separa las dos: sin gate.sh ni candado de por medio, 400 pares de `mkdir` a la vez sobre el mismo path.
-dobles=0
-for i in $(seq 1 400); do
-  d="$T/atom-$i"
-  ( mkdir "$d" 2>/dev/null && : > "$d.a" ) & ( mkdir "$d" 2>/dev/null && : > "$d.b" ) & wait
-  [ -e "$d.a" ] && [ -e "$d.b" ] && dobles=$((dobles + 1))
-done
-if [ "$dobles" -eq 0 ]; then ok "5.0 ATOMICIDAD · 400 pares de mkdir simultáneos: nunca dos ganadores"
-else
-  # Separa HERRAMIENTA de KERNEL: el mismo experimento con la syscall mkdir(2) directa (python os.mkdir). Si el kernel
-  # da 0 dobles y el binario `mkdir` da muchos, el defecto es del binario (p. ej. coreutils reimplementado), no del fs.
-  kd=-; if command -v python3 >/dev/null; then kd=0
-    for i in $(seq 1 150); do
-      d="$T/katom-$i"
-      ( python3 -c 'import os,sys; os.mkdir(sys.argv[1])' "$d" 2>/dev/null && : > "$d.a" ) & \
-      ( python3 -c 'import os,sys; os.mkdir(sys.argv[1])' "$d" 2>/dev/null && : > "$d.b" ) & wait
-      [ -e "$d.a" ] && [ -e "$d.b" ] && kd=$((kd + 1))
-    done; fi
-  fail "5.0 ATOMICIDAD · el binario mkdir dio DOS ganadores en $dobles/400 pares; syscall mkdir(2) vía python: $kd/150 · mkdir=$(command -v mkdir) <$(mkdir --version 2>&1 | head -1)> · fs: $(df -PT "$T" 2>/dev/null | tail -1) · $(. /etc/os-release 2>/dev/null; echo "$PRETTY_NAME")"
-fi
+# 5.0 ATOMICIDAD del candado REAL. Todo el candado descansa en que, de dos tomas simultáneas del mismo path, una falle.
+# En CI el caso 5 dio DOS `TOMADO` con el candado libre (bitácora, run 42233323351). Causa medida: el binario `mkdir` de
+# uutils-coreutils 0.10.0 (Ubuntu 26.04) NO es atómico bajo carrera (10–346 de 400 pares con dos ganadores) mientras la
+# syscall mkdir(2) sí (python os.mkdir 0/150) y el mkdir GNU del VPS 24.04 también (0/400). El candado ya llama a la
+# syscall; este caso ejercita `_candado_intento` TAL CUAL corre (vía el shim), en pares simultáneos, y exige cero dobles:
+# si alguien vuelve a una primitiva de la que depende el entorno, falla acá en vez de romper la exclusión en silencio.
+dobles=0; PARES=150
+dobles=$( ( GATE_SSH="$T/bin/ssh-local"; source "$R/scripts/ci/candado-stage.sh"
+  for i in $(seq 1 "$PARES"); do
+    p="$T/real-$i.gate-lock"
+    ( _candado_intento "$p" 1800 sha > "$p.a" ) & ( _candado_intento "$p" 1800 sha > "$p.b" ) & wait
+    grep -q '^TOMADO' "$p.a" && grep -q '^TOMADO' "$p.b" && echo DOBLE
+  done ) | grep -c DOBLE )
+if [ "$dobles" -eq 0 ]; then ok "5.0 ATOMICIDAD · $PARES pares de tomas simultáneas del candado real: nunca dos ganadores"
+else fail "5.0 ATOMICIDAD · $dobles de $PARES pares dieron DOS TOMADO sobre el mismo path · mkdir=$(command -v mkdir) <$(mkdir --version 2>&1 | head -1)> · fs: $(df -PT "$T" 2>/dev/null | tail -1) · $(. /etc/os-release 2>/dev/null; echo "$PRETTY_NAME")"; fi
 
 # 5. CARRERA: dos gates de la misma tríada a la vez
 rm -rf "$T/rec" "$LOCK"; : > "$STUB_VENTANAS"; : > "$SSH_LOG"
