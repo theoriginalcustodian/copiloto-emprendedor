@@ -37,6 +37,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useInerteAlPerderFoco } from '../navegacion/inerteAlPerderFoco';
+import { ArrastreCuerpoContext } from './arrastreCuerpo';
 import { useTema } from '../theme/ThemeProvider';
 import { CristalVidrio } from '../theme/glass/CristalVidrio';
 import { FondoIluminado } from '../theme/glass/FondoIluminado';
@@ -122,6 +123,30 @@ const CONFIG_SNAP = { duration: 420, easing: Easing.bezier(0.2, 0.8, 0.2, 1) };
 const CONFIG_SNAP_GESTO = { duration: 420, dampingRatio: 1, overshootClamping: true };
 const VELOCIDAD_FLICK = 500;
 const UMBRAL_TAP = 5;
+/** SM-P16: desplazamiento (px) hacia abajo desde el que el dedo, sobre el cuerpo, es un arrastre del panel. */
+const UMBRAL_ACTIVAR_CUERPO = 12;
+/** SM-P16: desplazamiento hacia ARRIBA (px) que descarta el arrastre del panel: es scroll de la lista o un toque. */
+const UMBRAL_DESCARTAR_CUERPO = 8;
+
+export type DecisionCuerpo = 'activar' | 'fallar' | 'esperar';
+
+/**
+ * SM-P16 — qué hace el Pan del CUERPO con cada movimiento del dedo. Pura y worklet (la corre el hilo de UI).
+ *
+ *  - Panel ABAJO (`panelY > 1`): el cuerpo es invisible, no hay nada que arrastrar desde acá → `fallar`.
+ *  - Lista FUERA del tope: el dedo es del scroll → `fallar`.
+ *  - Dedo hacia ARRIBA: empuja contenido, no baja el panel → `fallar`.
+ *  - Dedo hacia ABAJO más que el umbral, con la lista en el tope → `activar`.
+ *  - Todo lo demás → `esperar` (un toque quieto sigue siendo de la tarjeta/botón de adentro).
+ */
+export function decidirArrastreCuerpo(dy: number, enTope: boolean, panelY: number): DecisionCuerpo {
+  'worklet';
+  if (panelY > 1) return 'fallar';
+  if (!enTope) return 'fallar';
+  if (dy < -UMBRAL_DESCARTAR_CUERPO) return 'fallar';
+  if (dy > UMBRAL_ACTIVAR_CUERPO) return 'activar';
+  return 'esperar';
+}
 /**
  * Velocidad (px/s) a partir de la cual el gesto se considera un **flick**: un lanzamiento con
  * intención de dirección, no un arrastre que se soltó donde quedó.
@@ -315,6 +340,12 @@ export function PanelDeslizable({
   // 0 = abierto (conversación tapa todo) · RECORRIDO_MAX = abajo (revela el escritorio).
   const panelY = useSharedValue(0);
   const inicio = useSharedValue(0);
+  // SM-P16: `enTope` lo escribe la lista del cuerpo (vía contexto); `cuerpoY0` es dónde apoyó el dedo.
+  const enTope = useSharedValue(true);
+  const cuerpoY0 = useSharedValue(0);
+  const cuerpoActivo = useSharedValue(false);
+  const refGestoCuerpo = useRef<unknown>(null);
+  const arrastreCuerpo = useMemo(() => ({ enTope, refGestoCuerpo }), [enTope, refGestoCuerpo]);
   // SM-P5: alto del teclado visible (0 = cerrado). Ver `levantarPorTeclado`. `keyboardDid*` porque Android no emite `Will*`.
   const teclado = useSharedValue(0);
   useEffect(() => {
@@ -502,9 +533,41 @@ export function PanelDeslizable({
       gestoAsa: crearPan().hitSlop({ top: holguraArrastreArriba(insetTop) }),
       // El pie lleva el MISMO Pan sin holgura: su superficie ya es toda la franja del campo.
       gestoPie: crearPan(),
+      // SM-P16: el MISMO arrastre sobre el CUERPO (la conversación). Activación MANUAL: el recognizer no se activa
+      // solo al pasar un umbral —eso le quitaría el scroll a la lista—, sino cuando `decidirArrastreCuerpo` lo
+      // decide (panel arriba, lista en su tope, dedo hacia abajo). Mientras no se active, el dedo es de la lista o
+      // de la tarjeta de adentro; al activarse, el panel sigue al dedo y la lista (en su tope) no tiene a dónde ir.
+      gestoCuerpo: crearPan()
+        .manualActivation(true)
+        // El scroll nativo de la lista y este Pan corren A LA VEZ (quién se queda con el dedo lo decide
+        // `decidirArrastreCuerpo`, vía `activate()`/`fail()`). La simultaneidad la declara la LISTA con
+        // `simultaneousHandlers={refGestoCuerpo}`: ver `ArrastreCuerpo.refGestoCuerpo`.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .withRef(refGestoCuerpo as any)
+        // 🔴 `'worklet'` EXPLÍCITO: el plugin de Babel sólo auto-workletiza las cadenas que ARRANCAN en
+        // `Gesture.Pan()`; éstas cuelgan de `crearPan()`, y sin la directiva el handler tira «Some of the
+        // callbacks in the gesture are worklets and some are not» (medido en device, 2026-11-06).
+        .onTouchesDown((e) => {
+          'worklet';
+          cuerpoY0.value = e.allTouches[0]?.absoluteY ?? 0;
+          cuerpoActivo.value = false;
+        })
+        .onTouchesMove((e, estado) => {
+          'worklet';
+          // 🔴 La decisión vale SOLO hasta activarse. Ya activo, el panel se mueve (`panelY > 1`) y la misma
+          // regla devolvería `fallar` en el movimiento siguiente: mataría el arrastre a mitad de camino (medido
+          // en device: `activar` con panelY=0 y, un movimiento después, `fallar` con panelY=320).
+          if (cuerpoActivo.value) return;
+          const dy = (e.allTouches[0]?.absoluteY ?? cuerpoY0.value) - cuerpoY0.value;
+          const decision = decidirArrastreCuerpo(dy, enTope.value, panelY.value);
+          if (decision === 'activar') {
+            cuerpoActivo.value = true;
+            estado.activate();
+          } else if (decision === 'fallar') estado.fail();
+        }),
     };
-  }, [panelY, inicio, recorrido, setPanelAbajoConAviso, avisarBajada, insetTop]);
-  const { gestoAsa, gestoPie } = gestos;
+  }, [panelY, inicio, recorrido, setPanelAbajoConAviso, avisarBajada, insetTop, cuerpoY0, cuerpoActivo, enTope, refGestoCuerpo]);
+  const { gestoAsa, gestoPie, gestoCuerpo } = gestos;
 
   // SM-P5: el techo del recorrido cambia cuando entra/sale el teclado; `panelY` lo sigue si estaba abajo. En el hilo
   // de UI (no en el `onLayout`: ahí una escritura se pierde, ver más abajo) y sin estado de React.
@@ -675,7 +738,11 @@ export function PanelDeslizable({
               <View style={[styles.barraHandle, { backgroundColor: tema.glass.pill }]} />
             </View>
           </GestureDetector>
-          <Animated.View style={estiloContenido}>{children}</Animated.View>
+          <GestureDetector gesture={gestoCuerpo}>
+            <Animated.View style={estiloContenido}>
+              <ArrastreCuerpoContext.Provider value={arrastreCuerpo}>{children}</ArrastreCuerpoContext.Provider>
+            </Animated.View>
+          </GestureDetector>
           {pieAbajo != null && (
             <Animated.View
               testID="panel-pie-abajo"

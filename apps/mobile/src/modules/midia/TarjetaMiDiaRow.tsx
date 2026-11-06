@@ -254,12 +254,12 @@ export function TarjetaMiDiaRow({
       renderRightActions={acciones}
       rightThreshold={40}
       overshootFriction={8}
-      // 🔴 SIN wiring explícito contra el `Gesture.Pan()` de `MarcoGlass` (drag-down-para-cerrar): ese
-      // gesto vive DENTRO de `MarcoGlass` y no se expone como prop, así que no hay forma de pasárselo acá.
-      // Confío en la resolución de arena por defecto de RNGH (el hijo más profundo prueba primero; si el
-      // gesto no activa por dirección — el Pan del marco es vertical, este swipe es horizontal — cede al
-      // padre), el mismo patrón que ya funciona con el `ScrollView` vertical de esta lista. **NO
-      // verificado — es justo el ítem del DoD "el swipe no rompe el panel deslizable, en device".**
+      // Composición de gestos (SM-P16): esta tarjeta vive en Mi día, que es el FONDO del panel; el arrastre
+      // del panel desde el cuerpo (`gestoCuerpo` de `PanelDeslizable`) envuelve sólo la conversación, así que
+      // el Pan del cuerpo y este swipe NO comparten árbol de gestos y no hay nada que cablear entre ellos.
+      // Con el panel ABAJO (Mi día visible) el swipe horizontal de acá y el scroll vertical de la lista se
+      // resuelven por dirección con la arena por defecto de RNGH, igual que antes. Evidencia de device en el
+      // `cierre_` de SM-P16; lo que quede sin medir está nombrado en su `Falta:`.
     >
       {fila}
     </Swipeable>
