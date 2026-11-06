@@ -60,6 +60,7 @@ campo»*.
 | **SM-P14** | `sin-issue` | ⬜ PENDIENTE | — |
 | **SM-P15** | `sin-issue` | ✅ TERMINADO | NADA del cableado. El CONTENIDO del corpus quedo fichado aparte como issue #1728 (decision de producto del operador):… |
 | **SM-P16** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-P17** | `sin-issue` | ✅ TERMINADO | NADA de lo pedido. frontend2 declaro, sin que se le pidiera, cinco superficies que NO estan cubiertas y NO estaban en… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -458,3 +459,19 @@ campo»*.
   5. Device a mano, `adb input motionevent` DOWN/MOVE/UP (un `input tap` no ejercita un Pan): desde
      el cuerpo, desde encima de una tarjeta y desde la línea, en las dos pieles.
   6. La franja del `hitSlop` del asa medida en dp con el inset real del device.
+
+### SM-P17 · `sin-issue` — Los formularios web abren con el foco en BODY: el usuario toca y no puede escribir
+
+- **Estado:** TERMINADO
+- **Falta:** NADA de lo pedido. frontend2 declaro, sin que se le pidiera, cinco superficies que NO estan cubiertas y NO estaban en el contrato: Login/Signup, Onboarding, Admin, MidiaScreen y las tarjetas propuestas del chat. NO las asigno: nadie reporto defecto ahi y meterlas seria expandir el alcance por simetria, que es el error espejo del que esta ficha corrigio. Quedan como observacion con dueno nombrado (operador, decision de producto) en vez de como deuda invisible.
+- **Cierre:** DOS mitades, las dos en origin/main y verificadas por mi con control negativo: @fe9dc2ce (#1729, CI 6/6, desplegado) las 8 definiciones directas -- forms Presupuesto/Cliente/Gasto/Ingreso, pasos Datos de venta/Items/Cliente y Detalle; y @c5653d8f (#1730, CI 6/6, desplegado) las 4 async/colapsadas -- PerfilNegocio, Tono, AfipSetup, CambiarCredenciales. Verificado tambien por CONTENIDO y no por el sha (el squash mata la cita): git log origin/main -S useFocoAlMontar -> fe9dc2ce con control negativo 0 commits, y 12 definiciones usan el hook. DoD 1-4 y 6 cumplidos. DoD 5, el que decidia si el verde valia: frontend2 MUTO el hook para enfocar al montar y los 3 tests async salieron ROJOS (3 failed), y sin cablear Credenciales tambien rojo -- o sea el test SI distingue el caso que importa. Medido en navegador real: perfil-negocio-que-vende, tono-formalidad, afip-perfil-razon-social, account-contrasena-actual, presupuesto-concepto, detalle-presupuesto, cliente-nombre, gasto-monto, ingreso-monto, facturacion-paso-datos-venta-fecha -- todos BODY antes. Diseno del hook: omitido = al montar (cubre tambien «expandir», porque el form se monta ahi); listo=false hasta que llega el dato = enfoca UNA vez al pasar a true; Afip espera la precarga completa porque el CUIT editable pasa a chip Bloqueado. Nada escrito ni guardado, cuenta fiscal real intacta.
+- **Dueño:** frontend2 (web)
+- **Qué:** hallazgo de la pasada de navegador real de toda la web (orden del operador 2026-11-06, textual: «que se pruebe todo»). Al abrir un formulario o un detalle, el foco quedaba en `BODY`: la pantalla se dibuja perfecta y el teclado no llega a ningun campo.
+- **🔴 Por que es defecto y no cosmetica — es el TERCER caso de la misma familia en este sprint:** la card de dictado dejaba el foco en BODY (#1683) y el wizard abria los pasos VACIOS (#1720). El patron es siempre el mismo: **la geometria esta bien y el ESTADO DE ENTRADA no se prepara**. Y es justamente lo que hace que nadie lo revise — una pantalla que se ve correcta no pide revision. Los tres los cazo el NAVEGADOR; jsdom los dio verdes.
+- **DoD:**
+  1. El foco va al primer campo editable al abrir. Si el detalle es de solo lectura, a su contenedor enfocable — nunca BODY, porque desde BODY el teclado no llega a ningun lado.
+  2. Test rojo-sin-fix / verde-con-fix por definicion.
+  3. **Medido en navegador real**, no solo jsdom.
+  4. Contar DEFINICIONES, no usos: el fix suele existir en un call-site y faltar en los gemelos.
+  5. **Control de TIMING para los casos async:** el test tiene que salir ROJO si el foco llegara antes del dato. Sin ese control el verde no acredita, porque un test con el dato ya resuelto pasa igual mientras el caso real falla.
+  6. Cero secretos en repo ni en capturas; nada de la cuenta fiscal real del operador.
