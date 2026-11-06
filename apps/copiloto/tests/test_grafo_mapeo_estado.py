@@ -165,7 +165,61 @@ def test_conteo_total_de_invalidaciones_de_estado_contra_el_dataset_real():
     imputa una sola vez. Fija el número: si el dataset cambia, este test avisa que hay que
     recontar, en vez de dejarlo pasar en silencio."""
     _, invalidaciones = construir_datasets_estado(_eventos(), group_logico=GRUPO, **NEG)
-    assert len(invalidaciones) == 8
+    # 8 transiciones superadas + 3 `DE_CONCEPTO` de los precios superados del tablero (segundo salto
+    # que se invalida con su PRECIO_DE desde 2026-11-06).
+    assert len(invalidaciones) == 11
+
+
+# ── segundos saltos: se invalidan con su arista principal (prod 2026-11-06) ────────────────────────
+
+class _Ev:
+    def __init__(self, entidad_id, valor_a, minuto, *, entidad_tipo="gasto", campo="imputacion"):
+        self.entidad_tipo, self.entidad_id, self.campo = entidad_tipo, entidad_id, campo
+        self.evento, self.valor_a, self.datos = "imputado", valor_a, {}
+        self.ocurrido_en = datetime.datetime(2026, 11, 6, 10, minuto, tzinfo=Z)
+
+
+def test_reimputar_invalida_el_al_trabajo_viejo_no_solo_el_imputado_a():
+    """El caso medido en prod: «gasto 246 → comprobante 421» quedaba dos veces vigente porque el
+    AL_TRABAJO se declaraba «nunca se invalida». La transición superada tiene que devolver SUS DOS
+    aristas, y la nueva AL_TRABAJO no puede estar entre ellas."""
+    m = MapeadorEstado(**NEG)
+    m.procesar(1, _Ev("G-9", {"eslabon": "comprobante", "ref": "C-1"}, 0), group_logico=GRUPO)
+    m.procesar(2, _Ev("G-9", {"eslabon": "comprobante", "ref": "C-2"}, 5), group_logico=GRUPO)
+    viejas, nuevas = m.edge_uuids_de(1), m.edge_uuids_de(2)
+    assert len(viejas) == 2 and len(nuevas) == 2
+    assert viejas[0] == m.edge_uuid_de(1)   # la principal va primero
+    assert not set(viejas) & set(nuevas)
+    al_trabajo_viejo = edge_uuid(GRUPO, node_uuid(GRUPO, IMPUTACION, _imp_key(m, 1)), AL_TRABAJO,
+                                 node_uuid(GRUPO, COMPROBANTE, "C-1"))
+    assert al_trabajo_viejo in viejas
+
+
+def _imp_key(m, orden):
+    ds = next(d for d in m.datasets(GRUPO)
+              if d.mapping["source_entity"]["edges"][0]["edge_type"] == IMPUTADO_A)
+    return ds.rows[orden - 1]["imputacion_key"]
+
+
+def test_el_al_trabajo_calculado_coincide_con_el_que_se_postea():
+    """Control positivo del cálculo: el uuid que `edge_uuids_de` promete invalidar es el MISMO que
+    sale del dataset AL_TRABAJO (si divergieran, la invalidación apuntaría a una arista inexistente
+    y fallaría callada — trampa 4)."""
+    m = MapeadorEstado(**NEG)
+    m.procesar(7, _Ev("G-9", {"eslabon": "presupuesto", "ref": "P-3"}, 0), group_logico=GRUPO)
+    ds = next(d for d in m.datasets(GRUPO)
+              if d.mapping["source_entity"]["edges"][0]["edge_type"] == AL_TRABAJO)
+    fila = ds.rows[0]
+    posteado = edge_uuid(GRUPO, node_uuid(GRUPO, IMPUTACION, fila["imputacion_key"]), AL_TRABAJO,
+                         node_uuid(GRUPO, PRESUPUESTO, fila["ref_key"]))
+    assert posteado in m.edge_uuids_de(7)
+
+
+def test_desimputar_no_deja_segundo_salto_que_invalidar_en_la_baja():
+    """`valor_a=None` (desimputar) no materializa nada: la baja no tiene aristas propias."""
+    m = MapeadorEstado(**NEG)
+    m.procesar(3, _Ev("G-9", None, 0), group_logico=GRUPO)
+    assert m.edge_uuids_de(3) == []
 
 
 # ── control: el `orden` que arma el mapeo coincide EXACTO con el que arma el derivador ─────────────

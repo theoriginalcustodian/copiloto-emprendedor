@@ -41,6 +41,12 @@ class _FakeCur:
             _cid, tipo, eid = params
             altas = [r for r in self._db["eventos"] if r[1] == tipo and r[2] == eid and r[3] == "creado"]
             self._row = altas[0] if altas else None
+        elif s.startswith("SELECT ID, ENTIDAD_TIPO") and "AND ID=%S" in s:
+            _cid, orden = params
+            self._row = next((r for r in self._db["eventos"] if r[0] == orden), None)
+        elif s.startswith("SELECT ULTIMO_ORDEN"):
+            fila = self._db["vigencias"].get(tuple(params))
+            self._row = (fila[0],) if fila else None
         elif s.startswith("SELECT ID, ENTIDAD_TIPO"):
             _cid, desde = params
             self._rows = [r for r in self._db["eventos"] if r[0] > desde]

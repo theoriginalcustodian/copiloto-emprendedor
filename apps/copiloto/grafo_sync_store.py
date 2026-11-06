@@ -51,6 +51,17 @@ class GrafoSyncStore:
             row = cur.fetchone()
             return row[0] if row else None
 
+    def vigente_orden(self, entidad_tipo: str, entidad_id: str, campo: str) -> int | None:
+        """El `ultimo_orden` (id del evento) de la transición vigente: con él se recalculan TODAS sus
+        aristas (principal + segundos saltos), no sólo la principal que guarda `ultimo_edge_uuid`."""
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                f"SELECT ultimo_orden FROM {_VIGENCIA} "
+                f"WHERE cliente_id=%s AND entidad_tipo=%s AND entidad_id=%s AND campo=%s",
+                (self._cliente_id, entidad_tipo, entidad_id, campo))
+            row = cur.fetchone()
+            return int(row[0]) if row and row[0] is not None else None
+
     def marcar_vigente(self, entidad_tipo: str, entidad_id: str, campo: str, *,
                        orden: int, edge_uuid: str) -> None:
         with self._conn_factory() as conn, conn.cursor() as cur:
