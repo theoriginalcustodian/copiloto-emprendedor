@@ -126,7 +126,11 @@ def _torta_categorias(q, args: dict) -> dict:
     d = q.torta_categorias(mes)
     con_gasto = sorted(((s["categoria"], s["total"]) for s in d["serie"] if Decimal(s["total"]) > 0),
                        key=lambda t: Decimal(t[1]), reverse=True)
-    return _card("En qué gastaste", [(cat, plata(total)) for cat, total in con_gasto],
+    # El TOTAL lo suma el código, no el modelo: medido 2026-11-06 (eval de fidelidad), a «¿cuánto gasté
+    # en octubre?» el modelo contestaba sólo el desglose y nunca la cifra que se le pidió.
+    total = sum((Decimal(t) for _, t in con_gasto), Decimal("0"))
+    cifras = [(cat, plata(t)) for cat, t in con_gasto]
+    return _card("En qué gastaste", cifras + [("Total gastado", plata(total))] if cifras else cifras,
                  chip=_mes_legible(d["periodo"]))
 
 
@@ -134,7 +138,8 @@ def _torta_categorias(q, args: dict) -> dict:
 # builder, para que enum y descripción no puedan divergir (una sola tabla).
 _CONSULTAS: dict[str, tuple[Callable[[object, dict], dict], str]] = {
     "portada": (_portada,
-                "cuánto entró, salió, quedó, facturó o cobró ESTE MES"),
+                "cuánto entró, salió, quedó, facturó o cobró ESTE MES (sólo el mes en curso; "
+                "para un mes PASADO usá `entro_vs_salio` o `facturacion_por_mes`)"),
     "por_cobrar": (_por_cobrar,
                    "cuánta plata le deben, qué tiene impago o vencido"),
     "mejores_clientes": (_mejores_clientes,
@@ -142,9 +147,11 @@ _CONSULTAS: dict[str, tuple[Callable[[object, dict], dict], str]] = {
     "facturacion_por_mes": (_facturacion_por_mes,
                             "cuánto facturó mes a mes, cómo viene la facturación"),
     "entro_vs_salio": (_entro_vs_salio,
-                       "si entró más de lo que salió, o cómo viene la plata mes a mes"),
+                       "cuánto ENTRÓ o cuánto SALIÓ/GASTÓ en total en cualquiera de los últimos 6 "
+                       "meses (incluidos los pasados), si entró más de lo que salió, cómo viene la plata"),
     "torta_categorias": (_torta_categorias,
-                         "en qué gastó, qué categoría pesa más (acepta `mes` YYYY-MM; sin mes, el actual)"),
+                         "en QUÉ categorías gastó y cuál pesa más, con el total del mes (acepta `mes` "
+                         "YYYY-MM; sin mes, el actual)"),
 }
 
 CONSULTAS = tuple(_CONSULTAS)
