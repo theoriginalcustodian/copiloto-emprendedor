@@ -70,6 +70,7 @@ from dispatcher_emprendedor import _friendly_toolkit  # noqa: E402
 from hitl_card import detalle_de, recibo_de  # noqa: E402
 # RAG al chat (contrato 2026-11-05): la MISMA ejecución que el worker de soporte, sin duplicarla.
 from soporte_agent_tools import CONSULTAR_KB_SCHEMA, _run_consultar_kb  # noqa: E402
+from graphity_structured_client import GrafoIngestError  # noqa: E402
 # preg-datos (C-D5): la card `datos_negocio`. `plata` vive ahí y se re-exporta como `_plata` (lo usan
 # `consultar_cliente` y los tests): una sola definición de cómo se escribe la plata acá.
 from datos_card import (CONSULTAS as CONSULTAS_NEGOCIO, KIND as KIND_DATOS_NEGOCIO,  # noqa: E402
@@ -206,6 +207,31 @@ CONSULTAR_NEGOCIO_SCHEMA = {"type": "function", "function": {
         "mes": {"type": "string", "description": "sólo para `torta_categorias`: el mes como YYYY-MM "
                                                   "(opcional; sin él, el mes actual)"}},
         "required": ["consulta"]}}}
+
+# Inteligencia de Negocio por chat (2026-11-06): la HISTORIA del negocio sale del grafo
+# (`negocio-{cliente_id}`, alimentado por el sync de `copiloto_eventos`); los NÚMEROS siguen saliendo
+# sólo de SQL (`consultar_negocio` / `consultar_cliente`). El grafo es búsqueda semántica top-K: sus
+# resultados son una MUESTRA, nunca un total — por eso la description prohíbe sumarlos.
+CONSULTAR_HISTORIAL_SCHEMA = {"type": "function", "function": {
+    "name": "consultar_historial",
+    "description": "Busca QUÉ PASÓ en el negocio del usuario: hechos registrados con su fecha "
+                   "(qué se le facturó o presupuestó a alguien, a qué trabajo se imputó un gasto, "
+                   "cuándo se aprobó o anuló algo, cómo cambió un precio, a quién se le pagó). Usala "
+                   "para preguntas de HISTORIA o de RELACIÓN ('¿qué pasó con el presupuesto de "
+                   "Pérez?', '¿a qué trabajo fue el gasto de mercadería?', '¿cuándo subí el precio "
+                   "del flete?'). Es de SOLO LECTURA. Reglas: respondé SOLO con los hechos que "
+                   "devuelve, citando su fecha; los resultados son una muestra de los más parecidos "
+                   "a la pregunta, así que NUNCA los sumes ni los cuentes para dar un total — para "
+                   "totales y números usá `consultar_negocio` o `consultar_cliente`. Si no devuelve "
+                   "nada pertinente, decí que no lo tenés registrado; no lo deduzcas ni lo inventes. "
+                   "No sirve para preguntas de causa ('¿por qué bajaron las ventas?').",
+    "parameters": {"type": "object", "properties": {
+        "pregunta": {"type": "string", "description": "lo que quiere saber, con los nombres tal como "
+                                                      "los dijo ('presupuesto de Pérez')"},
+        "incluir_anteriores": {"type": "boolean",
+                               "description": "true sólo si pregunta cómo ERA antes o qué cambió "
+                                              "(trae también los hechos ya superados, marcados)"}},
+        "required": ["pregunta"]}}}
 
 REGISTRAR_INGRESO_SCHEMA = {"type": "function", "function": {
     "name": "registrar_ingreso",
@@ -414,6 +440,9 @@ _FIRST_CLASS_WRITES = frozenset({"calendar_book", "mp_charge"})
 _CAPACIDADES = (
     ("registrar_gasto", "Gastos", ("pagué 15 mil de mercadería", "gasté 3.000 en nafta ayer")),
     ("consultar_negocio", "Números", ("¿cuánto entró este mes?", "¿quién me debe plata?")),
+    ("consultar_cliente", "Clientes", ("¿cuánto me compró la panadería?",)),
+    ("consultar_historial", "Historia", ("¿qué pasó con el presupuesto de Pérez?",
+                                         "¿a qué trabajo fue el gasto de mercadería?")),
     ("registrar_ingreso", "Ingresos", ("me pagaron 85 mil",
                                        "cobré 40 mil de la panadería en efectivo")),
     ("marcar_factura_cobrada", "Facturas", ("me pagaron la factura 42",)),
@@ -510,7 +539,11 @@ def build_tool_catalog() -> list[dict]:
     # de Negocio necesite responder por chat, se re-enchufan acá sin reescribirlos.
     # preg-datos (C-D5): `consultar_negocio` es la excepción a esa poda —sólo NÚMEROS del negocio, desde
     # `InteligenciaQueries`, devueltos como card—, y entra por decisión de planificación (2026-10-13).
+    # Inteligencia de Negocio por chat (operador, 2026-11-06): vuelve `consultar_cliente` (números de
+    # UN cliente, SQL) y entra `consultar_historial` (qué pasó, grafo). `consultar_actividad` sigue
+    # podada: es memoria CONVERSACIONAL, no el registro del negocio (CONTEXT.md, «actividad»).
     schemas = [CALENDAR_BOOK_SCHEMA, MP_CHARGE_SCHEMA, CONSULTAR_NEGOCIO_SCHEMA,
+               CONSULTAR_CLIENTE_SCHEMA, CONSULTAR_HISTORIAL_SCHEMA,
                REGISTRAR_GASTO_SCHEMA, REGISTRAR_CLIENTE_SCHEMA,
                REGISTRAR_INGRESO_SCHEMA, COMPLETAR_INGRESO_SCHEMA,
                MARCAR_FACTURA_COBRADA_SCHEMA, MARCAR_PRESUPUESTO_SCHEMA,
@@ -531,6 +564,8 @@ TOOL_INDEX = {**_service_index(), "calendar_book": ("calendar",), "mp_charge": (
               "registrar_cliente": ("cliente",), "consultar_cliente": ("cliente_consulta",),
               # `consultar_negocio`: read puro (card de datos), tampoco va en WRITE_TOOLS.
               "consultar_negocio": ("negocio",),
+              # `consultar_historial`: read puro contra el grafo de negocio, sin gate.
+              "consultar_historial": ("historial",),
               # `consultar_base_de_conocimiento` (RAG al chat): read puro, sin gate HITL. Los datos del
               # negocio NO viajan al RAG (la pregunta sale tal cual, sin cliente_id).
               "consultar_base_de_conocimiento": ("kb",),
@@ -1111,6 +1146,74 @@ def _run_consultar_negocio(arguments, ctx, idem_key, inteligencia_queries_factor
     return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
                       observation={"result": texto_para_el_llm(card)},
                       artifact=Artifact(kind=KIND_DATOS_NEGOCIO, data=card))
+
+
+#: Cuántos hechos pide al grafo y cuántos muestra: se pide de más porque el filtro de vigencia es del
+#: lado del cliente (`/graph/search` NO filtra `invalid_at`) y descarta parte.
+_HISTORIAL_PEDIDOS, _HISTORIAL_MOSTRADOS = 30, 12
+
+
+def _fecha_hecho(edge: dict) -> str:
+    return str(edge.get("valid_at") or "")[:10] or "sin fecha"
+
+
+def _run_consultar_historial(arguments, ctx, idem_key, grafo_client_factory):
+    """«¿Qué pasó con el presupuesto de Pérez?» — READ puro, sin gate, contra el grafo del negocio.
+
+    **El grafo sale de `ctx`, nunca de los `arguments`** (regla 7): el group es `negocio-{ctx.cliente_id}`
+    y el modelo no tiene cómo nombrar otro. 🔴 `/graph/search` NO filtra `invalid_at` (trampa 6): sin el
+    filtro de acá, el chat contestaría a la vez el precio viejo y el nuevo, o un gasto imputado a dos
+    trabajos. Lo superado sólo viaja si se pide, y marcado como tal.
+    """
+    if grafo_client_factory is None:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": "no puedo consultar el historial del negocio ahora mismo"})
+    pregunta = str(arguments.get("pregunta") or "").strip()
+    if not pregunta:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": "Preguntale qué quiere saber."})
+    incluir_anteriores = arguments.get("incluir_anteriores") is True
+    client = grafo_client_factory()
+    if client is None:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": "no puedo consultar el historial del negocio ahora mismo"})
+    try:
+        resp = client.search(pregunta, group_ids=[f"negocio-{ctx.cliente_id}"], scope="edges",
+                             limit=_HISTORIAL_PEDIDOS)
+    except GrafoIngestError:
+        # el usuario ve el error de negocio (no un «no hay nada», que sería afirmar un vacío falso).
+        _log.warning("consultar_historial: /graph/search falló", exc_info=True)
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": "no puedo consultar el historial del negocio ahora mismo"})
+
+    vigentes, anteriores, vistos = [], [], set()
+    for e in (resp or {}).get("edges") or []:
+        fact = str(e.get("fact") or "").strip()
+        if not fact:
+            continue
+        superado = e.get("invalid_at") is not None
+        clave = (fact, superado)
+        if clave in vistos:
+            continue
+        vistos.add(clave)
+        if not superado:
+            vigentes.append(f"- {_fecha_hecho(e)}: {fact}")
+        elif incluir_anteriores:
+            anteriores.append(f"- {_fecha_hecho(e)}: {fact} (YA NO VIGENTE desde "
+                              f"{str(e['invalid_at'])[:10]})")
+    vigentes, anteriores = vigentes[:_HISTORIAL_MOSTRADOS], anteriores[:_HISTORIAL_MOSTRADOS]
+    if not vigentes and not anteriores:
+        return ToolResult(
+            tool_call_id=idem_key, is_write=False, status="ok",
+            observation={"result": "No encontré nada registrado sobre eso. Decíselo así; NO lo "
+                                   "deduzcas ni inventes un hecho."})
+    partes = ["Hechos registrados (muestra de los más parecidos a la pregunta, NO un total: no los "
+              "sumes; contestá sólo con lo que esté acá):"]
+    partes += vigentes or ["- (nada vigente)"]
+    if anteriores:
+        partes += ["Hechos anteriores, ya superados:"] + anteriores
+    return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                      observation={"result": "\n".join(partes)})
 
 
 # ── hito 3: las cuatro tools que hacen que la plata se registre HABLANDO ─────────────────────────
@@ -1874,7 +1977,7 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
                        signal_factura_dictado=None, buscar_borrador_dictado=None,
                        buscar_borrador_cancelable=None, cancelar_factura_dictado=None,
                        trauma_store_factory=None, inteligencia_queries_factory=None,
-                       rag_client_factory=None):
+                       rag_client_factory=None, grafo_client_factory=None):
     """Ejecuta UNA tool y devuelve ToolResult. El gate lo abre el propio executor (write sin confirmed →
     needs_confirmation SIN ejecutar). Errores de negocio → status='error' (nunca excepción → retry ∞).
     `llm` (opcional): el LlmProvider compartido que usa `consultar_actividad` para resumir la actividad.
@@ -1922,6 +2025,9 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
                 return _run_consultar_negocio(arguments, ctx, idem_key, inteligencia_queries_factory)
             # ── 1ra clase: RAG al chat — «cómo uso la app» (READ puro → sin gate). Sin factory = apagado
             #    explícito: `_run_consultar_kb` devuelve outcome=unavailable, el agente lo dice y no inventa.
+            # ── 1ra clase: Inteligencia de Negocio — la HISTORIA desde el grafo (READ → sin gate) ─────
+            if kind == "historial":
+                return _run_consultar_historial(arguments, ctx, idem_key, grafo_client_factory)
             if kind == "kb":
                 return _run_consultar_kb(arguments, ctx, idem_key, rag_client_factory or (lambda: None),
                                          trauma_store_factory)

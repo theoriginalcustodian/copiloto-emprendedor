@@ -219,7 +219,7 @@ class MapeadorEvento:
             EMITIO: _AcumuladorArista(
                 **ng, edge_type=EMITIO, target_type=COMPROBANTE, target_col="comprobante_label",
                 target_id_col="comprobante_key",
-                fact_template="{source} emitió la factura {tipo} {pto}-{nro} por ${total} el {fecha}",
+                fact_template="{source} emitió la {tipo} {pto}-{nro} por ${total} el {fecha}",
                 property_cols=("tipo", "pto", "nro", "total", "fecha")),
             FACTURADO_A: _AcumuladorArista(
                 source_type=COMPROBANTE, source_name_col="comprobante_label",
@@ -322,7 +322,7 @@ class MapeadorEvento:
         valid_at = ev.ocurrido_en.isoformat()
         comp = {"comprobante_key": ev.entidad_id, "comprobante_label": label}
         self._acc[EMITIO].agregar({**self._base_negocio(), **comp, "valid_at": valid_at,
-                                   "tipo": str(d.get("tipo_cbte")), "pto": str(pto), "nro": str(nro),
+                                   "tipo": _nombre_cbte(d.get("tipo_cbte")), "pto": str(pto), "nro": str(nro),
                                    "total": d.get("total"), "fecha": fecha})
         cliente = d.get("receptor_nombre")
         cli_key = _clave_cliente(cliente)
@@ -589,7 +589,7 @@ class MapeadorEstado:
             IMPUTADO_A, edge_type=IMPUTADO_A, source_type=GASTO,
             source_name_col="gasto_label", source_id_col="gasto_key",
             target_type=IMPUTACION, target_col="imputacion_label", target_id_col="imputacion_key",
-            fact_template="El gasto {source} se imputó a " + eslabon + " el {fecha}",
+            fact_template="El {source} se imputó a " + eslabon + " el {fecha}",   # label = «gasto N»
             property_cols=("fecha",),
         ).agregar({"gasto_key": gasto_key, "gasto_label": f"gasto {gasto_key}",
                   "imputacion_key": imp_key, "imputacion_label": imp_label,

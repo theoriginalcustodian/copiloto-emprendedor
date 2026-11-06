@@ -39,7 +39,10 @@ def test_registrar_cliente_esta_en_el_catalogo_y_NO_pide_confirmacion():
     nombres = [s["function"]["name"] for s in tool_catalog.build_tool_catalog()]
     assert "registrar_cliente" in nombres
     assert "registrar_cliente" not in tool_catalog.WRITE_TOOLS
-    assert "consultar_cliente" not in nombres, "volvio a exponerse una tool consultiva podada"
+    # 2026-11-06: `consultar_cliente` VUELVE (Inteligencia de Negocio por chat, decisión del operador):
+    # los números de UN cliente salen de SQL. Es read puro: tampoco entra al confirm-gate.
+    assert "consultar_cliente" in nombres
+    assert "consultar_cliente" not in tool_catalog.WRITE_TOOLS
 
 
 def test_registrar_cliente_pide_SOLO_el_nombre():
