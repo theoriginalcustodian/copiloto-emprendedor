@@ -69,3 +69,33 @@ declararlo faltante, porque puede vivir en otro archivo del mismo módulo
 ([[el-fix-ya-existe-en-otro-call-site]]). Y (3) fechá cada marcador contra la última medición del
 frente: el que no sobrevive a esa comparación se retira, y retirarlo es trabajo con dueño, no un
 subproducto de escribir la refutación.
+
+## Refuerzo 2026-11-06 — el refutador y el portador del marcador eran LA MISMA SESIÓN, y aun así no se tocaron
+
+Hasta hoy esta entrada se leía como un problema de **traspaso**: alguien refuta, otro sigue citando
+el marcador viejo. Medido hoy, el caso peor no necesita dos personas. **Yo bajé el contrato que
+refutaba la precondición el 2026-11-05** —«la voz del operador NO es precondición», con el camino
+aire→micrófono→STT real acreditado el 2026-08-04 por TTS de Windows SAPI— y **al día siguiente
+reporté «falta la voz del operador» tres veces**, leyendo el `Falta:` de SM-P12 que nunca actualicé.
+
+Lo tuvo que cortar el operador, y la pregunta con la que lo cortó es el instrumento: *«¿de dónde sale
+eso y por qué no está cerrado?»*. No preguntó si estaba cerrado: preguntó por la **procedencia** del
+pendiente. Ahí se ve en un paso que la fuente del reporte no era una medición, era un texto.
+
+**Por qué escribir la refutación no retira el marcador, ni siquiera para quien la escribió:** son dos
+artefactos con dos ciclos de lectura distintos. El contrato se escribe una vez y se lee cuando alguien
+lo busca; el `Falta:` se lee **en cada reporte**, porque es la fuente de la que se redacta el estado.
+Mientras el marcador siga ahí, gana por frecuencia de lectura, no por ser más cierto
+([[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]]). Mi propia memoria del contrato no
+compitió con el texto: el texto estaba delante de los ojos y el contrato no.
+
+**Agregado a How to apply:** el commit que refuta un pendiente **tiene que tocar los dos archivos** —
+el que lo refuta y el que lo declara— o no refutó nada operativamente. Y el control es barato:
+`grep` el literal del pendiente en el registro **después** de escribir la refutación. Si aparece,
+el trabajo no terminó. Lo hice hoy y dio 2 ocurrencias, con el contrato ya escrito hacía un día.
+
+**Lo que NO se hace al corregirlo:** borrar la línea. Dejé la corrección escrita en la ficha citando
+la frase vieja, porque una ficha limpia no distingue «esto nunca fue pendiente» de «esto se pagó»,
+y la lección era justamente el mecanismo que lo mantuvo vivo
+([[un-falta-que-no-se-recorta-al-pagarse-fabrica-cola-inexistente]] es el problema espejo: ahí sobra
+texto, acá sobraba la ausencia de él).
