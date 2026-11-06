@@ -6,7 +6,7 @@
 #   - techo de 2 simultáneos: un tercero ESPERA (lock por slot), no arranca
 #   - sólo lectura por defecto; la salida va a un archivo, nunca al contexto de quien llama
 #   - cada corrida queda en BITACORA.md: modelo, hash del prompt, sha del repo, duración, exit
-#   - sin --bare (usa la misma auth OAuth/Max que la sesión)
+#   - sin --bare (exige API key; no usa la auth OAuth/Max). El contexto mínimo se logra con cwd neutro + --setting-sources "" (ver run())
 #
 # Uso:
 #   headless.sh run  --modelo opus|fable|sonnet|haiku --frente C8 --prompt-file p.md --scope <dir> [--tools "Read,Grep,Glob"]
@@ -77,12 +77,19 @@ run() {
   hash=$(sha256sum "$pf" | cut -d' ' -f1)
   tomar_slot; trap soltar_slot EXIT
   t0=$(date +%s)
-  # Contexto cero: se ejecuta con CWD en el scope y SIN heredar el CLAUDE.md del repo salvo lo que el scope trae.
-  ( cd "$scope" && claude -p "$(cat "$pf")" \
+  # Contexto MÍNIMO (orden del operador 2026-11-06). Medido con haiku: defaults = ~76k tokens de base antes de leer
+  # nada (hooks + CLAUDE.md global + memoria + skills); cwd en el repo suma ~16k más del CLAUDE.md del proyecto.
+  # Con cwd NEUTRO + --setting-sources "" + sin skills/MCP/persistencia + --add-dir al scope: ~6,6k y el scope se lee igual.
+  # --bare NO sirve: exige ANTHROPIC_API_KEY y no usa la auth OAuth/Max (api_error, 0 tokens).
+  # Esto es lo que evita el 'Autocompact is thrashing' de las corridas F4-revG/revG2/ciego.
+  local neutro; neutro="$(mktemp -d)"
+  ( cd "$neutro" && claude -p "$(cat "$pf")" \
       --model "$modelo" --output-format json \
+      --setting-sources "" --disable-slash-commands --strict-mcp-config --no-session-persistence \
       --tools "$tools" --allowedTools "$tools" \
       --disallowedTools "Bash Edit Write MultiEdit NotebookEdit WebFetch WebSearch" \
       --add-dir "$scope" --permission-mode default ) > "$salida" 2> "$salida.err" || rc=$?
+  rm -rf "$neutro"
   # NO bypassPermissions: en ese modo --allowedTools no restringe nada y "solo lectura" sería una promesa vacía
   # (hallazgo del review de seguridad 2026-11-04). La restricción real es --tools (set disponible) + --disallowedTools
   # + modo default (en -p lo no permitido se rechaza, no se pregunta). El self-test caso 7 lo comprueba CON efecto.
