@@ -17,7 +17,7 @@ import {
   type PerfilNegocio,
 } from '@copiloto/core';
 
-import { Button, Skeleton } from '../../../design-system';
+import { Button, Skeleton, useFocoAlMontar } from '../../../design-system';
 import { SeccionCatalogo } from './SeccionCatalogo';
 import { OPCIONES_FORMALIDAD, OPCIONES_LARGO } from './PantallaTono';
 import '../ajustes.css';
@@ -99,6 +99,7 @@ function resumenDeTono(c: { formalidad: FormalidadCopiloto; largoRespuesta: Larg
 export function PantallaPerfilNegocio({ onAbrirTono }: { onAbrirTono?: () => void } = {}) {
   const [campos, setCampos] = useState<Campos>(CAMPOS_VACIOS);
   const [estadoCarga, setEstadoCarga] = useState<EstadoCarga>('cargando');
+  const foco = useFocoAlMontar<HTMLDivElement>(estadoCarga === 'ok');
   const [estadoGuardado, setEstadoGuardado] = useState<EstadoGuardado>('idle');
   const [seccionEnCurso, setSeccionEnCurso] = useState<Seccion | null>(null);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
@@ -214,7 +215,7 @@ export function PantallaPerfilNegocio({ onAbrirTono }: { onAbrirTono?: () => voi
   const enviando = estadoGuardado === 'enviando';
 
   return (
-    <div className="perfil-negocio-screen" data-testid="pantalla-perfil-negocio">
+    <div ref={foco} className="perfil-negocio-screen" data-testid="pantalla-perfil-negocio">
       <h1 className="perfil-negocio-screen__title">Mi negocio</h1>
 
       {estadoCarga === 'cargando' && (

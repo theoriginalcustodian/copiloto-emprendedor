@@ -51,4 +51,11 @@ describe('CambiarCredenciales (K-12 / BL-J11)', () => {
     expect(await screen.findByTestId('account-contrasena-error')).toHaveTextContent('no coinciden');
     expect(mockContrasena).not.toHaveBeenCalled();
   });
+
+  it('contrato foco-en-BODY: al EXPANDIR «Cambiar contraseña» el foco va a «Contraseña actual»', () => {
+    render(<CambiarCredenciales cuentaGoogle={false} />);
+    expect(document.activeElement).toBe(document.body);
+    fireEvent.click(screen.getByTestId('account-cambiar-contrasena'));
+    expect(document.activeElement).toBe(screen.getByTestId('account-contrasena-actual'));
+  });
 });

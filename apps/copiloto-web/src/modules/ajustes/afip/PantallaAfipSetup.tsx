@@ -15,7 +15,7 @@ import {
   type EstadoAfip,
 } from '@copiloto/core';
 
-import { Badge, Button } from '../../../design-system';
+import { Badge, Button, useFocoAlMontar } from '../../../design-system';
 import '../ajustes.css';
 
 /**
@@ -185,6 +185,10 @@ export function PantallaAfipSetup() {
   // Estado general (`GET /afip/estado`).
   // -------------------------------------------------------------------------------------------
   const [estadoGeneral, setEstadoGeneral] = useState<EstadoAfip | null>(null);
+  // Foco inicial recién cuando terminó la precarga: antes el CUIT editable se reemplaza por el chip
+  // Bloqueado y el foco volvería a BODY.
+  const [cargaInicial, setCargaInicial] = useState(false);
+  const foco = useFocoAlMontar<HTMLDivElement>(cargaInicial);
   const [estadoGeneralNoDisponible, setEstadoGeneralNoDisponible] = useState(false);
 
   const refrescarEstadoGeneral = useCallback(
@@ -214,6 +218,7 @@ export function PantallaAfipSetup() {
     void (async () => {
       const res = await refrescarEstadoGeneral();
       if (res.estado?.cuit) await precargarPerfil(res.estado.cuit);
+      setCargaInicial(true);
     })();
   }, []);
 
@@ -377,7 +382,7 @@ export function PantallaAfipSetup() {
   // Render.
   // -------------------------------------------------------------------------------------------
   return (
-    <div className="afip-setup-screen" data-testid="pantalla-afip-setup">
+    <div ref={foco} className="afip-setup-screen" data-testid="pantalla-afip-setup">
       <h1 className="afip-setup-screen__title">Facturación ARCA</h1>
 
       {/* ---------------------------- Bloque 1 -- Perfil fiscal ---------------------------- */}

@@ -65,4 +65,15 @@ describe('PantallaTono — «Cómo hablarle» (K-15 / BL-X7)', () => {
     });
     expect(await screen.findByTestId('tono-guardado')).toBeInTheDocument();
   });
+
+  it('contrato foco-en-BODY: el foco va al primer campo CUANDO LLEGA EL DATO, no antes (control de timing)', async () => {
+    let resolver!: (v: Awaited<ReturnType<typeof leerPerfilNegocio>>) => void;
+    vi.mocked(leerPerfilNegocio).mockReturnValue(new Promise((r) => { resolver = r; }));
+    render(<PantallaTono />);
+    // Mientras carga no hay campo: el foco NO puede estar en ningún campo (y un hook que sólo mirara el montaje tampoco lo logra después).
+    expect(document.activeElement).toBe(document.body);
+    resolver({ status: 'ok', perfil: PERFIL });
+    const campo = await screen.findByTestId('tono-formalidad');
+    await waitFor(() => expect(document.activeElement).toBe(campo));
+  });
 });
