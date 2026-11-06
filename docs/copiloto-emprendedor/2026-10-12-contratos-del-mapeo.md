@@ -31,7 +31,7 @@
 | `onb-cumplida` | backend + frontend | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | contrato primero: el insight sale de `textoDelInsight` (`core api/onboarding.ts:87`), no de la pantalla |
 | `preg` | backend + frontend | La pantalla EXISTE y se llega a ella navegando; el id `preg` del prototipo tiene contraparte con `path:linea`. Escrita-e-inalcanzable NO cuenta. | contrato primero: no existe el componente ni la capacidad: la card de datos como respuesta no tiene parser en `packages/core/src/chat/*.ts`, y la promo masiva a clientes no existe (cero hits de `promo`) |
 
-## nativa-con-device — 14 renglones
+## nativa-con-device — 13 renglones
 
 El telefono tiene **un solo dueno**. Nada de este grupo se declara listo con un test unitario ni con un verde de PWA. Para gestos RNGH: `adb input motionevent` DOWN/MOVE/UP — `input tap` no ejercita un Pan.
 
@@ -46,13 +46,12 @@ El telefono tiene **un solo dueno**. Nada de este grupo se declara listo con un 
 | `detalle` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
 | `entrada` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
 | `esc` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
-| `feedback` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
 | `grabando` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
 | `ingresos` | frontend (device, dueno unico) | Comparada contra el prototipo: la fila dice COINCIDE o nombra la divergencia. Hoy no esta medida, y «sin comparacion» no es «coincide». | lo tactil no lo acredita un test unitario |
 | `reveal` | frontend (device, dueno unico) | La capacidad tiene al menos UN consumidor real en `apps/mobile/src` fuera de su propio archivo y de sus tests, y se VE en la pantalla. Hoy esta escrita y nadie la usa. | lo tactil no lo acredita un test unitario |
 | `splash` | frontend (device, dueno unico) | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | lo tactil no lo acredita un test unitario |
 
-## nativa-sin-device — 33 renglones
+## nativa-sin-device — 34 renglones
 
 Acreditables con test en el VPS. No necesitan el telefono, asi que **no esperan** al dueno del device.
 
@@ -74,6 +73,7 @@ Acreditables con test en el VPS. No necesitan el telefono, asi que **no esperan*
 | `fact-cae` | frontend | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | UI pura, verificable con test |
 | `fact-hitl` | frontend | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | UI pura, verificable con test |
 | `factura` | frontend | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | UI pura, verificable con test |
+| `feedback` | frontend | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | UI pura, verificable con test |
 | `gastos` | frontend | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | UI pura, verificable con test |
 | `hablar` | frontend | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | UI pura, verificable con test |
 | `ingresar` | frontend | Cada divergencia listada en la fila queda resuelta en el codigo, o declarada enmienda fundada con su motivo escrito. Ninguna queda sin veredicto. | UI pura, verificable con test |
