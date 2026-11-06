@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import type { EstadoFacturaResp, ReceptorInput } from '@copiloto/core';
 
-import { Button } from '../../design-system';
+import { Button, useFocoAlMontar } from '../../design-system';
 import { OPCIONES_CONDICION_IVA_RECEPTOR, OPCIONES_TIPO_DOC, TIPO_DOC_CONSUMIDOR_FINAL } from './catalogos';
 
 /**
@@ -27,6 +27,7 @@ export function PasoCliente({
   onVolverResumen,
   testID = 'facturacion-paso-cliente',
 }: PasoClienteProps) {
+  const foco = useFocoAlMontar<HTMLDivElement>();
   // SM-P13 (gemelo del SM-H1 de mobile) — arranca con lo cargado, por lo mismo que `PasoDatosVenta`.
   const cargado = estado.receptor;
   const [condicionIva, setCondicionIva] = useState(cargado ? String(cargado.condicionIva) : '');
@@ -74,7 +75,7 @@ export function PasoCliente({
   const hayMotivo = estado.motivo != null && estado.motivo !== '';
 
   return (
-    <div className="paso-cliente" data-testid={testID}>
+    <div ref={foco} className="paso-cliente" data-testid={testID}>
       <h2 className="paso-cliente__titulo">Cliente</h2>
 
       {hayMotivo && (

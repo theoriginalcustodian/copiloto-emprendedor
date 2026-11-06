@@ -11,7 +11,7 @@ import {
   type Presupuesto,
 } from '@copiloto/core';
 
-import { Badge, Button, Skeleton } from '../../design-system';
+import { Badge, Button, Skeleton, useFocoAlMontar } from '../../design-system';
 
 /**
  * Port de `apps/mobile/src/modules/presupuestos/DetallePresupuesto.tsx` — overlay de ficha con las
@@ -85,6 +85,7 @@ export function DetallePresupuesto({
   onEstadoCambiado,
   sugerenciaMandarPorMail = null,
 }: DetallePresupuestoProps) {
+  const foco = useFocoAlMontar<HTMLDivElement>();
   const [p, setP] = useState<Presupuesto>(inicial);
   const [cargandoItems, setCargandoItems] = useState(true);
   const [estadoFacturar, setEstadoFacturar] = useState<EstadoFacturar>('idle');
@@ -170,7 +171,7 @@ export function DetallePresupuesto({
   const hayBorradorPendiente = p.facturaId != null && !p.facturado;
 
   return (
-    <div className="detalle-presupuesto" data-testid="detalle-presupuesto">
+    <div ref={foco} tabIndex={-1} className="detalle-presupuesto" data-testid="detalle-presupuesto">
       <div className="detalle-presupuesto__scroll" data-testid="detalle-presupuesto-scroll">
         <div className="detalle-presupuesto__encabezado">
           <p className="detalle-presupuesto__titulo" data-testid="detalle-presupuesto-titulo">

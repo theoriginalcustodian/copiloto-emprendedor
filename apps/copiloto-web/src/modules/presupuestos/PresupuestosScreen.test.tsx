@@ -73,4 +73,14 @@ describe('PresupuestosScreen — SM-P7 (dock del pie: la acción corre en el cha
     expect(await screen.findByTestId('presupuesto-concepto')).toHaveValue('');
     expect(screen.queryByTestId('presupuesto-aviso-correccion')).not.toBeInTheDocument();
   });
+
+  it('contrato foco-en-BODY: al abrir el alta el foco cae en el PRIMER campo editable, no en BODY', async () => {
+    render(<PresupuestosScreen onFacturar={vi.fn()} onAbrirChat={vi.fn()} />);
+    await screen.findByTestId('presupuestos-nuevo');
+
+    fireEvent.click(screen.getByTestId('presupuestos-nuevo'));
+
+    const concepto = await screen.findByTestId('presupuesto-concepto');
+    expect(document.activeElement).toBe(concepto);
+  });
 });

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 
 import { cambiarContrasena } from '@copiloto/core';
 
-import { Button } from '../../design-system';
+import { Button, useFocoAlMontar } from '../../design-system';
 
 /** Largo mínimo de la política de GoTrue; el backend es quien decide (`contrasena_invalida`), esto
  *  sólo evita ir a la red por un caso que ya se sabe inválido. */
@@ -17,6 +17,7 @@ function ChevronIcon() {
 }
 
 function FormularioContrasena({ onListo }: { onListo: () => void }) {
+  const foco = useFocoAlMontar<HTMLFormElement>();
   const [actual, setActual] = useState('');
   const [nueva, setNueva] = useState('');
   const [repetida, setRepetida] = useState('');
@@ -57,7 +58,7 @@ function FormularioContrasena({ onListo }: { onListo: () => void }) {
   }
 
   return (
-    <form className="account-screen__credencial" onSubmit={enviar} data-testid="account-contrasena-form">
+    <form ref={foco} className="account-screen__credencial" onSubmit={enviar} data-testid="account-contrasena-form">
       <label>
         Contraseña actual
         <input type="password" autoComplete="current-password" value={actual} onChange={(e) => setActual(e.target.value)} data-testid="account-contrasena-actual" />

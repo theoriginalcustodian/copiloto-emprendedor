@@ -15,3 +15,4 @@ export { PresenceOrb, type PresenceOrbProps } from './PresenceOrb';
 export { EstadoVacio, type EstadoVacioProps } from './EstadoVacio';
 export { Kit } from './Kit';
 export { Recibo, type ReciboProps, type LineaRecibo, type AccionRecibo } from './Recibo';
+export { useFocoAlMontar } from './useFocoAlMontar';

@@ -11,7 +11,7 @@ import {
   type OrigenIngreso,
 } from '@copiloto/core';
 
-import { Button } from '../../design-system';
+import { Button, useFocoAlMontar } from '../../design-system';
 import { generarId } from '../../util/id';
 
 /** Cómo se le pide cada dato que faltó, en el idioma del emprendedor — mismo texto que
@@ -72,6 +72,7 @@ export function FormularioIngreso({
   onListo,
   mensajeId,
 }: FormularioIngresoProps) {
+  const foco = useFocoAlMontar<HTMLFormElement>();
   const [monto, setMonto] = useState(iniciales?.monto ?? '');
   const [cliente, setCliente] = useState(iniciales?.cliente ?? '');
   const [medio, setMedio] = useState(iniciales?.medio ?? '');
@@ -154,7 +155,7 @@ export function FormularioIngreso({
   const faltan = guardado?.falta ?? null;
 
   return (
-    <form className="formulario-ingreso" data-testid="formulario-ingreso" onSubmit={(e) => void guardar(e)}>
+    <form ref={foco} className="formulario-ingreso" data-testid="formulario-ingreso" onSubmit={(e) => void guardar(e)}>
       <label className="formulario-ingreso__campo">
         <span className="formulario-ingreso__etiqueta">Cuánto te pagaron</span>
         <input

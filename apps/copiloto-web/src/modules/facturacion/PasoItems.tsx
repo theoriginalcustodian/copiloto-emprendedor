@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import type { EstadoFacturaResp, NuevoItem } from '@copiloto/core';
 
-import { Button } from '../../design-system';
+import { Button, useFocoAlMontar } from '../../design-system';
 
 /**
  * Paso 2 — Ítems. Port de `apps/mobile/src/modules/facturacion/PasoItems.tsx` — lista + alta + borrado.
@@ -28,6 +28,7 @@ export function PasoItems({
   onVolverResumen,
   testID = 'facturacion-paso-items',
 }: PasoItemsProps) {
+  const foco = useFocoAlMontar<HTMLDivElement>();
   const [descripcion, setDescripcion] = useState('');
   const [cantidad, setCantidad] = useState('');
   const [precioUnitario, setPrecioUnitario] = useState('');
@@ -58,7 +59,7 @@ export function PasoItems({
   }
 
   return (
-    <div className="paso-items" data-testid={testID}>
+    <div ref={foco} className="paso-items" data-testid={testID}>
       <h2 className="paso-items__titulo">Ítems</h2>
 
       {estado.items.length === 0 && (

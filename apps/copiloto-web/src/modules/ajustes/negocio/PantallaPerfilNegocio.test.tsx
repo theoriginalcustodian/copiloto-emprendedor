@@ -152,4 +152,16 @@ describe('PantallaPerfilNegocio — fila-resumen de tono (K-15 / BL-X7)', () => 
     expect(screen.queryByTestId('perfil-negocio-formalidad')).not.toBeInTheDocument();
     expect(screen.queryByTestId('perfil-negocio-largo')).not.toBeInTheDocument();
   });
+
+  it('contrato foco-en-BODY: el foco va al primer campo CUANDO LLEGA EL DATO, no antes (control de timing)', async () => {
+    let resolver!: (v: Awaited<ReturnType<typeof leerPerfilNegocio>>) => void;
+    mockLeer.mockReturnValue(new Promise((r) => { resolver = r; }));
+    render(<PantallaPerfilNegocio />);
+    expect(document.activeElement).toBe(document.body);
+    resolver({ status: 'ok', perfil: PERFIL });
+    await waitFor(() => expect(screen.getByTestId('perfil-negocio-telefono')).toBeInTheDocument());
+    await waitFor(() => expect(document.activeElement).not.toBe(document.body));
+    expect(screen.getByTestId('pantalla-perfil-negocio').contains(document.activeElement)).toBe(true);
+    expect(['INPUT', 'SELECT', 'TEXTAREA']).toContain(document.activeElement?.tagName);
+  });
 });
