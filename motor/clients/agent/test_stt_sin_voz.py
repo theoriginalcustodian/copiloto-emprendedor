@@ -63,6 +63,31 @@ def test_umbral_por_env_y_fuera_de_rango_desactiva(monkeypatch):
     assert _texto_si_hay_voz(SILENCIO_GROQ) == ""                  # env inválido → default 0.6
 
 
+def _metricas(caplog):
+    return [json.loads(r.getMessage()) for r in caplog.records if '"stt_metricas"' in r.getMessage()]
+
+
+def test_loguea_metricas_de_CADA_transcripcion_sin_texto_ni_audio(caplog):
+    """Instrumentación: voz y silencio dejan rastro (el guard sólo logueaba al descartar), y el texto no sale."""
+    import logging
+    with caplog.at_level(logging.INFO, logger=stt._log_stt.name):
+        _texto_si_hay_voz(SILENCIO_GROQ)
+        _texto_si_hay_voz(VOZ_GROQ)
+    m = _metricas(caplog)
+    assert len(m) == 2
+    assert m[0]["no_speech_prob_min"] == m[0]["no_speech_prob_max"] == 0.701 and m[0]["len_texto"] == len("Gracias.")
+    assert m[1]["no_speech_prob_max"] == 0.003 and m[1]["avg_logprob_min"] == -0.3
+    assert "Gracias" not in caplog.text and "Factúrale" not in caplog.text
+
+
+def test_metricas_sin_segments_o_malformados_no_rompen_ni_cambian_el_resultado(caplog):
+    import logging
+    with caplog.at_level(logging.INFO, logger=stt._log_stt.name):
+        assert _texto_si_hay_voz({"text": " hola "}) == "hola"
+        assert _texto_si_hay_voz({"text": " hola ", "segments": [{"no_speech_prob": "n/a"}]}) == "hola"
+    assert _metricas(caplog)[0]["no_speech_prob_min"] is None
+
+
 def test_groq_pide_verbose_json_y_descarta_el_silencio(monkeypatch):
     visto = {}
 
