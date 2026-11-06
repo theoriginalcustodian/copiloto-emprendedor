@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { KeyboardAvoidingView, StyleSheet, Text } from 'react-native';
 
 import {
   avisoErrorTranscripcion,
@@ -11,12 +11,14 @@ import {
 
 import { DockEntrada } from '../chat/DockEntrada';
 import { DockSobreContenido } from '../../theme/glass/DockSobreContenido';
-import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
 import { borrarArchivoLocal } from './borrarArchivoLocal';
 
 /** Cómo llegó el texto: el camino es el mismo, pero el `origen` de lo guardado no. */
 export type ViaTexto = 'escrito' | 'dictado';
+
+/** Cuánto vive el chip «Por voz · m:ss»: es una confirmación pasajera, no un estado de la pantalla. */
+export const CHIP_VOZ_MS = 4000;
 
 export interface DockFuncionProps {
   /** Lo que escribió o dictó, ya transcripto: las dos entradas caen en el MISMO camino. */
@@ -29,12 +31,6 @@ export interface DockFuncionProps {
   onError?: (mensaje: string) => void;
   /** Si se pasa, el audio NO se transcribe acá: se entrega tal cual (lo manda otro, p. ej. el chat — `DockAlChat`). */
   onAudioCrudo?: (audio: ArchivoSubida, duracionSeg: number) => void;
-  /**
-   * SM-P14 — el dictado NO se consume solo: se muestra lo que entendió el STT («Entendí: …») y recién con «Enviar» llega
-   * a `onTexto`. Para funciones donde el texto prellena un formulario fiscal: un ruido transcripto como «El» no debe
-   * volverse una línea de factura sin que el usuario lo haya visto. Lo escrito a mano no pasa por acá.
-   */
-  confirmarDictado?: boolean;
 }
 
 /**
@@ -42,15 +38,25 @@ export interface DockFuncionProps {
  * con `transcribir` (K-10: sin sesión, sin despacho) en vez de mandarle el audio al agente: no escribe ni
  * guarda nada, devuelve el texto.
  *
+ * SM-P14 (2026-11-06) — NO hay barra «Entendí / Descartar / Enviar» sobre el campo: el operador nunca la definió y
+ * ordenó que todo texto o voz de una función se abra en el chat al enviar (`DockAlChat`). La salvaguarda de «no emitir
+ * con el cliente mal oído» vive donde ya vivía el HITL: la card del chat.
+ *
  * `KeyboardAvoidingView` envuelve SÓLO al dock: sube con el teclado y le achica el lugar al scroll de arriba,
  * que ya maneja su propio teclado (`ScrollFormulario`).
  */
-export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError, onAudioCrudo, confirmarDictado = false }: DockFuncionProps) {
+export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError, onAudioCrudo }: DockFuncionProps) {
   const tema = useTema();
   // Duración del último dictado transcripto: alimenta el chip «Por voz · m:ss» (DoD FE1 #5).
   const [ultimaDuracionSeg, setUltimaDuracionSeg] = useState<number | null>(null);
-  // SM-P14 — transcripción esperando confirmación (sólo con `confirmarDictado`).
-  const [porConfirmar, setPorConfirmar] = useState<string | null>(null);
+
+  // El chip describe un dictado que ya pasó: si queda para siempre afirma algo falso sobre el estado actual
+  // (medido en device 2026-11-06: seguía visible tras descartar, enviar o cancelar).
+  useEffect(() => {
+    if (ultimaDuracionSeg === null) return;
+    const id = setTimeout(() => setUltimaDuracionSeg(null), CHIP_VOZ_MS);
+    return () => clearTimeout(id);
+  }, [ultimaDuracionSeg]);
 
   async function alAudio(audio: ArchivoSubida, duracionSeg: number) {
     if (onAudioCrudo != null) {
@@ -66,10 +72,6 @@ export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError,
         return;
       }
       setUltimaDuracionSeg(duracionSeg);
-      if (confirmarDictado) {
-        setPorConfirmar(texto);
-        return;
-      }
       onTexto(texto, 'dictado');
     } catch (err) {
       onError?.(avisoErrorTranscripcion(err));
@@ -86,33 +88,12 @@ export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError,
           {`Por voz · ${formatearDuracion(ultimaDuracionSeg)}`}
         </Text>
       )}
-      {porConfirmar !== null && (
-        <View testID="dock-funcion-confirmar" style={styles.confirmar}>
-          <Text testID="dock-funcion-confirmar-texto" accessibilityLiveRegion="polite" style={{ color: tema.color.texto, fontSize: tema.tipo.chico }}>
-            {`Entendí: «${porConfirmar}»`}
-          </Text>
-          <View style={styles.confirmarBotones}>
-            <Pressable testID="dock-funcion-confirmar-descartar" accessibilityRole="button" style={pressableStyle(undefined, PRESS_FADE)} onPress={() => setPorConfirmar(null)}>
-              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Descartar</Text>
-            </Pressable>
-            <Pressable
-              testID="dock-funcion-confirmar-enviar"
-              accessibilityRole="button"
-              style={pressableStyle(undefined, PRESS_FADE)}
-              onPress={() => {
-                const t = porConfirmar;
-                setPorConfirmar(null);
-                onTexto(t, 'dictado');
-              }}
-            >
-              <Text style={{ color: tema.color.acento, fontSize: tema.tipo.chico }}>Enviar</Text>
-            </Pressable>
-          </View>
-        </View>
-      )}
       <DockEntrada
         placeholder={placeholder}
-        onEnviarTexto={(texto) => onTexto(texto, 'escrito')}
+        onEnviarTexto={(texto) => {
+          setUltimaDuracionSeg(null);
+          onTexto(texto, 'escrito');
+        }}
         onAudio={(audio, duracionSeg) => void alAudio(audio, duracionSeg)}
         onSinPermiso={() => onError?.('Activá el permiso de micrófono en Ajustes para dictar por voz.')}
         disabled={disabled}
@@ -124,6 +105,4 @@ export function DockFuncion({ onTexto, contexto, placeholder, disabled, onError,
 
 const styles = StyleSheet.create({
   chip: { fontSize: 12, alignSelf: 'flex-end', paddingHorizontal: 18 },
-  confirmar: { paddingHorizontal: 18, paddingBottom: 6, gap: 6 },
-  confirmarBotones: { flexDirection: 'row', justifyContent: 'flex-end', gap: 24 },
 });

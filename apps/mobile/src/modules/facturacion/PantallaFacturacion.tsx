@@ -38,8 +38,7 @@ import { useTema } from '../../theme/ThemeProvider';
 // que recibe el foco en vez de dejarlo tapado por el teclado. Ver su docstring y el de `MarcoGlass`.
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
-import { AvisoDictado, DockFuncion } from '../voz';
-import { useDictadoFactura } from './useDictadoFactura';
+import { DockAlChat } from '../voz';
 import { generarId } from '../../util/id';
 import { guardarCuitCacheado, leerCuitCacheado } from '../afip/cuitCache';
 import { derivarPasoVisible, type PasoVisible } from './maquinaEstado';
@@ -225,8 +224,8 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
   // temprano cuando `facturaId !== null`, así que esto es todo lo que hace falta para adoptarlo — el
   // polling de estado se encarga de traer sus datos, igual que con un borrador propio.
   const [facturaId, setFacturaId] = useState<string | null>(facturaIdInicial ?? null);
-  // Borrador que llega de AFUERA (presupuesto) o del dictado (SM-P13): dispara la carga de su estado (efecto 2.bis).
-  const [idAdoptado, setIdAdoptado] = useState<string | null>(facturaIdInicial ?? null);
+  // Borrador que llega de AFUERA (presupuesto): dispara la carga de su estado (efecto 2.bis).
+  const [idAdoptado] = useState<string | null>(facturaIdInicial ?? null);
   const [creandoBorrador, setCreandoBorrador] = useState(false);
   const [errorBorrador, setErrorBorrador] = useState(false);
   const [reintentoBorrador, setReintentoBorrador] = useState(0);
@@ -584,35 +583,6 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
     setVista('wizard');
   }, []);
 
-  // SM-P13 — el dictado/escrito de Facturación va por el MISMO camino que Gastos/Ingresos/Presupuestos/Clientes
-  // (`dictado:factura`): el backend resuelve `emitir_factura`, que PROPONE un borrador (nunca emite) y devuelve su
-  // `facturaId`. Adoptarlo abre el wizard sobre ESE borrador, igual que `facturaIdInicial`. Emitir sigue detrás de la
-  // confirmación del wizard.
-  const dictado = useDictadoFactura();
-  const [errorMic, setErrorMic] = useState<string | null>(null);
-  const alDictarFactura = useCallback(
-    async (texto: string) => {
-      setErrorMic(null);
-      const propuesta = await dictado.dictar(texto);
-      if (propuesta !== null) {
-        setEstadoFacturaActual(null);
-        setDatosVentaLocal(null);
-        setClienteLocal(null);
-        setPasoEdicion(null);
-        setErrorBorrador(false);
-        setFacturaId(propuesta.facturaId);
-        setIdAdoptado(propuesta.facturaId);
-        setVista('wizard');
-        return;
-      }
-      // Sin card: o hay una PREGUNTA pendiente (dictado incompleto; el hilo queda abierto en el hook y la próxima frase
-      // la contesta desde el cursor) o un aviso del degradado. Ninguna de las dos va al chat: es la conversación de la función.
-    },
-    // `dictado.dictar` es estable (useCallback del hook).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dictado.dictar],
-  );
-
   const cuitConocido = gate.tipo === 'listo' || gate.tipo === 'bloqueado' ? gate.cuit : null;
 
   return (
@@ -734,26 +704,9 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
         )}
       </ScrollFormulario>
 
-      {/* SM-J1: el dock al pie, fuera del scroll. El texto va al chat (propone, nunca emite). */}
-      {dictado.pregunta != null && (
-        <Text testID="facturacion-dictado-pregunta" accessibilityLiveRegion="polite" style={{ color: tema.color.texto, fontSize: tema.tipo.chico, paddingHorizontal: 18, paddingBottom: 4 }}>
-          {dictado.pregunta}
-        </Text>
-      )}
-      {(errorMic ?? dictado.aviso) != null && (
-        <Text testID="facturacion-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico, paddingHorizontal: 18 }}>
-          {errorMic ?? dictado.aviso}
-        </Text>
-      )}
-      <AvisoDictado testID="facturacion-dictado" ocupado={dictado.ocupado} aviso={null} />
-      <DockFuncion
-        contexto="factura"
-        placeholder="Una factura, o hablá…"
-        onTexto={(t) => void alDictarFactura(t)}
-        confirmarDictado
-        onError={setErrorMic}
-        disabled={dictado.ocupado}
-      />
+      {/* SM-J1 + SM-P14: el dock al pie, fuera del scroll. Lo escrito o dictado se MANDA al chat y recién después se
+          vuelve a él (orden del operador): la card HITL del chat es el único gate de una emisión; mandar no emite. */}
+      <DockAlChat contexto="factura" origen="Facturación" placeholder="Una factura, o hablá…" />
 
       {/* 🔴 FUERA del `ScrollFormulario`, a propósito. Un overlay absoluto montado DENTRO del scroll
           se posiciona contra el contenido —miles de píxeles con 20 comprobantes— y aparece centrado
