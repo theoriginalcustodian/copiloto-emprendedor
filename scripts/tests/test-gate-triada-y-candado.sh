@@ -86,7 +86,12 @@ wait "$p1"; r1=$?; wait "$p2"; r2=$?
 solapan="$(sort -n "$STUB_VENTANAS" | awk 'NR==1{f=$2} NR==2{print ($1 < f) ? "SI" : "NO"}')"
 if [ "$r1" -eq 0 ] && [ "$r2" -eq 0 ] && [ "$(wc -l < "$STUB_VENTANAS")" -eq 2 ] && [ "$solapan" = "NO" ] && [ ! -d "$LOCK" ]; then
   ok "5 CARRERA · dos gates simultáneos: ambos ok, en serie (ventanas sin solape), candado suelto"
-else fail "5 CARRERA · r1=$r1 r2=$r2 ventanas=<$(cat "$STUB_VENTANAS")> solapan=$solapan"; fi
+else
+  fail "5 CARRERA · r1=$r1 r2=$r2 ventanas=<$(cat "$STUB_VENTANAS")> solapan=$solapan"
+  # Diagnóstico: si el rojo reaparece en CI hay que poder ver QUIÉN tomó el candado y quién esperó.
+  # Sin esto la firma (dos ventanas) no distingue «ambos TOMADO» de «uno esperó y el stub corrió doble».
+  for o in o5a o5b; do echo "  --- $o: líneas de candado ---"; grep -E 'candado|stage ocupado|VENCIDO' "$T/$o" | head -8; done
+fi
 
 echo
 [ "$fallos" -eq 0 ] && { echo "✅ test-gate-triada-y-candado: todo verde"; exit 0; }
