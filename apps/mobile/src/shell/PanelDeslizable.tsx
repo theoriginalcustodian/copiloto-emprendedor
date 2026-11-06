@@ -22,7 +22,7 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, View } from 'react-native';
+import { Dimensions, Keyboard, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -264,6 +264,29 @@ export function opacidadRotuloAbajo(panelY: number, recorrido: number): number {
 }
 
 /**
+ * SM-P5 (device 2026-11-06, build 3ff9c040): cuánto se levanta el panel para que el campo de Mi día (`pieAbajo`) quede
+ * SOBRE el teclado.
+ *
+ * 🔴 **La causa NO era la que describe `panelYAlCambiarRecorrido`.** Con edge-to-edge el teclado no redimensiona la
+ * ventana: medido con logs, un solo `onLayout` (al arrancar) y ninguno al abrir el teclado, o sea `recorrido` no cambia
+ * y esa reacción nunca corre. El campo de Mi día no está en ningún `KeyboardAvoidingView` (el del chat y el de `DockFuncion`
+ * sólo cubren a sus propios hijos), así que el teclado lo tapaba. Se levanta el alto que el teclado ocupa de la ventana
+ * (`teclado` = alto de ventana − `screenY` del teclado, que es su tope real), en proporción a cuánto campo se ve
+ * (`opacidadRotuloAbajo`): con el panel arriba el campo es el del chat y lo maneja su `KeyboardAvoidingView`, así que no
+ * se suma.
+ * 🔴 **No se usa `endCoordinates.height`**: Samsung emite un 2º `keyboardDidShow` con `height` 310 y el MISMO `screenY`
+ * (495) que el 1º (height 358) — medido en device (scale 1,875, ventana 853 dp). Con 310 el campo quedaba 48 dp detrás
+ * del teclado; `screenY` es el que no miente. Tampoco se resta la barra de navegación: la ventana la incluye y el teclado
+ * se dibuja hasta el borde, así que el campo ya trae su propio aire inferior.
+ * Limitación: si algún dispositivo SÍ achicara la ventana, `recorrido` bajaría y esto sumaría de más; no se midió ninguno.
+ */
+export function levantarPorTeclado(panelY: number, recorrido: number, teclado: number): number {
+  'worklet';
+  if (recorrido <= 0 || teclado <= 0) return 0;
+  return teclado * opacidadRotuloAbajo(panelY, recorrido);
+}
+
+/**
  * 🔴 **Sin `bloqueado`/`hintBloqueado` a propósito (decisión D6, sprint mobile-first).** En DocuMed
  * este panel trababa el gesto entero mientras había una grabación clínica viva, para que el médico no
  * pudiera minimizar el HUD y olvidarse el micrófono abierto. Acá esa amenaza no existe: el dictado del
@@ -292,6 +315,20 @@ export function PanelDeslizable({
   // 0 = abierto (conversación tapa todo) · RECORRIDO_MAX = abajo (revela el escritorio).
   const panelY = useSharedValue(0);
   const inicio = useSharedValue(0);
+  // SM-P5: alto del teclado visible (0 = cerrado). Ver `levantarPorTeclado`. `keyboardDid*` porque Android no emite `Will*`.
+  const teclado = useSharedValue(0);
+  useEffect(() => {
+    const abre = Keyboard.addListener('keyboardDidShow', (e) => {
+      teclado.value = Math.max(Dimensions.get('window').height - e.endCoordinates.screenY, 0);
+    });
+    const cierra = Keyboard.addListener('keyboardDidHide', () => {
+      teclado.value = 0;
+    });
+    return () => {
+      abre.remove();
+      cierra.remove();
+    };
+  }, [teclado]);
   /**
    * Recorrido real, medido con `onLayout` de la raíz. Vive en un shared value porque lo leen los
    * worklets del gesto (hilo de UI), no React.
@@ -490,7 +527,11 @@ export function PanelDeslizable({
   const altoTira = ALTO_HANDLE + espacioSuperior(insets.top) + altoPieAbajo;
   const estiloPanel = useAnimatedStyle(() => ({
     transform: [
-      { translateY: translacionPanel(panelY.value, recorrido.value, ocultarTira?.value ?? 0, altoTira) },
+      {
+        translateY:
+          translacionPanel(panelY.value, recorrido.value, ocultarTira?.value ?? 0, altoTira) -
+          levantarPorTeclado(panelY.value, recorrido.value, teclado.value),
+      },
     ],
   }));
 
