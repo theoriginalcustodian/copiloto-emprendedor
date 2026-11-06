@@ -714,6 +714,26 @@ Los socios cobran por dos vías: el **dividendo** (beneficio de la SAS después 
 Regla: honorario por socio = 25% del beneficio mensual entre dos, con techo en el tope de H (US$4.400 = $81.924.660 anuales / 12 al dólar 1.550), fijado cada trimestre con el promedio del anterior; cuota incremental ≈ 7.7% de lo facturado. Supuestos sin verificar con el contador: que el honorario de un socio por servicios técnicos sea deducible (no los del cargo de administrador), precio de mercado defendible, sin otra facturación propia de los socios (si la tienen, el tope baja) y dividendo repartido entero. La categoría K (tope $126.610.839, cuota $1.614.446) no conviene con Ganancias al 14%: la cuota se come el ahorro; conviene si vence el régimen. Ser empleados de la SAS deja lo mismo o menos (aguinaldo, ART y contribuciones) y superpone aportes con el monotributo.
 <!-- MONO:FIN -->
 
+<!-- SALIDA:INI -->
+### 14.4 Cuándo conviene vender (agregado 2026-11-05)
+
+El mejor momento para vender es el **mes 36**: el precio llega a su máximo (~US$2,51 M por socio; US$2,82 M sumando lo ya cobrado). En el mes 37 el crecimiento anual baja del 60%, el comprador paga un múltiplo menor (4,0×) y además vence Economía del Conocimiento: el precio cae ~US$239 mil por socio. Si lo que importa es el rendimiento por mes de negocio, el pico es el mes 30 (~US$79.043 por mes por socio). No vender nunca rinde más en total (~US$4,36 M por socio en 10 años; US$2,53 M en valor presente contra US$2,16 M vendiendo en el mes 36), pero supone 10 años sin competencia ni bajas extra.
+
+| Mes de venta | Múltiplo | Crecimiento anual de la venta | Precio por socio | Ya cobrado por socio | Total por socio | Por mes de negocio, por socio |
+|---|---|---|---|---|---|---|
+| 22 | 4,5× | 100% | US$980 mil | US$177 mil | US$1,01 M | US$45.881 |
+| 24 | 4,5× | 1239% | US$1,32 M | US$242 mil | US$1,36 M | US$56.778 |
+| 30 | 4,5× | 254% | US$2,26 M | US$453 mil | US$2,37 M | US$79.043 |
+| 33 | 4,5× | 114% | US$2,38 M | US$567 mil | US$2,59 M | US$78.427 |
+| 36 | 4,5× | 60% | US$2,51 M | US$688 mil | US$2,82 M | US$78.355 |
+| 37 | 4,0× | 50% | US$2,27 M | US$719 mil | US$2,65 M | US$71.598 |
+| 42 | 3,5× | 27% | US$2,16 M | US$883 mil | US$2,71 M | US$64.638 |
+| 48 | 3,5× | 27% | US$2,35 M | US$1,09 M | US$3,09 M | US$64.367 |
+| 60 | 3,5× | 23% | US$2,95 M | US$1,60 M | US$4,11 M | US$68.521 |
+
+Precio = múltiplo × beneficio de los últimos 12 meses antes de Ganancias. Múltiplo según el crecimiento anual de la venta: 60% o más → 4,5× · 30–60% → 4,0× · 10–30% → 3,5× · menos → 3,0× (rango de SaaS chicos 2,5–4,5×; supuesto, no tasado). Venta de acciones de la SAS: 15% cedular. Valor presente al 10% anual en dólares. En el mes 36 hay solo 18 meses de historia en la meta y un comprador puede descontar eso. Estimación de modelo, sin expansión internacional; la tasación real la hace el comprador.
+<!-- SALIDA:FIN -->
+
 ## 15. Impuestos: régimen de Economía del Conocimiento (agregado 2026-11-04)
 
 **Inscribirse en el régimen de la Ley 27.506 (modificada por la 27.570) baja Ganancias de 35% a 14%** mientras la empresa sea micro o pequeña, y a 21% como mediana. Hasta el bolsillo de los socios la carga pasa de 39,6% (35% + 7% del dividendo) a 20,0%. En los 3 años que rige son **~US$336k más**, sin salir de Argentina; si se prorroga más allá de 2029, ~US$818k en 5 años. Rinde más que operar desde Estonia mientras los socios vivan acá (el art. 130 de Ganancias atribuye igual el beneficio a los socios argentinos).
