@@ -10,7 +10,7 @@ import {
   type DuplicadoCliente,
 } from '@copiloto/core';
 
-import { Button } from '../../design-system';
+import { Button, useFocoAlMontar } from '../../design-system';
 import { generarId } from '../../util/id';
 
 /**
@@ -54,6 +54,7 @@ export function FormularioCliente({
   onCancelar,
   mensajeId,
 }: FormularioClienteProps) {
+  const foco = useFocoAlMontar<HTMLFormElement>();
   const base = edita ?? iniciales;
   const [nombre, setNombre] = useState(base?.nombre ?? '');
   const [docTipo, setDocTipo] = useState(base?.docTipo != null ? String(base.docTipo) : '');
@@ -149,7 +150,7 @@ export function FormularioCliente({
   }
 
   return (
-    <form className="formulario-cliente" data-testid="formulario-cliente" onSubmit={alSubmit}>
+    <form ref={foco} className="formulario-cliente" data-testid="formulario-cliente" onSubmit={alSubmit}>
       <h2 className="formulario-cliente__titulo" data-testid="formulario-cliente-titulo">
         {edita != null ? `Editar ${edita.nombre}` : 'Nuevo cliente'}
       </h2>

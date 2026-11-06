@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import type { DatosVentaInput, EstadoFacturaResp } from '@copiloto/core';
 
-import { Button } from '../../design-system';
+import { Button, useFocoAlMontar } from '../../design-system';
 import { OPCIONES_CONCEPTO, OPCIONES_CONDICION_VENTA } from './catalogos';
 
 /**
@@ -32,6 +32,7 @@ export function PasoDatosVenta({
   onVolverResumen,
   testID = 'facturacion-paso-datos-venta',
 }: PasoDatosVentaProps) {
+  const foco = useFocoAlMontar<HTMLDivElement>();
   // SM-P13 (gemelo del SM-H1 de mobile) — arranca con lo cargado: «Editar y confirmar» desde el resumen
   // abría este formulario VACÍO aunque el backend ya tenía los datos (medido en navegador real), y para
   // cambiar un dato había que volver a tipear todos. Un borrador nuevo no trae `datosVenta` → mismo vacío.
@@ -69,7 +70,7 @@ export function PasoDatosVenta({
   const hayMotivo = estado.motivo != null && estado.motivo !== '';
 
   return (
-    <div className="paso-datos-venta" data-testid={testID}>
+    <div ref={foco} className="paso-datos-venta" data-testid={testID}>
       <h2 className="paso-datos-venta__titulo">Datos de venta</h2>
 
       {hayMotivo && (
