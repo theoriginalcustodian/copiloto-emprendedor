@@ -24,10 +24,6 @@ function accountLabel(clienteId: string | undefined): string {
   return `Cuenta #${clienteId.trim().slice(0, 8)}`;
 }
 
-function initial(clienteId: string | undefined): string {
-  return (clienteId?.trim()?.[0] ?? '?').toUpperCase();
-}
-
 /**
  * Rail lateral de escritorio (DESIGN-SYSTEM-EXTRACT-WEB.md §3.1/§5.1) — nuevo, sin equivalente
  * mobile. Auto-hide 72px↔244px por hover: spacer fijo (reserva el ancho colapsado en el flujo
@@ -57,6 +53,32 @@ export function Rail({ active, onChange, esAdmin = false }: RailProps) {
         onPointerEnter={() => setRailOpen(true)}
         onPointerLeave={() => setRailOpen(false)}
       >
+        {/* La puerta a Ajustes va ARRIBA del rail, no al fondo: abajo dependía de que la altura de
+            la ventana fuera la esperada y, medido con el operador (2026-11-06), en su navegador el
+            bloque no se veía ni con zoom mínimo — sin ninguna otra entrada a Ajustes en escritorio.
+            Arriba no depende de ninguna altura. */}
+        <div className="rail__top">
+          <button
+            type="button"
+            className={['rail__user', active === 'ajustes' ? 'rail__user--active' : '']
+              .filter(Boolean)
+              .join(' ')}
+            data-testid="rail-user"
+            aria-current={active === 'ajustes' ? 'page' : undefined}
+            aria-label="Tu cuenta y ajustes"
+            title="Tu cuenta y ajustes"
+            onClick={() => onChange('ajustes')}
+          >
+            <span className="rail__avatar" aria-hidden="true">
+              {NAV_ICONS.account()}
+            </span>
+            <div className="rail__user-text">
+              <span className="rail__user-name">{accountLabel(me?.cliente_id)}</span>
+              <span className="rail__user-email">Cuenta y ajustes</span>
+            </div>
+          </button>
+        </div>
+
         <div className="rail__items">
           {tabsVisibles(esAdmin).map((tab) => {
             const isActive = tab.key === active;
@@ -83,39 +105,6 @@ export function Rail({ active, onChange, esAdmin = false }: RailProps) {
             selector de skin que vivía acá se movió a Ajustes > Apariencia (2026-08-06, pedido del
             operador): estaba escondido dentro del rail, sin relación visible con el tile
             "Apariencia" del menú de Ajustes — ver `modules/ajustes/PantallaApariencia.tsx`. */}
-        <div className="rail__bottom">
-          {/* El bloque de usuario ES la puerta a Ajustes, no un adorno informativo. Era un `<div>`
-              muerto: mostraba la cuenta y no llevaba a ningún lado, mientras el único acceso a
-              Ajustes desde el shell eran su entrada en la barra y el tile del escritorio. Como
-              `<button>` cumple la convención que el usuario ya trae de cualquier app (tocar tu
-              avatar abre tu cuenta) y habilita evaluar sacar `ajustes` de `TABS`. */}
-          <button
-            type="button"
-            className={[
-              'rail__user',
-              active === 'ajustes' ? 'rail__user--active' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            data-testid="rail-user"
-            aria-current={active === 'ajustes' ? 'page' : undefined}
-            aria-label="Tu cuenta y ajustes"
-            onClick={() => onChange('ajustes')}
-          >
-            <span className="rail__avatar" aria-hidden="true">
-              {initial(me?.cliente_id)}
-            </span>
-            <div className="rail__user-text">
-              <span className="rail__user-name">{accountLabel(me?.cliente_id)}</span>
-              {/* 2da línea (dc.html:82, "email") — PLACEHOLDER deliberado: `/me` hoy no trae
-                  nombre/email real (mismo límite documentado en `AccountScreen.tsx:17-25`), así que
-                  no se inventa un email falso. Se mantiene la estructura de 2 líneas del diseño con
-                  una etiqueta honesta de estado; migrar a email real es 1 línea el día que `/me` lo
-                  exponga. */}
-              <span className="rail__user-email">Sesión activa</span>
-            </div>
-          </button>
-        </div>
       </nav>
     </>
   );

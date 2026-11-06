@@ -232,11 +232,18 @@
  * `margin-top:auto` empuja el bloque al fondo. El selector de skin que vivía acá (EXTRACT §2.4)
  * se movió a Ajustes > Apariencia (2026-08-06, pedido del operador) — ver
  * `modules/ajustes/PantallaApariencia.tsx` y su CSS en `ajustes.css`. */
-.rail__bottom {
-  margin-top: auto;
-  padding-top: 16px;
+.rail__top {
+  flex: none;
+  padding-bottom: 14px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--nav-border);
   display: flex;
   flex-direction: column;
+}
+
+.rail__avatar svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* ---------- Bloque de usuario (dc.html:78, gap #11/#12) ---------- */
