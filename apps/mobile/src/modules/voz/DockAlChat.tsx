@@ -1,3 +1,4 @@
+import type { ContextoTranscripcion } from '@copiloto/core';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Text } from 'react-native';
@@ -9,13 +10,15 @@ import { DockFuncion } from './DockFuncion';
 
 export interface DockAlChatProps {
   /** Telemetría de `/transcribir` (sólo logging del backend). Hoy el audio va crudo al chat y no se usa. */
-  contexto: 'factura' | 'bi';
+  contexto: ContextoTranscripcion;
   /** Sólo UI, nunca viaja al backend. Se conserva en la firma: lo pasan las pantallas. */
   origen: string;
   placeholder: string;
   onError?: (mensaje: string) => void;
 }
 
+// `dismissAll` y no `back`: la función es un 2º glass sobre Funciones (que a su vez está sobre el chat); `back()` dejaba al
+// emprendedor en Funciones con el mensaje ya mandado. Medido en device 2026-11-06.
 const CHAT_NO_LISTO = 'El chat todavía no está listo. Probá de nuevo en un momento.';
 
 /**
@@ -58,7 +61,7 @@ export function DockAlChat({ contexto, origen: _origen, placeholder, onError }: 
             decir(CHAT_NO_LISTO);
             return;
           }
-          router.back();
+          router.dismissAll();
         }}
         onAudioCrudo={(audio, duracionSeg) => {
           if (!despacharAudioAlChat(audio, duracionSeg)) {
@@ -66,7 +69,7 @@ export function DockAlChat({ contexto, origen: _origen, placeholder, onError }: 
             void borrarArchivoLocal(audio);
             return;
           }
-          router.back();
+          router.dismissAll();
         }}
       />
     </>

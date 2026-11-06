@@ -2,6 +2,8 @@ import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
+import { despacharTextoAlChat } from '../../navegacion/despachoAlChat';
+
 // Jest (jest-expo) -- describe/it/expect/jest son globales, no se importan de vitest.
 
 jest.mock('../../adapters/almacen', () => ({
@@ -291,6 +293,25 @@ describe('ChatView (integración lista+composer+useChat -- cáscara de texto, si
       </ThemeProvider>,
     );
     await waitFor(() => expect(api.sendChat).toHaveBeenCalledTimes(1));
+    expect(aviso).toHaveBeenCalledTimes(1);
+  });
+
+  // SM-P14: el dock de una función manda por el DESPACHO (no por el buzón). Medido en device (2026-11-06): se mandaba pero
+  // el emprendedor quedaba en Funciones con el chat abajo, porque nada avisaba al shell que subiera la conversación.
+  it('🔴 SM-P14: un texto despachado desde una función se manda Y avisa al shell que suba el chat', async () => {
+    tomarPendiente();
+    jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-d', accepted: true });
+    const aviso = jest.fn();
+    await render(
+      <ThemeProvider>
+        <ChatView onPendienteMandado={aviso} />
+      </ThemeProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    expect(aviso).not.toHaveBeenCalled(); // control negativo: montar no sube nada
+    expect(despacharTextoAlChat('Pagué 1500 de café')).toBe(true);
+    await waitFor(() => expect(api.sendChat).toHaveBeenCalledTimes(1));
+    expect(jest.mocked(api.sendChat).mock.calls[0]?.[0]).toMatchObject({ text: 'Pagué 1500 de café', kind: 'text' });
     expect(aviso).toHaveBeenCalledTimes(1);
   });
 

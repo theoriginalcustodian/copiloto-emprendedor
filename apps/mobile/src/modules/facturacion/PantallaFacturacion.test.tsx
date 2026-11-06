@@ -13,7 +13,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-
 jest.mock('expo-router', () => {
   const { useEffect } = require('react');
   return {
-    router: { push: jest.fn(), back: jest.fn() },
+    router: { push: jest.fn(), back: jest.fn(), dismissAll: jest.fn() },
     // Ejecuta el callback, no lo ignora: es lo que reabre la puerta de `empujarUnaVez`. Un
     // `() => {}` acá dejaría el test verde con el CTA muerto, que es justo el defecto que se cazó
     // en device.
@@ -921,6 +921,7 @@ describe('PantallaFacturacion (mobile) — idem_key en "Nueva factura" (FACTID)'
       despacho.texto.mockReset().mockReturnValue(true);
       despacho.audio.mockReset().mockReturnValue(true);
       jest.mocked(router.back).mockClear();
+      jest.mocked(router.dismissAll).mockClear();
       baja = registrarDespachoChat(despacho);
     });
     afterEach(() => baja());
@@ -944,7 +945,7 @@ describe('PantallaFacturacion (mobile) — idem_key en "Nueva factura" (FACTID)'
       await escribir('Facturale a Pérez por 1500');
 
       expect(despacho.texto).toHaveBeenCalledWith('Facturale a Pérez por 1500');
-      expect(router.back).toHaveBeenCalledTimes(1);
+      expect(router.dismissAll).toHaveBeenCalledTimes(1);
       expect(crearFactura).not.toHaveBeenCalled();
       expect(confirmarConTokenFresco).not.toHaveBeenCalled();
     });
@@ -961,7 +962,7 @@ describe('PantallaFacturacion (mobile) — idem_key en "Nueva factura" (FACTID)'
 
       await escribir('Una factura');
 
-      expect(router.back).not.toHaveBeenCalled();
+      expect(router.dismissAll).not.toHaveBeenCalled();
       expect(screen.getByTestId('dock-alchat-aviso')).toBeTruthy();
     });
 
