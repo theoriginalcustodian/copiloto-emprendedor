@@ -20,16 +20,24 @@ _CANDADO_HOST="${UC_DEPLOY_HOST:-unreal-copilot}"
 _CANDADO_TOKEN="$(hostname)-$$-$(date +%s)"
 
 # _candado_intento <ruta> <ttl> <sha> → imprime TOMADO | VENCIDO_TOMADO <edad> <dueño> | OCUPADO <edad> <dueño>
+#
+# ⚠️ La exclusión mutua es la de la SYSCALL mkdir(2), NO la del binario `mkdir`. Medido 2026-11-06 en el runner de CI
+# (Ubuntu 26.04, coreutils = uutils/Rust 0.10.0, ext4): entre 10 y 346 de 400 pares de `mkdir` simultáneos sobre el
+# mismo path dieron DOS ganadores, mientras `os.mkdir` de python dio 0/150 y el `mkdir` GNU del VPS (24.04) 0/400. El
+# kernel y el fs eran sanos; la herramienta no. Por eso se llama a la syscall directo (`python3`), y `python3` ausente
+# es un error explícito (SIN_PYTHON3) en vez de un caer callado a un `mkdir` cuya atomicidad nadie midió.
 _candado_intento() {
   local ruta="$1" ttl="$2" sha="$3"
   ${GATE_SSH:-ssh} "$_CANDADO_HOST" "
     L='$ruta'; T='$_CANDADO_TOKEN'
-    if mkdir \"\$L\" 2>/dev/null; then echo \"\$T $sha\" > \"\$L/owner\"; echo TOMADO; exit 0; fi
+    command -v python3 >/dev/null 2>&1 || { echo SIN_PYTHON3; exit 0; }
+    mk() { python3 -c 'import os,sys; os.mkdir(sys.argv[1])' \"\$1\"; }
+    if mk \"\$L\" 2>/dev/null; then echo \"\$T $sha\" > \"\$L/owner\"; echo TOMADO; exit 0; fi
     edad=\$(( \$(date +%s) - \$(stat -c %Y \"\$L\" 2>/dev/null || date +%s) ))
     dueno=\$(cat \"\$L/owner\" 2>/dev/null || echo '?')
     if [ \"\$edad\" -gt '$ttl' ] && mv \"\$L\" \"\$L.vencido-\$T\" 2>/dev/null; then
       rm -rf \"\$L.vencido-\$T\"
-      if mkdir \"\$L\" 2>/dev/null; then echo \"\$T $sha\" > \"\$L/owner\"; echo \"VENCIDO_TOMADO \$edad \$dueno\"; exit 0; fi
+      if mk \"\$L\" 2>/dev/null; then echo \"\$T $sha\" > \"\$L/owner\"; echo \"VENCIDO_TOMADO \$edad \$dueno\"; exit 0; fi
     fi
     echo \"OCUPADO \$edad \$dueno\""
 }
@@ -41,6 +49,7 @@ tomar_candado() {
   while :; do
     r="$(_candado_intento "$ruta" "$ttl" "$sha")"
     case "$r" in
+      SIN_PYTHON3*) echo "==> ❌ el host del VPS no tiene python3: sin él no hay una primitiva de candado atómica medida (el binario mkdir puede no serlo, ver arriba). No se corre sobre un stage sin candado." >&2; return 1 ;;
       TOMADO) echo "==> candado del stage tomado ($ruta)"; return 0 ;;
       VENCIDO_TOMADO*) echo "==> candado VENCIDO (${r#VENCIDO_TOMADO }) — era de un gate muerto; tomado"; return 0 ;;
     esac

@@ -44,8 +44,11 @@ cat > "$T/bin/ssh-local" <<'EOF'
 #!/usr/bin/env bash
 shift
 pre=$([ -d "$LOCK_DBG" ] && echo existe || echo libre)
+# mtime crudo del candado y reloj de ESTA llamada: la edad que calcularía candado-stage.sh (ahora - mtime) queda
+# a la vista. «Lo vencí porque lo vi viejo» (TTL con mtime/reloj raro) se distingue así de «no había candado».
+mt=$(stat -c %Y "$LOCK_DBG" 2>/dev/null || echo -); ahora=$(date +%s)
 t0=$(date +%s%N); out=$(bash -c "$1"); rc=$?
-echo "$t0 $(date +%s%N) pid=$$ lock_antes=$pre rc=$rc out=${out:0:60}" >> "$SSH_LOG"
+echo "$t0 $(date +%s%N) pid=$$ lock_antes=$pre mtime=$mt ahora=$ahora rc=$rc out=${out:0:60}" >> "$SSH_LOG"
 printf '%s\n' "$out"; exit $rc
 EOF
 chmod +x "$T/bin/ssh-local"
@@ -89,6 +92,22 @@ gate "$T/o4" UC_SESION=backend UC_TEST_STAGE="$STAGE" UC_GATE_LOCK_WAIT=0 UC_GAT
 if [ "$rc" -eq 0 ] && [ -s "$STUB_VENTANAS" ] && [ ! -d "$LOCK" ] && grep -q "VENCIDO" "$T/o4"; then
   ok "4 VENCIDO · candado de un gate muerto -> se toma, corre y se suelta"
 else fail "4 VENCIDO · rc=$rc lock=$([ -d "$LOCK" ] && echo QUEDÓ || echo suelto) salida=<$(tail -5 "$T/o4")>"; fi
+
+# 5.0 ATOMICIDAD del candado REAL. Todo el candado descansa en que, de dos tomas simultáneas del mismo path, una falle.
+# En CI el caso 5 dio DOS `TOMADO` con el candado libre (bitácora, run 42233323351). Causa medida: el binario `mkdir` de
+# uutils-coreutils 0.10.0 (Ubuntu 26.04) NO es atómico bajo carrera (10–346 de 400 pares con dos ganadores) mientras la
+# syscall mkdir(2) sí (python os.mkdir 0/150) y el mkdir GNU del VPS 24.04 también (0/400). El candado ya llama a la
+# syscall; este caso ejercita `_candado_intento` TAL CUAL corre (vía el shim), en pares simultáneos, y exige cero dobles:
+# si alguien vuelve a una primitiva de la que depende el entorno, falla acá en vez de romper la exclusión en silencio.
+dobles=0; PARES=150
+dobles=$( ( GATE_SSH="$T/bin/ssh-local"; source "$R/scripts/ci/candado-stage.sh"
+  for i in $(seq 1 "$PARES"); do
+    p="$T/real-$i.gate-lock"
+    ( _candado_intento "$p" 1800 sha > "$p.a" ) & ( _candado_intento "$p" 1800 sha > "$p.b" ) & wait
+    grep -q '^TOMADO' "$p.a" && grep -q '^TOMADO' "$p.b" && echo DOBLE
+  done ) | grep -c DOBLE )
+if [ "$dobles" -eq 0 ]; then ok "5.0 ATOMICIDAD · $PARES pares de tomas simultáneas del candado real: nunca dos ganadores"
+else fail "5.0 ATOMICIDAD · $dobles de $PARES pares dieron DOS TOMADO sobre el mismo path · mkdir=$(command -v mkdir) <$(mkdir --version 2>&1 | head -1)> · fs: $(df -PT "$T" 2>/dev/null | tail -1) · $(. /etc/os-release 2>/dev/null; echo "$PRETTY_NAME")"; fi
 
 # 5. CARRERA: dos gates de la misma tríada a la vez
 rm -rf "$T/rec" "$LOCK"; : > "$STUB_VENTANAS"; : > "$SSH_LOG"
