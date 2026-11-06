@@ -4,9 +4,18 @@
 > Pregunta que responde: *¿qué contienen las 106 y cuáles pesan?* No aplica ningún bump (van por lote, no por alerta).
 > Instrumento: script de clasificación sobre el JSON de la API + `package-lock.json` de `origin/main` (versión instalada y padres).
 
-## Hallazgo principal
+## Titular (corregido el 2026-11-05 tras revisión de Planificación)
 
-1. **Cero alertas de pip.** Las 106 son **todas npm**. `requirements.txt` (backend `apps/copiloto`, camino de request de `worker_b`) existe, pero no figura en ninguna alerta. Con este instrumento no se distingue «sin CVE» de «no escaneado» → pregunta abierta 1, **no** «backend limpio». Tampoco existe `.github/dependabot.yml` en `origin/main`.
+**Las 106 están todas en la superficie que NO corre en el camino de request, y Dependabot nunca alertó sobre la que SÍ corre (python).** El conteo «106» apuntaba a donde importa menos. Lo que sí se midió sobre python:
+
+- **2026-11-04 (baseline, antes del bump):** `pip-audit 2.10.1` sobre `requirements.txt`, 49 dependencias: vulnerables `PyJWT 2.13.0` (15 advisories, fix minor), `cryptography 49.0.0`, `anyio 4.14.1`, `certifi`, `urllib3`. Evidencia: `Seguridad/evidencia/2026-11-04/deps/pip-audit.json`. **Dependabot tenía 0 alertas pip (en cualquier estado) sobre eso.**
+- **Ya remediado:** el bump (PyJWT 2.15.0, cryptography 50.0.0, anyio 4.14.2, certifi 2026.10.18, urllib3 2.8.0) está en `main` (#1669, `SEC-B1-2` en `BITACORA.md`) y desplegado en el venv de prod con smoke 43/43 y gate 2951 passed.
+- **2026-11-05 (post-bump):** `pip-audit` sobre el `requirements.txt` actual → 49 dependencias, **0 vulnerables**. Control positivo en la misma corrida: `PyJWT==2.13.0` → 15 advisories (el instrumento sí caza).
+- **Por qué Dependabot no avisó:** no es por falta de `dependabot.yml` (las alertas de seguridad no lo necesitan: el grafo de dependencias ya lista 49 paquetes `pkg:pypi`, incl. `pyjwt@2.15.0`). Lo más probable es que los avisos sean IDs `PYSEC` (OSV/PyPI) que la base de GitHub no replica; **no verificado**. Lección: el cero de un instrumento no es «limpio» hasta que se le pasó un caso positivo conocido.
+
+## Hallazgos del triage npm
+
+1. **Cero alertas de pip** (ver titular: no equivale a «sin vulnerabilidades», equivalía a «instrumento ciego a PYSEC»).
 2. **Ninguna alerta está en el camino de request del backend.** Lo npm es el frontend web (`apps/copiloto-web`, 32), el workspace mobile/raíz (72) y dos manifests de vitest (2).
 3. **«runtime» de GitHub no significa «se envía al usuario».** El campo sale del lockfile (paquete no marcado `dev`). En el lock raíz, los paquetes «runtime» cuelgan de `@expo/cli`, `metro`, `react-devtools-core`, `@expo/plist`, `xcode`, `query-string`: **tooling de build/dev server de Expo**. Verificado por padres en el lock. **No verificado** si alguno termina en el bundle de la app.
 
@@ -53,10 +62,14 @@
 
 ## Preguntas abiertas (no se afirman)
 
-1. **¿Dependabot escanea pip?** Correr `pip-audit -r requirements.txt` en el VPS como instrumento independiente.
+1. ~~¿Dependabot escanea pip?~~ **Resuelta:** el grafo cubre pip; el vacío era de la base de avisos. Pendiente de decisión (no hecho): correr `pip-audit` de forma recurrente (hoy solo corridas puntuales de evidencia). Se agregó `.github/dependabot.yml` (version updates de pip y npm, semanal, sin majors) como gobernanza día 0; ver nota abajo.
 2. **¿Algún «runtime» llega al bundle de la app?** Verificarlo con el análisis del bundle de Metro, no por el lock.
 3. No se midieron las alertas cerradas/descartadas (solo `open`).
 
 ## No hecho
 
 Ningún bump, ningún `dismiss`, ninguna PR de Dependabot tocada.
+
+## Nota: `.github/dependabot.yml` y su control positivo
+
+Creado con tres jobs semanales (pip raíz, npm raíz, npm `apps/copiloto-web`), agrupados en minor/patch y sin majors. **Control positivo exigido:** que exista no prueba que dispare. Se comprueba, tras el merge, con (a) una corrida «Dependabot Updates» en Actions por cada ecosistema y (b) al menos un PR de `dependabot[bot]` de pip. Resultado: se anota abajo cuando se mida.

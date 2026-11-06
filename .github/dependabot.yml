@@ -1,0 +1,42 @@
+# Dependabot: actualizaciones de versión (G-2, gobernanza día 0).
+# Las ALERTAS de seguridad no dependen de este archivo; esto agrega PRs de bump programados.
+# Criterio: un PR por ecosistema y semana (grupo), SIN majors (un major es decisión, no tarea:
+# ver Auditorias/2026-11-05-dependabot-106-alertas-triage-por-superficie.md). Los PRs pasan por el
+# gate propio (scripts/gate.sh) antes de mergear; nada se auto-mergea.
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 2
+    groups:
+      python-minor-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 2
+    groups:
+      npm-root-minor-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "npm"
+    directory: "/apps/copiloto-web"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 2
+    groups:
+      npm-web-minor-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
