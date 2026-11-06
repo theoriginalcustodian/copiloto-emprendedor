@@ -29,13 +29,20 @@ DEFAULT_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
 # más barato y con más cupo por hora, algo menos preciso) — cambiar y volver atrás es editar el env del servicio.
 DEFAULT_MODEL = os.environ.get("GROQ_STT_MODEL") or "whisper-large-v3"
 
-# Defensa A contra la alucinación de Whisper ante audio sin voz (medido en prod 2026-11-05: silencio puro → «Gracias.»
-# 6/6). Se pide `verbose_json` y, si TODOS los segmentos traen `no_speech_prob` por encima del umbral, la transcripción
-# se descarta (devuelve "" — todos los llamadores ya lo traducen a 422 «no se entendió el audio»).
+# Defensa A contra la alucinación de Whisper ante audio sin voz (medido 2026-11-05: silencio puro → «Gracias.» 6/6). Se
+# pide `verbose_json` y, si TODOS los segmentos traen `no_speech_prob` por encima del umbral, la transcripción se
+# descarta (devuelve "" — todos los llamadores ya lo traducen a 422 «no se entendió el audio»).
 # `STT_NO_SPEECH_MAX` (default 0,6 = el valor de referencia de Whisper) se lee en cada llamada; fuera de (0,1) desactiva.
-# MEDIDO y límite honesto: sobre silencio Groq dio 0,70 y sobre un tono 0,99 (se descartan), pero sobre hiss y ruido
-# rosa dio 0,03–0,21 CON texto alucinado — `no_speech_prob` no ve ruido real. Eso lo cubre la defensa B
-# (`apps/copiloto/audio_sin_voz.py`, energía + dinámica, antes de llamar al STT). Las dos se necesitan.
+#
+# ⚠️ ESTA DEFENSA SÓLO FUNCIONA CON `whisper-large-v3` — y PROD NO LO CORRE (medido 2026-11-06, mismo WAV de ceros,
+# Groq, una sola variable): large-v3 → no_speech_prob 0,701 (silencio) / 0,0015–0,068 (voz); `whisper-large-v3-turbo` →
+# 0 SIEMPRE, sobre silencio Y sobre voz (4 clips de voz sintética es-ES: 0/0/0/0). Prod corre turbo (`GROQ_STT_MODEL`
+# del servicio), así que acá `no_speech_prob` es un campo MUERTO y esta defensa nunca dispara. Lo que frena el silencio
+# en prod es la defensa B (`apps/copiloto/audio_sin_voz.py`, energía + dinámica, antes de llamar al STT) y la lista de
+# frases fantasma (`apps/copiloto/stt_fantasmas.py`). Cambiar de modelo es decisión de costo/cupo del operador (decidió
+# 2026-11-06 NO cambiarlo y medir primero con el log `stt_metricas`). Límite también con large-v3: sobre hiss y ruido
+# rosa dio 0,03–0,21 CON texto alucinado — `no_speech_prob` no ve ruido real.
+MODELO_NSP_VALIDO = "whisper-large-v3"
 NO_SPEECH_MAX_DEFAULT = 0.6
 _log_stt = logging.getLogger(__name__ + ".sin_voz")
 

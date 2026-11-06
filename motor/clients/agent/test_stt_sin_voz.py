@@ -1,7 +1,9 @@
 """Defensa A: `verbose_json` + descarte por `no_speech_prob` (Whisper alucina «Gracias.» ante silencio — medido 2026-11-05).
 
-Las respuestas fake reproducen la FORMA REAL medida en prod el 2026-11-05 (Groq y OpenRouter, mismo clip de silencio):
-Groq → `{"text": " Gracias.", "segments": [{"no_speech_prob": 0.701, ...}]}`; voz real → `no_speech_prob` 0.003.
+Las fixtures reproducen la FORMA REAL medida con `whisper-large-v3` (MODELO_NSP_VALIDO): silencio → 0.701, voz → 0.003.
+⚠️ Estos tests acreditan la ARITMÉTICA del guard, NO que proteja en prod: prod corre `whisper-large-v3-turbo`, que da
+`no_speech_prob = 0` siempre (silencio y voz; medido 2026-11-06) y donde la defensa no dispara. Ver el bloque de
+`providers/stt.py`. `test_la_fixture_es_del_modelo_que_corre` falla ruidosamente si el modelo efectivo cambia.
 """
 import io
 import json
@@ -33,6 +35,15 @@ def _env_limpio(monkeypatch):
     monkeypatch.delenv("STT_NO_SPEECH_MAX", raising=False)
     monkeypatch.setenv("GROQ_API_KEY", "k")
     monkeypatch.setenv("OPENROUTER_API_KEY", "k-or")
+
+
+def test_la_fixture_es_del_modelo_que_corre():
+    """Las fixtures (0.701 / 0.003) salieron de `MODELO_NSP_VALIDO`. Si el modelo efectivo del STT es otro, estos
+    tests siguen verdes pero ya no hablan del camino real (turbo da 0 siempre): mejor que fallen y lo digan."""
+    assert stt.DEFAULT_MODEL == stt.MODELO_NSP_VALIDO, (
+        f"el STT corre {stt.DEFAULT_MODEL!r} pero las fixtures de no_speech_prob son de {stt.MODELO_NSP_VALIDO!r}: "
+        "con otro modelo la defensa A puede no disparar nunca (turbo → 0 siempre, medido 2026-11-06). "
+        "Re-medir con el modelo real antes de tocar esta fixture o el umbral.")
 
 
 def test_HOSTIL_silencio_con_texto_alucinado_se_descarta():
