@@ -48,7 +48,7 @@ campo»*.
 | **SM-P2** | `sin-issue` | 🟧 DOD-PARCIAL | NO ejercitada en la pasada del 2026-11-05 (frontend1 lo declara explicitamente: sin evidencia propia del isotipo). El… |
 | **SM-P3** | `sin-issue` | 🗳️ CERRADO-POR-DECISION | NADA. La Falta que esta ficha arrastraba («pasada de device, el release fb0fb9d3 no trae estos fixes») era de cuando … |
 | **SM-P4** | `sin-issue` | 🟧 DOD-PARCIAL | NO ejercitada en la pasada del 2026-11-05: la camara de Soporte no se abrio (frontend1 lo declara). El APK ef143e95 (… |
-| **SM-P5** | `sin-issue` | 🟧 DOD-PARCIAL | QUEDA UN SOLO DISPARADOR: build nuevo de main + device. Las dos cosas que ese build destraba, ambas YA en main: (1) e… |
+| **SM-P5** | `sin-issue` | ✅ TERMINADO | @2235f543 (#1714, CI 6/6). Causa raiz medida en device por frontend1: NO era color (campo pixel-identico al del chat)… |
 | **SM-P6** | `sin-issue` | 🟧 DOD-PARCIAL | YA NO DEPENDE DE BACKEND. Medido en device el 2026-11-05: el dock de Facturacion SI se ve con gate «ARCA no configura… |
 | **SM-P7** | `sin-issue` | ✅ TERMINADO | DoD completo, cierre_ de frontend2 (2026-11-05) con los tres campos. Playwright en Gastos 390x844: oscuro blur 16px a… |
 | **SM-P8** | `sin-issue` | ✅ TERMINADO | 82f8451e (#1651). Tabla medida: (a) puente Como usar NO APLICA: la web navega por tabs sin stack, PantallaComoUsarLaA… |
@@ -58,6 +58,8 @@ campo»*.
 | **SM-P12** | `sin-issue` | 🟧 DOD-PARCIAL | Pasada de device hecha con el APK 7d278a2c (RF8T318RN9T, e2e-device, gestos por adb motionevent). 5 de 8 puntos resue… |
 | **SM-P13** | `sin-issue` | 🟧 DOD-PARCIAL | Solo DEVICE: la pasada de SM-P12 con e2e-device sobre la card de dictado:factura. La mitad WEB esta medida en navegad… |
 | **SM-P14** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-P15** | `sin-issue` | ✅ TERMINADO | NADA del cableado. El CONTENIDO del corpus quedo fichado aparte como issue #1728 (decision de producto del operador):… |
+| **SM-P16** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -170,9 +172,8 @@ campo»*.
 
 ### SM-P5 · `sin-issue` — Un solo dock en toda la app: sin fondo alrededor, con blur (mobile)
 
-- **Estado:** DOD-PARCIAL
-- **Falta:** QUEDA UN SOLO DISPARADOR: build nuevo de main + device. Las dos cosas que ese build destraba, ambas YA en main: (1) el fix del teclado -- con el teclado abierto el campo de Mi dia quedaba oculto porque recorrido baja y panelY se quedaba viejo; fix d9cbb1a6 (#1685, panelYAlCambiarRecorrido en PanelDeslizable.tsx + PantallaPrincipal.tsx), jest 72/72; (2) el DoD punto 4 (contraste del dock) MEDIDO Y CORREGIDO en ba2c58fb (#1702): claro 1,01:1 y oscuro 1,12:1 fallaban 3:1 contra la burbuja -- la pasada de device lo habia dado CUMPLE a ojo, y a ojo no es 3:1; fix borde propio tema.color.textoTenue (cero hex, cero token nuevo) -> 5,88:1 claro y 3,00:1 oscuro, gate paresPintadosContraste.test.tsx §9 con control negativo, 588 jest verdes. El APK instalado (ef143e95, sha 7d278a2c) es ANTERIOR a los dos. Sujeto corregido: el DoD decia «las 5 pieles» y son DOS, ODOBI claro y oscuro (skinsCatalogo.ts:6,17,22) -- era un numero sin instrumento. Lo no mecanizable que entra con ese build: el juicio estetico del operador sobre el borde 1px, mas marcado que el vidrio anterior; y el margen del oscuro es 3,00 exacto, asi que cualquier retoque a textoTenue oscuro o a glass.s1/s2 lo rompe -- para eso quedo el gate.
-- **Cierre:** 0212ba19 (#1653): despachoAlChat.ts + DockAlChat despachan primero y vuelven despues, dock en las 9 funciones, Mi dia editable. Envoltorio visual unico DockSobreContenido (mismo ScrimDock del chat) en DockFuncion y Soporte, test DockSobreContenido.test.tsx. Inventario path:linea en el cierre_ del buzon.
+- **Estado:** TERMINADO
+- **Cierre:** @2235f543 (#1714, CI 6/6). Causa raiz medida en device por frontend1: NO era color (campo pixel-identico al del chat) sino GEOMETRIA — DockSobreContenido solapaba 28px y el scroll terminaba sobre el campo, dejando franja lisa y card cortada. Fix: el dock mide su alto (onLayout) y marginTop=-alto => huella CERO, la lista corre bajo todo el dock igual que en el chat; cero cambios a ALFA_BASE_CAMPO/borde/ALFA_SCRIM_ABAJO. Tests jest + test nuevo de huella cero + gate §9 de contraste verdes en CI. Device (build 7fed76f8, cable verificado con canario CABLE-OK-ZZ9): Gastos y Facturacion en oscura, Ingresos/Presupuestos/Clientes en clara; N41 verificado en oscura (el interior del campo no deja leer nada detras). ACREDITACION DE LAS DOS PIELES POR EL OPERADOR en device sobre este mismo bundle: «en ambas pieles esta bien» (2026-11-05).
 - **Dueño:** frontend1
 - **Orden del operador (2026-11-04):** «todos los campos de ingreso de texto y los botones de mic
   deben ser iguales en toda la app... sin color de fondo alrededor, con el blur para el texto que
@@ -287,7 +288,7 @@ campo»*.
 
 - **Estado:** DOD-PARCIAL
 - **Dueno-activo:** frontend1 (RF8T318RN9T, Metro propio desde wt-fe1-ped en main b6b342bb)
-- **Falta:** Pasada de device hecha con el APK 7d278a2c (RF8T318RN9T, e2e-device, gestos por adb motionevent). 5 de 8 puntos resueltos: 1 CUMPLE · 6 CUMPLE para el texto, y la observacion de la pila (el chat quedaba detras) YA se resolvio en d9cbb1a6 (#1685, ChatView onPendienteMandado 45/45) -- no es cola · 7 MEDIDO y corregido en ba2c58fb (#1702): el criterio decia 5 pieles y son DOS (claro 1,01:1 y oscuro 1,12:1 fallaban 3:1; fix borde propio textoTenue -> 5,88:1 y 3,00:1, gate con control negativo, 588 jest verdes) · 2 corregido en codigo: d9cbb1a6 es el merge real (#1685), el cierre citaba bab2217d que el squash renombro. QUEDAN DOS DISPARADORES, NO TRES: (a) BUILD NUEVO + DEVICE, que ahora cubre CUATRO puntos y no dos -- el fix del teclado (2), el juicio estetico del borde 1px (7) y TAMBIEN los puntos 3 y 4, porque el gate fiscal de e2e-device YA DA VERDE POR API (backend midio el 2026-11-05 con login real: perfil_completo=true, puede_facturar=true, motivo_no_puede_facturar=null, CUIT sintetico 20111111112 en homologacion que nunca firma contra ARCA, 46 passed en el VPS). El cierre de frontend1 vio «ARCA no configurada» y la API dice lo contrario: hipotesis sin medir (1) esas filas existian despues de la pasada de las 08:06, (2) lado app, caso SM-N44, la app manda un cuit cacheado o decide el gate con otro campo. Se distingue repitiendo Facturacion con el MISMO APK y, si sigue «no configurada», mirando que request hace la app a /afip/estado. YA NO espera al operador ni a backend. (b) LA VOZ DEL OPERADOR para los puntos 5 y 8 (mic de Facturacion y paridad del mic en chat/Mi dia/funciones) -- diferida por orden suya hasta el final.
+- **Falta:** Pasada de device hecha con el APK 7d278a2c (RF8T318RN9T, e2e-device, gestos por adb motionevent). 5 de 8 puntos resueltos: 1 CUMPLE · 6 CUMPLE para el texto, y la observacion de la pila (el chat quedaba detras) YA se resolvio en d9cbb1a6 (#1685, ChatView onPendienteMandado 45/45) -- no es cola · 7 MEDIDO y corregido en ba2c58fb (#1702): el criterio decia 5 pieles y son DOS (claro 1,01:1 y oscuro 1,12:1 fallaban 3:1; fix borde propio textoTenue -> 5,88:1 y 3,00:1, gate con control negativo, 588 jest verdes) · 2 corregido en codigo: d9cbb1a6 es el merge real (#1685), el cierre citaba bab2217d que el squash renombro. RECORTE 2026-11-05: la mitad WEB del punto 7 YA ESTA ACREDITADA y sale de la cola -- frontend2 llevo el gate web a 3:1 (ef9f9bef, #1715, CI 6/6, verificado ancestro de origin/main con control negativo) y lo mirO en navegador REAL sobre ese build en las 3 pieles: la pildora se distingue de la burbuja y sigue translucida (alpha 0,74, blur 16px), o sea el borde no la volvio una caja opaca. Hallazgo del camino: la seccion nueva del gate web salio ROJA en las 3 pieles contra los tokens de hoy (claro: pildora vs burbuja 1,10:1) y el borde era un shorthand SIN color solido -- el mismo defecto que mobile, en el otro lado. Ratios finales borde vs burbuja / vs pagina: claro 4,96 / 4,73, oscuro 4,79 / 5,06. QUEDA, del punto 7, SOLO el juicio en DEVICE (mobile). ADEMAS una OBSERVACION DE JUICIO, no un defecto medido, que es del operador y no de ninguna sesion: en piel CLARA el contorno web se lee como campo con contorno nitido frente a burbujas blandas, mas que como vidrio flotante; cumple 3:1 y frontend2 NO lo toco. Si el operador lo ve de mas, el ajuste va por grosor u opacidad del borde sin bajar de 3:1, NUNCA por el color de las burbujas (el gate paresPintadosContraste lo mide). QUEDAN DOS DISPARADORES, NO TRES: (a) BUILD NUEVO + DEVICE, que cubre CUATRO puntos -- el fix del teclado (2), el juicio estetico del borde 1px en MOBILE (7, ya no en web) y TAMBIEN los puntos 3 y 4, porque el gate fiscal de e2e-device YA DA VERDE POR API (backend midio el 2026-11-05 con login real: perfil_completo=true, puede_facturar=true, motivo_no_puede_facturar=null, CUIT sintetico 20111111112 en homologacion que nunca firma contra ARCA, 46 passed en el VPS). El cierre de frontend1 vio «ARCA no configurada» y la API dice lo contrario: hipotesis sin medir (1) esas filas existian despues de la pasada de las 08:06, (2) lado app, caso SM-N44, la app manda un cuit cacheado o decide el gate con otro campo. Se distingue repitiendo Facturacion con el MISMO APK y, si sigue «no configurada», mirando que request hace la app a /afip/estado. YA NO espera al operador ni a backend. (b) LA VOZ DEL OPERADOR para los puntos 5 y 8 (mic de Facturacion y paridad del mic en chat/Mi dia/funciones) -- diferida por orden suya hasta el final.
 - **Dueño:** frontend1 (dueño del device) con la cola de las demás
 - **Qué:** una sola pasada final en device que ejercite **todas** las fichas de este sprint que
   terminaron, en una corrida, con el usuario canónico `e2e-device@copiloto.test`.
@@ -387,3 +388,73 @@ campo»*.
      + pregunta no relacionada ⇒ la respuesta no cita A».
   4. Control adversarial del caso que importa: card pendiente del cliente A + pregunta sobre el
      cliente B ⇒ la respuesta no filtra datos de A. Sin ese test el punto 3 queda `[UNVERIFIED]`.
+### SM-P15 · `sin-issue` — El chat del copiloto responde «cómo usar la app» con el RAG
+
+- **Estado:** TERMINADO
+- **Falta:** NADA del cableado. El CONTENIDO del corpus quedo fichado aparte como issue #1728 (decision de producto del operador): (a) el corpus dice «Facturacion AFIP» y la app rotula «ARCA» -- el RAG ENSENA un nombre que la app no usa; (b) MercadoPago no cubre «que vas a poder ver»; (c) Mi dia contesta generico. Mas un faltante de INSTRUMENTO: el orquestador no expone stats (404), asi que no se puede contar chunks ni fecha de indexacion -- hoy sabemos que CONTESTA, no cuando se indexo.
+- **Cierre:** @30f9c861 (#1718, CI 6/6, desplegado, durabilidad VERDE; ancestro de origin/main verificado con control negativo). Verificado tambien por CONTENIDO y no por el sha: tool_catalog.py:520 mete CONSULTAR_KB_EMPRENDEDOR_SCHEMA en schemas y :536 la declara read puro sin gate HITL (grep con control negativo 0). DoD 1-6 cumplidos. Punto 7, el que decidia si esto sirve: CORPUS NO VACIO -- las 5 TEMAS_AYUDA volvieron answered contra el orquestador REAL. Control positivo de honestidad: pregunta ajena (Mongolia) -> refused, no invento. Control negativo del instrumento: token/URL malos -> unavailable, no un falso answered. Routing medido en prod con e2e-device: las 3 preguntas de ayuda llamaron la tool y la operativa la llamo 0 veces. Y la pregunta «el RAG interfiere con el chat principal?» quedo ZANJADA con A/B preregistrado (14 frases de /capacidades x N=5 x 2 brazos, 70 por brazo, unica variable = la tool en el catalogo): mis-routing 0/70, acierto 70/70 en ambos brazos, Fisher p=1.0 -- NO se detecta interferencia en la eleccion de tool.
+- **Dueño:** backend
+- **Qué:** orden del operador (2026-11-05, textual): *«el chat del copiloto debe poder responder
+  preguntas sobre como usar la app... así que agrega el rag a las capacidades del chat»*, y después
+  *«que backend pruebe si el rag funciona bien también»*. O sea DOS preguntas, no una: que esté
+  enchufado, y que lo que contesta SIRVA.
+- **Por qué el trabajo era ENCHUFAR y no escribir:** la tool `consultar_base_de_conocimiento` ya
+  existía entera en `apps/copiloto/soporte_agent_tools.py:50` (schema + `_run_consultar_kb` +
+  dispatch) y sólo vivía en el dominio `soporte` (`worker_soporte.py:129`). Faltaba en el dominio
+  `emprendedor` (`worker_b.py:296` → `tool_catalog.build_tool_catalog()`). El comentario de esa
+  función dejaba la puerta abierta por escrito —*«se re-enchufan acá sin reescribirlos»*— y
+  `consultar_negocio` ya había entrado así por decisión de planificación el 2026-10-13.
+- **🔴 El fallo silencioso que la ampliación del DoD vino a cazar:** con el corpus vacío TODO el
+  cableado sale verde — la tool se invoca, `/rag/answer` da 200, el `outcome` es `refused` legítimo y
+  el chat dice honestamente «no sé». Cero rojo, cero valor. **`refused` significa lo mismo para «el
+  corpus no lo tiene» que para «el corpus no tiene nada»: no los distingue**, así que un test que
+  afirme `refused` es verde en los dos casos. Por eso el DoD exigió `answered` con contenido
+  verdadero, no sólo cobertura de los tres `outcome`.
+- **DoD:**
+  1. La tool en el catálogo del chat Y ejecutable desde su `tool_executor` (un schema sin ejecutor es
+     una tool que el agente ofrece y no puede correr).
+  2. Test por el camino de producción, no por el default.
+  3. Los tres `outcome`, con `refused` por control positivo: que diga que no sabe en vez de inventar.
+  4. `RAG_ORQUESTADOR_BASE_URL` / `RAG_ORQUESTADOR_TOKEN` verificadas en el entorno de `worker_b`.
+  5. Tests en el VPS con recibo del SHA.
+  6. Read puro, sin gate HITL que no corresponda.
+  7. Las 5 preguntas reales (`TEMAS_AYUDA`) con tabla de `outcome` + respuesta + ¿es correcta?
+
+### SM-P16 · `sin-issue` — El panel de Mi día arrastra desde el CUERPO, no sólo desde la línea
+
+- **Estado:** PENDIENTE
+- **Dueño:** frontend1 (dueña del device y del shell)
+- **Qué:** orden del operador (2026-11-05, textual): *«el tirador tiene que funcionar en cualquier
+  lugar de la linea de tirar hacia abajo con el gesto de scroll»*.
+- **🔴 NO es una regresión: es un FALTANTE, y la distinción cambia la tarea.** El operador lo reportó
+  como regresión y acto seguido dudó —*«no sé si es mi apreciación o nunca se implementó»*— y su
+  segunda hipótesis es la correcta. Medido contra `origin/main`: el panel tiene **exactamente dos**
+  `GestureDetector`, `PanelDeslizable.tsx:626` sobre `zonaHandle` (la línea, `ALTO_HANDLE = 13`) y
+  `:648` sobre `pieAbajo`; en el medio, `:637` es `<Animated.View>{children}</Animated.View>`, **sin
+  gesto**. El código lo declara: `:672` *«SM-N38: sólo la línea»*, `:412` *«el Pan se FABRICA: el del
+  asa»*. Control por CONTENIDO sobre la historia completa (`git log -S`, no por sha porque las citas
+  de sha mueren en el squash): `gestoCuerpo` 0 commits · `blocksExternalGesture` 0 ·
+  `requireExternalGestureToFail` 0 · `simultaneousWithExternalGesture` 4 · control positivo
+  `ALTO_HANDLE` 14 · control negativo 0. **Llamarlo regresión manda a bisectar una historia donde el
+  código nunca estuvo.**
+- **🟢 Y el operador NO recuerda mal — hay un mecanismo real detrás de la sensación.** `:465` →
+  `gestoAsa: crearPan().hitSlop({ top: holguraArrastreArriba(insetTop) })`: el asa agarra **más de lo
+  que se ve**, en una franja invisible sobre la línea cuyo tamaño es **calculado** (depende de
+  `insetTop` y del alto, acotado por `ALTO_ZONA_ARRASTRE`, `:64`). Zona activa invisible y variable,
+  con `ALTO_HANDLE` tocado en 14 commits = «antes agarraba más». Medirla en dp es parte del DoD: es
+  lo que cierra la duda, y es diagnóstico, no cosmética.
+- **Lo difícil no es montar el Pan, es COMPONERLO.** El cuerpo tiene scroll, tap y
+  `ReanimatedSwipeable` (`TarjetaMiDiaRow`, que en `:257` ya dejó anotado que **no hay wiring
+  explícito** contra el `Gesture.Pan()` de `MarcoGlass`). Hoy **nada de eso está roto**: un fix que
+  habilite el arrastre y rompa el swipe nos deja peor que ahora.
+- **DoD:**
+  1. Arrastra desde cualquier punto del cuerpo, con gesto de scroll vertical.
+  2. **Y el scroll, el tap y el swipe de la tarjeta siguen funcionando.** No es un «además»: es la
+     mitad por la que este trabajo puede fracasar.
+  3. Composición de gestos declarada EXPLÍCITAMENTE (no heredada del árbol) y el comentario de
+     `TarjetaMiDiaRow.tsx:257` actualizado — si queda diciendo que no hay wiring, miente al próximo.
+  4. Tests de las DOS mitades. Precedente del mismo día: `Row.gestual.test.tsx` son 49 líneas que
+     afirman el gesto de la fila y **ninguna** mira el Pan del padre.
+  5. Device a mano, `adb input motionevent` DOWN/MOVE/UP (un `input tap` no ejercita un Pan): desde
+     el cuerpo, desde encima de una tarjeta y desde la línea, en las dos pieles.
+  6. La franja del `hitSlop` del asa medida en dp con el inset real del device.
