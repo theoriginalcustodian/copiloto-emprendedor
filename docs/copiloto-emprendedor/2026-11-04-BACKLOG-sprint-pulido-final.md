@@ -63,6 +63,7 @@ campo»*.
 | **SM-P18** | `sin-issue` | ✅ TERMINADO | c16b989ff2e76032e0e52cb18ad4df22f301997e (#1744, ancestro de origin/main). DoD completo en device RF8T318RN9T, e2e-de… |
 | **SM-P17** | `sin-issue` | ✅ TERMINADO | NADA de lo pedido. frontend2 declaro, sin que se le pidiera, cinco superficies que NO estan cubiertas y NO estaban en… |
 | **SM-P19** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-P20** | `sin-issue` | ⬜ PENDIENTE | — |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -550,3 +551,54 @@ campo»*.
 - **No autoriza:** emitir ninguna factura (el gate de `FacturaWorkflow.confirmar` se queda donde
   está; el dictado jamás manda `confirmar`) · tocar `GROQ_STT_MODEL` · que una plataforma se alinee
   sola con la otra por su cuenta.
+
+### SM-P20 · `sin-issue` — Agenda y tarjetas de Mi día alineadas al prototipo + el orden de «Para hoy»
+
+- **Estado:** PENDIENTE
+- **Dueño:** backend (el ORDEN) + frontend1 (Agenda y la línea de detalle de las tarjetas)
+- **Origen:** `pedido_` de frontend1 a planificación del 2026-11-06, con capturas del prototipo y
+  del teléfono que el operador le pasó. **Prioridad declarada en el propio pedido: DESPUÉS de
+  `SM-P19`** (las 5 funciones). Planificación lo confirma: `SM-P19` no se interrumpe por esto.
+- **POR QUÉ ENTRA AL BACKLOG Y NO SE QUEDA EN EL BUZÓN:** el pedido me pedía *decidir* el criterio
+  de orden, y **la decisión del operador ya estaba escrita en el mismo archivo** — sección ✅,
+  «críticas primero, luego por vencimiento». O sea que no faltaba una decisión: faltaba que el
+  trabajo tuviera un **id que circule**. Es exactamente
+  `memoria/el-registro-no-se-marcaba-porque-su-id-no-circulaba.md` (18 de 26 fichas jamás nombradas
+  en 460 cierres) y `memoria/sesion-parada-la-respuesta-existe-pero-enterrada.md`.
+- **Los tres frentes, con su dueño y lo medido:**
+  1. **ORDEN de «Para hoy»** — decisión del operador (2026-11-06), textual: **críticas primero,
+     luego por vencimiento.** Grupo 1 lo crítico (conexión caída, CAE/certificado por vencer,
+     margen negativo); grupo 2 el resto por vencimiento más próximo; lo **sin fecha al final**, por
+     antigüedad. **Ordena el BACKEND** (`mi_dia_web.py`) y la app consume el orden tal cual — un
+     orden duplicado en los dos lados es el `memoria/dos-implementaciones-del-mismo-cliente...`
+     garantizado. Medido por frontend1 (lectura de código): hoy **no existe tal orden** —
+     `mi_dia_tarjeta_store.py:168` es `ORDER BY creada_en DESC`, `mi_dia_web.py:173-184` arma las
+     solapas sin reordenar y `PantallaTuDia.tsx` no ordena. **Los datos YA están**:
+     `mi_dia_presentacion.py:197` (`_por_vencer`) calcula los días al vencimiento y el detector sabe
+     qué reglas son críticas. Es cablear lo que existe, no diseñarlo.
+  2. **Agenda** — referencia **VINCULANTE**: `Prototipo frontend/odobi-ui/prototipo/index.html?ver=agenda`
+     (⚠️ **no** el `mapa-pantallas`, que el propio pedido cita en un punto y es otro archivo: dos
+     referentes para «el prototipo», y es el modo de falla que este sprint ya pagó). Línea de tiempo
+     por horas (8:00–19:00), eventos como bloques de color con título y «lugar · Google Calendar»,
+     línea de «ahora», «Hoy martes 18» con «+ Nuevo evento» a la derecha del título, más Mañana /
+     Vencen esta semana / Sin hora. Hoy la app tiene botón ancho arriba y secciones de texto: **son
+     dos diseños distintos**, medido contra captura del 2026-11-06 21:34.
+  3. **Línea de detalle de las tarjetas** («31 días sin respuesta», «22 días impaga», «Lo anotaste
+     vos»). **NO MEDIDO** ni en código ni en device — y se deja escrito así en vez de asumirlo.
+- **El dato que explica la pantalla vacía, y que NO es un bug:** «Para hoy» es proactivo
+  (`mi_dia_detector.py` evalúa reglas sobre los datos del usuario). El usuario de prueba **no tiene
+  datos que disparen ninguna regla**, así que el teléfono muestra «Nada por acá» correctamente. Para
+  acreditar los puntos 2 y 3 hace falta **fabricar** el caso «presupuesto sin respuesta» — si no, se
+  va a medir un vacío y a leerlo como defecto
+  (`memoria/dato-degenerado-imita-ausencia-del-mecanismo.md`).
+- **DoD (binario):**
+  1. Backend ordena en `mi_dia_web.py` con el criterio de arriba, con test de unidad que fije el
+     orden **y** el caso sin fecha al final; la app no reordena (verificado por grep, no por
+     promesa).
+  2. Cotejo punto por punto prototipo vs app de las dos pantallas, **captura de cada lado**.
+  3. Agenda con línea de tiempo por horas, probada en device con eventos reales.
+  4. Tarjetas con la línea de detalle, en device, con al menos una tarjeta **detectada** (dato
+     fabricado del caso «presupuesto sin respuesta»).
+  5. Si planificación decide que alguna diferencia es intencional, **queda escrito el porqué**.
+- **No autoriza:** interrumpir `SM-P19` · emitir facturas · escribir en el tenant fiscal real del
+  operador · fabricar datos en ese tenant (el caso de prueba va en el usuario canónico).
