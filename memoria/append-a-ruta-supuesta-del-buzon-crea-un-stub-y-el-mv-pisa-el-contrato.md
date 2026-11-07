@@ -234,3 +234,32 @@ borra el stub. Medido hoy: `17932` chars finales (> 16060), adendas 13:20 y 13:4
 Y el control que lo caza sin saber que pasó: **contar las copias del tema** después de archivar —
 `ls abierto/ cerrado/<hoy>/ | grep -c '<slug>'` debe dar **1**. Es el mismo control del typo de
 arriba: preguntar *«¿cuántos archivos responden a este tema?»*, no *«¿se movió el mío?»*.
+
+## Refuerzo 2026-11-06 — `mv -n` con el destino OCUPADO es un no-op con EXIT 0, y el `&&` lo declara hecho
+
+`mv -n` existe justamente para no pisar. El costo es el otro lado: cuando el destino **ya existe**,
+**no mueve nada y sale 0**. Así que
+
+```bash
+mv -n "$F" "$C/cerrado/2026-11-06/" && echo "archivado: $(basename "$F")"
+```
+
+**imprime «archivado» sin haber archivado.** Me pasó hoy con un `contrato_` que ya tenía una copia
+del mismo nombre en `cerrado/` desde las 10:24: el `mv -n` fue no-op, el `&&` se cumplió, y declaré
+el buzón ordenado mientras el escalador seguía contando el archivo en `abierto/`. **El `&&` de un
+comando "seguro" acredita que no hubo error, nunca que hubo efecto.**
+
+**Lo que lo cazó fue el control por efecto**, no el `&&`: `find … | wc -l` esperaba `0` y dio `1`.
+Por eso el control no puede ser el propio `&&` de la operación — tiene que preguntarle al
+**destino**. Y el control tiene que ser **el conteo en el lugar donde el gate mira**, que acá es
+`abierto/`, no «el archivo existe en algún lado» (existía en los dos).
+
+**La regla:** al archivar en el buzón, el nombre de destino se hace **único** (sufijo con la hora o
+con el motivo) y después se cuenta el origen. Un nombre repetido en `cerrado/` no es raro: los
+nombres del buzón son descriptivos y estables, así que **un archivo puede volver a nacer con el
+mismo nombre** — un escalador que lo regenera, una sesión que lo reemite.
+
+Y el segundo hallazgo del mismo minuto, que sin el control no habría visto: esa copia resucitada
+**ya tenía acuse de los dos destinatarios**, con declaraciones **incompatibles** entre sí (backend:
+«lo que resta es de frontend1»; frontend1: «sin nada en vuelo de mi lado»). Ordenar el buzón por
+ubicación habría archivado el conflicto junto con el archivo.
