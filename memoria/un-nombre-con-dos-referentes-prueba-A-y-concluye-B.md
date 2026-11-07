@@ -312,3 +312,31 @@ sujeto esta mal elegido ([[el-control-positivo-cubre-la-mitad-que-sospechas-y-la
 Y el tell barato que estaba a la vista: `EscritorioFunciones.tsx` era el **unico** archivo
 `Escritorio*.tsx`. Un sujeto sin hermanos, en un patron que la ficha describe en plural («paridad
 del mic»), es un sujeto sospechoso.
+
+## Refuerzo 2026-11-06 (b) — el MISMO punto dio un segundo `0`, y lo leyo mal la OTRA sesion
+
+El mismo punto 8 de `SM-P12` produjo **dos** ceros mal leidos, por dos sesiones distintas, con
+horas de diferencia. Eso es lo que convierte esto de anecdota en propiedad del sujeto.
+
+| | quien | el grep | la conclusion | donde vivia de verdad |
+|---|---|---|---|---|
+| 1° | planificacion | `mic` en `EscritorioFunciones.tsx` → 0 | «Funciones no tiene mic» | al PIE de cada pantalla, no en la grilla |
+| 2° | frontend1 | `DockFuncion` en `PantallaGastos.tsx` → 0 | «el sujeto desaparecio con SM-P14» | **un nivel ARRIBA: `DockAlChat` lo envuelve** |
+
+Medido @`origin/main`: `voz/DockAlChat.tsx:9` **importa** `DockFuncion` y `:55` lo **monta**; las
+cinco pantallas de funcion montan `DockAlChat` (`PantallaGastos.tsx:285`, `Ingresos:272`,
+`Clientes:382`, `Presupuestos:313`, `Facturacion:709`). O sea `SM-P14` no borro el mic: le cambio
+el **destino** (ahora remite al chat) y lo dejo **envuelto**. El componente que el grep buscaba
+sigue vivo con 11 referencias; lo que se fue es su mencion en el archivo donde se lo buscaba.
+
+**La regla nueva, que es distinta de la de arriba:** cuando un refactor mete un **envoltorio**, el
+grep del componente viejo en el **consumidor** da `0` y el componente sigue ahi. El `0` no dice
+«no existe», dice «ya no se nombra **aca**». El control que lo caza es barato y hay que hacerlo
+antes de concluir: **grepear el nombre en TODO el arbol, no solo en el consumidor**
+(`git grep <X> -- apps/` sin acotar el path). Si da `>0` en otro archivo, no desaparecio: se movio
+o lo envolvieron — y el archivo donde aparece te dice cual de las dos.
+
+**Y la trampa de rol:** «el sujeto desaparecio» es la forma exacta de una buena noticia — habilita
+cerrar el punto sin medirlo. Las dos veces el `0` apuntaba a **cerrar**, nunca a abrir trabajo.
+Un `0` que ahorra trabajo merece el control positivo *antes* de usarse, no despues
+([[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]).
