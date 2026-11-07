@@ -59,7 +59,7 @@ campo»*.
 | **SM-P13** | `sin-issue` | 🟧 DOD-PARCIAL | 🔴 ESCALADO AL OPERADOR EL 2026-11-06 -- EL PUNTO (1) DEL DoD QUEDO DEROGADO DE FACTO Y MOBILE Y WEB DIVERGEN. Medido … |
 | **SM-P14** | `sin-issue` | ✅ TERMINADO | sin-codigo — el defecto NO se reproduce por el mecanismo que la ficha le atribuia, y el fix propuesto quedo SIN respa… |
 | **SM-P15** | `sin-issue` | ✅ TERMINADO | NADA del cableado. El CONTENIDO del corpus quedo fichado aparte como issue #1728 (decision de producto del operador):… |
-| **SM-P16** | `sin-issue` | 🟧 DOD-PARCIAL | CODIGO EN MAIN: #1733 (2d50aa8a, ancestro de origin/main con control negativo). MEDIDO EN DEVICE por frontend1 el 202… |
+| **SM-P16** | `sin-issue` | ✅ TERMINADO | sha 2d50aa8a03c3df4f9a428995acfc9efbb588f079 (#1733) y 4752fa6d939a1cda6c4befe32e7b7f862b69053e (#1764). DoD: (1) arr… |
 | **SM-P18** | `sin-issue` | ✅ TERMINADO | c16b989ff2e76032e0e52cb18ad4df22f301997e (#1744, ancestro de origin/main). DoD completo en device RF8T318RN9T, e2e-de… |
 | **SM-P17** | `sin-issue` | ✅ TERMINADO | NADA de lo pedido. frontend2 declaro, sin que se le pidiera, cinco superficies que NO estan cubiertas y NO estaban en… |
 
@@ -421,9 +421,9 @@ campo»*.
 
 ### SM-P16 · `sin-issue` — El panel de Mi día arrastra desde el CUERPO, no sólo desde la línea
 
-- **Estado:** DOD-PARCIAL
+- **Estado:** TERMINADO
 - **Dueno-activo:** frontend1
-- **Falta:** CODIGO EN MAIN: #1733 (2d50aa8a, ancestro de origin/main con control negativo). MEDIDO EN DEVICE por frontend1 el 2026-11-06 (RF8T318RN9T, e2e-device, cero facturas): piel CLARA el arrastre desde el campo sube el panel SIN abrir el teclado, el tap sigue abriendolo y el scroll del cuerpo no se rompe -- o sea las tres funciones conviven, que era el riesgo real de la ficha; y en piel oscura el asa inferior y la superior arrastran en las DOS direcciones. || UN NUMERO QUE NO CIERRA Y NO SE DISIMULA: el hitSlop superior agarra a 43 px de la linea y NO agarra a 73 px, asi que la franja invisible existe, pero el teorico de 44 dp no se cumple a los 36 dp medidos. Queda SIN ATRIBUIR a proposito: puede ser la conversion px/dp del instrumento o el calculo de holguraArrastreArriba, y declararlo cerrado sin distinguirlo seria elegir la explicacion comoda. || QUEDA: (a) el asa en piel CLARA (la midio en oscura); (b) el tap de botones y tarjetas HITL, que necesita una card VIVA y por eso esta trabado detras de «sin emitir factura»; (c) la opcion B; (d) mic vs panel, que es MAYOR y lo decide el operador, no una sesion.
+- **Cierre:** sha 2d50aa8a03c3df4f9a428995acfc9efbb588f079 (#1733) y 4752fa6d939a1cda6c4befe32e7b7f862b69053e (#1764). DoD: (1) arrastre desde el cuerpo en main #1733. (2) scroll vertical y tap de card HITL medidos en device RF8T318RN9T e2e-device 2026-11-06; el swipe horizontal de tarjeta vive SOLO en el tablero (PantallaTuDia pasa gestion, Mi dia no por SM-I1) y el operador lo probo a mano el 2026-11-06 (procedencia: su relato, no presenciado por frontend1): revela Empezar y Borrar, se oculta al volver, los filtros se deslizan; en Mi dia no hay swipe por diseno. (3) composicion declarada en TarjetaMiDiaRow: el Pan del cuerpo envuelve solo la conversacion. (4) tests en main. (5) asa medida en piel oscura y clara. (6) hitSlop atribuido: agarra a 25 y 40 px, a 55 y 70 px es la barra de estado de Android (inset 24 dp). Decisiones del operador: no opcion B, el mic queda como esta.
 - **Dueño:** frontend1 (dueña del device y del shell)
 - **Qué:** orden del operador (2026-11-05, textual): *«el tirador tiene que funcionar en cualquier
   lugar de la linea de tirar hacia abajo con el gesto de scroll»*.
