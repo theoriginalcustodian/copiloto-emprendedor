@@ -19,7 +19,7 @@ import { FotoFuncion } from './FotoFuncion';
 import { ResumenMes } from './ResumenMes';
 import { TarjetaGasto } from './TarjetaGasto';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
-import { DockAlChat } from '../voz';
+import { AvisoDictado, DockFuncion, inicialesDeGasto, useDictadoPorFuncion, type ViaTexto } from '../voz';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
@@ -73,11 +73,13 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
   // campo libre; el monto y el resto los sigue completando el emprendedor a mano, mismo criterio
   // que `montoSugerido` del OCR (nunca se autocompleta el número solo). `undefined` = alta en blanco.
   const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesGasto | undefined>(undefined);
+  const [errorMic, setErrorMic] = useState<string | null>(null);
   // BL-J7 3er ítem del DoD: `origen` viaja con la card que abrió el formulario — 'foto' sólo cuando
   // `/gastos/leer-foto` devolvió 200, nunca por defecto.
   // `'voz'` sólo cuando el dictado por chat devolvió una propuesta del motor (la misma `origen` que trae
   // la card del chat); el texto crudo sigue siendo `'manual'`, como antes.
   const [origenAlta, setOrigenAlta] = useState<OrigenGasto>('manual');
+  const dictado = useDictadoPorFuncion('gasto');
   const [errorFoto, setErrorFoto] = useState<string | null>(null);
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
@@ -154,6 +156,21 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
     setVista('formulario');
   }
 
+  // El dictado va por el chat (`useDictadoPorFuncion`): si el motor devuelve la propuesta, el formulario
+  // abre con monto/categoría/proveedor ya extraídos; si el camino está apagado o falla, cae al texto
+  // crudo en `descripcion` (el comportamiento de antes) y el hook deja el `aviso` que lo dice.
+  // SM-I2: lo escrito en el dock usa el mismo camino, pero `propuesta.origen` siempre dice `voz`:
+  // guardarlo así persistiría que lo dictó.
+  async function alDictarGasto(texto: string, via: ViaTexto) {
+    setErrorMic(null);
+    const propuesta = await dictado.dictar(texto);
+    if (!vivo.current) return;
+    setInicialesDictado(propuesta !== null ? inicialesDeGasto(propuesta) : { descripcion: texto });
+    setOrigenAlta(propuesta !== null && via === 'dictado' ? propuesta.origen : 'manual');
+    setErrorFoto(null);
+    setVista('formulario');
+  }
+
   // BL-J7 3er ítem del DoD: 200 → abre el alta con la propuesta del OCR, `origen: 'foto'`.
   function alLeerFoto(iniciales: ValoresInicialesGasto) {
     setErrorFoto(null);
@@ -223,6 +240,15 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
             </Text>
           )}
 
+          {/* Dictado por chat: «esperando» y, si cayó al texto crudo, el porqué. Fuera del ternario por el
+              mismo motivo que `errorFoto`. El aviso sólo vive mientras el formulario abierto es el que
+              nació del dictado (`inicialesDictado` se limpia al salir). */}
+          <AvisoDictado
+            testID="gastos-dictado"
+            ocupado={dictado.ocupado}
+            aviso={vista === 'formulario' && inicialesDictado !== undefined ? dictado.aviso : null}
+          />
+
           {vista === 'formulario' ? (
             <FormularioGasto
               origen={origenAlta}
@@ -251,6 +277,12 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
                   ]}
                 />
               </View>
+
+              {errorMic != null && (
+                <Text testID="gastos-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+                  {errorMic}
+                </Text>
+              )}
 
               {/* 🔴 Decisión C: el buscador NO reemplaza la lista rica de gastos — la envuelve. Sin
                   query muestra las `TarjetaGasto` (con categoría) tal cual; con query pega a
@@ -282,7 +314,13 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
       {/* SM-I2: el dock, fijo al pie y fuera del scroll. Dictar o escribir abren el formulario prellenado, nunca
           envían nada solo: lo escrito va por el mismo camino que lo dictado (K-10/§2, sin sesión de chat). */}
       {estado === 'ok' && vista === 'listado' && (
-        <DockAlChat contexto="gasto" origen="Gastos" placeholder={PLACEHOLDER_DOCK} />
+        <DockFuncion
+          contexto="gasto"
+          placeholder={PLACEHOLDER_DOCK}
+          onTexto={(t, via) => void alDictarGasto(t, via)}
+          onError={setErrorMic}
+          disabled={dictado.ocupado}
+        />
       )}
 
       {/* 🔴 Fuera del scroll, como el detalle de presupuestos y la ficha de clientes: un overlay

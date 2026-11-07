@@ -2641,6 +2641,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/clientes"
     },
+    "modules/clientes::clientes-dictado": {
+      "en": [
+        "apps/mobile/src/modules/clientes/PantallaClientes.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "clientes-dictado",
+      "motivo": "Contrato 2026-10-13 (el dictado desde una funcion va por el chat): se implementa SOLO en mobile. La pantalla muestra «Entendiendo lo que dijiste…» o el aviso de degradado mientras el motor devuelve la card. El contrato no baja el mismo flujo a web: web sigue precargando el texto crudo (MicFuncion -> descripcion). Asimetria declarada: si web adopta el dictado por chat, el par se agrega alli y esta excepcion se saca (trinquete).",
+      "pantalla": "modules/clientes"
+    },
     "modules/clientes::clientes-duplicado-acciones": {
       "en": [
         "apps/mobile/src/modules/clientes/PantallaClientes.tsx"
@@ -2669,6 +2679,16 @@
       "fecha": "2026-09-22",
       "id": "clientes-lista",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/clientes"
+    },
+    "modules/clientes::clientes-mic-error": {
+      "en": [
+        "apps/mobile/src/modules/clientes/PantallaClientes.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-04",
+      "id": "clientes-mic-error",
+      "motivo": "SM-P7 (2026-11-04): la web unifico el dictado de las funciones en el dock del pie (DockFuncion -> DockEntrada, el mismo del chat); el error de transcripcion se muestra DENTRO del dock (composer__status), ya no hay un aviso suelto bajo el rotulo. Mobile conserva este id en su pantalla por su propio mecanismo de error. Divergencia de diseno, no drift. Dueno: frontend web. Disparador para cerrar: que mobile unifique su aviso de error en el dock o se declare el id en ambas.",
       "pantalla": "modules/clientes"
     },
     "modules/clientes::clientes-refresh": {
@@ -3081,6 +3101,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/gastos"
     },
+    "modules/gastos::gastos-dictado": {
+      "en": [
+        "apps/mobile/src/modules/gastos/PantallaGastos.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "gastos-dictado",
+      "motivo": "Contrato 2026-10-13 (el dictado desde una funcion va por el chat): se implementa SOLO en mobile. La pantalla muestra «Entendiendo lo que dijiste…» o el aviso de degradado mientras el motor devuelve la card. El contrato no baja el mismo flujo a web: web sigue precargando el texto crudo (MicFuncion -> descripcion). Asimetria declarada: si web adopta el dictado por chat, el par se agrega alli y esta excepcion se saca (trinquete).",
+      "pantalla": "modules/gastos"
+    },
     "modules/gastos::gastos-lista": {
       "en": [
         "apps/mobile/src/modules/gastos/PantallaGastos.tsx"
@@ -3089,6 +3119,16 @@
       "fecha": "2026-09-22",
       "id": "gastos-lista",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/gastos"
+    },
+    "modules/gastos::gastos-mic-error": {
+      "en": [
+        "apps/mobile/src/modules/gastos/PantallaGastos.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-04",
+      "id": "gastos-mic-error",
+      "motivo": "SM-P7 (2026-11-04): la web unifico el dictado de las funciones en el dock del pie (DockFuncion -> DockEntrada, el mismo del chat); el error de transcripcion se muestra DENTRO del dock (composer__status), ya no hay un aviso suelto bajo el rotulo. Mobile conserva este id en su pantalla por su propio mecanismo de error. Divergencia de diseno, no drift. Dueno: frontend web. Disparador para cerrar: que mobile unifique su aviso de error en el dock o se declare el id en ambas.",
       "pantalla": "modules/gastos"
     },
     "modules/gastos::gastos-refresh": {
@@ -3321,6 +3361,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ingresos"
     },
+    "modules/ingresos::ingresos-dictado": {
+      "en": [
+        "apps/mobile/src/modules/ingresos/PantallaIngresos.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "ingresos-dictado",
+      "motivo": "Contrato 2026-10-13 (el dictado desde una funcion va por el chat): se implementa SOLO en mobile. La pantalla muestra «Entendiendo lo que dijiste…» o el aviso de degradado mientras el motor devuelve la card. El contrato no baja el mismo flujo a web: web sigue precargando el texto crudo (MicFuncion -> descripcion). Asimetria declarada: si web adopta el dictado por chat, el par se agrega alli y esta excepcion se saca (trinquete).",
+      "pantalla": "modules/ingresos"
+    },
     "modules/ingresos::ingresos-error-carga": {
       "en": [
         "apps/copiloto-web/src/modules/ingresos/IngresosScreen.tsx"
@@ -3339,6 +3389,16 @@
       "fecha": "2026-09-22",
       "id": "ingresos-lista",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/ingresos"
+    },
+    "modules/ingresos::ingresos-mic-error": {
+      "en": [
+        "apps/mobile/src/modules/ingresos/PantallaIngresos.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-04",
+      "id": "ingresos-mic-error",
+      "motivo": "SM-P7 (2026-11-04): la web unifico el dictado de las funciones en el dock del pie (DockFuncion -> DockEntrada, el mismo del chat); el error de transcripcion se muestra DENTRO del dock (composer__status), ya no hay un aviso suelto bajo el rotulo. Mobile conserva este id en su pantalla por su propio mecanismo de error. Divergencia de diseno, no drift. Dueno: frontend web. Disparador para cerrar: que mobile unifique su aviso de error en el dock o se declare el id en ambas.",
       "pantalla": "modules/ingresos"
     },
     "modules/ingresos::ingresos-refresh": {
@@ -4227,6 +4287,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/presupuestos"
     },
+    "modules/presupuestos::presupuestos-dictado": {
+      "en": [
+        "apps/mobile/src/modules/presupuestos/PantallaPresupuestos.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-10-13",
+      "id": "presupuestos-dictado",
+      "motivo": "Contrato 2026-10-13 (el dictado desde una funcion va por el chat): se implementa SOLO en mobile. La pantalla muestra «Entendiendo lo que dijiste…» o el aviso de degradado mientras el motor devuelve la card. El contrato no baja el mismo flujo a web: web sigue precargando el texto crudo (MicFuncion -> descripcion). Asimetria declarada: si web adopta el dictado por chat, el par se agrega alli y esta excepcion se saca (trinquete).",
+      "pantalla": "modules/presupuestos"
+    },
     "modules/presupuestos::presupuestos-historial-botones": {
       "en": [
         "apps/mobile/src/modules/presupuestos/PantallaPresupuestos.tsx"
@@ -4245,6 +4315,16 @@
       "fecha": "2026-09-22",
       "id": "presupuestos-lista",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
+      "pantalla": "modules/presupuestos"
+    },
+    "modules/presupuestos::presupuestos-mic-error": {
+      "en": [
+        "apps/mobile/src/modules/presupuestos/PantallaPresupuestos.tsx"
+      ],
+      "falta_en": "web",
+      "fecha": "2026-11-04",
+      "id": "presupuestos-mic-error",
+      "motivo": "SM-P7 (2026-11-04): la web unifico el dictado de las funciones en el dock del pie (DockFuncion -> DockEntrada, el mismo del chat); el error de transcripcion se muestra DENTRO del dock (composer__status), ya no hay un aviso suelto bajo el rotulo. Mobile conserva este id en su pantalla por su propio mecanismo de error. Divergencia de diseno, no drift. Dueno: frontend web. Disparador para cerrar: que mobile unifique su aviso de error en el dock o se declare el id en ambas.",
       "pantalla": "modules/presupuestos"
     },
     "modules/presupuestos::presupuestos-refresh": {
