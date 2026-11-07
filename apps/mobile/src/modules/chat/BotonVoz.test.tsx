@@ -90,17 +90,17 @@ function gestoCompleto(
   desplazamientosY: number[],
   { duracionMs = DURACION_MINIMA_MS + 100, desplazamientosX = [] as number[] } = {},
 ) {
-  // Reloj controlado: `comenzar()` y `soltar()` miden el toque con `Date.now()`.
-  let ahora = 1_000_000;
-  const espia = jest.spyOn(Date, 'now').mockImplementation(() => ahora);
+  // Reloj controlado: la grabación arranca al cumplirse `DURACION_MINIMA_MS` de mantener (temporizador).
+  jest.useFakeTimers();
   handlers.onBegin?.({});
-  ahora += duracionMs;
+  // Sin `act()`: los callbacks son `jest.fn` y no hacen setState (ver la nota de arriba sobre el `act` sin await).
+  jest.advanceTimersByTime(duracionMs);
   const n = Math.max(desplazamientosY.length, desplazamientosX.length);
   for (let i = 0; i < n; i++) {
     handlers.onUpdate?.({ translationX: desplazamientosX[i] ?? 0, translationY: desplazamientosY[i] ?? 0 });
   }
   handlers.onFinalize?.({}, true);
-  espia.mockRestore();
+  jest.useRealTimers();
 }
 
 describe('BotonVoz -- 🔴 regresión: deslizar-para-fijar NO puede enviar (bug de device 2026-08-19)', () => {
@@ -226,16 +226,20 @@ describe('BotonVoz -- BL-D2: deslizar a la izquierda cancela, toque corto descar
     expect(onSoltarSinFijar).toHaveBeenCalledTimes(1);
   });
 
-  it('un toque más corto que DURACION_MINIMA_MS se descarta y NO envía; justo en el umbral envía', async () => {
+  it('🔴 un toque más corto que DURACION_MINIMA_MS NO inicia la grabación (sin parpadeo del HUD) ni envía; justo en el umbral inicia y envía', async () => {
+    const onIniciar = jest.fn();
     const onCancelar = jest.fn();
     const onSoltarSinFijar = jest.fn();
-    const { handlers } = await montarCapturandoElGesto({ onCancelar, onSoltarSinFijar });
+    const { handlers } = await montarCapturandoElGesto({ onIniciar, onCancelar, onSoltarSinFijar });
 
     gestoCompleto(handlers, [], { duracionMs: DURACION_MINIMA_MS - 1 });
-    expect(onCancelar).toHaveBeenCalledTimes(1);
+    // El parpadeo era `onIniciar` seguido de `onCancelar`: el HUD aparecía y desaparecía. Ahora ninguno de los dos.
+    expect(onIniciar).not.toHaveBeenCalled();
+    expect(onCancelar).not.toHaveBeenCalled();
     expect(onSoltarSinFijar).not.toHaveBeenCalled();
 
     gestoCompleto(handlers, [], { duracionMs: DURACION_MINIMA_MS });
+    expect(onIniciar).toHaveBeenCalledTimes(1);
     expect(onSoltarSinFijar).toHaveBeenCalledTimes(1);
   });
 
