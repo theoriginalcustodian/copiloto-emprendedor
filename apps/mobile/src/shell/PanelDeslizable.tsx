@@ -23,7 +23,7 @@ import type { PropsWithChildren, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useHayCapturaEnCurso } from '../navegacion/capturaEnCurso';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Dimensions, Keyboard, StyleSheet, View } from 'react-native';
+import { Dimensions, Keyboard, StyleSheet, TextInput, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -331,6 +331,19 @@ export function alturaDeTecladoPlausible(alturaVentana: number, screenY: number)
   return alto;
 }
 
+/** Cada cuánto se reconcilia el alto del teclado con el foco real (sólo hace algo mientras el panel está levantado). */
+export const RECONCILIAR_TECLADO_MS = 500;
+
+/**
+ * SM-P12 punto 2, DoD 4 — el panel tiene que VOLVER aunque el `keyboardDidHide` no llegue. El alto del teclado lo
+ * escribe SÓLO un evento; si el `hide` se pierde, nada lo corregía y el panel quedaba levantado con el teclado
+ * cerrado (la foto del operador). Un teclado levantando el panel exige un campo enfocado: sin foco, el alto vale 0.
+ * 🔴 Límite medido: no cubre un `hide` perdido con el campo AÚN enfocado (ahí el foco lo baja el arreglo (a)).
+ */
+export function reconciliarTeclado(teclado: number, hayCampoEnfocado: boolean): number {
+  return hayCampoEnfocado ? teclado : 0;
+}
+
 /**
  * 🔴 **Bloqueo durante la grabación (orden del operador, 2026-11-06; REVIERTE la decisión D6).** D6 había
  * omitido el guard de DocuMed argumentando que el dictado es un mensaje corto y no se puede «dejar corriendo».
@@ -385,9 +398,16 @@ export function PanelDeslizable({
       // el teclado (medido 7/7 en el Samsung). `dismiss` baja el foco aunque el teclado ya esté oculto.
       Keyboard.dismiss();
     });
+    // DoD 4: si el `hide` no llega, el alto no puede quedar pegado — se reconcilia con el foco real del campo.
+    const reconciliador = setInterval(() => {
+      if (teclado.value > 0) {
+        teclado.value = reconciliarTeclado(teclado.value, TextInput.State.currentlyFocusedInput() != null);
+      }
+    }, RECONCILIAR_TECLADO_MS);
     return () => {
       abre.remove();
       cierra.remove();
+      clearInterval(reconciliador);
     };
   }, [teclado]);
   /**

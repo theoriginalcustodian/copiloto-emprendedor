@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import type React from 'react';
 import { useRef } from 'react';
-import { Keyboard, StyleSheet, Text } from 'react-native';
+import { Keyboard, StyleSheet, Text, TextInput } from 'react-native';
 import * as Reanimated from 'react-native-reanimated';
 
 // Jest (jest-expo) — render de RNTL 14 es ASYNC (await). El COMPORTAMIENTO del gesto (drag/snap/
@@ -17,6 +17,8 @@ import {
   levantarPorTeclado,
   alturaDeTecladoPlausible,
   MARGEN_TIRADOR,
+  RECONCILIAR_TECLADO_MS,
+  reconciliarTeclado,
   opacidadRotuloAbajo,
   PanelDeslizable,
   panelYAlCambiarRecorrido,
@@ -456,6 +458,41 @@ describe('PanelDeslizable — al ocultarse el teclado se baja el foco del campo 
       expect(t.dismiss).toHaveBeenCalledTimes(1);
     } finally {
       t.restaurar();
+    }
+  });
+});
+// 🔴 SM-P12 punto 2, DoD 4/5 — el panel vuelve aunque el keyboardDidHide NO llegue.
+describe('reconciliarTeclado — un teclado sin campo enfocado no levanta el panel (SM-P12 DoD 4)', () => {
+  it('hide perdido + campo sin foco: el alto vuelve a 0', () => {
+    expect(reconciliarTeclado(358, false)).toBe(0);
+  });
+
+  it('control positivo: con el campo enfocado el alto del teclado se conserva', () => {
+    expect(reconciliarTeclado(358, true)).toBe(358);
+    expect(reconciliarTeclado(0, true)).toBe(0);
+  });
+});
+
+describe('PanelDeslizable — el reconciliador corre sólo con el panel levantado (SM-P12 DoD 4)', () => {
+  it('tras un show sin hide, el reconciliador consulta el foco; antes del show no consulta nada', async () => {
+    jest.useFakeTimers();
+    const manejadores: Record<string, (e?: unknown) => void> = {};
+    const alta = jest.spyOn(Keyboard, 'addListener').mockImplementation(((evento: string, fn: () => void) => {
+      manejadores[evento] = fn;
+      return { remove: jest.fn() };
+    }) as never);
+    const foco = jest.spyOn(TextInput.State, 'currentlyFocusedInput').mockReturnValue(null as never);
+    try {
+      await envolver();
+      jest.advanceTimersByTime(RECONCILIAR_TECLADO_MS * 3);
+      expect(foco).not.toHaveBeenCalled();
+      manejadores.keyboardDidShow?.({ endCoordinates: { screenY: 1000 } });
+      jest.advanceTimersByTime(RECONCILIAR_TECLADO_MS + 10);
+      expect(foco).toHaveBeenCalled();
+    } finally {
+      foco.mockRestore();
+      alta.mockRestore();
+      jest.useRealTimers();
     }
   });
 });
