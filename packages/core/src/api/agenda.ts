@@ -114,6 +114,15 @@ function vencimiento(v: unknown): Vencimiento | null {
   };
 }
 
+/** Texto de plazo de un vencimiento (mobile y web lo comparten). `dias: null` = no se pudo leer: no se inventa fecha. */
+export function plazoVencimiento(v: Vencimiento): string {
+  if (v.dias == null) return 'Sin fecha legible';
+  if (v.vencido || v.dias < 0) return v.dias === -1 ? 'Venció ayer' : `Venció hace ${Math.abs(v.dias)} días`;
+  if (v.dias === 0) return 'Vence hoy';
+  if (v.dias === 1) return 'Vence mañana';
+  return `Vence en ${v.dias} días`;
+}
+
 /** `no_disponible` si el endpoint falla: la sección se oculta/degrada, la Agenda no se rompe. */
 export async function leerVencimientos(
   dias: number = DIAS_AGENDA_DEFAULT,

@@ -11,12 +11,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  */
 vi.mock('@copiloto/core', async (importOriginal) => {
   const original = await importOriginal<typeof import('@copiloto/core')>();
-  return { ...original, leerAgenda: vi.fn(), listarCatalogo: vi.fn() };
+  return { ...original, leerAgenda: vi.fn(), listarCatalogo: vi.fn(), leerVencimientos: vi.fn() };
 });
 
 import {
   KEY_GOOGLE_CALENDAR,
   leerAgenda,
+  leerVencimientos,
   listarCatalogo,
   tomarPendiente,
   TEXTO_NUEVO_EVENTO,
@@ -27,6 +28,7 @@ import { AgendaScreen } from './AgendaScreen';
 
 const leerMock = vi.mocked(leerAgenda);
 const listarCatalogoMock = vi.mocked(listarCatalogo);
+const vencimientosMock = vi.mocked(leerVencimientos);
 
 const grupo = (id: 'hoy' | 'manana' | 'semana' | 'sin_hora', titulo: string, eventos: AgendaMiDia['grupos'][number]['eventos'] = []) => ({
   id,
@@ -57,7 +59,40 @@ const montar = (over: Partial<Parameters<typeof AgendaScreen>[0]> = {}) => {
 beforeEach(() => {
   leerMock.mockReset().mockResolvedValue({ status: 'ok', agenda: AGENDA });
   listarCatalogoMock.mockReset().mockResolvedValue({ status: 'ok', servicios: [] });
+  vencimientosMock.mockReset().mockResolvedValue({ status: 'ok', vencimientos: [] });
   tomarPendiente();
+});
+
+describe('AgendaScreen — vencimientos del negocio (SM-P20 punto 2)', () => {
+  it('con vencimientos: sección «Vencen esta semana», plazo legible, lo vencido dicho y el certificado ilegible sin fecha inventada', async () => {
+    vencimientosMock.mockResolvedValue({
+      status: 'ok',
+      vencimientos: [
+        { tipo: 'cae', id: 'f1', titulo: 'CAE factura 0001-00000012', fecha: '2026-11-05', dias: -2, vencido: true },
+        { tipo: 'cae', id: 'f2', titulo: 'CAE factura 0001-00000013', fecha: '2026-11-08', dias: 1, vencido: false },
+        { tipo: 'certificado', id: 'c1', titulo: 'Certificado ARCA', fecha: null, dias: null, vencido: false },
+      ],
+    });
+    montar();
+    await waitFor(() => expect(screen.getByTestId('agenda-vencimientos')).toBeInTheDocument());
+    expect(screen.getByTestId('agenda-vencimiento-cae-f1')).toHaveTextContent('Venció hace 2 días · 2026-11-05');
+    expect(screen.getByTestId('agenda-vencimiento-cae-f2')).toHaveTextContent('Vence mañana · 2026-11-08');
+    expect(screen.getByTestId('agenda-vencimiento-certificado-c1')).toHaveTextContent('Sin fecha legible');
+    expect(screen.getByTestId('agenda-vencimiento-certificado-c1')).not.toHaveTextContent(/\d{4}-\d{2}-\d{2}/);
+  });
+
+  it('sin vencimientos (lista vacía): la sección no se muestra', async () => {
+    montar();
+    await waitFor(() => expect(screen.getByTestId('agenda-grupo-hoy')).toBeInTheDocument());
+    expect(screen.queryByTestId('agenda-vencimientos')).not.toBeInTheDocument();
+  });
+
+  it('endpoint de vencimientos caído: la Agenda sigue entera y la sección no aparece (fail-soft)', async () => {
+    vencimientosMock.mockResolvedValue({ status: 'no_disponible' });
+    montar();
+    await waitFor(() => expect(screen.getByTestId('agenda-grupo-hoy')).toBeInTheDocument());
+    expect(screen.queryByTestId('agenda-vencimientos')).not.toBeInTheDocument();
+  });
 });
 
 describe('AgendaScreen', () => {
