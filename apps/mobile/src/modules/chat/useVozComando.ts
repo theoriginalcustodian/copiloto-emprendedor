@@ -8,6 +8,8 @@ import {
 
 import type { ArchivoSubida } from '@copiloto/core';
 
+import { registrarCaptura } from '../../navegacion/capturaEnCurso';
+
 /** Fase de la grabación del copiloto. `listo` = ya se detuvo y espera Enviar o Descartar. */
 export type FaseVoz = 'inactivo' | 'grabando' | 'pausado' | 'listo';
 
@@ -169,6 +171,31 @@ export function useVozComando(): UseVozComandoResult {
       throw err;
     }
   }
+
+  // Mientras haya un audio sin resolver (grabando / pausado / listo) la app lo sabe: bloquea el panel y la apertura
+  // de otras funciones y apaga los otros mics (`navegacion/capturaEnCurso`). Depende del BOOLEANO, no de la fase:
+  // pasar de `grabando` a `pausado` no tiene que soltar y volver a tomar el registro.
+  const sinResolver = fase !== 'inactivo';
+  useEffect(() => {
+    if (!sinResolver) return undefined;
+    return registrarCaptura();
+  }, [sinResolver]);
+
+  // Si el dock se desmonta con el micrófono abierto (se cerró la pantalla donde estaba), se corta: un audio que sigue
+  // corriendo sin pantalla que lo muestre es justo el defecto que el bloqueo evita. Best-effort: el grabador nativo
+  // puede haberse liberado ya.
+  useEffect(
+    () => () => {
+      if (!vivoRef.current) return;
+      vivoRef.current = false;
+      try {
+        void Promise.resolve(grabador.stop()).catch(() => undefined);
+      } catch {
+        // ya liberado
+      }
+    },
+    [grabador],
+  );
 
   // Pre-calienta al montar (foco del chat) — para cuando llegue el primer press, el permiso y el
   // `prepare` ya deberían estar resueltos.

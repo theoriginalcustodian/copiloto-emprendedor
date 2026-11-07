@@ -1,7 +1,33 @@
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({ router: { push: (d: unknown) => mockPush(d) } }));
 
+import { registrarCaptura, reiniciarCapturasParaTest } from './capturaEnCurso';
 import { empujarUnaVez, reabrirNavegacion } from './empujarUnaVez';
+
+describe('empujarUnaVez — con un audio sin resolver no se abre ninguna función', () => {
+  beforeEach(() => {
+    mockPush.mockReset();
+    reiniciarCapturasParaTest();
+    reabrirNavegacion();
+  });
+
+  it('grabando: el toque no navega; al resolverse el audio, el siguiente toque pasa', () => {
+    const liberar = registrarCaptura();
+    empujarUnaVez('/gastos');
+    expect(mockPush).not.toHaveBeenCalled();
+    liberar();
+    empujarUnaVez('/gastos');
+    expect(mockPush).toHaveBeenCalledTimes(1);
+  });
+
+  it('el toque bloqueado NO cierra la puerta (si lo hiciera, el toque posterior quedaría muerto)', () => {
+    const liberar = registrarCaptura();
+    empujarUnaVez('/gastos');
+    liberar();
+    empujarUnaVez('/ingresos');
+    expect(mockPush).toHaveBeenCalledWith('/ingresos');
+  });
+});
 
 /**
  * SM-N27: dos toques al avatar abrían Ajustes DOS veces porque el destino (que también es lanzador)

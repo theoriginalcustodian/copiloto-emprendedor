@@ -33,9 +33,10 @@ export const UMBRAL_CANCELAR_PX = 70;
  *  se puede corregir el gesto. */
 export const FRACCION_CERCA_DE_FIJAR = 0.6;
 
-/** Un toque más corto que esto (ms) es un toque accidental, no un dictado: se descarta sin enviar.
- *  Mismo valor que la PWA (`MicButton.tsx`, descarte de toques <350 ms). */
-export const DURACION_MINIMA_MS = 350;
+/** Un toque más corto que esto (ms) NO es un dictado: se descarta sin enviar. Orden del operador (2026-11-06): el
+ *  mic no responde a un toque; sólo a MANTENER apretado desde 1 segundo. (Antes 350 ms, el valor de la PWA
+ *  `MicButton.tsx`: un toque de 0,4 s mandaba un audio vacío y salía «No se entendió el audio».) */
+export const DURACION_MINIMA_MS = 1000;
 
 export interface BotonVozProps {
   /** Mantener apretado — arranca la grabación de inmediato (contrato `dictado-por-voz-sin-glass`). */
