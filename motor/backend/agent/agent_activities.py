@@ -173,6 +173,26 @@ def componer_system_extra(bloque_estable: str, contexto_del_turno: str) -> str:
     return "\n\n".join(partes)
 
 
+def _respuesta_directa(dom: dict, messages: list[dict], payload: dict) -> dict | None:
+    """El cierre del turno armado por el DOMINIO (hook `respuesta_directa`), sin LLM. Sólo tras el resultado
+    de una tool. Un hook que falla nunca rompe el turno: redacta el LLM, como si no existiera."""
+    hook = dom.get("respuesta_directa")
+    if hook is None or not messages or messages[-1].get("role") != "tool":
+        return None
+    try:
+        texto = hook(messages)
+    except Exception as exc:  # noqa: BLE001
+        activity.logger.warning("respuesta_directa falló (domain=%s): %s", payload.get("domain"), exc)
+        return None
+    if not isinstance(texto, str) or not texto.strip():
+        return None
+    log_evento("LLM_TURNO", {
+        "domain": payload["domain"], "cliente_id": payload.get("cliente_id"),
+        "session_id": payload.get("session_id", ""), "model": "respuesta_directa", "finish_reason": "stop"})
+    return {"tool_calls": [], "content": texto, "finish_reason": "stop", "model": "respuesta_directa",
+            "failed_over": False, "usage": {}}
+
+
 @activity.defn
 async def call_llm_tools(payload: dict) -> dict:
     """payload = {domain, messages, tool_choice?, system_extra?, cliente_id?, session_id?}. Tool-calling
@@ -227,6 +247,9 @@ async def call_llm_tools(payload: dict) -> dict:
         # resultado (último = 'tool') -> sólo texto: `required` de nuevo repetiría la tool hasta el
         # detector de no-progreso y el turno cerraría con «me quedé trabado».
         tool_choice = "none" if (messages and messages[-1].get("role") == "tool") else "required"
+    directa = _respuesta_directa(dom, messages, payload)
+    if directa is not None:
+        return directa
     result = await asyncio.to_thread(
         provider.complete_tools, system, messages, tools, tool_choice=tool_choice)
     # Observabilidad de `finish_reason` (pedido planificación 2026-08-09): viaja en el dict de

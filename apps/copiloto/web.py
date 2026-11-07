@@ -79,6 +79,9 @@ import dictado_destinos
 import services
 from calendar_policy import CALENDAR_POLICY
 
+REPLY_WAIT_MAX_S = float(os.environ.get("COPILOTO_REPLY_WAIT_MAX_S", "25"))
+REPLY_WAIT_TICK_S = float(os.environ.get("COPILOTO_REPLY_WAIT_TICK_S", "0.25"))
+
 AGENT_B_TASK_QUEUE = os.environ.get("AGENT_B_TASK_QUEUE", "agent-emprendedor")
 DOMAIN = "emprendedor"
 # SOP4/C1 — chat de soporte, worker + task_queue PROPIOS (mismo nombre de env que `worker_soporte.py`,
@@ -1287,8 +1290,19 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     # genuinamente hace `await route_inbound(...)` (I/O async del cliente Temporal).
 
     @app.get("/reply")
-    def reply(session_id: str, after_id: int = 0, cliente_id: str = Depends(require_tenant)) -> dict:
-        rows = read_replies_fn(cliente_id, session_id, after_id)
+    async def reply(session_id: str, after_id: int = 0, wait: float = Query(0, ge=0),
+                    cliente_id: str = Depends(require_tenant)) -> dict:
+        # Long-poll ADITIVO: sin `wait` (o 0) responde igual que siempre, así la app vieja no cambia.
+        # Con `wait` el servidor re-lee hasta que haya filas o venza el plazo (tope REPLY_WAIT_MAX_S,
+        # se recorta en vez de dar 422 para no romper un cliente que pida de más). `async` + threadpool
+        # para que la espera no retenga un worker del pool durante 25 s.
+        plazo = asyncio.get_running_loop().time() + min(wait, REPLY_WAIT_MAX_S)
+        while True:
+            rows = await asyncio.to_thread(read_replies_fn, cliente_id, session_id, after_id)
+            restante = plazo - asyncio.get_running_loop().time()
+            if rows or restante <= 0:
+                break
+            await asyncio.sleep(min(REPLY_WAIT_TICK_S, restante))
         next_id = rows[-1]["id"] if rows else after_id
         return {"replies": rows, "next_id": next_id}
 

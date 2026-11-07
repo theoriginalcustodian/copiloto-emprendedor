@@ -358,6 +358,13 @@ def test_adversarial_mi_dia_tablero_get(frontdoor):
     _hostil(frontdoor, lambda c, **kw: c.get("/mi-dia/tablero", **kw))
 
 
+def test_adversarial_mi_dia_vencimientos_get(frontdoor):
+    """GET /mi-dia/vencimientos (SM-P20): sin identidad -> 401; con el token de A y el cliente_id/recurso de B
+    inyectados por query y header -> el servidor sólo opera como A. El caso con datos reales de B en Postgres
+    vive en `test_mi_dia_vencimientos.py::test_ADVERSARIAL_A_no_ve_los_vencimientos_de_B`."""
+    _hostil(frontdoor, lambda c, **kw: c.get("/mi-dia/vencimientos", **kw))
+
+
 def test_adversarial_mi_dia_tarjetas_post(frontdoor):
     """POST /mi-dia/tarjetas: sin identidad -> 401; con el token de A y el cliente_id/recurso de B
     inyectados por query y header -> el servidor sólo opera como A."""

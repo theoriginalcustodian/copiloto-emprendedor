@@ -29,8 +29,10 @@ from datetime import date, datetime, time, timedelta
 from typing import Callable
 from zoneinfo import ZoneInfo
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 from pydantic import BaseModel
+
+from mi_dia_vencimientos import DIAS_VENTANA_DEFAULT
 
 from _paths import ensure_paths
 ensure_paths()
@@ -118,7 +120,11 @@ def _eventos_de(res: dict) -> list[dict]:
         if isinstance(o, dict):
             if o.get("id") and o.get("summary") is not None:
                 ini = o.get("start")
+                # SM-P20 punto 3: `location` es el campo estándar del evento en la API de Google Calendar.
+                # Ausente o vacío → `None` (sin lugar), nunca `""`: la app decide si pinta la fila.
+                lugar = o.get("location")
                 acc.append({"id": o["id"], "titulo": o["summary"], "inicio": ini, "fin": o.get("end"),
+                            "ubicacion": lugar.strip() or None if isinstance(lugar, str) else None,
                             # Google: día completo = `start.date` sin `dateTime` (ADR-004 §2)
                             "dia_completo": isinstance(ini, dict) and "date" in ini and "dateTime" not in ini})
             for v in o.values():
@@ -154,7 +160,8 @@ class EstadoBody(BaseModel):
 def create_mi_dia_app(*, require_tenant: Callable,
                       tarjeta_store_factory: Callable | None = None,
                       avanzar_tablero_fn: Callable | None = None,
-                      composio_gateway=None) -> FastAPI:
+                      composio_gateway=None,
+                      listar_vencimientos: Callable | None = None) -> FastAPI:
     """`tarjeta_store_factory(cliente_id) -> TarjetaStore`. `avanzar_tablero_fn(conn_factory,
     cliente_id)` es `mi_dia_orquestador.avanzar_tablero` — inyectado (no importado directo) para que
     los tests del front-door puedan correr sin DB, igual que el resto de los `*_web.py`.
@@ -209,6 +216,16 @@ def create_mi_dia_app(*, require_tenant: Callable,
         eventos = _eventos_de(res)
         return {"conectado": True, "eventos": eventos,
                 "grupos": _agrupar(eventos, datetime.now(ZoneInfo(DEFAULT_TZ)).date())}
+
+    @app.get("/mi-dia/vencimientos")
+    async def vencimientos(dias: int = Query(DIAS_VENTANA_DEFAULT, ge=0, le=MAX_DIAS_AGENDA),
+                           cliente_id: str = Depends(require_tenant)) -> dict:
+        """SM-P20 punto 2 — vencimientos del NEGOCIO (CAE, certificado de ARCA), no eventos de Calendar.
+        Forma de cada item en `mi_dia_vencimientos`. Sin la dependencia inyectada → lista vacía (mismo
+        criterio que el tablero), nunca 500."""
+        if listar_vencimientos is None:
+            return {"vencimientos": []}
+        return {"vencimientos": await asyncio.to_thread(listar_vencimientos, cliente_id, dias)}
 
     @app.post("/mi-dia/tarjetas", status_code=201)
     async def crear_tarjeta(body: TarjetaBody, cliente_id: str = Depends(require_tenant)) -> dict:

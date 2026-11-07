@@ -15,8 +15,9 @@ from typing import Callable
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from actividad_al_hilo import SESSION_ID_MAX
 from errores_web import DOCUMENTO_DE_OTRO_CLIENTE
 from cliente_store import (DOC_CONSUMIDOR_FINAL, LIMITES, ORIGENES, ClienteDuplicado,
                            documento_incoherente, inferir_doc_tipo, normalizar_documento)
@@ -56,6 +57,9 @@ class ClienteBody(BaseModel):
     # sigue saliendo 409 — dos CUIT iguales no son dos personas, son un error de tipeo. Se saca del
     # body antes de llegar al store para que no se confunda con un dato a guardar.
     forzar: bool = False
+    # SM-P19 B: el hilo donde se guardó (`actividad_al_hilo`). Igual que `forzar`, NO es un dato del
+    # cliente: el handler lo saca antes del store.
+    session_id: str | None = Field(default=None, max_length=SESSION_ID_MAX)
 
 
 def _validar(datos: dict, *, es_alta: bool) -> dict:
@@ -126,7 +130,8 @@ def _conflicto(exc: ClienteDuplicado) -> JSONResponse:
                                  "por": exc.por, "cliente": exc.duenio})
 
 
-def create_clientes_app(*, require_tenant: Callable, cliente_store_factory: Callable) -> FastAPI:
+def create_clientes_app(*, require_tenant: Callable, cliente_store_factory: Callable,
+                        publicar_actividad: Callable | None = None) -> FastAPI:
     app = FastAPI(title="Copiloto Clientes")
 
     # ⚠️ GUARD DEL ORDEN DE RUTAS — leer antes de agregar cualquier ruta acá.
@@ -166,11 +171,16 @@ def create_clientes_app(*, require_tenant: Callable, cliente_store_factory: Call
         datos = _validar(body.model_dump(exclude_unset=True), es_alta=True)
         datos.setdefault("origen", "manual")
         forzar = bool(datos.pop("forzar", False))
+        session_id = datos.pop("session_id", None)
         try:
-            return await asyncio.to_thread(
+            creado = await asyncio.to_thread(
                 lambda: cliente_store_factory(cliente_id).crear(forzar=forzar, **datos))
         except ClienteDuplicado as exc:
-            return _conflicto(exc)
+            return _conflicto(exc)      # 409: no se guardó nada, no hay turno
+        if publicar_actividad is not None and isinstance(creado, dict) and creado.get("id") is not None:
+            await asyncio.to_thread(publicar_actividad, cliente_id, session_id, "cliente",
+                                    creado["id"], creado)
+        return creado
 
     @app.post("/clientes/{cliente}")
     async def editar_cliente(cliente: int, body: ClienteBody,
@@ -185,6 +195,7 @@ def create_clientes_app(*, require_tenant: Callable, cliente_store_factory: Call
         """
         datos = _validar(body.model_dump(exclude_unset=True), es_alta=False)
         datos.pop("origen", None)      # el origen dice CÓMO nació el cliente; editarlo sería mentir
+        datos.pop("session_id", None)  # SM-P19 B publica el ALTA; la edición no es un turno nuevo
         forzar = bool(datos.pop("forzar", False))
         try:
             ficha = await asyncio.to_thread(

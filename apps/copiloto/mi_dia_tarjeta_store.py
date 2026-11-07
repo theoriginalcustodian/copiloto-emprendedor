@@ -17,7 +17,7 @@ from typing import Callable
 
 from catalog import TIPO_DESTINO_CONEXION, destino_conexion
 from mi_dia_clasificacion import clasificar
-from mi_dia_presentacion import presentar
+from mi_dia_presentacion import dias_para_vencer, presentar
 
 _SCHEMA = "uc_factory"
 _TABLE = f"{_SCHEMA}.copiloto_mi_dia_tarjetas"
@@ -171,4 +171,22 @@ class TarjetaStore:
         tablero: dict[str, list[dict]] = {e: [] for e in ESTADOS}
         for t in filas:
             tablero.setdefault(t["estado"], []).append(t)
+        tablero[PARA_HOY] = ordenar_para_hoy(tablero[PARA_HOY])
         return tablero
+
+
+_RANGO_CRITICIDAD = {"critico": 0, "pronto": 1, "sin_plazo": 2}
+
+
+def ordenar_para_hoy(tarjetas: list[dict]) -> list[dict]:
+    """SM-P20 punto 1: críticas primero, después por vencimiento (lo que vence antes arriba; sin vencimiento al
+    final), y el `creada_en DESC` del SQL como desempate ESTABLE (`sorted` es estable): dos lecturas del mismo
+    conjunto dan el mismo orden y la app no parpadea. Se ordena acá y no en el `ORDER BY` porque la criticidad
+    y el vencimiento se DERIVAN de `regla`/`datos` al leer (no son columnas)."""
+    def clave(t: dict):
+        # `creada_en` ya viene ISO (`_fila_a_dict`); se re-parsea a instante para que el día local salga igual
+        # que en el chip (un string se tomaría por su fecha UTC: ±1 día a la noche).
+        creada = datetime.datetime.fromisoformat(t["creada_en"]) if t.get("creada_en") else None
+        dias = dias_para_vencer(t.get("regla"), t.get("datos"), creada)
+        return (_RANGO_CRITICIDAD.get(t.get("criticidad"), 2), dias is None, dias if dias is not None else 0)
+    return sorted(tarjetas, key=clave)

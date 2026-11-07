@@ -39,6 +39,7 @@ from clients.agent.providers.mercadopago_gateway import MercadoPagoGateway
 from clients.agent.providers.mp_refresh_activities import refresh_credential, set_refresh_deps
 from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
 
+import respuesta_directa
 import services
 import tool_catalog
 from conn_pool import pool_de_conexiones
@@ -333,6 +334,9 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
                     context_factory=ctx_factory, memory_provider=memory_provider,
                     engine_mode="react", tool_schemas=tool_catalog.build_tool_catalog(),
                     tool_executor=tool_executor,
+                    # La frase final de las consultas de datos la arma el código (flag
+                    # COPILOTO_RESPUESTA_DIRECTA); el hook decide y, si devuelve None, redacta el LLM.
+                    respuesta_directa=respuesta_directa.elegir,
                     # Perfil del negocio + soul: el bloque ESTABLE que se antepone al system prompt en
                     # cada llamada al LLM. Se lee por llamada y NO se cachea, a propósito: la sesión es
                     # permanente vía continue-as-new, así que cualquier cosa cacheada del lado del

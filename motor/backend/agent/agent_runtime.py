@@ -23,7 +23,7 @@ _STT_PROVIDER = {"provider": None}    # transcripción de voz (agnóstica del do
 def register_domain(name: str, *, system_prompt: str, llm_provider, dispatcher, context_factory=None,
                     memory_provider=None, engine_mode: str = "dispatch",
                     tool_schemas=None, tool_executor=None, perfil_provider=None,
-                    metering_sink=None, session_scope=None) -> None:
+                    metering_sink=None, session_scope=None, respuesta_directa=None) -> None:
     """`memory_provider` (opcional): boundary de memoria de largo plazo (recall/remember/warm). None = el
     dominio no tiene memoria (default; clinic no lo pasa) → las activities de memoria son no-op para él.
 
@@ -46,6 +46,11 @@ def register_domain(name: str, *, system_prompt: str, llm_provider, dispatcher, 
     (tool_choice='none'). Vive en la activity y no en el workflow: no agrega Commands a la historia, así que
     es replay-safe para las sesiones permanentes en vuelo.
 
+    `respuesta_directa` (opcional): `(messages) -> str | None`, boundary igual que `session_scope`. Cuando el
+    último mensaje es el resultado de una tool, `call_llm_tools` lo consulta ANTES de llamar al LLM: si
+    devuelve texto, ése es el cierre del turno (sin LLM). El motor no sabe cuándo conviene: lo decide el
+    dominio. `None` (default, o el hook devuelve None/falla) = redacta el LLM como siempre.
+
     `engine_mode`: 'dispatch' (default, intent->1 accion, byte-identical) | 'react' (loop tool-calling).
     En 'react' el dominio DEBE pasar `tool_schemas` (catalogo OpenAI function-calling) y `tool_executor`
     (name, arguments, ctx, *, confirmed, idem_key) -> ToolResult. En 'dispatch' se ignoran (None)."""
@@ -54,7 +59,7 @@ def register_domain(name: str, *, system_prompt: str, llm_provider, dispatcher, 
                       "memory_provider": memory_provider, "engine_mode": engine_mode,
                       "tool_schemas": tool_schemas, "tool_executor": tool_executor,
                       "perfil_provider": perfil_provider, "metering_sink": metering_sink,
-                      "session_scope": session_scope}
+                      "session_scope": session_scope, "respuesta_directa": respuesta_directa}
 
 
 def get_domain(name: str) -> dict:

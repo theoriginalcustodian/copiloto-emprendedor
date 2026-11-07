@@ -62,6 +62,11 @@ import { generarId } from '../../util/id';
 const PREFIJO_SESSION = 'copiloto-chat-session-id';
 const PREFIJO_MENSAJES = 'copiloto-chat-msgs';
 const POLL_INTERVAL_MS = 1500;
+/** Long-poll de `/reply`: el servidor retiene la request hasta 15 s y responde APENAS hay turno, en
+ *  vez de que la app descubra la respuesta en el próximo tick (hasta 1,5 s tarde). Debajo del corte
+ *  HTTP de 20 s (`TIMEOUT_HTTP_MS`). Mientras una espera está en vuelo, `pollingRef` hace que los
+ *  ticks del intervalo no disparen otra: el intervalo queda sólo como reintento si la espera falla. */
+const LONG_POLL_WAIT_S = 15;
 /** Ritmo tras el timeout: se sigue preguntando, pero sin quemar una request cada 1.5s durante media
  *  hora. Esperar 20 minutos cuesta 120 requests en vez de 800. */
 const POLL_INTERVAL_LENTO_MS = 10_000;
@@ -236,7 +241,10 @@ export function useChat(clienteId: string): UseChatResult {
     if (!actual || pollingRef.current) return;
     pollingRef.current = true;
     try {
-      const response = await api.getReply(actual.sessionId, actual.nextId);
+      // Sólo se espera del lado del servidor si HAY una respuesta en camino. La hidratación y el regreso
+      // a primer plano, que son lecturas de «ponerse al día», siguen siendo inmediatos.
+      const esperando = actual.sendStatus === 'waiting' || actual.sendStatus === 'timeout';
+      const response = await api.getReply(actual.sessionId, actual.nextId, esperando ? LONG_POLL_WAIT_S : 0);
       // Se RELEE el estado después del `await` en vez de reusar la foto de antes: entre la request y
       // su respuesta pueden haber pasado cosas (un timeout marcando `timeout`, un envío nuevo
       // marcando `sending`) — derivar de la foto vieja las pisaría.

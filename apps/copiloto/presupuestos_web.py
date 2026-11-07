@@ -23,6 +23,7 @@ from typing import Callable
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from actividad_al_hilo import SESSION_ID_MAX
 from concepto_store import ConceptoDuplicado, ConceptoInvalido
 from perfil_negocio_store import (A_QUIEN, AUTOMATICO, CAMPOS, CONFIRMACION, FORMALIDAD,
                                   LARGO_RESPUESTA, LIMITES, MODOS)
@@ -148,6 +149,8 @@ class NuevoPresupuestoBody(BaseModel):
     # K-01: UUID del cliente, estable por instancia de formulario. Opcional: un cliente viejo sin él
     # se comporta exactamente como antes.
     idem_key: str | None = Field(default=None, max_length=100)
+    # SM-P19 B: el hilo donde se guardó (`actividad_al_hilo`). Opcional.
+    session_id: str | None = Field(default=None, max_length=SESSION_ID_MAX)
 
 
 def _decimal_o_400(valor, campo: str) -> Decimal:
@@ -190,6 +193,7 @@ def create_presupuestos_app(
     signal_factura: Callable | None = None,
     generar_doc: Callable | None = None,
     traumas: FabricaDeTraumas | None = None,
+    publicar_actividad: Callable | None = None,
 ) -> FastAPI:
     """`generar_doc(cliente_id, presupuesto) -> dict|None` es opcional a propósito: sin él (o si
     falla) el presupuesto se crea igual, sin Doc. La creación NUNCA depende de que Google responda —
@@ -281,11 +285,18 @@ def create_presupuestos_app(
             lambda: store.crear_idem(concepto=body.concepto, receptor=body.receptor.model_dump(),
                                      items=items, moneda=body.moneda, reemplaza_a=body.reemplaza_a,
                                      idem_key=body.idem_key))
+        async def _publicar(respuesta: dict) -> dict:
+            # Repetido o no, mismo id → mismo `idem_key` del turno: el reintento no lo duplica.
+            if publicar_actividad is not None:
+                await asyncio.to_thread(publicar_actividad, cliente_id, body.session_id, "presupuesto",
+                                        presupuesto["id"], respuesta)
+            return respuesta
+
         if repetido:
             # Misma clave ⇒ mismo presupuesto ya creado (y ya con su Doc, si se pudo): no se vuelve a
             # generar nada. Informa, no ramifica (mismo criterio que `borradorNuevo` de facturar).
-            return {"presupuesto": presupuesto, "repetido": True,
-                    "sugerencias": sugerencias_de_guardado(presupuesto)}
+            return await _publicar({"presupuesto": presupuesto, "repetido": True,
+                                    "sugerencias": sugerencias_de_guardado(presupuesto)})
 
         if generar_doc is not None:
             try:
@@ -311,8 +322,8 @@ def create_presupuestos_app(
                           contexto={"presupuesto_id": presupuesto["id"], "degradado": "sin_doc"})
                 _log.warning("presupuesto %s creado SIN Doc (cliente=%s): %s",
                              presupuesto["id"], cliente_id, exc)
-        return {"presupuesto": presupuesto, "repetido": False,
-                "sugerencias": sugerencias_de_guardado(presupuesto)}
+        return await _publicar({"presupuesto": presupuesto, "repetido": False,
+                                "sugerencias": sugerencias_de_guardado(presupuesto)})
 
     @app.get("/presupuestos")
     async def listar_presupuestos(limit: int = LIMITE_LISTADO_DEFAULT,

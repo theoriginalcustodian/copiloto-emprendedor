@@ -479,7 +479,7 @@ def test_el_conteo_de_cobertura_coincide_con_lo_que_cita_el_buzon():
     rutas_reales = _rutas_reales(app.routes)
     cobertura = _cobertura_adversarial(rutas_reales)
     assert cobertura.plantillas == {
-        "/mi-dia/calendario", "/reply", "/me", "/catalog", "/mp/connection",
+        "/mi-dia/calendario", "/mi-dia/vencimientos", "/reply", "/me", "/catalog", "/mp/connection",
         "/me/onboarding/completar", "/me/legal/aceptar", "/feedback",
         "/afip/facturas", "/afip/facturas/{factura_id}", "/afip/comprobantes/anular",
         "/soporte/tickets", "/soporte/tickets/{ticket_id}", "/soporte/tickets/{ticket_id}/adjuntos",
