@@ -74,3 +74,38 @@ fail-closed). Con síntoma, causa y remedio.
 hacer) no se publica como `dato_`: va a **memoria versionada**, donde la busca la próxima sesión sin
 saber que existe. El buzón sirve para coordinar **trabajo**; no sirve para que no repitas un error.
 **Test rápido:** «¿esto me lo puedo volver a hacer **yo**?» — si sí, no es un mensaje, es memoria.
+
+## Refuerzo 2026-11-06 (b) - y el caso mas silencioso: la pregunta que vive DENTRO de una ficha
+
+El eje de esta entrada era el TIPO de mensaje. Falta el escalon de abajo: una pregunta que no
+es un mensaje de ningun tipo, porque vive dentro de un ARTEFACTO.
+
+El 2026-11-06 baje a backend el supuesto critico de la mitad B de `SM-P19` (¿existe via para
+insertar un turno en el hilo desde una escritura de negocio?) como un `[ASSUMED_PENDING_VERIFY]`
+**dentro de la ficha del backlog**, y mencione a backend en el contrato de la orden nueva, que
+iba dirigido a tres destinatarios a la vez. Las dos cosas quedaron escritas y correctas. Ninguna
+interpela a nadie:
+
+| donde puse la pregunta | ¿alguien la persigue? | por que |
+|---|---|---|
+| `[ASSUMED_PENDING_VERIFY]` en la ficha | **no** | una ficha es un REGISTRO; el escalador del buzon no la mira |
+| mencion dentro de un `contrato_` a 3 destinatarios | **no** | el contrato se persigue como UNO; nadie es dueño de un parrafo |
+| `pedido_` dirigido SOLO a backend | **si** | el escalador lo cuenta y lo grita por antiguedad |
+
+**La regla, extendida:** antes de dar por bajado un supuesto que BLOQUEA a otro, preguntate no
+«¿esta escrito?» sino **«¿quien lo persigue si nadie lo lee?»**. Si la respuesta es ningun
+mecanismo, no esta bajado: esta guardado. Un supuesto critico tiene UN dueño nombrado y su
+propio archivo del tipo que escala, aunque el texto ya exista en otros dos lugares.
+
+**Como se detecto, y es lo incomodo:** no lo cazo ningun gate. Lo pregunto el operador, literal
+-- «le enviaste mensaje a backend por peer?». Mi reporte decia «backend debe contestar», que es
+una descripcion del estado deseado, no de una accion hecha: es el mismo modo de falla de
+[[prometer-no-es-ejecutar-el-gate-media-la-palabra]], en su forma mas facil de no ver, porque
+ahi yo creia haberlo hecho. Escribir el requisito se SIENTE como despacharlo.
+
+**Y el refuerzo del refuerzo:** con varias sesiones vivas, el buzon es el canal canonico pero su
+latencia es el proximo cron del destinatario. Cuando el mensaje destraba a un tercero, va por
+las DOS vias -- archivo del tipo que escala + peer directo. Y si no se puede saber que sesion es
+cual (los ids de `ListAgents` no mapean al rol, y las firmas del buzon son de sesiones ya
+cerradas), el peer se manda a todas con una PRIMERA LINEA autofiltrante («si sos backend...»),
+que cuesta menos que una sesion parada esperando.
