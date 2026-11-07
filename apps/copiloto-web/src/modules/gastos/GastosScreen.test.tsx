@@ -8,6 +8,7 @@ vi.mock('@copiloto/core', async (importOriginal) => {
   const original = await importOriginal<typeof import('@copiloto/core')>();
   return {
     ...original,
+    dictarPorChat: vi.fn(),
     listarGastos: vi.fn(),
     obtenerResumenGastos: vi.fn(),
     crearGasto: vi.fn(),
@@ -15,7 +16,7 @@ vi.mock('@copiloto/core', async (importOriginal) => {
   };
 });
 
-import { crearGasto, leerFotoGasto, listarGastos, obtenerResumenGastos, tomarPendiente } from '@copiloto/core';
+import { crearGasto, leerFotoGasto, listarGastos, obtenerResumenGastos, dictarPorChat, tomarPendiente } from '@copiloto/core';
 
 import { GastosScreen } from './GastosScreen';
 
@@ -24,7 +25,7 @@ const mockResumen = vi.mocked(obtenerResumenGastos);
 const mockCrear = vi.mocked(crearGasto);
 const mockLeerFoto = vi.mocked(leerFotoGasto);
 
-describe('GastosScreen — SM-P7 (dock del pie: la acción corre en el chat, no en el alta)', () => {
+describe('GastosScreen — SM-P19 mitad A (dock del pie: el dictado prellena la función, sin chat)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     tomarPendiente();
@@ -39,21 +40,41 @@ describe('GastosScreen — SM-P7 (dock del pie: la acción corre en el chat, no 
     vi.restoreAllMocks();
   });
 
-  it('enviar texto desde el dock deja el pendiente y abre el chat — NO abre el alta ni guarda nada', async () => {
-    const onAbrirChat = vi.fn();
-    render(<GastosScreen onAbrirChat={onAbrirChat} />);
+  it('escribir en el dock prellena el alta EN la función (dictado) — sin chat, sin onAbrirChat, sin guardar nada', async () => {
+    vi.mocked(dictarPorChat).mockResolvedValue({ status: 'ok', resultado: { destino: 'gasto', propuesta: { monto: '40000.00', categoria: 'transporte', proveedor: null, medioPago: null, descripcion: 'cuarenta litros de nafta', montoSugerido: null, fecha: '' } } } as never);
+    render(<GastosScreen />);
     await screen.findByTestId('gastos-nuevo');
 
     const campo = screen.getByPlaceholderText('Contale un gasto al copiloto…');
     fireEvent.change(campo, { target: { value: 'cuarenta litros de nafta' } });
     fireEvent.keyDown(campo, { key: 'Enter' });
 
-    expect(onAbrirChat).toHaveBeenCalledTimes(1);
-    expect(tomarPendiente()).toBe('cuarenta litros de nafta');
+    expect(await screen.findByTestId('gasto-descripcion')).toHaveValue('cuarenta litros de nafta');
+    expect(dictarPorChat).toHaveBeenCalledWith(expect.objectContaining({ destino: 'gasto', texto: 'cuarenta litros de nafta' }), expect.anything());
+    expect(tomarPendiente()).toBeFalsy();
     expect(mockCrear).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('gasto-descripcion')).not.toBeInTheDocument();
   });
 
+  it('el dictado NO depende del chat: sin onAbrirChat (chat sin hidratar) el dock está montado y no aparece CHAT_NO_LISTO', async () => {
+    render(<GastosScreen />);
+    await screen.findByTestId('gastos-nuevo');
+
+    expect(screen.getByTestId('dock-funcion')).toBeInTheDocument();
+    expect(screen.queryByText(/chat todavía no está listo/i)).not.toBeInTheDocument();
+  });
+
+  it('dictado sin card (respuesta sin sentido): avisa en el dock y NO abre un alta vacía', async () => {
+    vi.mocked(dictarPorChat).mockResolvedValue({ status: 'sin_propuesta', motivo: 'respuesta_sin_card' } as never);
+    render(<GastosScreen />);
+    await screen.findByTestId('gastos-nuevo');
+
+    const campo = screen.getByPlaceholderText('Contale un gasto al copiloto…');
+    fireEvent.change(campo, { target: { value: 'mmm' } });
+    fireEvent.keyDown(campo, { key: 'Enter' });
+
+    expect(await screen.findByText(/No alcancé a armar/)).toBeInTheDocument();
+    expect(screen.queryByTestId('gasto-descripcion')).not.toBeInTheDocument();
+  });
   it('el campo del dock se puede escribir: no está deshabilitado y tocarlo NO redirige', async () => {
     const onAbrirChat = vi.fn();
     render(<GastosScreen onAbrirChat={onAbrirChat} />);
@@ -65,13 +86,6 @@ describe('GastosScreen — SM-P7 (dock del pie: la acción corre en el chat, no 
     fireEvent.click(campo);
 
     expect(onAbrirChat).not.toHaveBeenCalled();
-  });
-
-  it('sin `onAbrirChat` no se monta el dock (no hay adónde llevar el texto)', async () => {
-    render(<GastosScreen />);
-    await screen.findByTestId('gastos-nuevo');
-
-    expect(screen.queryByTestId('dock-funcion')).not.toBeInTheDocument();
   });
 
   it('«Nuevo gasto» sigue abriendo el alta EN BLANCO — el dock no le pisa el flujo manual', async () => {

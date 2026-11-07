@@ -6,13 +6,14 @@ vi.mock('@copiloto/core', async (importOriginal) => {
   const original = await importOriginal<typeof import('@copiloto/core')>();
   return {
     ...original,
+    dictarPorChat: vi.fn(),
     listarClientes: vi.fn(),
     obtenerCliente: vi.fn(),
     crearCliente: vi.fn(),
   };
 });
 
-import { crearCliente, listarClientes, obtenerCliente, tomarPendiente, type Cliente } from '@copiloto/core';
+import { crearCliente, listarClientes, obtenerCliente, dictarPorChat, tomarPendiente, type Cliente } from '@copiloto/core';
 
 import { ClientesScreen } from './ClientesScreen';
 
@@ -108,7 +109,7 @@ describe('ClientesScreen — BL-J6 (chip de cartera independiente de la paginaci
   });
 });
 
-describe('ClientesScreen — SM-P7 (dock del pie: la acción corre en el chat, no en el alta)', () => {
+describe('ClientesScreen — SM-P19 mitad A (dock del pie: el dictado prellena la función, sin chat)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     tomarPendiente();
@@ -119,21 +120,41 @@ describe('ClientesScreen — SM-P7 (dock del pie: la acción corre en el chat, n
     vi.restoreAllMocks();
   });
 
-  it('enviar texto desde el dock deja el pendiente y abre el chat — NO abre el alta ni guarda nada', async () => {
-    const onAbrirChat = vi.fn();
-    render(<ClientesScreen onAbrirChat={onAbrirChat} />);
+  it('escribir en el dock prellena el alta EN la función (dictado) — sin chat, sin onAbrirChat, sin guardar nada', async () => {
+    vi.mocked(dictarPorChat).mockResolvedValue({ status: 'ok', resultado: { destino: 'cliente', propuesta: { nombre: 'Panadería La Esquina' } } } as never);
+    render(<ClientesScreen />);
     await screen.findByTestId('clientes-nuevo');
 
     const campo = screen.getByPlaceholderText('Contale un cliente al copiloto…');
     fireEvent.change(campo, { target: { value: 'Panadería La Esquina' } });
     fireEvent.keyDown(campo, { key: 'Enter' });
 
-    expect(onAbrirChat).toHaveBeenCalledTimes(1);
-    expect(tomarPendiente()).toBe('Panadería La Esquina');
+    expect(await screen.findByTestId('cliente-nombre')).toHaveValue('Panadería La Esquina');
+    expect(dictarPorChat).toHaveBeenCalledWith(expect.objectContaining({ destino: 'cliente', texto: 'Panadería La Esquina' }), expect.anything());
+    expect(tomarPendiente()).toBeFalsy();
     expect(mockCrear).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('cliente-nombre')).not.toBeInTheDocument();
   });
 
+  it('el dictado NO depende del chat: sin onAbrirChat (chat sin hidratar) el dock está montado y no aparece CHAT_NO_LISTO', async () => {
+    render(<ClientesScreen />);
+    await screen.findByTestId('clientes-nuevo');
+
+    expect(screen.getByTestId('dock-funcion')).toBeInTheDocument();
+    expect(screen.queryByText(/chat todavía no está listo/i)).not.toBeInTheDocument();
+  });
+
+  it('dictado sin card (respuesta sin sentido): avisa en el dock y NO abre un alta vacía', async () => {
+    vi.mocked(dictarPorChat).mockResolvedValue({ status: 'sin_propuesta', motivo: 'respuesta_sin_card' } as never);
+    render(<ClientesScreen />);
+    await screen.findByTestId('clientes-nuevo');
+
+    const campo = screen.getByPlaceholderText('Contale un cliente al copiloto…');
+    fireEvent.change(campo, { target: { value: 'mmm' } });
+    fireEvent.keyDown(campo, { key: 'Enter' });
+
+    expect(await screen.findByText(/No alcancé a armar/)).toBeInTheDocument();
+    expect(screen.queryByTestId('cliente-nombre')).not.toBeInTheDocument();
+  });
   it('el campo del dock se puede escribir: no está deshabilitado y tocarlo NO redirige', async () => {
     const onAbrirChat = vi.fn();
     render(<ClientesScreen onAbrirChat={onAbrirChat} />);
@@ -145,13 +166,6 @@ describe('ClientesScreen — SM-P7 (dock del pie: la acción corre en el chat, n
     fireEvent.click(campo);
 
     expect(onAbrirChat).not.toHaveBeenCalled();
-  });
-
-  it('sin `onAbrirChat` no se monta el dock (no hay adónde llevar el texto)', async () => {
-    render(<ClientesScreen />);
-    await screen.findByTestId('clientes-nuevo');
-
-    expect(screen.queryByTestId('dock-funcion')).not.toBeInTheDocument();
   });
 
   it('«Nuevo cliente» sigue abriendo el alta EN BLANCO — el dock no le pisa el flujo manual', async () => {

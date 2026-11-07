@@ -10,7 +10,7 @@ import {
 } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
-import { DockFuncion } from '../voz';
+import { DockDictadoFuncion, inicialesDeGasto, useDictadoFuncion } from '../voz';
 import { DetalleGasto } from './DetalleGasto';
 import { FormularioGasto, type ValoresInicialesGasto } from './FormularioGasto';
 import { FotoFuncion } from './FotoFuncion';
@@ -28,7 +28,8 @@ export interface GastosScreenProps {
    * Mismo criterio que `clienteIdInicial` de `ClientesScreen`: el shell lo resetea a `null` en
    * cada cambio de tab, así que un remount sin id nuevo no reabre el detalle viejo. */
   gastoIdInicial?: number;
-  /** Lleva al chat principal: el dock del pie (SM-P7) deja el texto como pendiente y cambia de tab. */
+  /** Lleva al chat principal. Ya NO lo usa el dictado (SM-P19 mitad A: se prellena acá, sin chat);
+   * queda para la mitad B («al guardar, la actividad aparece en el chat»). */
   onAbrirChat?: () => void;
 }
 
@@ -39,7 +40,7 @@ export interface GastosScreenProps {
  * (`@copiloto/core`, sin cambios). Lo que NO se porta 1:1: `RefreshControl` (gesto táctil de "tirar
  * para refrescar") no existe en web — se reemplaza por un botón "Actualizar" explícito.
  */
-export function GastosScreen({ gastoIdInicial, onAbrirChat }: GastosScreenProps = {}) {
+export function GastosScreen({ gastoIdInicial }: GastosScreenProps = {}) {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [total, setTotal] = useState(0);
@@ -47,9 +48,13 @@ export function GastosScreen({ gastoIdInicial, onAbrirChat }: GastosScreenProps 
   const [vista, setVista] = useState<Vista>('listado');
   const [actualizando, setActualizando] = useState(false);
   const [detalle, setDetalle] = useState<Gasto | null>(null);
-  // Valores con los que abre el alta (hoy sólo la lectura de foto, `alLeerFoto`). `undefined` = en blanco.
-  // El dictado ya no pasa por acá: lo hace el dock del pie por el chat (SM-P7, `DockFuncion`).
+  // Valores con los que abre el alta: lectura de foto (`alLeerFoto`) o dictado del dock (`dictado`).
+  // `undefined` = en blanco.
   const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesGasto | undefined>(undefined);
+  // SM-P19 mitad A: lo dictado/escrito en el dock se prellena ACÁ (no viaja al chat ni lo necesita).
+  // `claveAlta` remonta el formulario para que tome las `iniciales` de un dictado nuevo.
+  const dictado = useDictadoFuncion('gasto');
+  const [claveAlta, setClaveAlta] = useState(0);
   // BL-J7 3er ítem del DoD: `origen` viaja con la card que abrió el formulario — 'foto' sólo cuando
   // `/gastos/leer-foto` devolvió 200, nunca por defecto (ver `FormularioGasto.__origen` que lo pinta).
   const [origenAlta, setOrigenAlta] = useState<'manual' | 'foto'>('manual');
@@ -92,6 +97,19 @@ export function GastosScreen({ gastoIdInicial, onAbrirChat }: GastosScreenProps 
   useEffect(() => {
     void cargar();
   }, [cargar]);
+
+  // Llegó la propuesta del dictado: se abre el alta prellenada y se descarta (ya es borrador del form).
+  const propuestaDictada = dictado.propuesta;
+  const limpiarDictado = dictado.limpiar;
+  useEffect(() => {
+    if (propuestaDictada == null) return;
+    setInicialesDictado(inicialesDeGasto(propuestaDictada));
+    setOrigenAlta('manual');
+    setErrorFoto(null);
+    setClaveAlta((n) => n + 1);
+    setVista('formulario');
+    limpiarDictado();
+  }, [propuestaDictada, limpiarDictado]);
 
   /**
    * ACTID — abrir directo un gasto que llegó por la lista de Actividad/Escritorio. Se busca por
@@ -214,6 +232,7 @@ export function GastosScreen({ gastoIdInicial, onAbrirChat }: GastosScreenProps 
 
           {vista === 'formulario' ? (
             <FormularioGasto
+              key={claveAlta}
               origen={origenAlta}
               iniciales={inicialesDictado}
               onCreado={alCrear}
@@ -270,7 +289,7 @@ export function GastosScreen({ gastoIdInicial, onAbrirChat }: GastosScreenProps 
 
       {detalle != null && <DetalleGasto gasto={detalle} onCerrar={() => setDetalle(null)} />}
 
-      {onAbrirChat && <DockFuncion onAbrirChat={onAbrirChat} placeholder="Contale un gasto al copiloto…" />}
+      <DockDictadoFuncion dictado={dictado} placeholder="Contale un gasto al copiloto…" />
     </div>
   );
 }
