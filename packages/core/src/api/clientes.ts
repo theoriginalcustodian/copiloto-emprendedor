@@ -1,3 +1,4 @@
+import { conSessionIdActividad } from './actividadAlHilo';
 import { apiClient } from './client';
 import { ApiError } from './errors';
 import type { ConDisponibilidad } from './afip';
@@ -522,7 +523,8 @@ async function guardar(
     const cuerpo: Record<string, unknown> = { ...aWire(datos) };
     if (opciones.forzar === true) cuerpo.forzar = true;
     if (opciones.idemKey !== undefined) cuerpo.idem_key = opciones.idemKey;
-    const raw = await apiClient.post<unknown>(ruta, cuerpo);
+    // SM-P19 B: sólo el ALTA es un turno nuevo en el chat; la edición no.
+    const raw = await apiClient.post<unknown>(ruta, ruta === '/clientes' ? conSessionIdActividad(cuerpo) : cuerpo);
     const cliente = clienteDeLaRespuesta(raw);
     // Un 200 con el HTML del SPA llega hasta acá como string: no es un cliente, y decirlo "no
     // disponible" es más cierto que fabricar uno vacío.

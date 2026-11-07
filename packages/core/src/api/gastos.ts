@@ -1,3 +1,4 @@
+import { conSessionIdActividad } from './actividadAlHilo';
 import { apiClient } from './client';
 import { ApiError } from './errors';
 import type { ConDisponibilidad } from './afip';
@@ -398,7 +399,7 @@ export async function crearGasto(
   req: CrearGastoRequest,
 ): Promise<ConDisponibilidad<{ gasto: Gasto }>> {
   try {
-    const raw = await apiClient.post<GastoCrudo>('/gastos', aBodyCrudo(req));
+    const raw = await apiClient.post<GastoCrudo>('/gastos', conSessionIdActividad(aBodyCrudo(req)));
     // Pelado, no `{gasto: …}` — ver `esGastoPelado`. Este era el bug de la card en device.
     if (!esGastoPelado(raw)) return { status: 'no_disponible' };
     return { status: 'ok', gasto: normalizar(raw) };

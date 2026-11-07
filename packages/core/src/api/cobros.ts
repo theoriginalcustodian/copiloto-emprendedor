@@ -1,3 +1,4 @@
+import { conSessionIdActividad } from './actividadAlHilo';
 import { apiClient } from './client';
 import { ApiError } from './errors';
 import type { ConDisponibilidad } from './afip';
@@ -175,7 +176,7 @@ export async function registrarCobro(
   try {
     const raw = await apiClient.post<{ cobro?: CobroRaw; comprobante?: ComprobanteCobroRaw }>(
       `/afip/comprobantes/${comprobanteId}/cobros`,
-      cuerpo,
+      conSessionIdActividad(cuerpo),
     );
     return {
       status: 'ok',

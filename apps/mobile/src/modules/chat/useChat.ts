@@ -6,6 +6,7 @@ import { deleteAsync } from 'expo-file-system/legacy';
 
 import {
   apiReal as api,
+  fijarSessionIdActividad,
   hidratarEstado,
   motivoDeError,
   reducirChat,
@@ -213,6 +214,9 @@ export function useChat(clienteId: string): UseChatResult {
 
   const actualizarEstado = useCallback((next: EstadoChat) => {
     estadoRef.current = next;
+    // SM-P19 B: los guardados de las funciones (gasto, cobro, factura, presupuesto, cliente) mandan este
+    // `session_id` para que su actividad aparezca como turno en ESTE hilo. Cubre hidratación y rotación.
+    fijarSessionIdActividad(next.sessionId);
     if (montadoRef.current) setEstado(next);
   }, []);
 
