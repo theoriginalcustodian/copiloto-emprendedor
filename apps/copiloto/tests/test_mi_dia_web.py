@@ -191,7 +191,7 @@ def test_calendario_conectado_devuelve_eventos_parseados():
     assert body["conectado"] is True
     assert body["eventos"] == [{"id": "evt1", "titulo": "Reunión con cliente",
                                "inicio": {"dateTime": "2026-08-11T15:00:00-03:00"},
-                               "fin": None, "dia_completo": False}]
+                               "fin": None, "ubicacion": None, "dia_completo": False}]
 
 
 def test_calendario_le_pasa_el_cliente_id_como_user_id_a_composio():

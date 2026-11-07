@@ -82,6 +82,7 @@ from inteligencia_queries import InteligenciaQueries
 from mi_dia_orquestador import avanzar_tablero
 from mi_dia_tarjeta_store import TarjetaStore
 from mi_dia_web import create_mi_dia_app
+from mi_dia_vencimientos import make_listar_vencimientos
 from cuenta_web import create_cuenta_app
 from tenant_erasure_workflow import TenantErasureWorkflow, workflow_id as erasure_workflow_id
 from actividad_store import ActividadStore
@@ -294,6 +295,7 @@ async def _serve() -> None:
         avanzar_tablero_fn=lambda cid: avanzar_tablero(
             conn_factory, cid, composio_conexiones=lambda: composio_gateway.list_connections(cid)),
         composio_gateway=composio_gateway,
+        listar_vencimientos=make_listar_vencimientos(conn_factory, crypto),
     )
 
     # Solo para normalize_inbound del /chat (route_inbound); el reply_sink real que sirve /reply es
