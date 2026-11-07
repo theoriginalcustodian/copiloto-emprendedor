@@ -62,7 +62,7 @@ campo»*.
 | **SM-P16** | `sin-issue` | ✅ TERMINADO | sha 2d50aa8a03c3df4f9a428995acfc9efbb588f079 (#1733) y 4752fa6d939a1cda6c4befe32e7b7f862b69053e (#1764). DoD: (1) arr… |
 | **SM-P18** | `sin-issue` | ✅ TERMINADO | c16b989ff2e76032e0e52cb18ad4df22f301997e (#1744, ancestro de origin/main). DoD completo en device RF8T318RN9T, e2e-de… |
 | **SM-P17** | `sin-issue` | ✅ TERMINADO | NADA de lo pedido. frontend2 declaro, sin que se le pidiera, cinco superficies que NO estan cubiertas y NO estaban en… |
-| **SM-P19** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-P19** | `sin-issue` | 🟧 DOD-PARCIAL | mitad B: al GUARDAR la actividad aparece en el chat principal; espera el dato_ de backend con la via para insertar el… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -493,7 +493,9 @@ campo»*.
   6. Cero secretos en repo ni en capturas; nada de la cuenta fiscal real del operador.
 ### SM-P19 · `sin-issue` — La card se prellena DENTRO de la función y al GUARDAR la actividad va al chat (las 5)
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** mitad B: al GUARDAR la actividad aparece en el chat principal; espera el dato_ de backend con la via para insertar el turno (pedido_ planificacion-a-backend). Device: guard del grabador liberado (#1777) con grabacion viva sin medir.
+- **Cierre:** mitad A en main: #1772 39debff0, #1774 ba2c230f, #1775 b84eacd1, #1777 6a7daf33; espera con isotipo #1778; el mic exige mantener 1 s sin parpadeo (b95a7983 en PR de lote)
 - **Dueño:** frontend1 (mobile) + frontend2 (web) + backend (la mitad B)
 - **Orden del operador (2026-11-06), textual y PRESENCIADA en el hilo de planificación:** «si remite
   al chat pero de manera diferente... primero muestra la card prellenada dentro de la función y
