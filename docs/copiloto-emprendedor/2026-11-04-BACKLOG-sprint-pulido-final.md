@@ -62,7 +62,7 @@ campo»*.
 | **SM-P16** | `sin-issue` | ✅ TERMINADO | sha 2d50aa8a03c3df4f9a428995acfc9efbb588f079 (#1733) y 4752fa6d939a1cda6c4befe32e7b7f862b69053e (#1764). DoD: (1) arr… |
 | **SM-P18** | `sin-issue` | ✅ TERMINADO | c16b989ff2e76032e0e52cb18ad4df22f301997e (#1744, ancestro de origin/main). DoD completo en device RF8T318RN9T, e2e-de… |
 | **SM-P17** | `sin-issue` | ✅ TERMINADO | NADA de lo pedido. frontend2 declaro, sin que se le pidiera, cinco superficies que NO estan cubiertas y NO estaban en… |
-| **SM-P19** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-P19** | `sin-issue` | 🟧 DOD-PARCIAL | mitad A: corrida real tipeando contra el backend en el navegador con e2e-device (LLM real) -- NO hecha; instrumento: … |
 | **SM-P20** | `sin-issue` | 🟨 EN-CURSO | frontend1 (Agenda + flecha, PR #1780 con device medido 2026-11-06 23:10-23:11) + backend (el ORDEN de «Para hoy» y lo… |
 
 <!-- TABLA-ESTADO:FIN -->
@@ -494,7 +494,9 @@ campo»*.
   6. Cero secretos en repo ni en capturas; nada de la cuenta fiscal real del operador.
 ### SM-P19 · `sin-issue` — La card se prellena DENTRO de la función y al GUARDAR la actividad va al chat (las 5)
 
-- **Estado:** PENDIENTE
+- **Estado:** DOD-PARCIAL
+- **Falta:** mitad A: corrida real tipeando contra el backend en el navegador con e2e-device (LLM real) -- NO hecha; instrumento: navegador + web desplegada, no device. mitad B (al GUARDAR el turno aparece en el chat): NO iniciada, contratada el 2026-11-06 23:22 a backend (reply_sink + card kind actividad_registrada) y su precondicion de cierre es el test adversarial cross-tenant del ADR-013. La prop onAbrirChat queda en las pantallas sin uso, reservada para B.
+- **Cierre:** mitad A MERGEADA y DESPLEGADA @ e3e28fe9e9156480a0481e1d8b67bb2dbf6f54a0 (PR #1781, squash en origin/main, web con sync-web.sh y data-build-sha verificado). Las 5 funciones prellenan EN la funcion con un solo useDictadoFuncion + DockDictadoFuncion; retirados useDictadoFactura y DockFuncion. Evidencia: vitest web 149 archivos / 1460 tests, tsc limpio, CI 6/6. Arregla de raiz el CHAT_NO_LISTO: test por pantalla de que sin onAbrirChat el dock monta y no aparece. Nada se guarda ni se emite -- FacturaWorkflow.confirmar intacto.
 - **Dueño:** frontend1 (mobile) + frontend2 (web) + backend (la mitad B)
 - **Orden del operador (2026-11-06), textual y PRESENCIADA en el hilo de planificación:** «si remite
   al chat pero de manera diferente... primero muestra la card prellenada dentro de la función y
