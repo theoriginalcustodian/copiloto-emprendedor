@@ -352,6 +352,7 @@ export {
   cambiarEstadoTarjetaMiDia,
   crearTarjetaMiDia,
   horaDeEvento,
+  instanteDeEvento,
   leerCalendario,
   leerTablero,
 } from './miDia';
