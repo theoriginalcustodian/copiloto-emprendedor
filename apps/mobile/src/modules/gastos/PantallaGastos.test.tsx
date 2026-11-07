@@ -7,8 +7,6 @@ import { Gesture } from 'react-native-gesture-handler';
  * falsa declarada acá rompe ese chequeo (la factory corre antes de que la `class` salga de su zona
  * muerta temporal). Ya se pagó ese error una vez en esta sesión.
  */
-jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn(), dismissAll: jest.fn() }, useFocusEffect: () => {} }));
-
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
   return {
@@ -19,6 +17,23 @@ jest.mock('@copiloto/core', () => {
     obtenerGasto: jest.fn(),
     transcribir: jest.fn(),
     leerFotoGasto: jest.fn(),
+  };
+});
+
+// Dictado por chat (contrato 2026-10-13): el hook tiene su propio test (`voz/useDictadoPorFuncion.test`).
+// Acá se reemplaza para ejercitar lo que la PANTALLA hace con su resultado. Sin override devuelve `null`
+// (texto crudo, como antes del contrato) para no pegar a la red desde un test que no la mockeó.
+const mockUseDictado = jest.fn();
+jest.mock('../voz/useDictadoPorFuncion', () => {
+  const actual = jest.requireActual('../voz/useDictadoPorFuncion');
+  return {
+    ...actual,
+    useDictadoPorFuncion: (...args: unknown[]) => {
+      const sobreescrito = mockUseDictado(...args);
+      // Sin override, el dictado «no responde» (`null` = texto crudo, como antes de este contrato): el
+      // hook real pegaría a la red desde un test que no la mockeó.
+      return sobreescrito !== undefined ? sobreescrito : { ocupado: false, aviso: null, dictar: async () => null };
+    },
   };
 });
 
@@ -57,9 +72,6 @@ import {
   type ResumenGastos,
 } from '@copiloto/core';
 
-import { router } from 'expo-router';
-
-import { registrarDespachoChat } from '../../navegacion/despachoAlChat';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { PantallaGastos } from './PantallaGastos';
 
@@ -360,26 +372,237 @@ describe('PantallaGastos', () => {
       expect(screen.getByTestId('gasto-error')).toHaveTextContent('falta monto');
     });
   });
-  it('SM-P14: lo escrito en el dock se manda al chat; la pantalla no abre su formulario ni lo prellena', async () => {
-    const despacho = { texto: jest.fn(), audio: jest.fn() };
-    const baja = registrarDespachoChat(despacho);
-    try {
-      await montar();
-      await waitFor(() => expect(screen.getByTestId('dock-funcion')).toBeTruthy());
+});
 
-      await fireEvent.changeText(screen.getByTestId('chat-composer'), 'café 1500');
-      await fireEvent.press(screen.getByTestId('chat-enviar'));
+describe('PantallaGastos — BL-J7/K-10 (mic en la fila del rótulo)', () => {
+  let espiaPan: ReturnType<typeof jest.spyOn>;
 
-      expect(despacho.texto).toHaveBeenCalledWith('café 1500');
-      expect(router.dismissAll).toHaveBeenCalled();
-      expect(screen.queryByTestId('dock-funcion-confirmar')).toBeNull();
-    } finally {
-      baja();
-    }
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockListar.mockResolvedValue({ status: 'ok', gastos: [], total: 0 });
+    mockResumen.mockResolvedValue({ status: 'ok', resumen: resumen({ total: '0.00', porCategoria: [] }) });
+    mockVoz.fase = 'inactivo';
+    mockVoz.niveles = [];
+    mockVoz.iniciar.mockResolvedValue(true);
+    mockVoz.detener.mockResolvedValue(undefined);
+    mockVoz.descartar.mockResolvedValue(undefined);
+    mockVoz.tomar.mockReset();
+    // `Gesture.Pan` se espía DESDE ANTES del `render`: `MicFuncion` vive en el listado y crea el
+    // recognizer al montar, no al abrir el formulario.
+    espiaPan = jest.spyOn(Gesture, 'Pan');
+  });
+
+  afterEach(() => {
+    espiaPan.mockRestore();
+  });
+
+  it('dictado → abre el alta con `descripcion` prellenada, y NO guarda nada solo (DoD FE2 §4)', async () => {
+    mockVoz.tomar.mockReturnValue({ nombre: 'voz.m4a', mime: 'audio/m4a', datos: 'file:///cache/voz.m4a' });
+    mockTranscribir.mockResolvedValue({ transcript: 'cuarenta litros de nafta' });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('gasto-descripcion-input')).toBeTruthy());
+    expect(screen.getByTestId('gasto-descripcion-input').props.value).toBe('cuarenta litros de nafta');
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('transcripción vacía NO abre el alta — se queda en el listado con el error del mic', async () => {
+    mockVoz.tomar.mockReturnValue({ nombre: 'voz.m4a', mime: 'audio/m4a', datos: 'file:///cache/voz.m4a' });
+    mockTranscribir.mockResolvedValue({ transcript: '   ' });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('gastos-mic-error')).toBeTruthy());
+    expect(screen.getByTestId('gastos-mic-error')).toHaveTextContent('No se entendió el audio. Probá de nuevo.');
+    expect(screen.queryByTestId('gasto-descripcion-input')).toBeNull();
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('«Nuevo gasto» sigue abriendo el alta EN BLANCO — el mic no le pisa el flujo manual', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('gastos-nuevo'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('gasto-descripcion-input')).toBeTruthy());
+    expect(screen.getByTestId('gasto-descripcion-input').props.value).toBeFalsy();
+    expect(mockTranscribir).not.toHaveBeenCalled();
   });
 });
 
+describe('PantallaGastos — dictado por chat (contrato 2026-10-13)', () => {
+  let espiaPan: ReturnType<typeof jest.spyOn>;
 
+  const PROPUESTA = {
+    monto: '15000.00',
+    montoSugerido: null,
+    fecha: '2026-07-21',
+    categoria: 'mercaderia' as const,
+    proveedor: 'Distribuidora Sur',
+    medioPago: null,
+    descripcion: 'pagué 15 mil de mercadería',
+    origen: 'voz' as const,
+  };
+
+  const mockDictar = jest.fn();
+  function hook(over: { ocupado?: boolean; aviso?: string | null } = {}) {
+    mockUseDictado.mockReturnValue({ ocupado: false, aviso: null, dictar: mockDictar, ...over });
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockDictar.mockReset();
+    hook();
+    mockListar.mockResolvedValue({ status: 'ok', gastos: [], total: 0 });
+    mockResumen.mockResolvedValue({ status: 'ok', resumen: resumen({ total: '0.00', porCategoria: [] }) });
+    mockVoz.fase = 'inactivo';
+    mockVoz.niveles = [];
+    mockVoz.iniciar.mockResolvedValue(true);
+    mockVoz.detener.mockResolvedValue(undefined);
+    mockVoz.descartar.mockResolvedValue(undefined);
+    mockVoz.tomar.mockReset();
+    mockVoz.tomar.mockReturnValue({ nombre: 'voz.m4a', mime: 'audio/m4a', datos: 'file:///cache/voz.m4a' });
+    mockTranscribir.mockResolvedValue({ transcript: 'pagué 15 mil de mercadería' });
+    espiaPan = jest.spyOn(Gesture, 'Pan');
+  });
+
+  afterEach(() => {
+    mockUseDictado.mockReset();
+    espiaPan.mockRestore();
+  });
+
+  it('la propuesta del motor abre el alta con monto/categoría/proveedor YA extraídos, origen «voz», sin guardar', async () => {
+    mockDictar.mockResolvedValue(PROPUESTA);
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('gasto-monto-input')).toBeTruthy());
+    expect(screen.getByTestId('gasto-monto-input').props.value).toBe('15000.00');
+    expect(screen.getByTestId('gasto-proveedor-input').props.value).toBe('Distribuidora Sur');
+    expect(screen.getByTestId('gasto-origen')).toHaveTextContent('Lo dictaste');
+    // El destino y el texto que viajan son los del dictado, no otra cosa.
+    expect(mockUseDictado).toHaveBeenCalledWith('gasto');
+    expect(mockDictar).toHaveBeenCalledTimes(1);
+    expect(mockDictar).toHaveBeenCalledWith('pagué 15 mil de mercadería');
+    // La card se REVISA: dictar no guarda.
+    expect(mockCrear).not.toHaveBeenCalled();
+    // Y no hay aviso de degradado: el camino nuevo funcionó.
+    expect(screen.queryByTestId('gastos-dictado-aviso')).toBeNull();
+  });
+
+  it('🔴 ORDEN 2026-11-06: el dictado NO depende del chat — con el chat SIN hidratar la card igual se prellena y no sale «El chat todavía no está listo»', async () => {
+    // En jest no hay `ChatView` montado, o sea `registrarDespachoChat` nunca corrió: es EXACTAMENTE el estado «chat
+    // sin hidratar» en el que `DockAlChat` decía CHAT_NO_LISTO y el audio no llegaba a ninguna parte. Se espía el
+    // despacho para probar además que dictar no manda nada al chat (eso pasa recién al GUARDAR, mitad B).
+    const despacho = jest.requireActual('../../navegacion/despachoAlChat') as typeof import('../../navegacion/despachoAlChat');
+    const espiaTexto = jest.spyOn(despacho, 'despacharTextoAlChat');
+    const espiaAudio = jest.spyOn(despacho, 'despacharAudioAlChat');
+    mockDictar.mockResolvedValue(PROPUESTA);
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('gasto-monto-input')).toBeTruthy());
+    expect(screen.getByTestId('gasto-monto-input').props.value).toBe('15000.00');
+    expect(screen.queryByText(/El chat todavía no está listo/)).toBeNull();
+    expect(espiaTexto).not.toHaveBeenCalled();
+    expect(espiaAudio).not.toHaveBeenCalled();
+    expect(mockCrear).not.toHaveBeenCalled();
+    espiaTexto.mockRestore();
+    espiaAudio.mockRestore();
+  });
+
+  it('🔴 SM-I2: lo ESCRITO en el dock aprovecha la propuesta pero se guarda como «manual», nunca como dictado', async () => {
+    mockDictar.mockResolvedValue(PROPUESTA);
+    mockCrear.mockResolvedValue({ status: 'ok', gasto: gasto() });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+    await fireEvent.changeText(screen.getByTestId('chat-composer'), 'pagué 15 mil de mercadería');
+    await fireEvent.press(screen.getByTestId('chat-enviar'));
+
+    await waitFor(() => expect(screen.getByTestId('gasto-monto-input')).toBeTruthy());
+    expect(screen.getByTestId('gasto-monto-input').props.value).toBe('15000.00');
+    expect(screen.getByTestId('gasto-origen')).toHaveTextContent('Lo cargaste a mano');
+
+    await fireEvent.press(screen.getByTestId('gasto-guardar'));
+    await waitFor(() => expect(mockCrear).toHaveBeenCalledWith(expect.objectContaining({ origen: 'manual' })));
+  });
+
+  it('🔴 si el motor no devuelve la card, cae al texto crudo Y LO DICE (no degrada en silencio)', async () => {
+    mockDictar.mockResolvedValue(null);
+    hook({ aviso: 'Tardó demasiado en responder. Te dejé lo que dijiste para que lo completes a mano.' });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('gasto-descripcion-input')).toBeTruthy());
+    expect(screen.getByTestId('gasto-descripcion-input').props.value).toBe('pagué 15 mil de mercadería');
+    expect(screen.getByTestId('gasto-monto-input').props.value).toBeFalsy();
+    expect(screen.getByTestId('gastos-dictado-aviso')).toHaveTextContent(/Tardó demasiado en responder/);
+    expect(screen.getByTestId('gasto-origen')).toHaveTextContent('Lo cargaste a mano');
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('mientras espera la card se ve «Entendiendo…» y el mic queda bloqueado', async () => {
+    let resolver: (v: unknown) => void = () => {};
+    mockDictar.mockReturnValue(
+      new Promise((r) => {
+        resolver = r;
+      }),
+    );
+    hook({ ocupado: true });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('gastos-dictado-ocupado')).toBeTruthy());
+    // Sigue en el listado: el formulario sólo abre cuando hay resultado.
+    expect(screen.queryByTestId('gasto-monto-input')).toBeNull();
+
+    await act(async () => {
+      resolver(PROPUESTA);
+    });
+    await waitFor(() => expect(screen.getByTestId('gasto-monto-input')).toBeTruthy());
+  });
+
+  it('«Anotar un gasto» después de un dictado degradado abre en BLANCO y sin el aviso viejo', async () => {
+    mockDictar.mockResolvedValue(null);
+    hook({ aviso: 'No pude consultar al asistente. Te dejé lo que dijiste para que lo completes a mano.' });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+    await dictar(espiaPan);
+    await waitFor(() => expect(screen.getByTestId('gastos-dictado-aviso')).toBeTruthy());
+
+    // Cancelar el formulario y volver a abrir a mano.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('gasto-cancelar'));
+    });
+    await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('gastos-nuevo'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('gasto-descripcion-input')).toBeTruthy());
+    expect(screen.getByTestId('gasto-descripcion-input').props.value).toBeFalsy();
+    expect(screen.queryByTestId('gastos-dictado-aviso')).toBeNull();
+  });
+});
 
 /** BL-J7 3er ítem del DoD — `POST /gastos/leer-foto`: forma EXACTA del contrato §2 (snake_case). */
 function dataFotoGasto(over: Record<string, unknown> = {}) {

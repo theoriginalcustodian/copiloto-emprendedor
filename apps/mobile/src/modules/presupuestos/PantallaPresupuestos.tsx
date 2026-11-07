@@ -20,7 +20,7 @@ import { TarjetaPresupuesto } from './TarjetaPresupuesto';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
 import { BloqueCifra } from '../../theme/BloqueCifra';
 import { centavosADecimal, chipResumenEspera, resumenEspera } from './resumenEspera';
-import { DockAlChat } from '../voz';
+import { AvisoDictado, inicialesDePresupuesto, DockFuncion, useDictadoPorFuncion } from '../voz';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
@@ -85,6 +85,8 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
   // BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`: dictado desde la fila de acciones
   // llena `concepto` (nunca es una corrección, por eso no toca `corrigiendo`).
   const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesPresupuesto | undefined>(undefined);
+  const [errorMic, setErrorMic] = useState<string | null>(null);
+  const dictado = useDictadoPorFuncion('presupuesto');
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
 
@@ -159,6 +161,17 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
     setVista('formulario');
   }
 
+  // Ver `alDictarGasto` en `PantallaGastos.tsx`: propuesta del motor (concepto, receptor e ítems) si hay,
+  // texto crudo en `concepto` (el comportamiento de antes) si el camino está apagado o falló.
+  async function alDictarPresupuesto(texto: string) {
+    setErrorMic(null);
+    const propuesta = await dictado.dictar(texto);
+    if (!vivo.current) return;
+    setCorrigiendo(null);
+    setInicialesDictado(propuesta !== null ? inicialesDePresupuesto(propuesta) : { concepto: texto });
+    setVista('formulario');
+  }
+
   function abrirCorreccion(p: Presupuesto) {
     setDetalle(null);
     setCorrigiendo(p);
@@ -218,6 +231,13 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
             />
           }
         >
+          {/* Dictado por chat: «esperando» y, si cayó al texto crudo, el porqué (ver `PantallaGastos.tsx`). */}
+          <AvisoDictado
+            testID="presupuestos-dictado"
+            ocupado={dictado.ocupado}
+            aviso={vista === 'formulario' && inicialesDictado !== undefined ? dictado.aviso : null}
+          />
+
           {vista === 'formulario' ? (
             <FormularioPresupuesto
               corrige={corrigiendo}
@@ -270,6 +290,12 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
                 </BloqueCifra>
               )}
 
+              {errorMic != null && (
+                <Text testID="presupuestos-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+                  {errorMic}
+                </Text>
+              )}
+
               {/* 🔴 Decisión C: la lista rica de presupuestos (con estado, el toggle de historial) NO
                   se toca — la envuelve el buscador. Sin query, se muestra intacta; con query, pega a
                   `/actividad?funcion=presupuestos&q=` y muestra el card uniforme. */}
@@ -310,7 +336,13 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
 
       {/* SM-J1: el dock de SM-I2 al pie, fuera del scroll. Escribir o dictar abren el formulario prellenado; nada se envía solo. */}
       {estado === 'ok' && vista === 'listado' && (
-        <DockAlChat contexto="presupuesto" origen="Presupuestos" placeholder={PLACEHOLDER_DOCK} />
+        <DockFuncion
+          contexto="presupuesto"
+          placeholder={PLACEHOLDER_DOCK}
+          onTexto={(t) => void alDictarPresupuesto(t)}
+          onError={setErrorMic}
+          disabled={dictado.ocupado}
+        />
       )}
 
       {/* 🔴 El detalle se monta ACÁ, fuera del scroll, y no dentro de la lista. Un overlay
