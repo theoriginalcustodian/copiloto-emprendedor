@@ -76,6 +76,7 @@ from graphity_structured_client import GrafoIngestError  # noqa: E402
 from datos_card import (CONSULTAS as CONSULTAS_NEGOCIO, KIND as KIND_DATOS_NEGOCIO,  # noqa: E402
                         cuando_usar as _cuando_usar_negocio, datos_de, plata as _plata, plata_corta as _plata_corta,
                         texto_para_el_llm)
+import respuesta_directa  # noqa: E402 -- la 2ª llamada al LLM, por código (flag COPILOTO_RESPUESTA_DIRECTA)
 
 
 def _obs_service(toolkit: str) -> dict:
@@ -206,8 +207,10 @@ CONSULTAR_NEGOCIO_SCHEMA = {"type": "function", "function": {
     "parameters": {"type": "object", "properties": {
         "consulta": {"type": "string", "enum": list(CONSULTAS_NEGOCIO),
                      "description": "cuál de los números del negocio mostrar"},
-        "mes": {"type": "string", "description": "sólo para `torta_categorias`: el mes como YYYY-MM "
-                                                  "(opcional; sin él, el mes actual)"}},
+        "mes": {"type": "string", "description": "el mes que nombra la pregunta, como YYYY-MM (opcional). "
+                                                  "En `torta_categorias` elige el mes (sin él, el actual); en "
+                                                  "`entro_vs_salio` y `facturacion_por_mes` marca de qué mes "
+                                                  "habla la respuesta"}},
         "required": ["consulta"]}}}
 
 # Inteligencia de Negocio por chat (2026-11-06): la HISTORIA del negocio sale del grafo
@@ -1085,12 +1088,15 @@ def _run_consultar_cliente(arguments, ctx, idem_key, cliente_store_factory):
     store = cliente_store_factory(ctx.cliente_id)
     # 6 y no 5: con el tope justo en lo que se muestra, «hay 5» y «hay más de 5» se ven igual.
     candidatos, _ = store.listar(q=nombre, limit=6)
+    directa = respuesta_directa.activa()
     if not candidatos:
         return ToolResult(
             tool_call_id=idem_key, is_write=False, status="ok",
             observation={"result": f"No encontré ningún cliente que se llame «{nombre}». Puede ser "
                                    f"que todavía no esté cargado, o que figure con otro nombre: "
-                                   f"preguntale cómo lo tiene anotado."})
+                                   f"preguntale cómo lo tiene anotado.",
+                         **({respuesta_directa.CAMPO: respuesta_directa.frase_cliente_no_encontrado(nombre)}
+                            if directa else {})})
     if len(candidatos) > 1:
         nombres = ", ".join(f"«{c['nombre']}»" for c in candidatos[:5])
         cola = " (y hay más)" if len(candidatos) > 5 else ""
@@ -1098,7 +1104,10 @@ def _run_consultar_cliente(arguments, ctx, idem_key, cliente_store_factory):
             tool_call_id=idem_key, is_write=False, status="ok",
             observation={"result": f"Hay varios que coinciden con «{nombre}»: {nombres}{cola}. "
                                    f"Preguntale a cuál se refiere. NO elijas vos.",
-                         "candidatos": [{"id": c["id"], "nombre": c["nombre"]} for c in candidatos]})
+                         "candidatos": [{"id": c["id"], "nombre": c["nombre"]} for c in candidatos],
+                         **({respuesta_directa.CAMPO: respuesta_directa.frase_cliente_varios(
+                             nombre, [c["nombre"] for c in candidatos[:5]], len(candidatos) > 5)}
+                            if directa else {})})
 
     resumen = store.resumen_operaciones(candidatos[0]["id"])
     if resumen is None:      # se borró entre el listado y el detalle; no es un error del emprendedor
@@ -1130,7 +1139,9 @@ def _run_consultar_cliente(arguments, ctx, idem_key, cliente_store_factory):
     return ToolResult(
         tool_call_id=idem_key, is_write=False, status="ok",
         observation={"result": f"«{ficha['nombre']}»: {'; '.join(partes)}. Últimas: {ultimas}.",
-                     "cliente": ficha, "resumen": resumen})
+                     "cliente": ficha, "resumen": resumen,
+                     **({respuesta_directa.CAMPO: respuesta_directa.frase_cliente(ficha, resumen)}
+                        if directa else {})})
 
 
 def _run_consultar_negocio(arguments, ctx, idem_key, inteligencia_queries_factory):
@@ -1149,13 +1160,18 @@ def _run_consultar_negocio(arguments, ctx, idem_key, inteligencia_queries_factor
                           observation={"error": f"consulta desconocida: «{consulta}». Las que sé hacer: "
                                                 f"{', '.join(CONSULTAS_NEGOCIO)}."})
     card = datos_de(consulta, inteligencia_queries_factory(ctx.cliente_id), arguments)
+    directa = respuesta_directa.activa()
     if not card["cifras"]:
         return ToolResult(
             tool_call_id=idem_key, is_write=False, status="ok",
             observation={"result": f"{card['titulo']}: todavía no hay nada registrado para esto. Decíselo "
-                                   f"así; NO inventes un número ni digas que es cero."})
+                                   f"así; NO inventes un número ni digas que es cero.",
+                         **({respuesta_directa.CAMPO: respuesta_directa.frase_sin_datos(card)}
+                            if directa else {})})
+    frase = respuesta_directa.frase_negocio(consulta, card, arguments) if directa else None
     return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
-                      observation={"result": texto_para_el_llm(card)},
+                      observation={"result": texto_para_el_llm(card),
+                                   **({respuesta_directa.CAMPO: frase} if frase else {})},
                       artifact=Artifact(kind=KIND_DATOS_NEGOCIO, data=card))
 
 
