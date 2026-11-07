@@ -1,5 +1,5 @@
 ---
-name: el-interprete-que-el-PATH-resuelve-no-existe-y-el-comando-no-corre-sin-dar-error
+name: el-interprete-del-PATH-no-existe
 description: Mi herramienta Bash devolvia vacio con exito aparente porque `bash` del PATH era el lanzador de WSL y WSL no tenia distro; el canario a archivo distingue "no corrio" de "corrio y perdi el stdout".
 metadata:
   type: reference
