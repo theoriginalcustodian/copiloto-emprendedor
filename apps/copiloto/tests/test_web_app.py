@@ -422,6 +422,46 @@ def test_reply_with_token_reads_via_read_replies_fn_scoped_to_cliente_id():
     assert r.json()["next_id"] == 1
 
 
+def test_reply_sin_wait_lee_UNA_vez_como_siempre():
+    calls = []
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"),
+                        read_replies_fn=lambda c, s, a: calls.append(1) or [])
+    r = TestClient(app).get("/reply", params={"session_id": "s1", "after_id": 3})
+    assert r.status_code == 200 and r.json() == {"replies": [], "next_id": 3}
+    assert calls == [1]                                # contrato viejo intacto: una lectura, sin espera
+
+
+def test_reply_con_wait_devuelve_apenas_aparece_la_fila(monkeypatch):
+    import web
+    monkeypatch.setattr(web, "REPLY_WAIT_TICK_S", 0.01)
+    calls = []
+
+    def _fn(cliente_id, session_id, after_id):
+        calls.append(cliente_id)
+        return [{"id": 9, "reply_text": "ya"}] if len(calls) >= 3 else []
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), read_replies_fn=_fn)
+    r = TestClient(app).get("/reply", params={"session_id": "s1", "wait": 5})
+    assert r.json()["next_id"] == 9 and len(calls) == 3   # control: esperó, y cortó al llegar la fila
+    assert set(calls) == {"cid-A"}                        # cada re-lectura con el tenant del token
+
+
+def test_reply_con_wait_vence_y_devuelve_vacio(monkeypatch):
+    import time
+    import web
+    monkeypatch.setattr(web, "REPLY_WAIT_TICK_S", 0.01)
+    monkeypatch.setattr(web, "REPLY_WAIT_MAX_S", 0.1)     # wait=25 pedido se recorta al tope
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), read_replies_fn=lambda c, s, a: [])
+    t0 = time.monotonic()
+    r = TestClient(app).get("/reply", params={"session_id": "s1", "wait": 25})
+    assert r.status_code == 200 and r.json() == {"replies": [], "next_id": 0}
+    assert 0.09 <= time.monotonic() - t0 < 2
+
+
+def test_reply_wait_negativo_es_422():
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), read_replies_fn=lambda c, s, a: [])
+    assert TestClient(app).get("/reply", params={"session_id": "s1", "wait": -1}).status_code == 422
+
+
 def test_reply_default_read_replies_fn_uses_conn_factory_and_isolates_tenant():
     """Sin `read_replies_fn` inyectado, usa el default (reply_store.read_replies atado al
     conn_factory) — y aísla por cliente_id (no ve replies de otro tenant)."""
