@@ -10,6 +10,7 @@ from __future__ import annotations
 import datetime
 import re
 import unicodedata
+from decimal import Decimal
 from typing import Callable
 
 from afip_rules import NOTAS_CREDITO, facturado_filtro_sql, facturado_monto_sql
@@ -78,6 +79,72 @@ _FACTURADO_DEL_CLIENTE_JOIN = (
     f"AND {_facturas_del_documento_sql('a', 'c.doc_tipo', _DOC_DEL_CLIENTE_SQL)}) f")
 # Las dos últimas columnas del SELECT, en este orden: `f.cantidad`, `f.monto`.
 _COLS_CON_FACTURADO = ", ".join(f"c.{col}" for col in _COLS) + ", f.cantidad, f.monto"
+
+
+def clave_de_cobro(ficha, nombre: str, doc_tipo, doc_nro) -> tuple[str | None, tuple | None]:
+    """`(clave de agrupamiento, (doc_tipo, doc_nro) | None)` de UN cobro; `(None, None)` si no hay con qué
+    identificarlo. `ficha` es `(id, nombre, nombre_normalizado, doc_tipo, doc_nro)` o `None`.
+
+    Orden (SM-N33): documento de la ficha (o del receptor de la factura cobrada si no hay ficha) →
+    `ficha:<id>` → `nombre:<normalizado>`. **UNA regla para el ranking Y para la ficha del cliente**
+    (eval de fidelidad 2026-11-06: el ranking le daba $19.000 cobrados a Kiosco Don Ramón y su ficha decía
+    «no encuentro cobros», porque la ficha no leía cobros y el ranking sí)."""
+    if ficha is not None and _es_atribuible(ficha[3], ficha[4]):
+        doc_tipo, doc_nro = ficha[3], ficha[4]
+    # Consumidor final (tipo 99 / documento 0) NO identifica a nadie: agruparía a todos los anónimos.
+    elif ficha is None and _es_atribuible(doc_tipo, doc_nro) and doc_tipo != DOC_CONSUMIDOR_FINAL:
+        pass
+    else:
+        doc_tipo = doc_nro = None
+    if doc_nro is not None:
+        digitos = re.sub(r"\D", "", str(doc_nro))
+        if digitos.strip("0"):
+            return f"doc:{doc_tipo}:{digitos}", (doc_tipo, digitos)
+    if ficha is not None:
+        return f"ficha:{ficha[0]}", None
+    norm = normalizar_nombre(nombre) if nombre else ""
+    return (f"nombre:{norm}", None) if norm else (None, None)
+
+
+def agrupar_cobros(cur, cliente_id: str) -> dict[str, dict]:
+    """Los cobros del tenant agrupados por `clave_de_cobro`: `{clave: {cliente, ficha_id, total, doc,
+    cobros: [{fecha, monto}]}}`, con los cobros más nuevos primero. MP no tiene cliente: queda afuera solo
+    (no trae nombre ni ficha), igual que antes."""
+    cur.execute(f"""
+        SELECT k.cliente_ref, nullif(trim(k.cliente_nombre), ''), c.receptor_nombre,
+               c.doc_tipo, c.doc_nro, k.monto, k.fecha
+          FROM {_SCHEMA}.copiloto_cobros k
+          LEFT JOIN {_SCHEMA}.afip_comprobantes c
+                 ON c.cliente_id = k.cliente_id AND c.id = k.comprobante_id
+         WHERE k.cliente_id = %(cid)s
+         ORDER BY k.fecha DESC, k.id DESC
+    """, {"cid": cliente_id})
+    cobros = cur.fetchall()
+    cur.execute(f"SELECT id, nombre, nombre_normalizado, doc_tipo, doc_nro FROM {_TABLE} "
+                f"WHERE cliente_id = %(cid)s", {"cid": cliente_id})
+    fichas = cur.fetchall()
+    por_id = {f[0]: f for f in fichas}
+    por_nombre: dict[str, list] = {}
+    for f in fichas:
+        por_nombre.setdefault(f[2], []).append(f)
+
+    grupos: dict[str, dict] = {}
+    for ref, nombre_cobro, receptor, doc_tipo, doc_nro, monto, fecha in cobros:
+        ficha = por_id.get(ref)
+        nombre = nombre_cobro or (ficha[1] if ficha else None) or receptor or ""
+        if ficha is None and nombre:
+            homonimas = por_nombre.get(normalizar_nombre(nombre), [])
+            ficha = homonimas[0] if len(homonimas) == 1 else None
+        clave, doc = clave_de_cobro(ficha, nombre, doc_tipo, doc_nro)
+        if clave is None:
+            continue
+        g = grupos.setdefault(clave, {"cliente": ficha[1] if ficha else nombre,
+                                      "ficha_id": ficha[0] if ficha else None,
+                                      "total": Decimal(0), "doc": doc, "cobros": []})
+        g["total"] += Decimal(str(monto or 0))
+        g["cobros"].append({"fecha": fecha.isoformat() if fecha else None,
+                            "monto": f"{Decimal(str(monto or 0)):.2f}"})
+    return grupos
 
 
 def _snapshot_grafo(fila: dict) -> dict:
@@ -629,7 +696,7 @@ class ClienteStore:
         doc_tipo = ficha.get("doc_tipo")
         atribuible = _es_atribuible(doc_tipo, doc)
         resumen = {"cliente": ficha, "facturas_atribuibles": atribuible,
-                   "facturas": 0, "notas_credito": 0, "facturado": "0.00",
+                   "facturas": 0, "notas_credito": 0, "facturado": "0.00", "cobros": 0, "cobrado": "0.00",
                    "presupuestos": 0, "presupuestado": "0.00", "operaciones": []}
 
         with self._conn_factory() as conn, conn.cursor() as cur:
@@ -680,7 +747,20 @@ class ClienteStore:
                         "detalle": f"{'Nota de crédito' if es_nc else 'Factura'} {pv}-{nro}",
                         "monto": f"{total:.2f}", "signo": "sale" if es_nc else "entra"})
 
-        # Las dos listas ya vienen ordenadas de su tabla; se mezclan y se corta. No hace falta cursor:
+            # COBROS: con la MISMA regla que el ranking de mejores clientes (`agrupar_cobros`). Sin esto la
+            # ficha decía «no encuentro cobros» de un cliente que el ranking mostraba con $19.000 cobrados
+            # (eval de fidelidad, 2026-11-06). A diferencia de las facturas, los cobros SÍ se atan a una
+            # ficha sin documento (por `cliente_ref` o por nombre único), así que acá no hay «no se puede saber».
+            ficha_t = (cliente, ficha.get("nombre"), ficha.get("nombre_normalizado"), doc_tipo, ficha.get("doc_nro"))
+            clave, _ = clave_de_cobro(ficha_t, ficha.get("nombre") or "", None, None)
+            grupo = agrupar_cobros(cur, self._cliente_id).get(clave) if clave else None
+            cobros = (grupo or {}).get("cobros", [])
+            resumen["cobros"] = len(cobros)
+            resumen["cobrado"] = f"{(grupo or {}).get('total', Decimal(0)):.2f}"
+            operaciones += [{"fecha": c["fecha"], "tipo": "cobro", "detalle": "Cobro", "monto": c["monto"],
+                             "signo": "entra"} for c in cobros[:ultimas]]
+
+        # Las listas ya vienen ordenadas de su tabla; se mezclan y se corta. No hace falta cursor:
         # son ≤ 2·`ultimas` items en memoria, no una lista paginada que crece por arriba.
         operaciones.sort(key=lambda o: o["fecha"] or "", reverse=True)
         resumen["operaciones"] = operaciones[:ultimas]
