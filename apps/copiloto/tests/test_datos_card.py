@@ -100,8 +100,22 @@ def test_torta_muestra_solo_lo_que_gasto_ordenado_y_con_el_mes_en_el_chip():
     card = datos_card.datos_de("torta_categorias",
                                _QFalso(torta_categorias={"tipo": "torta", "periodo": "2026-09", "serie": serie}),
                                {"mes": "2026-09"})
-    assert [c["k"] for c in card["cifras"]] == ["mercadería", "nafta"]      # sin el 0 y de mayor a menor
+    # sin el 0, de mayor a menor, y el TOTAL sumado por código al final (el modelo no suma)
+    assert [c["k"] for c in card["cifras"]] == ["mercadería", "nafta", "Total gastado"]
+    assert card["cifras"][-1]["v"] == "$18.000,00"
     assert card["chip"] == "septiembre 2026"
+
+
+def test_torta_sin_gastos_no_inventa_un_total_cero():
+    card = datos_card.datos_de("torta_categorias",
+                               _QFalso(torta_categorias={"tipo": "torta", "periodo": "2026-10", "serie": []}))
+    assert card["cifras"] == []
+
+
+def test_la_guia_de_ruteo_manda_los_meses_pasados_a_entro_vs_salio_no_a_portada():
+    """Eval 2026-11-06: «¿cuánto entró en agosto?» iba a `portada` y contestaba «sólo tengo este mes»."""
+    guia = datos_card.cuando_usar()
+    assert "PASADO" in guia and "entro_vs_salio" in guia.split("`portada`")[1].split("`por_cobrar`")[0]
 
 
 @pytest.mark.parametrize("mes_pedido, esperado", [("2026-09", "2026-09"), ("septiembre", None),
