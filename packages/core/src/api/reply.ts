@@ -13,11 +13,15 @@ import type { RawReplyResponse, ReplyResponse } from './types';
  * por cliente en ESTE hilo de lectura. El `cliente_id` de cada acción de negocio sigue viajando en
  * `/chat`/`/chat/audio` según corresponda.
  */
-export async function getReply(sessionId: string, afterId: number): Promise<ReplyResponse> {
+export async function getReply(sessionId: string, afterId: number, waitS = 0): Promise<ReplyResponse> {
   const params = new URLSearchParams({
     session_id: sessionId,
     after_id: String(afterId),
   });
+  // Long-poll opcional: con `waitS > 0` el backend retiene la request hasta que haya respuesta o venza
+  // el plazo. Tiene que quedar DEBAJO de `TIMEOUT_HTTP_MS` (20 s): si no, el corte del cliente
+  // abortaría una espera que el servidor todavía está cumpliendo. Sin `waitS`, la request de siempre.
+  if (waitS > 0) params.set('wait', String(waitS));
   const raw = await apiClient.get<RawReplyResponse>(`/reply?${params.toString()}`);
   return {
     replies: raw.replies.map((r) => ({
