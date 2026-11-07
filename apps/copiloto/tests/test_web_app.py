@@ -905,9 +905,15 @@ def test_blocking_io_routes_are_sync_def_not_coroutine():
     """/reply, /me, /auth/signup NO deben ser coroutines (correrían en el loop y lo bloquearían con
     su I/O sync). /chat SÍ es coroutine (await route_inbound, genuinamente async)."""
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
-    for path, method in (("/reply", "GET"), ("/me", "GET"), ("/auth/signup", "POST")):
+    for path, method in (("/me", "GET"), ("/auth/signup", "POST")):
         ep = _route_endpoint(app, path, method)
         assert not inspect.iscoroutinefunction(ep), f"{method} {path} debe ser `def` (threadpool), no `async def`"
+    # /reply pasó a `async def` con el long-poll: una ruta `def` retendría un worker del threadpool durante
+    # toda la espera (hasta 25 s). Su I/O sigue fuera del loop: corre en `asyncio.to_thread`. Este guard
+    # lo fija leyendo el código, para que nadie vuelva a llamar `read_replies_fn` directo dentro del loop.
+    ep = _route_endpoint(app, "/reply", "GET")
+    assert inspect.iscoroutinefunction(ep)
+    assert "asyncio.to_thread(read_replies_fn" in inspect.getsource(ep)
     assert inspect.iscoroutinefunction(_route_endpoint(app, "/chat", "POST")), "/chat debe seguir siendo async"
 
 

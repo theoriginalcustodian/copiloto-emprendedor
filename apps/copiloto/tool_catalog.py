@@ -711,8 +711,17 @@ def _run_calendar_book(name, arguments, ctx, confirmed, idem_key, gateway, now_i
             "end_datetime": end, "timezone": DEFAULT_TZ}
     res = gateway.execute(CREATE_EVENT_SLUG, user_id=ctx.composio_user_id, arguments=args, confirmed=True)
     ok = bool(res.get("successful", False))
+    observacion = {"result": "agendado" if ok else "no se pudo agendar"}
+    if not ok:
+        # 2026-11-07 (device, e2e-device): Composio devolvió `successful=false` y acá se tiraba su `error`. Sin el
+        # motivo el LLM INVENTÓ uno («la fecha no queda clara») con la fecha ya resuelta, y el log quedó mudo. El
+        # motivo real viaja al modelo (para que no fabrique otro) y al log con los args enviados (sin secretos).
+        motivo = str(res.get("error") or res.get("data") or "sin detalle")[:500]
+        observacion["motivo"] = motivo
+        _log.warning("calendar_book: Composio rechazó CREATE_EVENT (cliente=%s args=%s): %s",
+                     ctx.cliente_id, args, motivo)
     return ToolResult(tool_call_id=idem_key, is_write=True, status="ok" if ok else "error",
-                      observation={"result": "agendado" if ok else "no se pudo agendar"},
+                      observation=observacion,
                       artifact=_artifact_for(name, res, arguments) if ok else None)
 
 
