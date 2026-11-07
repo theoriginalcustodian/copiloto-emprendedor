@@ -117,7 +117,7 @@ describe('PantallaAgenda (BL-J13)', () => {
     expect(screen.getByTestId('agenda-grupo-manana')).toHaveTextContent(/Mañana/);
     expect(screen.getByTestId('agenda-grupo-semana')).toHaveTextContent(/Esta semana/);
     expect(screen.getByTestId('agenda-grupo-sin_hora')).toHaveTextContent(/Sin hora/);
-    expect(screen.getByTestId('agenda-grupo-hoy-vacio')).toBeTruthy();
+    expect(screen.queryByTestId('agenda-grupo-hoy-vacio')).toBeNull();
     expect(screen.getByTestId('agenda-grupo-semana-vacio')).toBeTruthy();
     expect(screen.queryByTestId('agenda-grupo-manana-vacio')).toBeNull();
   });
@@ -235,10 +235,11 @@ describe('PantallaAgenda (BL-J13)', () => {
     expect(screen.getByTestId('agenda-grupo-manana')).not.toContainElement(screen.getByTestId('agenda-linea-ahora'));
   });
 
-  it('SM-N34: Hoy vacío o sin hora legible NO dibuja la línea del ahora', async () => {
+  it('Hoy vacío dibuja igual la rejilla con la línea del ahora, como el prototipo (orden 2026-11-07)', async () => {
     await montar();
-    await waitFor(() => expect(screen.getByTestId('agenda-grupo-hoy-vacio')).toBeTruthy());
-    expect(screen.queryByTestId('agenda-linea-ahora')).toBeNull();
+    await waitFor(() => expect(screen.getByTestId('agenda-grupo-hoy')).toBeTruthy());
+    expect(screen.queryByTestId('agenda-grupo-hoy-vacio')).toBeNull();
+    expect(screen.getByTestId('agenda-grupo-hoy')).toContainElement(screen.getByTestId('agenda-linea-ahora'));
   });
 
   it('mapeo `agenda`: subtítulo del prototipo y «Google Calendar conectada» sólo con Calendar conectado', async () => {

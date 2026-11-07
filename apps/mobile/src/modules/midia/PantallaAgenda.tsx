@@ -253,7 +253,7 @@ export function PantallaAgenda() {
                     </Pressable>
                   )}
                 </View>
-                {g.eventos.length === 0 ? (
+                {g.eventos.length === 0 && !esHoy ? (
                   <Text testID={`agenda-grupo-${g.id}-vacio`} style={tenue}>
                     Nada por acá.
                   </Text>
@@ -264,7 +264,7 @@ export function PantallaAgenda() {
                         <FilaEvento hora="—" titulo={ev.titulo} detalle={conUbicacion(`${franjaDeEvento(ev) ?? 'Sin hora'} · Google Calendar`, ev)} />
                       </View>
                     ))}
-                    {rejilla.bloques.length > 0 && (
+                    {rejilla.horas.length > 0 && (
                       // `.cal`: tarjeta con las horas a la izquierda (44 px + 8) y los bloques a todo el ancho restante.
                       <View style={{ backgroundColor: tema.color.superficieAlta, borderRadius: 16, paddingTop: 26, paddingBottom: 18, paddingRight: tema.espacio.md, paddingLeft: 52 }}>
                         <View style={{ height: rejilla.alto }}>
