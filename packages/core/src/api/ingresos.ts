@@ -1,3 +1,4 @@
+import { conSessionIdActividad } from './actividadAlHilo';
 import { apiClient } from './client';
 import { ApiError } from './errors';
 import type { ConDisponibilidad } from './afip';
@@ -237,7 +238,7 @@ function duplicadoDelBody(body: unknown): { mensaje: string; candidato: Ingreso 
 /** Anotar que entró plata. **Sólo el monto es obligatorio.** */
 export async function registrarIngreso(datos: RegistrarIngresoRequest): Promise<ResultadoIngreso> {
   try {
-    const ingreso = ingresoDeLaRespuesta(await apiClient.post<unknown>('/ingresos', aWire(datos)));
+    const ingreso = ingresoDeLaRespuesta(await apiClient.post<unknown>('/ingresos', conSessionIdActividad(aWire(datos))));
     return ingreso != null ? { status: 'ok', ingreso } : { status: 'no_disponible' };
   } catch (err) {
     if (err instanceof ApiError && err.status === 409) {

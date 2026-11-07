@@ -1,3 +1,4 @@
+import { conSessionIdActividad } from './actividadAlHilo';
 import { apiClient } from './client';
 import { ApiError, codigoDeConflicto, mensajeDeConflicto } from './errors';
 import type { ConDisponibilidad } from './afip';
@@ -446,7 +447,7 @@ export async function crearPresupuesto(
       sugerencias?: { mandar_por_mail?: { doc_link?: string | null } | null } | null;
     }>(
       '/presupuestos',
-      aBodyCrudo(req),
+      conSessionIdActividad(aBodyCrudo(req)),
     );
     if (!esRespuestaDelEndpoint(raw, 'presupuesto')) return { status: 'no_disponible' };
     // `repetido` informa, no ramifica: el destino visual es el mismo presupuesto en los dos casos.

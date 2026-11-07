@@ -1,3 +1,4 @@
+import { conSessionIdActividad } from './actividadAlHilo';
 import { apiClient, mapearError as mapearErrorGenerico, safeJson } from './client';
 import { config } from './config';
 import { ApiError, codigoDeConflicto, mensajeDeConflicto } from './errors';
@@ -1055,7 +1056,7 @@ export async function confirmarFactura(
   token: string,
 ): Promise<{ ok: true; aceptado?: boolean }> {
   return apiClient.post<{ ok: true; aceptado?: boolean }>(
-    `/afip/facturas/${encodeURIComponent(facturaId)}/confirmar`, { token });
+    `/afip/facturas/${encodeURIComponent(facturaId)}/confirmar`, conSessionIdActividad({ token }));
 }
 
 /**

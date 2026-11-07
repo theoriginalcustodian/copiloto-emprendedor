@@ -3693,7 +3693,7 @@
       "falta_en": "web",
       "fecha": "2026-11-07",
       "id": "agenda-vencimientos",
-      "motivo": "SM-P20 punto 2: mobile consume GET /mi-dia/vencimientos (ADR-008) en «Vencen esta semana»; AgendaScreen web todavía no lo consume. Es trabajo pendiente de frontend2, no una diferencia por diseño. Dueño: frontend2. Disparador: cuando web consuma leerVencimientos, se retira.",
+      "motivo": "SM-P20 punto 2: mobile consume GET /mi-dia/vencimientos (ADR-008) en «Vencen esta semana»; AgendaScreen web todavía no lo consume. Es trabajo pendiente de web, no una diferencia por diseño. Dueño: frontend1 (no hay sesión frontend2 viva; decisión de planificación 2026-11-07). Disparador: cuando AgendaScreen web consuma leerVencimientos, se retira.",
       "pantalla": "modules/midia"
     },
     "modules/midia::agenda-volver": {
