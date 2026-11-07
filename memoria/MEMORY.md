@@ -72,7 +72,7 @@
 - [🧪💀 Un test que afirma el SÍNTOMA del defecto lo vuelve inmortal](un-test-que-afirma-el-sintoma-del-defecto-lo-vuelve-inmortal.md) — verde POR el bug, 5 días. ¿Sería verde si el mecanismo estuviera roto?
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) - el falso rojo parece prudencia.
 - [⚙️🎭 El rojo del WRAPPER se lee como rojo del GATE](el-script-de-fondo-lee-su-archivo-por-ruta-fija-y-el-primer-plano-lo-pisa.md) - ruta única en background.
-- [🛥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) · [y el que corre tras el guard no llega](un-control-de-ceguera-ubicado-despues-del-guard-que-dispara.md)
+- [🛥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) · [y el que corre tras el guard no llega](un-control-de-ceguera-ubicado-despues-del-guard-que-dispara.md) · [PR DIRTY ⇒ 0 checks: vacío para siempre](un-pr-en-conflicto-no-corre-checks-y-medirlos-da-vacio-para-siempre.md)
 - [🐚🕳️ El INTERPRETE que el PATH resuelve no existe: no corre ni da error](el-interprete-del-PATH-no-existe.md) - canario de EFECTO, no otra corrida.
 - [🔄↔️ Base rancia: el diff INVIERTE la dirección](base-rancia-invierte-la-direccion-del-diff.md) — lo que main borró parece tu aporte. `git log -S` antes.
 - [🪞 El guard se satisface con su PROPIO comentario](el-guard-se-satisface-con-su-propio-comentario.md) - descartá comentarios al buscar.
