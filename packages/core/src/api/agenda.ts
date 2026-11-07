@@ -32,6 +32,8 @@ export interface EventoAgenda {
   inicioCrudo: unknown;
   finCrudo: unknown;
   diaCompleto: boolean;
+  /** SM-P20: el `location` del evento (backend `ubicacion`: str|null). Ausente/vacío ⇒ `null`: no se inventa. */
+  ubicacion?: string | null;
 }
 
 export interface GrupoAgenda {
@@ -75,7 +77,55 @@ function eventoAgenda(v: unknown): EventoAgenda | null {
     inicioCrudo: r.inicio ?? null,
     finCrudo: r.fin ?? null,
     diaCompleto: r.dia_completo === true,
+    ubicacion: typeof r.ubicacion === 'string' && r.ubicacion.trim() !== '' ? r.ubicacion.trim() : null,
   };
+}
+
+/**
+ * SM-P20 punto 2 — `GET /mi-dia/vencimientos?dias` (backend `mi_dia_vencimientos.py`, main @ 4c5ae5f0):
+ * obligaciones del NEGOCIO que vencen (CAE de una factura, certificado de ARCA), NO eventos de Calendar.
+ * Incluye lo YA vencido (es lo más urgente) y un certificado ilegible con `dias: null`.
+ */
+export type TipoVencimiento = 'cae' | 'certificado';
+
+export interface Vencimiento {
+  tipo: TipoVencimiento;
+  id: string;
+  titulo: string;
+  /** `YYYY-MM-DD` o `null` (certificado ilegible). */
+  fecha: string | null;
+  /** Días hasta el vencimiento (negativo = vencido); `null` si no se pudo leer. */
+  dias: number | null;
+  vencido: boolean;
+}
+
+function vencimiento(v: unknown): Vencimiento | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const r = v as Record<string, unknown>;
+  if (r.tipo !== 'cae' && r.tipo !== 'certificado') return null;
+  if (typeof r.id !== 'string' || typeof r.titulo !== 'string' || r.titulo.trim() === '') return null;
+  return {
+    tipo: r.tipo,
+    id: r.id,
+    titulo: r.titulo.trim(),
+    fecha: typeof r.fecha === 'string' && r.fecha !== '' ? r.fecha : null,
+    dias: typeof r.dias === 'number' && Number.isFinite(r.dias) ? r.dias : null,
+    vencido: r.vencido === true,
+  };
+}
+
+/** `no_disponible` si el endpoint falla: la sección se oculta/degrada, la Agenda no se rompe. */
+export async function leerVencimientos(
+  dias: number = DIAS_AGENDA_DEFAULT,
+): Promise<ConDisponibilidad<{ vencimientos: readonly Vencimiento[] }>> {
+  try {
+    const n = Number.isFinite(dias) ? Math.min(Math.max(Math.trunc(dias), 0), DIAS_MAX_AGENDA) : DIAS_AGENDA_DEFAULT;
+    const raw = await apiClient.get<{ vencimientos?: unknown }>(`/mi-dia/vencimientos?dias=${n}`);
+    if (typeof raw !== 'object' || raw === null || !Array.isArray(raw.vencimientos)) return { status: 'no_disponible' };
+    return { status: 'ok', vencimientos: raw.vencimientos.map(vencimiento).filter((x): x is Vencimiento => x !== null) };
+  } catch {
+    return { status: 'no_disponible' };
+  }
 }
 
 function grupoAgenda(id: IdGrupoAgenda, crudos: unknown[]): GrupoAgenda {

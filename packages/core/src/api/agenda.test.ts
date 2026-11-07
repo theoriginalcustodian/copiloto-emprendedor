@@ -5,6 +5,7 @@ import {
   ORDEN_GRUPOS_AGENDA,
   franjaDeEvento,
   leerAgenda,
+  leerVencimientos,
   rangoAgenda,
 } from './agenda';
 import { configurarApi } from './config';
@@ -116,5 +117,66 @@ describe('franjaDeEvento', () => {
     const soloIni = franjaDeEvento({ inicioCrudo: '2026-09-21T10:00:00', finCrudo: null, diaCompleto: false });
     expect(soloIni).toMatch(/^\d{2}:\d{2}/);
     expect(soloIni).not.toContain('–');
+  });
+});
+
+// SM-P20 — `ubicacion` del evento y «Vencen esta semana» (GET /mi-dia/vencimientos, backend 4c5ae5f0).
+describe('ubicacion del evento (SM-P20)', () => {
+  it('la lee recortada; ausente, vacía o no-string ⇒ null (no se inventa)', async () => {
+    responder = () => respuesta(200, {
+      conectado: true,
+      grupos: [{ id: 'hoy', titulo: 'Hoy', eventos: [
+        { id: 'a', titulo: 'A', ubicacion: '  Oficina Centro ' },
+        { id: 'b', titulo: 'B', ubicacion: '   ' },
+        { id: 'c', titulo: 'C', ubicacion: 5 },
+        { id: 'd', titulo: 'D' },
+      ] }],
+    });
+    const res = await leerAgenda();
+    if (res.status !== 'ok') throw new Error('no ok');
+    expect(res.agenda.grupos[0]!.eventos.map((e) => e.ubicacion)).toEqual(['Oficina Centro', null, null, null]);
+  });
+});
+
+describe('leerVencimientos (SM-P20 punto 2)', () => {
+  it('pide /mi-dia/vencimientos?dias=7 y lee CAE, certificado y un ilegible (dias null)', async () => {
+    responder = () => respuesta(200, { vencimientos: [
+      { tipo: 'cae', id: '12', titulo: 'CAE de la factura N° 5', fecha: '2026-11-09', dias: 2, vencido: false },
+      { tipo: 'certificado', id: '20111111112', titulo: 'No se pudo leer el certificado de ARCA', fecha: null, dias: null, vencido: false },
+    ] });
+    const res = await leerVencimientos();
+    expect(visto?.path).toContain('/mi-dia/vencimientos?dias=7');
+    if (res.status !== 'ok') throw new Error('no ok');
+    expect(res.vencimientos).toEqual([
+      { tipo: 'cae', id: '12', titulo: 'CAE de la factura N° 5', fecha: '2026-11-09', dias: 2, vencido: false },
+      { tipo: 'certificado', id: '20111111112', titulo: 'No se pudo leer el certificado de ARCA', fecha: null, dias: null, vencido: false },
+    ]);
+  });
+
+  it('descarta items sin tipo conocido o sin título; lo ya vencido se conserva', async () => {
+    responder = () => respuesta(200, { vencimientos: [
+      { tipo: 'otro', id: 'x', titulo: 'X' },
+      { tipo: 'cae', id: 'y', titulo: '  ' },
+      { tipo: 'cae', id: 'z', titulo: 'CAE vencido', fecha: '2026-11-01', dias: -6, vencido: true },
+    ] });
+    const res = await leerVencimientos();
+    if (res.status !== 'ok') throw new Error('no ok');
+    expect(res.vencimientos.map((v) => v.id)).toEqual(['z']);
+    expect(res.vencimientos[0]!.vencido).toBe(true);
+  });
+
+  it('el endpoint caído o una respuesta sin lista ⇒ no_disponible (la Agenda no se rompe)', async () => {
+    responder = () => respuesta(500, {});
+    expect((await leerVencimientos()).status).toBe('no_disponible');
+    responder = () => respuesta(200, { algo: 1 });
+    expect((await leerVencimientos()).status).toBe('no_disponible');
+  });
+
+  it('`dias` se clampa a [0, DIAS_MAX_AGENDA] (el backend rechaza lo que pase de la ventana con 422)', async () => {
+    responder = () => respuesta(200, { vencimientos: [] });
+    await leerVencimientos(99);
+    expect(visto?.path).toContain(`dias=${DIAS_MAX_AGENDA}`);
+    await leerVencimientos(-3);
+    expect(visto?.path).toContain('dias=0');
   });
 });
