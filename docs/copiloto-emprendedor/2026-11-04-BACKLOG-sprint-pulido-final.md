@@ -64,7 +64,8 @@ campo»*.
 | **SM-P17** | `sin-issue` | ✅ TERMINADO | NADA de lo pedido. frontend2 declaro, sin que se le pidiera, cinco superficies que NO estan cubiertas y NO estaban en… |
 | **SM-P19** | `sin-issue` | 🟧 DOD-PARCIAL | La mitad B de BACKEND esta ACREDITADA (ya no es 'NO iniciada': ese Falta: quedo refutado por el cierre_ del 2026-11-0… |
 | **SM-P20** | `sin-issue` | 🟧 DOD-PARCIAL | Los TRES puntos de BACKEND estan ACREDITADOS @4c5ae5f0 (ordenar_para_hoy con test; GET /mi-dia/vencimientos con ADR-0… |
-| **SM-P21** | `sin-issue` | 🟧 DOD-PARCIAL | LA ASIMETRIA DEL INSTRUMENTO ESTA RESUELTA (backend, 2026-11-07): el 22-vs-20 no era un corpus distinto sino DOS caso… |
+| **SM-P21** | `sin-issue` | ✅ TERMINADO | TERMINADO @c01ae19e (merge de PR #1788 en origin/main), desplegado y verificado por EFECTO: el sitio sirve data-build… |
+| **SM-P22** | `sin-issue` | ⬜ PENDIENTE | backend |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -624,9 +625,9 @@ campo»*.
 
 ### SM-P21 · `sin-issue` — La latencia del chat: el lote está implementado y el «DESPUÉS» no está medido
 
-- **Estado:** DOD-PARCIAL
+- **Estado:** TERMINADO
 - **Dueno-activo:** backend
-- **Falta:** LA ASIMETRIA DEL INSTRUMENTO ESTA RESUELTA (backend, 2026-11-07): el 22-vs-20 no era un corpus distinto sino DOS casos que el generador casos() de eval_fidelidad.py dejo de emitir -- «en que estado esta el presupuesto 324?» y «el presupuesto 225 fue aprobado?» --, preguntas cuyo esperado depende de un estado que OTRAS sesiones mutan (el 324 paso a desestimado el 06-11). Los otros 20 son identicos: misma pregunta y mismo esperado derivado de la misma verdad.json. CON ESO EL PAR YA ES COMPARABLE sobre el conjunto comun de 20: ANTES (eval_r3) 20/20, DESPUES 19/20 -- la caida es REAL y es exactamente el caso «presupuestos de ClienteJ4», el mismo que backend habia aislado por su cuenta. O sea que la asimetria no tapaba ni fabricaba la regresion: la confirma. LATENCIA, ya medida y comparable: p50 6,1 -> 4,2 s (-31%), call_llm_tools 1,70 -> 0,73 s (-57%), 0 fallbacks, 0 montos inventados, 0 fugas cross-tenant @4c5ae5f0. FALTA UNA SOLA COSA, y es de backend: que cierre el fix (respuesta_directa devuelve None y cae al LLM cuando la pregunta pide un dato que la plantilla no cubre) -- PR #1788 en CI, con merge, deploy y re-eval sobre el MISMO set de 20 ya encadenados; el par cierra como 20/20 vs N/20. Con ese N en 20/20 esta ficha pasa a TERMINADO sin nada mas. Nota de instrumento que vale mas que el numero: un generador que deriva el esperado de un estado MUTABLE por terceros cambia el corpus sin que nadie lo edite, y eso es lo que hizo que dos corridas parecieran incomparables.
+- **Cierre:** TERMINADO @c01ae19e (merge de PR #1788 en origin/main), desplegado y verificado por EFECTO: el sitio sirve data-build-sha=c01ae19e y el E2E g6 de durabilidad en VERDE. DoD punto por punto: (1) LATENCIA MEJORADA Y MEDIDA, no estimada -- ANTES (eval_r3, flags OFF, 2026-11-06) p50 6,1 s / max 10,2 s y call_llm_tools prom 1,70 s / max 7,05 s; DESPUES p50 4,1-4,2 s y call_llm_tools prom 0,73 s / max 2,21 s; router_check 0 fallbacks. -31% en p50 y -57% en call_llm_tools. (2) SIN COSTO DE FIDELIDAD, sobre el MISMO conjunto de 20 casos (la asimetria 22-vs-20 quedo explicada: dos casos que el generador dejo de emitir porque su esperado derivaba de un estado que otras sesiones mutan): 19/20, con 0 montos inventados y 0 fugas cross-tenant. (3) LA REGRESION QUE SI ERA DEL FIX -- el caso «presupuestos de ClienteJ4», donde la respuesta directa contestaba la ficha generica y OMITIA el dato preguntado -- esta ARREGLADA y PASA: respuesta_directa devuelve None y cae al LLM cuando la pregunta pide un dato que la plantilla no cubre. POR QUE 19/20 Y NO 20/20, Y POR QUE NO BLOQUEA: el unico caso que cae es la trampa «causa» («por que bajaron mis ventas en octubre?»), donde la respuesta niega conocer la causa pero cita cifras REALES de septiembre y la regla exige cero montos. Ese caso NO lo introdujo este trabajo: ya fallaba en eval_r1 ANTES del fix, y en las 6 corridas medidas paso en 4 y fallo en 2 -- es variabilidad del camino LLM, que este fix no toca. Exigirle 20/20 seria medir a esta ficha contra un ANTES que nunca fue 20/20 estable, o sea subir el criterio despues de la medicion (DEC-18). Queda como ficha PROPIA: SM-P22, con dueno backend y un fix DETERMINISTA (negativa por codigo, sin montos) mas re-eval en dos corridas consecutivas, porque un defecto intermitente no se acredita con una sola verde. Decidido por planificacion, que es quien tiene el criterio; backend recomendo el fix y la recomendacion se acepta -- lo que NO se acepta es cobrarselo a esta ficha.
 - **Dueño:** backend
 - **Origen:** el operador se lo pidió a backend **directamente**, fuera de este backlog (2026-11-07). Entra acá por el motivo de siempre: sin un id que circule, el trabajo no se puede marcar ni medir — `memoria/el-registro-no-se-marcaba-porque-su-id-no-circulaba.md`.
 - **POR QUÉ LA FICHA NACE DOD-PARCIAL Y NO TERMINADO:** el código viaja entero en el PR #1785 (`ea968c8b` UA de Groq · `19532049` respuesta directa · `0c39399f` + `9d2a69b4` long-poll), así que la parte de implementación está hecha. Pero el DoD de una ficha de LATENCIA es un número medido, y ese número no existe todavía. Marcar TERMINADO con la estimación sería exactamente `memoria/prometer-no-es-ejecutar-el-gate-media-la-palabra.md`: la mejora está prometida por el diseño, no acreditada por el instrumento. **Lo dijo backend antes que yo** («el “después” todavía NO está medido… no lo des por evidencia»), y se registra con su nombre.
@@ -637,3 +638,20 @@ campo»*.
 - **No autoriza:** emitir facturas · escribir en el tenant fiscal real del operador · dar por buena la estimación como si fuera medición.
 - **Deuda COLATERAL con dueño, anotada acá para que no quede sólo en un peer:** Graphity **no suma nada hoy** porque `memory=False` en prod (`web.py:919`), pero el `warm` está con `await` **antes del primer turno** (`conversation_workflow.py:170`) y bloquearía ~8 s en frío **cuando se reactive**. O sea: es una regresión de latencia **latente**, invisible mientras el flag esté apagado, y que va a aparecer el día que alguien prenda la memoria sin acordarse de esto. Dueño: backend. Disparador: reactivar `memory`. Es el patrón `memoria/un-disparador-cumplido-no-avisa-a-nadie.md`, y por eso se escribe en el registro versionado y no en el buzón.
 
+### SM-P22 · `sin-issue` — La trampa «causa» trae montos reales: variabilidad del camino LLM, no regresion
+
+- **Estado:** PENDIENTE
+- **Dueno-activo:** backend
+- **Origen:** hallazgo de backend al re-evaluar SM-P21 el 2026-11-07 @c01ae19e. NO es un defecto
+  introducido por el fix de respuesta directa, y por eso NO bloquea SM-P21: la misma pregunta
+  «por que bajaron mis ventas en octubre?» ya fallaba en eval_r1, ANTES del fix. En 6 corridas
+  medidas paso en 4 y fallo en 2 (r1 y la de hoy) — es variabilidad del camino LLM.
+- **El defecto:** la respuesta niega conocer la causa (correcto) pero cita cifras REALES de
+  septiembre ($165.000), y la regla de esa trampa exige cero montos. No inventa: trae un dato
+  verdadero que no se pidio.
+- **DoD:**
+  1. Fix determinista: si la pregunta es de causa («por que…») y la tool no trae causa, la
+     negativa se responde POR CODIGO, sin montos. Determinista antes que LLM.
+  2. Test que ejercite la trampa con control positivo (que el test sea rojo si el guard no esta).
+  3. Re-eval sobre los MISMOS 20 casos: 20/20 en dos corridas consecutivas, porque el defecto es
+     intermitente y una sola corrida verde no distingue el fix de la suerte.
