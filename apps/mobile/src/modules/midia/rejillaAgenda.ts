@@ -62,8 +62,8 @@ export function armarRejilla(eventos: readonly EventoAgenda[], ahora: Date): Rej
     conHora.push({ ev, ini, fin });
   }
 
-  if (conHora.length === 0) return { horas: [], alto: 0, bloques: [], ahoraTop: null, sinHora };
-
+  // Hoy sin eventos con hora igual dibuja la rejilla (orden del operador 2026-11-07: la Agenda se ve
+  // como el prototipo aunque el día esté vacío). El rango 8-19 se estira para incluir el ahora.
   const ahoraMin = ahora.getHours() * 60 + ahora.getMinutes();
   const primera = Math.min(HORA_INICIO_MIN, Math.floor(Math.min(...conHora.map((b) => b.ini), ahoraMin) / 60));
   const ultima = Math.max(HORA_FIN_MIN, Math.ceil(Math.max(...conHora.map((b) => b.fin), ahoraMin) / 60));
