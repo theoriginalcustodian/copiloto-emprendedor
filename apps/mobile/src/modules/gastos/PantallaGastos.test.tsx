@@ -561,16 +561,27 @@ describe('PantallaGastos — dictado por chat (contrato 2026-10-13)', () => {
 
   it('mientras espera la card se ve «Entendiendo…» y el mic queda bloqueado', async () => {
     let resolver: (v: unknown) => void = () => {};
-    mockDictar.mockReturnValue(
-      new Promise((r) => {
-        resolver = r;
-      }),
+    // `ocupado` pasa a true recién al pedir la card (como el hook real): con el mic ya bloqueado
+    // desde el primer render, `BotonVoz` no arranca la grabación y no hay dictado que esperar.
+    const estado = { ocupado: false };
+    mockDictar.mockImplementation(
+      () =>
+        new Promise((r) => {
+          estado.ocupado = true;
+          resolver = r;
+        }),
     );
-    hook({ ocupado: true });
+    mockUseDictado.mockImplementation(() => ({ ocupado: estado.ocupado, aviso: null, dictar: mockDictar }));
 
-    await montar();
+    const vista = await montar();
     await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
     await dictar(espiaPan);
+    // El hook real re-renderiza al pasar a `ocupado`; el mock estático necesita el empujón.
+    vista.rerender(
+      <ThemeProvider>
+        <PantallaGastos />
+      </ThemeProvider>,
+    );
 
     await waitFor(() => expect(screen.getByTestId('gastos-dictado-ocupado')).toBeTruthy());
     // Sigue en el listado: el formulario sólo abre cuando hay resultado.
