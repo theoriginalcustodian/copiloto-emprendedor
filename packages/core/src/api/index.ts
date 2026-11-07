@@ -381,6 +381,7 @@ export {
   franjaDeEvento,
   leerAgenda,
   leerVencimientos,
+  plazoVencimiento,
   posicionLineaAhora,
   rangoAgenda,
 } from './agenda';

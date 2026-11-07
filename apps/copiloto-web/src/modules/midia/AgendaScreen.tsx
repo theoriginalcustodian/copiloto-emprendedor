@@ -4,13 +4,16 @@ import {
   estadoDeServicio,
   KEY_GOOGLE_CALENDAR,
   leerAgenda,
+  leerVencimientos,
   listarCatalogo,
+  plazoVencimiento,
   rangoAgenda,
   TEXTO_NUEVO_EVENTO,
   dejarPendiente,
   franjaDeEvento,
   type AgendaMiDia,
   type EstadoConexion,
+  type Vencimiento,
 } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
@@ -48,7 +51,18 @@ export function AgendaScreen({ onVolver, onAbrirChat }: AgendaScreenProps) {
   // `null` y el aviso cae al texto de "nunca conectada" (el que mostraba esta pantalla antes de leer
   // la señal).
   const [estadoGoogleCalendar, setEstadoGoogleCalendar] = useState<EstadoConexion | null>(null);
+  // SM-P20 punto 2: vencimientos del negocio (CAE, certificado ARCA). Fail-soft: sin datos la sección no se muestra.
+  const [vencimientos, setVencimientos] = useState<readonly Vencimiento[] | null>(null);
   const vivo = useRef(true);
+
+  const cargarVencimientos = useCallback(async () => {
+    try {
+      const res = await leerVencimientos();
+      if (vivo.current) setVencimientos(res.status === 'ok' ? res.vencimientos : null);
+    } catch {
+      /* fail-soft: sin vencimientos la sección no se muestra. */
+    }
+  }, []);
 
   const cargar = useCallback(async () => {
     setEstado('cargando');
@@ -77,10 +91,11 @@ export function AgendaScreen({ onVolver, onAbrirChat }: AgendaScreenProps) {
     vivo.current = true;
     void cargar();
     void cargarSaludConexiones();
+    void cargarVencimientos();
     return () => {
       vivo.current = false;
     };
-  }, [cargar, cargarSaludConexiones]);
+  }, [cargar, cargarSaludConexiones, cargarVencimientos]);
 
   return (
     <div className="midia-screen agenda-screen" data-testid="pantalla-agenda">
@@ -161,6 +176,27 @@ export function AgendaScreen({ onVolver, onAbrirChat }: AgendaScreenProps) {
             </section>
           ))}
         </div>
+      )}
+
+      {/* SM-P20 punto 2: mismos testID que mobile (`agenda-vencimientos`, `agenda-vencimiento-<tipo>-<id>`). */}
+      {vencimientos != null && vencimientos.length > 0 && (
+        <section className="agenda-screen__grupo" data-testid="agenda-vencimientos">
+          <h2 className="agenda-screen__grupo-titulo">Vencen esta semana</h2>
+          <div className="midia-screen__calendario">
+            {vencimientos.map((v) => (
+              <div
+                key={`${v.tipo}-${v.id}`}
+                className="midia-screen__calendario-evento"
+                data-testid={`agenda-vencimiento-${v.tipo}-${v.id}`}
+              >
+                <span className="midia-screen__calendario-hora">{v.tipo === 'cae' ? 'CAE' : 'ARCA'}</span>
+                <span className="midia-screen__calendario-titulo">
+                  {v.titulo} · {v.fecha != null ? `${plazoVencimiento(v)} · ${v.fecha}` : plazoVencimiento(v)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );

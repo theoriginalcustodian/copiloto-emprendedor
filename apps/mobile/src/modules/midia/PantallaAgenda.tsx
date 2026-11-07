@@ -13,6 +13,7 @@ import {
   leerAgenda,
   leerVencimientos,
   listarCatalogo,
+  plazoVencimiento,
   rangoAgenda,
   type AgendaMiDia,
   type EstadoConexion,
@@ -47,15 +48,6 @@ function columnaHora(grupo: string, ev: EventoAgenda): string {
 /** SM-P20: «detalle · Oficina Centro». Sin ubicación (null/ausente) no se agrega nada: no se inventa. */
 const conUbicacion = (base: string, ev: Pick<EventoAgenda, 'ubicacion'>): string =>
   ev.ubicacion != null && ev.ubicacion !== '' ? `${base} · ${ev.ubicacion}` : base;
-
-/** SM-P20 punto 2: el texto de plazo de un vencimiento. `dias: null` = no se pudo leer (no se inventa fecha). */
-function plazoVencimiento(v: Vencimiento): string {
-  if (v.dias == null) return 'Sin fecha legible';
-  if (v.vencido || v.dias < 0) return v.dias === -1 ? 'Venció ayer' : `Venció hace ${Math.abs(v.dias)} días`;
-  if (v.dias === 0) return 'Vence hoy';
-  if (v.dias === 1) return 'Vence mañana';
-  return `Vence en ${v.dias} días`;
-}
 
 /** `.lista`: la tarjeta blanca de filas (prototipo 1273). */
 const estiloLista = (tema: Tokens) => ({
