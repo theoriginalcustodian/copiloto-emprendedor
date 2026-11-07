@@ -65,7 +65,7 @@ campo»*.
 | **SM-P19** | `sin-issue` | 🟧 DOD-PARCIAL | La mitad B de BACKEND esta ACREDITADA (ya no es 'NO iniciada': ese Falta: quedo refutado por el cierre_ del 2026-11-0… |
 | **SM-P20** | `sin-issue` | 🟧 DOD-PARCIAL | Los TRES puntos de BACKEND estan ACREDITADOS @4c5ae5f0 (ordenar_para_hoy con test; GET /mi-dia/vencimientos con ADR-0… |
 | **SM-P21** | `sin-issue` | ✅ TERMINADO | TERMINADO @c01ae19e (merge de PR #1788 en origin/main), desplegado y verificado por EFECTO: el sitio sirve data-build… |
-| **SM-P22** | `sin-issue` | 🟨 EN-CURSO | backend |
+| **SM-P22** | `sin-issue` | 🟨 EN-CURSO | PUNTO 2 EN CURSO: corrida 1 dio 20/20 (p50 4,2 s, max 8,4 s); la 2a corre. Con la 2a en 20/20 el punto 2 cierra. PUNT… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -642,6 +642,7 @@ campo»*.
 
 - **Estado:** EN-CURSO
 - **Dueno-activo:** backend
+- **Falta:** PUNTO 2 EN CURSO: corrida 1 dio 20/20 (p50 4,2 s, max 8,4 s); la 2a corre. Con la 2a en 20/20 el punto 2 cierra. PUNTO 1 -- HALLAZGO QUE VALE MAS QUE LA FICHA, lo reporto backend el 2026-11-07 sin que nadie lo pidiera: eval_fidelidad.py NO ESTA VERSIONADO, vive en el scratchpad de la sesion backend. O sea que el instrumento con el que se acredito SM-P21 (p50 -31%, call_llm_tools -57%, 19/20 y 20/20 sobre «los mismos 20 casos») no existe en el repo: muere con la sesion, nadie puede re-correrlo, y el proximo que lea «medido @c01ae19e» no tiene con que reproducirlo. Es el mismo patron que este repo ya pago dos veces en otra forma -- la cita de procedencia que muere en el merge -- pero un nivel mas abajo: aca lo que muere es el MEDIDOR, no la cita. Y es exactamente lo que hizo que el 22-vs-20 fuera un misterio por una hora: el generador cambio y no habia diff que mirar. ACCION, dueno backend, propuesta por el mismo y aceptada: PR que suba eval_fidelidad.py a scripts/eval/ con la regla nueva, SIN secretos -- lee .env.e2e, que esta gitignored, asi que el script toma la ruta del env y nunca lo incorpora; el repo es PUBLICO y esto se mira antes de pushear, no despues. Ese PR es lo UNICO versionado que puede acreditar el punto 1: hoy no hay sha que citar y no se cita ninguno. NO REABRE SM-P21 (DEC-18: un hallazgo no reabre un cerrado), pero queda escrito que su evidencia es hoy IRREPRODUCIBLE por un tercero, y eso no es lo mismo que falsa -- es una deuda de procedencia con dueno y disparador, no un asterisco sobre el numero.
 - **Origen:** hallazgo de backend al re-evaluar SM-P21 el 2026-11-07 @c01ae19e. NO es un defecto
   introducido por el fix de respuesta directa, y por eso NO bloquea SM-P21: la misma pregunta
   «por que bajaron mis ventas en octubre?» ya fallaba en eval_r1, ANTES del fix. En 6 corridas
