@@ -64,6 +64,7 @@ campo»*.
 | **SM-P17** | `sin-issue` | ✅ TERMINADO | NADA de lo pedido. frontend2 declaro, sin que se le pidiera, cinco superficies que NO estan cubiertas y NO estaban en… |
 | **SM-P19** | `sin-issue` | 🟧 DOD-PARCIAL | mitad B (al GUARDAR el turno aparece en el chat): NO iniciada. CONTRATADA el 2026-11-06 23:22 a backend -- make_pg_re… |
 | **SM-P20** | `sin-issue` | 🟧 DOD-PARCIAL | TRES puntos son de BACKEND y frontend1 no los puede resolver: (1) el ORDEN de «Para hoy» (criticas primero, luego ven… |
+| **SM-P21** | `sin-issue` | 🟧 DOD-PARCIAL | el **«después» no está medido.** Lo único que hay hoy es una **estimación** (~2,5 s menos por turno) que backend decl… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -620,3 +621,19 @@ campo»*.
   5. Si planificación decide que alguna diferencia es intencional, **queda escrito el porqué**.
 - **No autoriza:** interrumpir `SM-P19` · emitir facturas · escribir en el tenant fiscal real del
   operador · fabricar datos en ese tenant (el caso de prueba va en el usuario canónico).
+
+### SM-P21 · `sin-issue` — La latencia del chat: el lote está implementado y el «DESPUÉS» no está medido
+
+- **Estado:** DOD-PARCIAL
+- **Dueno-activo:** backend
+- **Falta:** el **«después» no está medido.** Lo único que hay hoy es una **estimación** (~2,5 s menos por turno) que backend declaró explícitamente como *no evidencia* al reportarla. Falta: correr `latencia.py` contra prod con `e2e-device@copiloto.test`, **después del deploy y con los flags prendidos**, y adjuntar el par antes/después por turno. Hasta que ese par exista, el lote está IMPLEMENTADO y MERGEADO, no verificado.
+- **Dueño:** backend
+- **Origen:** el operador se lo pidió a backend **directamente**, fuera de este backlog (2026-11-07). Entra acá por el motivo de siempre: sin un id que circule, el trabajo no se puede marcar ni medir — `memoria/el-registro-no-se-marcaba-porque-su-id-no-circulaba.md`.
+- **POR QUÉ LA FICHA NACE DOD-PARCIAL Y NO TERMINADO:** el código viaja entero en el PR #1785 (`ea968c8b` UA de Groq · `19532049` respuesta directa · `0c39399f` + `9d2a69b4` long-poll), así que la parte de implementación está hecha. Pero el DoD de una ficha de LATENCIA es un número medido, y ese número no existe todavía. Marcar TERMINADO con la estimación sería exactamente `memoria/prometer-no-es-ejecutar-el-gate-media-la-palabra.md`: la mejora está prometida por el diseño, no acreditada por el instrumento. **Lo dijo backend antes que yo** («el “después” todavía NO está medido… no lo des por evidencia»), y se registra con su nombre.
+- **El DoD, textual de quien lo va a medir:**
+  1. **Qué mide:** el tiempo desde `POST /chat` hasta que la respuesta aparece en `GET /reply`, **por turno**.
+  2. **Instrumento:** `latencia.py` contra prod con el usuario canónico `e2e-device@copiloto.test`, corrido **antes y después** de prender los flags.
+  3. **Evidencia que cierra:** el par antes/después con los dos números y la fecha de cada corrida. Un solo número no cierra: sin el «antes» no hay delta, y el «antes» ya corrido con otro código no es comparable (`memoria/el-instrumento-versionado-difiere-por-rama.md`).
+- **No autoriza:** emitir facturas · escribir en el tenant fiscal real del operador · dar por buena la estimación como si fuera medición.
+- **Deuda COLATERAL con dueño, anotada acá para que no quede sólo en un peer:** Graphity **no suma nada hoy** porque `memory=False` en prod (`web.py:919`), pero el `warm` está con `await` **antes del primer turno** (`conversation_workflow.py:170`) y bloquearía ~8 s en frío **cuando se reactive**. O sea: es una regresión de latencia **latente**, invisible mientras el flag esté apagado, y que va a aparecer el día que alguien prenda la memoria sin acordarse de esto. Dueño: backend. Disparador: reactivar `memory`. Es el patrón `memoria/un-disparador-cumplido-no-avisa-a-nadie.md`, y por eso se escribe en el registro versionado y no en el buzón.
+
