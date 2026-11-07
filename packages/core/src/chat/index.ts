@@ -33,6 +33,8 @@ export * from './reciboCard';
 export * from './dictadoPorChat';
 // El puente tarjeta de Mi día → chat: texto sembrado + chip «Desde tu aviso» (hitl a, C-D5 Opción A).
 export * from './artefactoEnlace';
+// **negrita** del asistente: la burbuja pintaba los asteriscos crudos.
+export * from './negrita';
 export * from './avisoAlChat';
 // La hora del mensaje propio para la meta «10:12 ✓✓ recibido» (fact-voz d).
 export * from './horaMensaje';

@@ -68,6 +68,27 @@ describe('Burbuja — AVATARASIST: el isotipo del asistente', () => {
  * SM-N43 estaban cruzadas: la propia era terracota profundo con tinta clara y la del asistente un crema que el
  * prototipo no contiene. El tema oscuro queda fuera (el prototipo no lo tiene) y conserva lo que pintaba.
  */
+describe('Burbuja — **negrita** del asistente', () => {
+  it('🔴 el asistente: los asteriscos NO se ven y el tramo queda en negrita', async () => {
+    await render(
+      <ThemeProvider>
+        <Burbuja role="assistant" text="Anoté **$1.234** en Otros" />
+      </ThemeProvider>,
+    );
+    expect(screen.queryByText(/\*\*/)).toBeNull();
+    expect(screen.getByText('$1.234')).toHaveStyle({ fontWeight: '700' });
+  });
+
+  it('control: lo que tipea el emprendedor es literal (los asteriscos se ven)', async () => {
+    await render(
+      <ThemeProvider>
+        <Burbuja role="user" text="mirá **esto**" />
+      </ThemeProvider>,
+    );
+    expect(screen.getByText('mirá **esto**')).toBeTruthy();
+  });
+});
+
 describe('Burbuja — SM-N43: colores del prototipo', () => {
   const claro = SKINS.claro.glass;
   const oscuro = SKINS.oscuro.glass;

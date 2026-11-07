@@ -75,6 +75,19 @@ describe('Bubble', () => {
     expect(screen.getByRole('link', { name: /ejemplo\.com/i })).toHaveAttribute('href', 'https://ejemplo.com/x');
   });
 
+  it('el asistente: **negrita** sale en <strong> y los asteriscos no se ven; el usuario queda literal', () => {
+    const { container } = render(
+      <>
+        <Bubble role="assistant" text="Anoté **$1.234** en Otros" />
+        <Bubble role="user" text="mirá **esto**" />
+      </>,
+    );
+    const fuertes = container.querySelectorAll('strong');
+    expect(fuertes).toHaveLength(1);
+    expect(fuertes[0].textContent).toBe('$1.234');
+    expect(screen.getByText('mirá **esto**')).toBeInTheDocument();
+  });
+
   it('texto sin URLs no cambia (misma textContent, sin <a> de más)', () => {
     render(<Bubble role="assistant" text="Listo, ya lo hago." />);
     expect(screen.getByText('Listo, ya lo hago.')).toBeInTheDocument();
