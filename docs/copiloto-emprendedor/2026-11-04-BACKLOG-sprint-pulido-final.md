@@ -63,7 +63,7 @@ campo»*.
 | **SM-P18** | `sin-issue` | ✅ TERMINADO | c16b989ff2e76032e0e52cb18ad4df22f301997e (#1744, ancestro de origin/main). DoD completo en device RF8T318RN9T, e2e-de… |
 | **SM-P17** | `sin-issue` | ✅ TERMINADO | NADA de lo pedido. frontend2 declaro, sin que se le pidiera, cinco superficies que NO estan cubiertas y NO estaban en… |
 | **SM-P19** | `sin-issue` | ⬜ PENDIENTE | — |
-| **SM-P20** | `sin-issue` | ⬜ PENDIENTE | — |
+| **SM-P20** | `sin-issue` | 🟨 EN-CURSO | frontend1 (Agenda + flecha, PR #1780 con device medido 2026-11-06 23:10-23:11) + backend (el ORDEN de «Para hoy» y lo… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -554,7 +554,8 @@ campo»*.
 
 ### SM-P20 · `sin-issue` — Agenda y tarjetas de Mi día alineadas al prototipo + el orden de «Para hoy»
 
-- **Estado:** PENDIENTE
+- **Estado:** EN-CURSO
+- **Dueno-activo:** frontend1 (Agenda + flecha, PR #1780 con device medido 2026-11-06 23:10-23:11) + backend (el ORDEN de «Para hoy» y los vencimientos de Odobi en Agenda)
 - **Dueño:** backend (el ORDEN) + frontend1 (Agenda y la línea de detalle de las tarjetas)
 - **Origen:** `pedido_` de frontend1 a planificación del 2026-11-06, con capturas del prototipo y
   del teléfono que el operador le pasó. **Prioridad declarada en el propio pedido: DESPUÉS de
