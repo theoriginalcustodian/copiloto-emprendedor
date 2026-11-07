@@ -17,6 +17,7 @@ from typing import Callable, Literal
 from fastapi import Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field, ValidationError
 
+from actividad_al_hilo import SESSION_ID_MAX
 from afip_credential_store import ClaveFiscal
 from afip_rules import (CODIGO_CONDICION_NO_SOPORTADA, CondicionEmisor, PerfilFiscal,
                         condicion_emisor_soportada, rango_fechas_permitido,
@@ -55,6 +56,8 @@ class IngresoBody(CobroBody):
     cliente_nombre: str | None = None
     concepto: str | None = None
     confirmar_duplicado: bool = False
+    # SM-P19 B: el hilo donde se guardó (`actividad_al_hilo`). Opcional.
+    session_id: str | None = Field(default=None, max_length=SESSION_ID_MAX)
 
 
 class CompletarIngresoBody(BaseModel):
@@ -141,6 +144,8 @@ class NuevaFacturaBody(BaseModel):
 
 class ConfirmarBody(BaseModel):
     token: str
+    # SM-P19 B: el hilo donde se confirmó (`actividad_al_hilo`). Opcional.
+    session_id: str | None = Field(default=None, max_length=SESSION_ID_MAX)
 
 
 class AnularBody(BaseModel):
@@ -206,6 +211,7 @@ def create_afip_app(
     consultar_anulacion: Callable | None = None,
     signal_anulacion: Callable | None = None,
     composio_gateway=None,
+    publicar_actividad: Callable | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Copiloto ARCA")
 
@@ -434,7 +440,13 @@ def create_afip_app(
         resultado = await _maybe_async(confirmar_factura, cliente_id, factura_id, body.token)
         if not resultado.get("aceptado"):
             raise _rechazo(resultado)
-        return {"ok": True, "aceptado": True}
+        respuesta = {"ok": True, "aceptado": True}
+        if publicar_actividad is not None:
+            # Sólo por el camino del Update, que dice si la confirmación se TOMÓ; el fallback por signal
+            # de arriba no sabe y no publica. `id` = el `factura_id` del borrador: reconfirmar = 1 turno.
+            await asyncio.to_thread(publicar_actividad, cliente_id, body.session_id, "factura",
+                                    factura_id, respuesta)
+        return respuesta
 
     @app.post("/afip/facturas/{factura_id}/cancelar")
     async def post_cancelar_factura(factura_id: str, cliente_id: str = Depends(require_tenant)) -> dict:
@@ -589,7 +601,12 @@ def create_afip_app(
                     concepto=body.concepto or ""))
         except CobroInvalido as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from None
-        return {"ingreso": cobro}
+        respuesta = {"ingreso": cobro}
+        if publicar_actividad is not None:
+            # Con la misma `idem_key` el store devuelve el MISMO cobro → mismo turno, no otro.
+            await asyncio.to_thread(publicar_actividad, cliente_id, body.session_id, "cobro",
+                                    cobro["id"], respuesta)
+        return respuesta
 
     @app.post("/afip/comprobantes/{comprobante_id}/cobros", status_code=201)
     async def registrar_cobro(comprobante_id: int, body: CobroBody,
