@@ -27,7 +27,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Callable
 
 from afip_rules import facturado_filtro_sql, facturado_monto_sql
-from cliente_store import _facturas_del_documento_sql, _es_atribuible, normalizar_nombre
+from cliente_store import _facturas_del_documento_sql, _es_atribuible, agrupar_cobros, normalizar_nombre
 from cobro_store import CobroStore
 from gasto_store import CATEGORIAS, dos_decimales, hoy_del_negocio
 from mp_credential_store import MpCredentialStore
@@ -171,7 +171,7 @@ class InteligenciaQueries:
     def _mejores_clientes(self, cur, limite: int) -> list[dict]:
         """Ranking por lo cobrado, agrupado por **IDENTIFICADOR** del cliente y no por su nombre (SM-N33).
 
-        La clave de cada cobro, en este orden (`_clave_de_cobro`):
+        La clave de cada cobro, en este orden (`cliente_store.clave_de_cobro`):
           1. **documento** (`doc:<tipo>:<nro>`): el de la ficha del cobro (`cliente_ref`, o la única ficha que
              lleva ese nombre) o, si no hay ficha, el del receptor de la factura que se cobró;
           2. **ficha sin documento** (`ficha:<id>`): sigue siendo UN cliente, aunque no se le pueda atar facturas;
@@ -182,61 +182,10 @@ class InteligenciaQueries:
 
         Los cobros sin nombre ni ficha resoluble quedan afuera (no se inventa un «(sin nombre)» que encabece
         el ranking). MP no entra: sus pagos no vienen atados a un cliente, y atribuirlos sería adivinar."""
-        cur.execute(f"""
-            SELECT k.cliente_ref, nullif(trim(k.cliente_nombre), ''), c.receptor_nombre,
-                   c.doc_tipo, c.doc_nro, k.monto
-              FROM {_SCHEMA}.copiloto_cobros k
-              LEFT JOIN {_SCHEMA}.afip_comprobantes c
-                     ON c.cliente_id = k.cliente_id AND c.id = k.comprobante_id
-             WHERE k.cliente_id = %(cid)s
-             ORDER BY k.fecha DESC, k.id DESC
-        """, {"cid": self._cliente_id})
-        cobros = cur.fetchall()
-        cur.execute(f"""
-            SELECT id, nombre, nombre_normalizado, doc_tipo, doc_nro FROM {_SCHEMA}.copiloto_clientes
-             WHERE cliente_id = %(cid)s
-        """, {"cid": self._cliente_id})
-        fichas = cur.fetchall()
-        por_id = {f[0]: f for f in fichas}
-        por_nombre: dict[str, list] = {}
-        for f in fichas:
-            por_nombre.setdefault(f[2], []).append(f)
-
-        grupos: dict[str, dict] = {}
-        for ref, nombre_cobro, receptor, doc_tipo, doc_nro, monto in cobros:
-            ficha = por_id.get(ref)
-            nombre = nombre_cobro or (ficha[1] if ficha else None) or receptor or ""
-            if ficha is None and nombre:
-                homonimas = por_nombre.get(normalizar_nombre(nombre), [])
-                ficha = homonimas[0] if len(homonimas) == 1 else None
-            clave, doc = self._clave_de_cobro(ficha, nombre, doc_tipo, doc_nro)
-            if clave is None:
-                continue
-            g = grupos.setdefault(clave, {"cliente": ficha[1] if ficha else nombre, "total": Decimal(0), "doc": doc})
-            g["total"] += Decimal(str(monto or 0))
+        grupos = agrupar_cobros(cur, self._cliente_id)   # la MISMA regla que la ficha del cliente
         ranking = sorted(grupos.values(), key=lambda g: (-g["total"], g["cliente"]))[:max(1, int(limite))]
         return [{"cliente": g["cliente"], "total": dos_decimales(g["total"]),
                  "comprobantes": self._comprobantes_del_documento(cur, g["doc"])} for g in ranking]
-
-    @staticmethod
-    def _clave_de_cobro(ficha, nombre: str, doc_tipo, doc_nro) -> tuple[str | None, tuple | None]:
-        """`(clave de agrupamiento, (doc_tipo, doc_nro) | None)` de UN cobro; `(None, None)` si no hay
-        con qué identificarlo. Ver `_mejores_clientes` para el orden de la regla."""
-        if ficha is not None and _es_atribuible(ficha[3], ficha[4]):
-            doc_tipo, doc_nro = ficha[3], ficha[4]
-        # Consumidor final (tipo 99 / documento 0) NO identifica a nadie: agruparía a todos los anónimos.
-        elif ficha is None and _es_atribuible(doc_tipo, doc_nro) and doc_tipo != 99:
-            pass
-        else:
-            doc_tipo = doc_nro = None
-        if doc_nro is not None:
-            digitos = re.sub(r"\D", "", str(doc_nro))
-            if digitos.strip("0"):
-                return f"doc:{doc_tipo}:{digitos}", (doc_tipo, digitos)
-        if ficha is not None:
-            return f"ficha:{ficha[0]}", None
-        norm = normalizar_nombre(nombre) if nombre else ""
-        return (f"nombre:{norm}", None) if norm else (None, None)
 
     def _comprobantes_del_documento(self, cur, doc: tuple | None) -> int | None:
         """SM-N32: «N comprobantes» del ranking = facturas con CAE atribuidas por DOCUMENTO del receptor,

@@ -354,6 +354,37 @@ def test_mejores_clientes_resuelve_el_nombre_y_ordena(conn_de_tenant, tenants):
     assert ranking[0]["total"] == "900.00"
 
 
+@necesita_pg
+def test_la_ficha_del_cliente_y_el_ranking_cuentan_los_MISMOS_cobros(conn_de_tenant, tenants):
+    """Eval de fidelidad 2026-11-06: el ranking daba $19.000 a Kiosco Don Ramón y su ficha decía «no
+    encuentro cobros» — la ficha no leía cobros. Una sola regla (`agrupar_cobros`) para las dos caras."""
+    a, _ = tenants
+    store = ClienteStore(conn_de_tenant(a), a)
+    sin_doc = store.crear(nombre="Kiosco Sin Doc")["id"]
+    otro = store.crear(nombre="Otro Cliente")["id"]
+    cobros = CobroStore(conn_de_tenant(a), a)
+    cobros.registrar_suelto(monto="7000.00", cliente_nombre="Kiosco Sin Doc")
+    cobros.registrar_suelto(monto="12000.00", cliente_nombre="kiosco sin doc")   # otra grafía, mismo cliente
+    ranking = {c["cliente"]: c["total"] for c in InteligenciaQueries(conn_de_tenant(a), a).portada()["mejores_clientes"]}
+    res = store.resumen_operaciones(sin_doc)
+    assert (res["cobrado"], res["cobros"]) == ("19000.00", 2)
+    assert res["cobrado"] == ranking["Kiosco Sin Doc"]
+    assert any(o["tipo"] == "cobro" and o["monto"] == "12000.00" for o in res["operaciones"])
+    # control negativo: el cliente sin cobros no hereda los del otro
+    assert (store.resumen_operaciones(otro)["cobrado"], store.resumen_operaciones(otro)["cobros"]) == ("0.00", 0)
+
+
+@necesita_pg
+def test_ADVERSARIAL_la_ficha_de_B_no_suma_los_cobros_de_A_con_el_mismo_nombre(conn_de_tenant, tenants):
+    a, b = tenants
+    ClienteStore(conn_de_tenant(a), a).crear(nombre="Homónimo")
+    CobroStore(conn_de_tenant(a), a).registrar_suelto(monto="7777.00", cliente_nombre="Homónimo")
+    de_b = ClienteStore(conn_de_tenant(b), b).crear(nombre="Homónimo")["id"]
+    res_b = ClienteStore(conn_de_tenant(b), b).resumen_operaciones(de_b)
+    assert (res_b["cobrado"], res_b["cobros"]) == ("0.00", 0)
+    assert "7777" not in repr(res_b)
+
+
 # ── aislamiento adversarial (regla 7): A no ve la caja de B por ninguna cara ──────────────────────
 #
 # Dos barreras y el test las cruza las dos: el filtro `cliente_id` explícito de cada store/query, y

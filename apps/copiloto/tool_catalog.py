@@ -1113,6 +1113,11 @@ def _run_consultar_cliente(arguments, ctx, idem_key, cliente_store_factory):
                       "las facturas se atan por documento. NO digas que no compró — decí que "
                       "falta el documento y ofrecé cargarlo")
     partes.append(f"{resumen['presupuestos']} presupuesto(s) por {_plata(resumen['presupuestado'])}")
+    # Los cobros se atan también a fichas SIN documento (misma regla que «mejores clientes»): sin esta
+    # línea el modelo decía «no encuentro cobros» de un cliente con $19.000 cobrados (eval 2026-11-06).
+    # Sin cobros NO se escribe «$0,00»: junto a «no sé de facturas» se lee como «no compró nada».
+    partes.append(f"cobrado {_plata(resumen['cobrado'])} en {resumen['cobros']} cobro(s)"
+                  if resumen.get("cobros") else "sin cobros registrados a su nombre")
 
     ultimas = "; ".join(f"{o['fecha']} {o['detalle']} {_plata(o['monto'])}"
                         for o in resumen["operaciones"]) or "sin operaciones registradas"

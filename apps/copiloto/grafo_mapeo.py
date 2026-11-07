@@ -501,11 +501,13 @@ class MapeadorEstado:
         if ev.entidad_tipo == "presupuesto" and ev.campo == "estado":
             self._estado_generico(orden, ev, group_logico=group_logico,
                                   edge_key=ESTADO_PRESUPUESTO, source_type=PRESUPUESTO,
-                                  source_name=f"presupuesto {ev.entidad_id}", fact_sujeto="El presupuesto")
+                                  # `source_name` ya trae el sustantivo: «El presupuesto presupuesto 324»
+                                  # era lo que quedaba en el grafo vivo (medido 2026-11-06).
+                                  source_name=f"presupuesto {ev.entidad_id}", fact_sujeto="El")
         elif ev.entidad_tipo == "comprobante" and ev.campo == "estado":
             self._estado_generico(orden, ev, group_logico=group_logico,
                                   edge_key=ESTADO_COMPROBANTE, source_type=COMPROBANTE,
-                                  source_name=f"comprobante {ev.entidad_id}", fact_sujeto="El comprobante")
+                                  source_name=f"comprobante {ev.entidad_id}", fact_sujeto="El")
         elif ev.entidad_tipo == "concepto" and ev.campo == "precio":
             self._precio(orden, ev, group_logico=group_logico)
         elif ev.entidad_tipo == "gasto" and ev.campo == "imputacion":
