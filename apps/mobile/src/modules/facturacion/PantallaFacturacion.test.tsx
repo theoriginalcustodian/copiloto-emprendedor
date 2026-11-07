@@ -66,6 +66,20 @@ jest.mock('@copiloto/core', () => {
   };
 });
 
+const mockUseDictado = jest.fn();
+jest.mock('./useDictadoFactura', () => {
+  const actual = jest.requireActual('./useDictadoFactura');
+  return {
+    ...actual,
+    useDictadoFactura: (...args: unknown[]) => {
+      const sobreescrito = mockUseDictado(...args);
+      return sobreescrito !== undefined
+        ? sobreescrito
+        : { ocupado: false, pregunta: null, aviso: null, dictar: async () => null };
+    },
+  };
+});
+
 import { router } from 'expo-router';
 
 import {
@@ -910,21 +924,31 @@ describe('PantallaFacturacion (mobile) — idem_key en "Nueva factura" (FACTID)'
   });
 
   /**
-   * SM-P14 (2026-11-06) — GANA LA ORDEN DEL OPERADOR: lo escrito o dictado en el dock de Facturación se MANDA al chat y
-   * se vuelve a él. No hay barra «Entendí / Descartar / Enviar» sobre el campo, no se dicta dentro de la pantalla ni se
-   * adopta un borrador desde acá: la card HITL del chat es el único gate de una emisión, y mandar no emite nada.
+   * SM-P19 (orden 2026-11-06, reemplaza a SM-P14) — el dock de Facturación funciona como el de Gastos: dictar abre la
+   * card/wizard PRELLENADA con el borrador que propuso el backend (`dictado:factura`), DENTRO de la función y sin pasar
+   * por el chat; jamás emite (el gate es `confirmar` con token en el wizard). Dictado incompleto → la PREGUNTA queda en
+   * el dock (el hilo lo guarda el hook, ver `useDictadoFactura.test.tsx`).
    */
-  describe('dock de Facturación → remite al chat (DockAlChat)', () => {
+  describe('dock de Facturación → dictado:factura (prellena, no emite, no depende del chat)', () => {
     let baja: () => void;
     const despacho = { texto: jest.fn(), audio: jest.fn() };
+    const dictar = jest.fn();
+    function hook(over: Record<string, unknown> = {}) {
+      mockUseDictado.mockReturnValue({ ocupado: false, pregunta: null, aviso: null, dictar, ...over });
+    }
     beforeEach(() => {
       despacho.texto.mockReset().mockReturnValue(true);
       despacho.audio.mockReset().mockReturnValue(true);
+      dictar.mockReset();
+      hook();
       jest.mocked(router.back).mockClear();
       jest.mocked(router.dismissAll).mockClear();
       baja = registrarDespachoChat(despacho);
     });
-    afterEach(() => baja());
+    afterEach(() => {
+      baja();
+      mockUseDictado.mockReset();
+    });
 
     async function conCuit() {
       jest.mocked(almacenClave.leer).mockImplementation(async (clave: string) => (clave === CLAVE_CUIT_AFIP ? '20111222339' : null));
@@ -939,13 +963,51 @@ describe('PantallaFacturacion (mobile) — idem_key en "Nueva factura" (FACTID)'
       await fireEvent.press(screen.getByTestId('chat-enviar'));
     }
 
-    it('el texto va al chat y se vuelve a él; la pantalla NO crea ni emite nada', async () => {
+    it('dictado COMPLETO: adopta el borrador propuesto (facturaId) y abre el wizard; NO emite ni crea otro', async () => {
+      dictar.mockResolvedValue({ facturaId: 'fac-dictada-1' });
+      jest.mocked(esperarEstadoEstable).mockResolvedValue({ estado: { estado: 'borrador' } } as never);
+      jest.mocked(estadoFactura).mockResolvedValue({ estado: 'borrador' } as never);
+      await conCuit();
+
+      await escribir('Factura a Pérez por 1500');
+
+      expect(dictar).toHaveBeenCalledWith('Factura a Pérez por 1500');
+      // Adoptó el borrador Y cargó su estado (sin esto la pantalla queda muerta: estado null para siempre).
+      await waitFor(() => expect(jest.mocked(esperarEstadoEstable)).toHaveBeenCalledWith('fac-dictada-1'));
+      expect(despacho.texto).not.toHaveBeenCalled();
+      expect(router.dismissAll).not.toHaveBeenCalled();
+      expect(crearFactura).not.toHaveBeenCalled();
+      expect(confirmarConTokenFresco).not.toHaveBeenCalled();
+    });
+
+    it('ORDEN 2026-11-06: el dictado NO depende del chat — sin chat registrado no sale «todavía no está listo»', async () => {
+      baja(); // sin chat hidratado: era la causa de CHAT_NO_LISTO cuando el dock despachaba al chat
+      dictar.mockResolvedValue({ facturaId: 'fac-sin-chat' });
+      jest.mocked(esperarEstadoEstable).mockResolvedValue({ estado: { estado: 'borrador' } } as never);
+      jest.mocked(estadoFactura).mockResolvedValue({ estado: 'borrador' } as never);
       await conCuit();
 
       await escribir('Facturale a Pérez por 1500');
 
-      expect(despacho.texto).toHaveBeenCalledWith('Facturale a Pérez por 1500');
-      expect(router.dismissAll).toHaveBeenCalledTimes(1);
+      expect(dictar).toHaveBeenCalledWith('Facturale a Pérez por 1500');
+      await waitFor(() => expect(jest.mocked(esperarEstadoEstable)).toHaveBeenCalledWith('fac-sin-chat'));
+      expect(screen.queryByText(/El chat todavía no está listo/)).toBeNull();
+      expect(screen.queryByTestId('dock-alchat-aviso')).toBeNull();
+      expect(despacho.texto).not.toHaveBeenCalled();
+      expect(confirmarConTokenFresco).not.toHaveBeenCalled();
+    });
+
+    it('dictado INCOMPLETO: la pregunta queda en el dock; NO va al chat, NO navega, NO emite', async () => {
+      dictar.mockResolvedValue(null);
+      hook({ pregunta: '¿A quién le facturo?' });
+      await conCuit();
+
+      expect(screen.getByTestId('facturacion-dictado-pregunta').props.children).toBe('¿A quién le facturo?');
+      await escribir('Una factura');
+
+      await waitFor(() => expect(dictar).toHaveBeenCalledWith('Una factura'));
+      expect(despacho.texto).not.toHaveBeenCalled();
+      expect(router.dismissAll).not.toHaveBeenCalled();
       expect(crearFactura).not.toHaveBeenCalled();
       expect(confirmarConTokenFresco).not.toHaveBeenCalled();
     });
@@ -953,17 +1015,13 @@ describe('PantallaFacturacion (mobile) — idem_key en "Nueva factura" (FACTID)'
     it('NO hay barra de confirmación sobre el campo (nunca la definió el operador)', async () => {
       await conCuit();
       expect(screen.queryByTestId('dock-funcion-confirmar')).toBeNull();
-      expect(screen.queryByTestId('facturacion-dictado-pregunta')).toBeNull();
     });
 
-    it('sin chat listo NO se navega y se AVISA: el mensaje no se pierde en silencio', async () => {
-      baja(); // sin chat registrado (onboarding en lugar del chat, o useChat sin hidratar): despachar devuelve false
+    it('si el motor no pudo (aviso del degradado) se DICE en el dock; nada se pierde en silencio', async () => {
+      hook({ aviso: 'Tardó demasiado en responder. Probá de nuevo.' });
       await conCuit();
-
-      await escribir('Una factura');
-
+      expect(screen.getByTestId('facturacion-mic-error').props.children).toBe('Tardó demasiado en responder. Probá de nuevo.');
       expect(router.dismissAll).not.toHaveBeenCalled();
-      expect(screen.getByTestId('dock-alchat-aviso')).toBeTruthy();
     });
 
     it('SM-P6 — el dock está SIEMPRE: aun sin CUIT/gate listo', async () => {

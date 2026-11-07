@@ -498,15 +498,14 @@ describe('PantallaMiDia — SM-I1: resume, no gestiona', () => {
     expect(onDestino).toHaveBeenCalledWith({ tipo: 'conexion', servicio: 'mercadopago' });
   });
 
-  it('🔴 la tarjeta anotada se borra desde su botón y el tablero se relee: el verbo no queda como texto muerto', async () => {
-    jest.mocked(borrarTarjetaMiDia).mockResolvedValue({ status: 'ok' });
+  it('🔴 la tarjeta anotada NO se borra desde Mi día (orden del operador 2026-11-06): borrar vive en el tablero', async () => {
     leerMock.mockResolvedValue(conParaHoy([tarjetaDe('anotada', { texto: 'Pasar por el banco', regla: null, verbo: 'Borrar', categoria: 'tuyas', criticidad: 'sin_plazo' } as never)]));
     await montar();
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-anotada-verbo')).toBeTruthy());
-    const lecturas = leerMock.mock.calls.length;
-    await fireEvent.press(screen.getByTestId('midia-tarjeta-anotada-verbo'));
-    expect(borrarTarjetaMiDia).toHaveBeenCalledWith('anotada');
-    await waitFor(() => expect(leerMock.mock.calls.length).toBeGreaterThan(lecturas));
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-anotada')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-anotada'));
+    expect(screen.queryByTestId('midia-tarjeta-anotada-verbo')).toBeNull();
+    expect(screen.queryByText('Borrar')).toBeNull();
+    expect(borrarTarjetaMiDia).not.toHaveBeenCalled();
   });
 
   it('🔴 lo de gestionar NO está acá: ni solapas, ni chips, ni alta, ni swipe', async () => {

@@ -39,6 +39,9 @@ jest.mock('react-native-reanimated', () => {
     // UI que cruzar, así que se ignora el delay y se resuelve directo al valor final, mismo criterio
     // que `withTiming`/`withSpring` arriba.
     withDelay: (_delay, animacion) => animacion,
+    // `EsperaOdobi`: el giro en bucle no tiene hilo UI que lo repita bajo test; se resuelve a la animación sola.
+    withRepeat: (animacion) => animacion,
+    cancelAnimation: () => {},
     // Ídem `useAnimatedStyle`: sin hilo UI real, no hay props animadas que computar en cada frame.
     useAnimatedProps: () => ({}),
     // Sin `AccessibilityInfo` nativo bajo Jest, "sin movimiento reducido" es el default seguro (la

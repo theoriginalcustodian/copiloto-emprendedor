@@ -55,6 +55,10 @@ def _params_modelo(model: str, max_tokens: int) -> dict:
     modelos, igual que siempre."""
     if model.startswith("gpt-6"):
         return {"max_completion_tokens": max_tokens, "reasoning_effort": "none"}
+    if "gpt-oss" in model:
+        # gpt-oss razona siempre; `low` es lo medido en la comparativa del router (2026-11-06, Groq):
+        # 85/88 eligiendo la tool, igual que gpt-6-luna, con p50 0,17 s.
+        return {"max_tokens": max_tokens, "reasoning_effort": "low"}
     return {"max_tokens": max_tokens}
 
 
@@ -164,7 +168,10 @@ class LlmProvider:
     # ── transporte (inyectable en test) ───────────────────────────────────────────────────────────
     def _post(self, url: str, body: bytes, timeout: float) -> dict:
         req = urllib.request.Request(url, data=body, method="POST", headers={
-            "Authorization": f"Bearer {os.environ.get(self._api_key_env)}", "Content-Type": "application/json"})
+            # `.strip()`: un EnvironmentFile con CRLF deja un `\r` al final de la key y http.client
+            # rechaza el header entero (medido 2026-11-06 con la de OpenRouter).
+            "Authorization": f"Bearer {(os.environ.get(self._api_key_env) or '').strip()}",
+            "Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode())
 
@@ -205,3 +212,42 @@ class LlmProvider:
             return json.loads(text[start:end + 1])
         except (ValueError, json.JSONDecodeError):
             return None
+
+
+
+class RouterPrimerPaso:
+    """Usa un modelo RÁPIDO sólo para el PRIMER paso del turno (elegir la tool: el último mensaje es del
+    usuario) y el `principal` para todo lo demás. Si el rápido falla de cualquier forma —excepción de
+    transporte, `finish_reason=error` con HTTP 200 (medido en Groq vía OpenRouter: 4/88) o una respuesta
+    vacía— el paso se repite con el `principal`: el usuario nunca paga la caída del proveedor rápido.
+
+    Misma superficie que `LlmProvider` (`complete`, `complete_tools`, `primary_model`), así que el motor no
+    se entera. Sacarlo = no setear el flag que lo arma: el camino de siempre queda intacto."""
+
+    def __init__(self, rapido: LlmProvider, principal: LlmProvider, *, on_fallback=None):
+        self.rapido = rapido
+        self.principal = principal
+        self.primary_model = principal.primary_model
+        self._on_fallback = on_fallback
+
+    def complete(self, *args, **kwargs) -> dict:
+        return self.principal.complete(*args, **kwargs)
+
+    def complete_tools(self, system: str, messages: list[dict], tools: list[dict], **kwargs) -> dict:
+        if not (messages and messages[-1].get("role") == "user"):
+            return self.principal.complete_tools(system, messages, tools, **kwargs)
+        try:
+            r = self.rapido.complete_tools(system, messages, tools, **kwargs)
+            motivo = ("finish_reason=error" if r.get("finish_reason") == "error"
+                      else "vacia" if not r.get("tool_calls") and not (r.get("content") or "").strip()
+                      else None)
+        except NonRetryableError:
+            motivo = "no_retryable"
+        except Exception as exc:  # noqa: BLE001 -- cualquier falla del rápido cae al principal
+            motivo = type(exc).__name__
+        if motivo is None:
+            return r
+        if self._on_fallback is not None:
+            self._on_fallback(self.rapido.primary_model, motivo)
+        out = self.principal.complete_tools(system, messages, tools, **kwargs)
+        return {**out, "failed_over": True}

@@ -106,6 +106,21 @@ def test_presupuesto_aprobado_invalida_el_pendiente_anterior():
     assert u_pendiente in {i.edge_uuid for i in invalidaciones}
 
 
+def test_el_fact_de_estado_no_duplica_el_sustantivo():
+    """Grafo vivo 2026-11-06: «El presupuesto presupuesto 324 pasó a estado desestimado». El fact se
+    renderiza como lo hace el server: `{source}` = el valor de la columna de nombre."""
+    datasets, _ = construir_datasets_estado(_eventos(), group_logico=GRUPO, **NEG)
+    por_tipo = _por_tipo(datasets)
+    for tipo, sustantivo in ((ESTADO_PRESUPUESTO, "presupuesto"), (ESTADO_COMPROBANTE, "comprobante")):
+        ds = por_tipo[tipo][0]
+        src = ds.mapping["source_entity"]
+        plantilla = src["edges"][0]["fact_template"]
+        fila = ds.rows[0]
+        fact = plantilla.format(source=fila[src["name_column"]], **fila)
+        assert f"{sustantivo} {sustantivo}" not in fact.lower(), fact
+        assert fact.startswith(f"El {sustantivo} "), fact
+
+
 def test_presupuesto_sin_respuesta_nunca_se_invalida():
     """Kiosco El Sol: un solo evento ('pendiente') — el caso del presupuesto colgado (§9 pregunta 7).
     No tiene que aparecer entre las invalidaciones: nadie lo superó."""

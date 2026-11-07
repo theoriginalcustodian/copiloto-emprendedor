@@ -74,7 +74,8 @@ describe('PantallaAgenda (BL-J13)', () => {
     await montar();
     await waitFor(() => expect(screen.getByTestId('agenda-evento-ev1')).toBeTruthy());
     expect(screen.getByTestId('agenda-evento-ev1')).toHaveTextContent(/Reunión con Ana/);
-    expect(screen.getByTestId('agenda-evento-ev1')).toHaveTextContent(/\d{2}:\d{2}.* – \d{2}:\d{2}/);
+    // Mañana es lista (prototipo): la columna izquierda lleva la hora de inicio.
+    expect(screen.getByTestId('agenda-evento-ev1')).toHaveTextContent(/\d{1,2}:\d{2}/);
     expect(screen.getByTestId('agenda-evento-ev2')).toHaveTextContent(/Todo el día/);
   });
 
@@ -148,10 +149,10 @@ describe('PantallaAgenda (BL-J13)', () => {
     expect(tomarPendiente()).toBe(TEXTO_NUEVO_EVENTO);
   });
 
-  it('SM-N34: «+ Nuevo evento» lleva el «+» del mapa y el estado lleva su punto', async () => {
+  it('SM-N34: «Nuevo evento» es una píldora con ícono «+» junto a «Hoy» y el estado lleva su punto', async () => {
     await montar();
     await waitFor(() => expect(screen.getByTestId('agenda-estado-punto', { includeHiddenElements: true })).toBeTruthy());
-    expect(screen.getByText('+ Nuevo evento')).toBeTruthy();
+    expect(screen.getByText('Nuevo evento')).toBeTruthy();
   });
 
   it('SM-N34: la línea del ahora aparece SOLO en Hoy (Mañana y Esta semana son lista) y SOLO con eventos con hora', async () => {

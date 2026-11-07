@@ -5,6 +5,7 @@ import type { FlatList } from 'react-native-gesture-handler';
 import type { ArchivoSubida, MotivoFallo, SendStatus } from '@copiloto/core';
 
 import { Onda } from '../captura/Onda';
+import { useHayCapturaEnCurso } from '../../navegacion/capturaEnCurso';
 import { BotonVoz } from './BotonVoz';
 import { Composer } from './Composer';
 import { ControlesFlotantes } from './ControlesFlotantes';
@@ -119,6 +120,9 @@ export function DockEntrada({
   const ondaVisible = voz.fase === 'grabando';
   const pistasVisibles = voz.fase === 'grabando' || cancelando;
   const enCaptura = voz.fase !== 'inactivo';
+  // Una captura a la vez en toda la app: si hay un audio sin resolver en OTRO dock, este mic no responde.
+  const hayCaptura = useHayCapturaEnCurso();
+  const micBloqueadoPorOtro = hayCaptura && !enCaptura;
 
   return (
     <View testID="dock-entrada">
@@ -175,7 +179,7 @@ export function DockEntrada({
                 onCancelar={onCancelarVoz}
                 onCancelando={setCancelando}
                 onCerca={setCerca}
-                disabled={disabled}
+                disabled={disabled || micBloqueadoPorOtro}
                 capturando={enCaptura}
                 scrollRef={scrollRef}
               />

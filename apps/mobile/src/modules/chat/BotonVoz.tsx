@@ -33,9 +33,10 @@ export const UMBRAL_CANCELAR_PX = 70;
  *  se puede corregir el gesto. */
 export const FRACCION_CERCA_DE_FIJAR = 0.6;
 
-/** Un toque más corto que esto (ms) es un toque accidental, no un dictado: se descarta sin enviar.
- *  Mismo valor que la PWA (`MicButton.tsx`, descarte de toques <350 ms). */
-export const DURACION_MINIMA_MS = 350;
+/** Un toque más corto que esto (ms) NO es un dictado: se descarta sin enviar. Orden del operador (2026-11-06): el
+ *  mic no responde a un toque; sólo a MANTENER apretado desde 1 segundo. (Antes 350 ms, el valor de la PWA
+ *  `MicButton.tsx`: un toque de 0,4 s mandaba un audio vacío y salía «No se entendió el audio».) */
+export const DURACION_MINIMA_MS = 1000;
 
 export interface BotonVozProps {
   /** Mantener apretado — arranca la grabación de inmediato (contrato `dictado-por-voz-sin-glass`). */
@@ -120,7 +121,15 @@ export function BotonVoz({
   // gesto (ver el docstring de `gesto`).
   const cancelandoRef = useRef(false);
   const cercaRef = useRef(false);
-  const inicioRef = useRef(0);
+  // ¿Ya se cumplió el segundo de mantener y arrancó la grabación? Y el temporizador que lo decide.
+  const iniciadoRef = useRef(false);
+  const timerInicioRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (timerInicioRef.current != null) clearTimeout(timerInicioRef.current);
+    },
+    [],
+  );
 
   // Espejo síncrono de `disabled` — ver el docstring de `gesto` más abajo (hallazgo de device
   // 2026-08-12): la guarda de "no reiniciar una captura en curso" tiene que leerse acá, DENTRO de
@@ -144,8 +153,17 @@ export function BotonVoz({
     fijadoRef.current = false;
     cancelandoRef.current = false;
     cercaRef.current = false;
-    inicioRef.current = Date.now();
-    onIniciar();
+    iniciadoRef.current = false;
+    // El mic responde sólo a MANTENER desde `DURACION_MINIMA_MS` (orden del operador, 2026-11-06). Arrancar la
+    // grabación en el pressIn y cancelarla al soltar un toque corto hacía aparecer y desaparecer el HUD (el
+    // «parpadeo»): ahora un toque corto NO inicia nada, así que no hay nada que mostrar ni que descartar.
+    if (timerInicioRef.current != null) clearTimeout(timerInicioRef.current);
+    timerInicioRef.current = setTimeout(() => {
+      timerInicioRef.current = null;
+      if (disabledRef.current) return;
+      iniciadoRef.current = true;
+      onIniciar();
+    }, DURACION_MINIMA_MS);
   }, [onIniciar]);
 
   const marcarCancelando = useCallback(
@@ -182,8 +200,18 @@ export function BotonVoz({
 
   const soltar = useCallback(() => {
     if (fijadoRef.current) return; // fijado: soltar el dedo YA NO detiene (contrato §1, fila 4)
-    const corto = Date.now() - inicioRef.current < DURACION_MINIMA_MS;
-    const cancelar = cancelandoRef.current || corto;
+    if (timerInicioRef.current != null) {
+      clearTimeout(timerInicioRef.current);
+      timerInicioRef.current = null;
+    }
+    // Toque corto: la grabación nunca arrancó, no hay nada que enviar ni que descartar.
+    if (!iniciadoRef.current) {
+      cancelandoRef.current = false;
+      cercaRef.current = false;
+      return;
+    }
+    iniciadoRef.current = false;
+    const cancelar = cancelandoRef.current;
     if (cancelandoRef.current) {
       cancelandoRef.current = false;
       onCancelando?.(false);
@@ -207,6 +235,8 @@ export function BotonVoz({
    */
   const mover = useCallback(
     (translationX: number, translationY: number) => {
+      // Antes del segundo de mantener no hay grabación: nada que fijar ni cancelar.
+      if (!iniciadoRef.current) return;
       const arriba = -translationY;
       if (arriba > Math.abs(translationX)) {
         marcarCancelando(false);

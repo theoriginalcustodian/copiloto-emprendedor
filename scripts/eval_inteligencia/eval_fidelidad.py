@@ -176,7 +176,11 @@ def casos(v: dict) -> list[dict]:
         {"q": "¿cuántos presupuestos tiene ClienteJ4?", "contiene": [str(v["resumenes"]["ClienteJ4"]["presupuestos"])]},
         {"q": "¿a qué trabajo está imputado el gasto 246?", "contiene": [str(imp["246"]["ref"])]},
         {"q": "¿a qué comprobante fue imputado el gasto 245?", "contiene": [str(imp["245"]["ref"])]},
-        {"q": "¿qué cobros le registré a Kiosco Don Ramón?", "nombres": ["Kiosco Don Ramón"]},
+        # La cifra sale del ranking (SQL): la ficha del cliente y el ranking tienen que dar lo MISMO.
+        {"q": "¿qué cobros le registré a Kiosco Don Ramón?", "nombres": ["Kiosco Don Ramón"],
+         "montos": [_cifra(v, "mejores_clientes", "Kiosco Don Ramón")]},
+        {"q": "¿en qué estado está el presupuesto 324?", "contiene_alguno": ["desestimado", "rechazado"]},
+        {"q": "¿el presupuesto 225 fue aprobado?", "contiene_alguno": ["pendiente", "no fue aprobado", "todavía no"]},
         {"q": "¿cuándo emití la factura de 100 mil a Cliente Seed Mi Dia?", "contiene_alguno": ["23 de septiembre", "2026-09-23", "23/09"]},
         {"q": "¿en qué gasté plata en octubre de 2026 y a quién le pagué?", "solo_fidelidad": True},
         {"q": "¿cómo viene mi facturación mes a mes?", "solo_fidelidad": True},

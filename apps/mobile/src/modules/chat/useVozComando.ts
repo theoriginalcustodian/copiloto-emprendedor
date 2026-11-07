@@ -8,6 +8,8 @@ import {
 
 import type { ArchivoSubida } from '@copiloto/core';
 
+import { registrarCaptura } from '../../navegacion/capturaEnCurso';
+
 /** Fase de la grabación del copiloto. `listo` = ya se detuvo y espera Enviar o Descartar. */
 export type FaseVoz = 'inactivo' | 'grabando' | 'pausado' | 'listo';
 
@@ -94,6 +96,7 @@ export function useVozComando(): UseVozComandoResult {
   // haya terminado su cadena de awaits (el usuario apretó y soltó rapidísimo). Sin esta guarda, se
   // llamaría `stop()` sobre un grabador que nunca arrancó.
   const vivoRef = useRef(false);
+  const montadoRef = useRef(true);
 
   // `null` = todavía no se supo (primer chequeo pendiente); `true`/`false` = último resultado
   // conocido. Se re-consulta cada vez que NO es `true` (permiso denegado no queda cacheado para
@@ -151,6 +154,9 @@ export function useVozComando(): UseVozComandoResult {
    * absorbe — se propaga tras los reintentos, igual que antes.
    */
   async function prepararConReintento(intentosRestantes = 2): Promise<void> {
+    // Con el dock ya desmontado el grabador nativo está LIBERADO: prepararlo da «Cannot use shared object that was
+    // already released» (visto en device al salir de Facturación con un pre-calentado en vuelo).
+    if (!montadoRef.current) return;
     try {
       await grabador.prepareToRecordAsync();
     } catch (err) {
@@ -160,6 +166,7 @@ export function useVozComando(): UseVozComandoResult {
       const texto = `${err instanceof Error ? err.message : String(err)} ${
         err instanceof Error && err.cause ? String(err.cause) : ''
       }`;
+      if (!montadoRef.current) return; // se desmontó durante el prepare: no hay a quién avisarle del fallo
       const yaPreparado = /already been prepared/i.test(texto);
       if (yaPreparado && intentosRestantes > 0) {
         await new Promise((resolver) => setTimeout(resolver, 150));
@@ -169,6 +176,32 @@ export function useVozComando(): UseVozComandoResult {
       throw err;
     }
   }
+
+  // Mientras haya un audio sin resolver (grabando / pausado / listo) la app lo sabe: bloquea el panel y la apertura
+  // de otras funciones y apaga los otros mics (`navegacion/capturaEnCurso`). Depende del BOOLEANO, no de la fase:
+  // pasar de `grabando` a `pausado` no tiene que soltar y volver a tomar el registro.
+  const sinResolver = fase !== 'inactivo';
+  useEffect(() => {
+    if (!sinResolver) return undefined;
+    return registrarCaptura();
+  }, [sinResolver]);
+
+  // Si el dock se desmonta con el micrófono abierto (se cerró la pantalla donde estaba), se corta: un audio que sigue
+  // corriendo sin pantalla que lo muestre es justo el defecto que el bloqueo evita. Best-effort: el grabador nativo
+  // puede haberse liberado ya.
+  useEffect(() => {
+    montadoRef.current = true; // se vuelve a montar (Fast Refresh / StrictMode): el cleanup de abajo la había apagado
+    return () => {
+      montadoRef.current = false;
+      if (!vivoRef.current) return;
+      vivoRef.current = false;
+      try {
+        void Promise.resolve(grabador.stop()).catch(() => undefined);
+      } catch {
+        // ya liberado
+      }
+    };
+  }, [grabador]);
 
   // Pre-calienta al montar (foco del chat) — para cuando llegue el primer press, el permiso y el
   // `prepare` ya deberían estar resueltos.
