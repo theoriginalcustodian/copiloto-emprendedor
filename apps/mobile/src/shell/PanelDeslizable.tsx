@@ -381,6 +381,9 @@ export function PanelDeslizable({
     });
     const cierra = Keyboard.addListener('keyboardDidHide', () => {
       teclado.value = 0;
+      // SM-P12 punto 2: con «atrás» el IME se oculta pero el campo sigue ENFOCADO, y un tap siguiente no reabre
+      // el teclado (medido 7/7 en el Samsung). `dismiss` baja el foco aunque el teclado ya esté oculto.
+      Keyboard.dismiss();
     });
     return () => {
       abre.remove();

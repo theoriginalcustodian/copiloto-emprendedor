@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import type React from 'react';
 import { useRef } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Keyboard, StyleSheet, Text } from 'react-native';
 import * as Reanimated from 'react-native-reanimated';
 
 // Jest (jest-expo) — render de RNTL 14 es ASYNC (await). El COMPORTAMIENTO del gesto (drag/snap/
@@ -428,5 +428,34 @@ describe('SM-N22 — el asa queda ENCIMA del campo (pieAbajo)', () => {
       </ThemeProvider>,
     );
     expect(screen.queryByTestId('panel-pie-abajo')).toBeNull();
+  });
+});
+
+// 🔴 SM-P12 punto 2 — tras cerrar el teclado con «atrás», el campo quedaba ENFOCADO con el teclado oculto y un
+// tap siguiente no reabría el IME (medido 7/7 en el Samsung). Al terminar de ocultarse el teclado se baja el foco.
+describe('PanelDeslizable — al ocultarse el teclado se baja el foco del campo (SM-P12 punto 2)', () => {
+  function espiarTeclado() {
+    const manejadores: Record<string, () => void> = {};
+    const alta = jest.spyOn(Keyboard, 'addListener').mockImplementation(((evento: string, fn: () => void) => {
+      manejadores[evento] = fn;
+      return { remove: jest.fn() };
+    }) as never);
+    const dismiss = jest.spyOn(Keyboard, 'dismiss').mockImplementation(() => undefined);
+    return { manejadores, dismiss, restaurar: () => { alta.mockRestore(); dismiss.mockRestore(); } };
+  }
+
+  it('keyboardDidHide baja el foco del campo; keyboardDidShow no lo toca (control positivo)', async () => {
+    const t = espiarTeclado();
+    try {
+      await envolver();
+      expect(t.manejadores.keyboardDidHide).toBeDefined();
+      expect(t.manejadores.keyboardDidShow).toBeDefined();
+      t.manejadores.keyboardDidShow?.({ endCoordinates: { screenY: 494 } } as never);
+      expect(t.dismiss).not.toHaveBeenCalled();
+      t.manejadores.keyboardDidHide?.();
+      expect(t.dismiss).toHaveBeenCalledTimes(1);
+    } finally {
+      t.restaurar();
+    }
   });
 });
