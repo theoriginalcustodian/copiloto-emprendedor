@@ -615,7 +615,7 @@ export interface CopilotApi {
   /** Long-poll de las respuestas del agente. Chat único `(session_id)` a secas — sin partición por
    * cliente en este hilo de lectura (el `cliente_id` de cada acción de negocio sigue viajando en
    * `/chat`/`/chat/audio` según corresponda). */
-  getReply(sessionId: string, afterId: number): Promise<ReplyResponse>;
+  getReply(sessionId: string, afterId: number, waitS?: number): Promise<ReplyResponse>;
   /** Precalienta la memoria de largo plazo del tenant (best-effort) — ver `WarmResponse`. El probe de
    * sesión es `GET /me()`, no esta ruta. */
   warm(): Promise<WarmResponse>;

@@ -331,6 +331,18 @@ def test_agendar_reunion_manana_a_las_10_termina_en_la_gate_HITL_sin_escribir():
     assert "calendar_book" in tool_catalog.WRITE_TOOLS
 
 
+def test_calendar_book_rechazo_de_composio_lleva_el_motivo_real_a_la_observacion():
+    """Hallazgo 2026-11-07: Composio respondió `successful=false` al CREATE_EVENT confirmado y el motivo se
+    tiraba; el LLM inventó «la fecha no queda clara». Ahora la observación trae el `error` de Composio."""
+    gw = _FakeGateway(exec_result={"successful": False, "error": "calendar_id inválido", "data": {}})
+    ex = tool_catalog.make_tool_executor(gw, now_iso_provider=lambda: "2026-11-07T03:18:00")
+    tr = ex("calendar_book", {"title": "Prueba", "date_raw": "mañana", "time_raw": "10"},
+           _Ctx(), confirmed=True, idem_key="run1-cal-rechazo")
+    assert len(gw.calls) == 1 and gw.calls[0][0].endswith("CREATE_EVENT")
+    assert tr.status == "error"
+    assert tr.observation["motivo"] == "calendar_id inválido"
+
+
 def test_service_proposal_needs_confirmation_observation_has_service():
     """Mismo fix aplicado al path de servicio plug-in (Proposal): `service` = `mod.TOOLKIT` real."""
     tr = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "2026-07-04T00:00:00")(

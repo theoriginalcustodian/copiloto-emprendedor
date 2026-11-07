@@ -55,6 +55,7 @@ from mp_payment_store import MpPaymentStore
 from mp_web import create_mp_app
 from onboarding import GoTrueAdmin
 from reply_store import make_pg_reply_sink
+from actividad_al_hilo import make_publicar_actividad
 from web import (create_web_app, make_abrir_borrador_de_presupuesto, make_confirmar_anulacion,
                  make_cancelar_factura, make_confirmar_factura, make_consultar_anulacion,
                  make_consultar_factura,
@@ -81,6 +82,7 @@ from inteligencia_queries import InteligenciaQueries
 from mi_dia_orquestador import avanzar_tablero
 from mi_dia_tarjeta_store import TarjetaStore
 from mi_dia_web import create_mi_dia_app
+from mi_dia_vencimientos import make_listar_vencimientos
 from cuenta_web import create_cuenta_app
 from tenant_erasure_workflow import TenantErasureWorkflow, workflow_id as erasure_workflow_id
 from actividad_store import ActividadStore
@@ -161,6 +163,10 @@ async def _serve() -> None:
     def es_admin_dep(claims: dict = Depends(require_claims)) -> bool:
         return es_admin(claims)
 
+    # SM-P19 B: lo que se GUARDA en una función aparece como turno en el chat, por el MISMO sink que usa
+    # el worker y que lee `GET /reply` — un solo camino de escritura (ver `actividad_al_hilo`).
+    publicar_actividad = make_publicar_actividad(make_pg_reply_sink(conn_factory))
+
     afip_app = create_afip_app(
         require_tenant=require_tenant,
         es_admin_dep=es_admin_dep,
@@ -183,6 +189,7 @@ async def _serve() -> None:
         # El MISMO gateway Composio del agente: sirve `drive_conectado` en `GET /afip/estado` para que
         # Ajustes diga el HECHO ("Drive no está conectado") en vez de una advertencia preventiva.
         composio_gateway=composio_gateway,
+        publicar_actividad=publicar_actividad,
     )
 
     # Presupuestos + perfil del negocio. `generar_doc` corre en threadpool desde el endpoint (habla con
@@ -212,17 +219,20 @@ async def _serve() -> None:
         # D2: el fallo del Doc se atrapa y degrada DENTRO del endpoint (nunca llega a la costura C2
         # global), así que necesita su propia fábrica de DLQ — misma `conn_factory` que usa C2.
         traumas=fabrica_desde(conn_factory),
+        publicar_actividad=publicar_actividad,
     )
 
     gastos_app = create_gastos_app(
         require_tenant=require_tenant,
         gasto_store_factory=lambda cid: GastoStore(conn_factory, cid),
         trabajo_store_factory=lambda cid: TrabajoStore(conn_factory, cid),
+        publicar_actividad=publicar_actividad,
     )
 
     clientes_app = create_clientes_app(
         require_tenant=require_tenant,
         cliente_store_factory=lambda cid: ClienteStore(conn_factory, cid),
+        publicar_actividad=publicar_actividad,
     )
 
     contabilidad_app = create_contabilidad_app(
@@ -285,6 +295,7 @@ async def _serve() -> None:
         avanzar_tablero_fn=lambda cid: avanzar_tablero(
             conn_factory, cid, composio_conexiones=lambda: composio_gateway.list_connections(cid)),
         composio_gateway=composio_gateway,
+        listar_vencimientos=make_listar_vencimientos(conn_factory, crypto),
     )
 
     # Solo para normalize_inbound del /chat (route_inbound); el reply_sink real que sirve /reply es

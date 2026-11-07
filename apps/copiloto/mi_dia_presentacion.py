@@ -204,6 +204,19 @@ def _por_vencer(datos, clave_fecha, creada, hoy):
     return (None if snap is None else snap - _transcurridos(creada, hoy)), None
 
 
+# regla → clave de la fecha de vencimiento en `datos`. Las ÚNICAS tarjetas con vencimiento propio hoy.
+_CLAVE_VENCIMIENTO = {"cae_por_vencer": "cae_vto", "certificado_afip_por_vencer": "vence_at"}
+
+
+def dias_para_vencer(regla: str | None, datos, creada=None, hoy: datetime.date | None = None) -> int | None:
+    """SM-P20: días hasta el vencimiento de la tarjeta (negativo = vencida), con la MISMA cuenta que muestra
+    su chip (`_por_vencer`). `None` si la regla no tiene vencimiento: no se inventa un plazo para ordenar."""
+    clave = _CLAVE_VENCIMIENTO.get(regla or "")
+    if clave is None or not isinstance(datos, dict):
+        return None
+    return _por_vencer(datos, clave, creada, hoy or _hoy_local())[0]
+
+
 def _vence_texto(n: int | None, sujeto: str, *, vencido: str = "vencido") -> str | None:
     if n is None:
         return None

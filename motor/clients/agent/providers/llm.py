@@ -25,6 +25,9 @@ _API_ERRORS = (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, Conn
 DEFAULT_URL = "https://openrouter.ai/api/v1/chat/completions"
 DEFAULT_PRIMARY = "deepseek/deepseek-v4-flash"
 DEFAULT_FAILOVER = "deepseek/deepseek-v4-pro"
+# El `Python-urllib/x.y` por defecto lo bloquea el Cloudflare de Groq (403 «error code: 1010», medido
+# 2026-11-06): con el router activo, el 100% de los primeros pasos caían al principal sin que se notara.
+USER_AGENT = "copiloto-emprendedor/1.0"
 
 
 class NonRetryableError(RuntimeError):
@@ -171,7 +174,7 @@ class LlmProvider:
             # `.strip()`: un EnvironmentFile con CRLF deja un `\r` al final de la key y http.client
             # rechaza el header entero (medido 2026-11-06 con la de OpenRouter).
             "Authorization": f"Bearer {(os.environ.get(self._api_key_env) or '').strip()}",
-            "Content-Type": "application/json"})
+            "Content-Type": "application/json", "User-Agent": USER_AGENT})
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode())
 
@@ -190,7 +193,8 @@ class LlmProvider:
             payload["provider"] = {"quantizations": self._quantizations}
         body = json.dumps(payload).encode()
         req = urllib.request.Request(self._url, data=body, method="POST", headers={
-            "Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+            "Authorization": f"Bearer {key.strip()}", "Content-Type": "application/json",
+            "User-Agent": USER_AGENT})
         with urllib.request.urlopen(req, timeout=self._timeout) as resp:
             d = json.loads(resp.read().decode())
         return ((d.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
@@ -244,7 +248,8 @@ class RouterPrimerPaso:
         except NonRetryableError:
             motivo = "no_retryable"
         except Exception as exc:  # noqa: BLE001 -- cualquier falla del rápido cae al principal
-            motivo = type(exc).__name__
+            # Con el código HTTP: «HTTPError» a secas escondió 22/22 rechazos 403 de Cloudflare.
+            motivo = type(exc).__name__ + (f" {exc.code}" if isinstance(exc, urllib.error.HTTPError) else "")
         if motivo is None:
             return r
         if self._on_fallback is not None:

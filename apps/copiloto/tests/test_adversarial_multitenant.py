@@ -1395,3 +1395,135 @@ def test_adversarial_http_clientes_a_cannot_read_b_cliente(two_tenants, conn_de_
         conn.commit()
         conn.close()
         _limpiar_negocio(conn_de_tenant, a.cliente_id, b.cliente_id)
+
+
+# --- SM-P19 mitad B (2026-11-06): el GUARDAR inserta el turno en el hilo -------------------------
+# Los 5 POST de guardado con `publicar_actividad` REAL (make_pg_reply_sink sobre Postgres). Lo que se mide
+# es el EFECTO en `copiloto_web_replies` leído por `read_replies` (lo que sirve `GET /reply`), no el
+# ON CONFLICT: reintentar deja 1 turno. Y el caso hostil: A manda el `session_id` de B.
+
+from actividad_al_hilo import KIND, make_publicar_actividad  # noqa: E402
+
+
+def _build_guardar_http_app(two_tenants):
+    a, b = two_tenants
+    cf = conexion_con_tenant(_conn_factory_cruda())
+    rt = _RequireTenantByToken({a.token: a.cliente_id, b.token: b.cliente_id})
+    publicar = make_publicar_actividad(make_pg_reply_sink(cf))
+    app = FastAPI()
+    app.include_router(create_afip_app(
+        require_tenant=rt, perfil_store_factory=lambda cid: None, cred_store_factory=lambda cid: None,
+        handoff_factory=lambda cid: None, start_onboarding=lambda *args: "wf",
+        cobro_store_factory=lambda cid: CobroStore(cf, cid),
+        # Fake del Workflow Update: NO emite nada (el contrato prohíbe emitir) — sólo dice «se tomó».
+        confirmar_factura=lambda cid, fid, token: {"aceptado": True},
+        publicar_actividad=publicar).router)
+    app.include_router(create_clientes_app(
+        require_tenant=rt, cliente_store_factory=lambda cid: ClienteStore(cf, cid),
+        publicar_actividad=publicar).router)
+    app.include_router(create_gastos_app(
+        require_tenant=rt, gasto_store_factory=lambda cid: GastoStore(cf, cid),
+        publicar_actividad=publicar).router)
+    app.include_router(create_presupuestos_app(
+        require_tenant=rt, perfil_negocio_store_factory=lambda cid: PerfilNegocioStore(cf, cid),
+        presupuesto_store_factory=lambda cid: PresupuestoStore(cf, cid),
+        publicar_actividad=publicar).router)
+    return app
+
+
+def _turnos_actividad(conn_de_tenant, cid, session_id):
+    return [r for r in read_replies(conn_de_tenant(cid), cid, session_id, 0)
+            if (r["card"] or {}).get("kind") == KIND]
+
+
+_PRESUPUESTO = {"concepto": "Pintura", "receptor": {"nombre": "Panadería Los Tilos"},
+                "items": [{"descripcion": "Living", "cantidad": "1", "precio_unitario": "100000"}]}
+
+
+def _guardar_los_cinco(client, h, session_id, sufijo):
+    """Los 5 GUARDAR con `session_id`. Devuelve {tipo: (id, respuesta_json)}."""
+    s = {"session_id": session_id}
+    g = client.post("/gastos", json={"monto": "2500", "origen": "manual", "proveedor": "Corralón",
+                                     "idem_key": f"g-{sufijo}", **s}, headers=h)
+    c = client.post("/ingresos", json={"monto": "85000", "cliente_nombre": "Kiosco",
+                                       "idem_key": f"c-{sufijo}", **s}, headers=h)
+    p = client.post("/presupuestos", json={**_PRESUPUESTO, "idem_key": f"p-{sufijo}", **s}, headers=h)
+    k = client.post("/clientes", json={"nombre": f"Ferretería {sufijo}", **s}, headers=h)
+    f = client.post(f"/afip/facturas/fac-{sufijo}/confirmar", json={"token": "t", **s}, headers=h)
+    for r in (g, c, p, k, f):
+        assert r.status_code in (200, 201), r.text
+    return {"gasto": (g.json()["id"], g.json()), "cobro": (c.json()["ingreso"]["id"], c.json()),
+            "presupuesto": (p.json()["presupuesto"]["id"], p.json()), "cliente": (k.json()["id"], k.json()),
+            "factura": (f"fac-{sufijo}", f.json())}
+
+
+def test_sm_p19_los_cinco_guardar_insertan_su_turno_con_el_resumen_literal(two_tenants, conn_de_tenant):
+    a, b = two_tenants
+    try:
+        client = TestClient(_build_guardar_http_app(two_tenants))
+        h_b = {"Authorization": f"Bearer {b.token}"}
+        hechos = _guardar_los_cinco(client, h_b, b.session_id, uuid.uuid4().hex[:6])
+        turnos = {t["card"]["tipo"]: t for t in _turnos_actividad(conn_de_tenant, b.cliente_id, b.session_id)}
+        assert set(turnos) == set(hechos)
+        for tipo, (id_, respuesta) in hechos.items():
+            card = turnos[tipo]["card"]
+            assert card["id"] == id_ and card["resumen"] == respuesta     # resumen = la respuesta, literal
+            assert turnos[tipo]["reply_text"]                              # texto armado por código
+        assert "emitir" in turnos["factura"]["reply_text"] and "emitida" not in turnos["factura"]["reply_text"]
+    finally:
+        _limpiar_negocio(conn_de_tenant, a.cliente_id, b.cliente_id)
+
+
+def test_sm_p19_reintentar_el_guardado_deja_un_solo_turno(two_tenants, conn_de_tenant):
+    """Por EFECTO: el mismo gesto mandado dos veces (misma idem_key) → 1 turno por tipo, no 2."""
+    a, b = two_tenants
+    try:
+        client = TestClient(_build_guardar_http_app(two_tenants))
+        h_b = {"Authorization": f"Bearer {b.token}"}
+        sufijo = uuid.uuid4().hex[:6]
+        _guardar_los_cinco(client, h_b, b.session_id, sufijo)
+        s = {"session_id": b.session_id}
+        client.post("/gastos", json={"monto": "2500", "origen": "manual", "proveedor": "Corralón",
+                                     "idem_key": f"g-{sufijo}", **s}, headers=h_b)
+        client.post("/ingresos", json={"monto": "85000", "cliente_nombre": "Kiosco",
+                                       "idem_key": f"c-{sufijo}", **s}, headers=h_b)   # 201 mismo o 409
+        client.post("/presupuestos", json={**_PRESUPUESTO, "idem_key": f"p-{sufijo}", **s}, headers=h_b)
+        client.post("/clientes", json={"nombre": f"Ferretería {sufijo}", **s}, headers=h_b)  # 409
+        client.post(f"/afip/facturas/fac-{sufijo}/confirmar", json={"token": "t", **s}, headers=h_b)
+        tipos = [t["card"]["tipo"] for t in _turnos_actividad(conn_de_tenant, b.cliente_id, b.session_id)]
+        assert sorted(tipos) == sorted(["gasto", "cobro", "presupuesto", "cliente", "factura"])
+    finally:
+        _limpiar_negocio(conn_de_tenant, a.cliente_id, b.cliente_id)
+
+
+def test_adversarial_sm_p19_a_manda_el_session_id_de_b_y_b_no_ve_nada(two_tenants, conn_de_tenant):
+    """🔴 ADR-013 / BOLA: A guarda los 5 mandando el `session_id` DE B. El hilo de B no recibe ningún turno,
+    las filas quedan bajo el `cliente_id` de A y nada de B se toca. CONTROL POSITIVO: el turno SÍ existe
+    (bajo A) — si el sink no escribiera para nadie, «B no ve nada» pasaría igual sin probar aislamiento."""
+    a, b = two_tenants
+    try:
+        client = TestClient(_build_guardar_http_app(two_tenants))
+        h_a, h_b = {"Authorization": f"Bearer {a.token}"}, {"Authorization": f"Bearer {b.token}"}
+        _guardar_los_cinco(client, h_a, b.session_id, uuid.uuid4().hex[:6])
+
+        assert _turnos_actividad(conn_de_tenant, b.cliente_id, b.session_id) == []
+        assert [r["reply_text"] for r in read_replies(conn_de_tenant(b.cliente_id), b.cliente_id,
+                                                      b.session_id, 0)] == ["reply de B"]
+        assert len(_turnos_actividad(conn_de_tenant, a.cliente_id, b.session_id)) == 5   # control positivo
+        assert client.get("/gastos", headers=h_b).json()["total"] == 0
+        assert client.get("/clientes", headers=h_b).json()["total"] == 0
+        assert client.get("/gastos", headers=h_a).json()["total"] == 1
+    finally:
+        _limpiar_negocio(conn_de_tenant, a.cliente_id, b.cliente_id)
+
+
+def test_sm_p19_sin_session_id_no_hay_turno(two_tenants, conn_de_tenant):
+    a, b = two_tenants
+    try:
+        client = TestClient(_build_guardar_http_app(two_tenants))
+        r = client.post("/gastos", json={"monto": "10", "origen": "manual"},
+                        headers={"Authorization": f"Bearer {b.token}"})
+        assert r.status_code == 201
+        assert _turnos_actividad(conn_de_tenant, b.cliente_id, b.session_id) == []
+    finally:
+        _limpiar_negocio(conn_de_tenant, a.cliente_id, b.cliente_id)

@@ -15,6 +15,7 @@ from typing import Callable
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from actividad_al_hilo import SESSION_ID_MAX
 from gasto_store import CATEGORIAS, LIMITES, ORIGENES
 from trabajo_store import TrabajoInexistente
 
@@ -43,6 +44,9 @@ class NuevoGastoBody(BaseModel):
     # IDEM: UUID estable por instancia de formulario. Opcional: un cliente viejo sin él se comporta
     # exactamente como antes (mismo criterio que `NuevoPresupuestoBody.idem_key`).
     idem_key: str | None = Field(default=None, max_length=100)
+    # SM-P19 B: el hilo donde se guardó. Si viene, el guardado aparece como turno en ese chat
+    # (`actividad_al_hilo`). Opcional: sin él, todo exactamente como antes.
+    session_id: str | None = Field(default=None, max_length=SESSION_ID_MAX)
 
 
 def _monto_o_400(valor, campo: str = "monto") -> Decimal:
@@ -99,7 +103,8 @@ class ImputacionBody(BaseModel):
 
 
 def create_gastos_app(*, require_tenant: Callable, gasto_store_factory: Callable,
-                      trabajo_store_factory: Callable | None = None) -> FastAPI:
+                      trabajo_store_factory: Callable | None = None,
+                      publicar_actividad: Callable | None = None) -> FastAPI:
     app = FastAPI(title="Copiloto Gastos")
 
     import asyncio
@@ -132,7 +137,12 @@ def create_gastos_app(*, require_tenant: Callable, gasto_store_factory: Callable
         # Se aplana en vez de anidar (a diferencia de `{"presupuesto": ...}`): `POST /gastos` ya
         # devolvía el gasto SIN envolver, y envolverlo ahora rompería a todo consumidor existente.
         # `repetido` viaja como campo extra — quien no lo lee, sigue viendo exactamente lo de antes.
-        return {**gasto, "repetido": repetido}
+        respuesta = {**gasto, "repetido": repetido}
+        if publicar_actividad is not None:
+            # Repetido o no, mismo id → mismo `idem_key` del turno: el reintento no lo duplica.
+            await asyncio.to_thread(publicar_actividad, cliente_id, body.session_id, "gasto",
+                                    gasto["id"], respuesta)
+        return respuesta
 
     @app.get("/gastos")
     async def listar_gastos(limit: int = LIMITE_LISTADO_DEFAULT,
