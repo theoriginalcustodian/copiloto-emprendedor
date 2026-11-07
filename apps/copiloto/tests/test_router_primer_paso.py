@@ -94,6 +94,33 @@ def test_con_el_flag_arma_el_router_contra_groq():
     assert llm.primary_model == "gpt-6-luna"
 
 
+def test_el_post_manda_un_user_agent_propio(monkeypatch):
+    """Cloudflare de Groq devuelve 403 «error code: 1010» al `Python-urllib` por defecto: con el router
+    prendido en prod, 22/22 primeros pasos cayeron al principal (2026-11-06)."""
+    import urllib.request
+    vistos = {}
+
+    class _Resp:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self): return b"{}"
+
+    def _urlopen(req, timeout):
+        vistos.update(dict(req.header_items()))
+        return _Resp()
+
+    monkeypatch.setattr(urllib.request, "urlopen", _urlopen)
+    LlmProvider(api_key_env="K_FALSA", quantizations=())._post("http://x", b"{}", 1)
+    assert vistos.get("User-agent", "").startswith("copiloto-emprendedor/")
+
+
+def test_el_aviso_de_caida_incluye_el_codigo_http():
+    err = urllib.error.HTTPError("u", 403, "forbidden", {}, None)
+    rapido, principal, avisos = _Prov("openai/gpt-oss-120b", [err, err]), _Prov("gpt-6-luna", [_TOOL]), []
+    _router(rapido, principal, avisos).complete_tools("sys", [{"role": "user", "content": "hola"}], [])
+    assert avisos == ["HTTPError 403"]
+
+
 def test_la_key_con_crlf_no_rompe_el_header(monkeypatch):
     """EnvironmentFile con CRLF: `\\r` al final de la key → http.client rechazaba el header entero."""
     monkeypatch.setenv("K_CR", "abc\r")
