@@ -253,7 +253,7 @@ export function PantallaAgenda() {
                               <Text style={{ position: 'absolute', left: 0, width: 44, textAlign: 'right', top: -7, color: tema.color.textoTenue, fontSize: 11 }}>
                                 {rotuloHora(h)}
                               </Text>
-                              <View style={{ marginLeft: 52, borderTopWidth: 1, borderTopColor: tema.color.fondo }} />
+                              <View style={{ marginLeft: 52, height: 1, backgroundColor: tema.color.textoTenue, opacity: 0.22 }} />
                             </View>
                           ))}
                           {rejilla.bloques.map((b) => {
@@ -270,8 +270,8 @@ export function PantallaAgenda() {
                                   height: b.alto - 2,
                                   borderRadius: 10,
                                   borderLeftWidth: 3,
-                                  borderLeftColor: tema.color.textoTenue,
-                                  backgroundColor: tema.color.fondo,
+                                  borderLeftColor: tema.color.acento,
+                                  backgroundColor: tema.color.superficie,
                                   paddingHorizontal: 12,
                                   justifyContent: 'center',
                                   overflow: 'hidden',
