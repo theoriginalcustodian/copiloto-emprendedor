@@ -61,3 +61,33 @@ dice o-DO-bi»), descartado por el operador. Dos referentes para la misma palabr
 primero en el grep es el que no servía — ver
 [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]]. Si lo hubiera citado sin abrirlo, habría
 confirmado el bloqueo con una autoridad que medía otra cosa.
+
+## Refuerzo 2026-11-06 (proxy) — el proxy de «trabaja» que INVIERTE su signo con una orden vigente
+
+Dos fallas encadenadas el mismo minuto, y la segunda es la que no estaba escrita.
+
+**La vieja, otra vez:** afirmé «backend parada 12 h» y su respuesta ya existía, **enterrada en
+`cerrado/`**, donde mi barrido no la buscó. El prompt de mi propio cron manda chequear *¿la
+respuesta YA existe, invisible?* **primero**, y lo salteé. `cerrado/` es el escondite: los `avance_`
+**nacen archivados** ahí, así que es justamente donde una respuesta reciente vive.
+
+**La nueva:** usé **«último commit pusheado de su rama»** como proxy de «trabaja». Ese proxy mide
+el **push**, no el trabajo — y con la orden vigente de NO pushear por tweak
+(`[[batch-cambios-no-pr-por-tweak]]`), **invierte el signo**: cuanto mejor cumple la orden, más
+parada parece. backend llevaba 2 commits locales en una rama de lote; las dos frontend se veían
+activas porque abren PR por hito, no porque trabajen más. El instrumento premiaba a quien
+desobedecía.
+
+**Lo que lo habría evitado, y por qué no lo tuve:** PRODUCCIÓN (minutos desde el último
+`Write`/`Edit`) sí distingue los dos casos, pero `scripts/vigia.sh` sólo corre su whitelist y
+`ultimas-acciones.sh` **no está en ella** (me lo dijo al intentarlo). Es decir: **me faltaba el
+instrumento y rellené el hueco con un proxy en vez de nombrar la falta.** Ése es el movimiento a
+cazar, no el proxy en sí.
+
+**El test, antes de usar cualquier proxy de actividad:** *¿hay una orden vigente que haga que
+cumplirla se vea idéntico a estar parado?* Si la hay, el proxy mide la obediencia, no el trabajo.
+Y si el instrumento correcto no está disponible, **eso es el hallazgo** — decir «no puedo medirlo
+con lo que tengo» es un reporte; sustituirlo por un proxy sin declararlo fabrica una acusación.
+
+Cruza con [[verificar-una-propiedad-de-la-capa-no-verifica-que-la-capa-sobre]] (medí una propiedad
+y concluí sobre otra) y [[un-nombre-con-dos-referentes-prueba-A-y-concluye-B]].
