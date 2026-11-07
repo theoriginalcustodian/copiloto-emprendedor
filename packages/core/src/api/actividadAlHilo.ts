@@ -16,7 +16,34 @@ export function fijarSessionIdActividad(id: string | null): void {
   sessionIdActual = id != null && id !== '' ? id : null;
 }
 
-/** Devuelve el body con `session_id` si hay hilo activo; si no, el MISMO body (no se inventa un hilo). */
+/**
+ * El chat principal se suscribe para «ponerse al día» tras un guardado. Medido en device (2026-11-07): el turno
+ * `actividad_registrada` llegaba al hilo en el servidor, pero el polling de `useChat` sólo corre mientras se
+ * espera la respuesta de un mensaje ENVIADO — el turno de un guardado aparecía recién al reiniciar la app.
+ */
+type Oyente = () => void;
+const oyentes = new Set<Oyente>();
+
+/** Devuelve la función que cancela la suscripción. */
+export function alGuardarActividad(oyente: Oyente): () => void {
+  oyentes.add(oyente);
+  return () => {
+    oyentes.delete(oyente);
+  };
+}
+
+/**
+ * Devuelve el body con `session_id` si hay hilo activo; si no, el MISMO body (no se inventa un hilo).
+ * Con hilo activo avisa a los oyentes: hay un guardado en vuelo que va a dejar un turno en ese hilo.
+ */
 export function conSessionIdActividad<T extends object>(body: T): T {
-  return sessionIdActual == null ? body : ({ ...body, session_id: sessionIdActual } as T);
+  if (sessionIdActual == null) return body;
+  oyentes.forEach((o) => {
+    try {
+      o();
+    } catch {
+      /* un oyente roto no puede romper el guardado. */
+    }
+  });
+  return { ...body, session_id: sessionIdActual } as T;
 }

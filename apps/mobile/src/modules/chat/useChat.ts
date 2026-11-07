@@ -5,6 +5,7 @@ import { AppState } from 'react-native';
 import { deleteAsync } from 'expo-file-system/legacy';
 
 import {
+  alGuardarActividad,
   apiReal as api,
   fijarSessionIdActividad,
   hidratarEstado,
@@ -324,6 +325,27 @@ export function useChat(clienteId: string): UseChatResult {
       if (actual && (actual.sendStatus === 'waiting' || actual.sendStatus === 'timeout')) void poll();
     });
     return () => sub.remove();
+  }, [poll]);
+
+  // SM-P19 B (device 2026-11-07): un guardado en una función deja el turno `actividad_registrada` en el servidor,
+  // pero este polling sólo corre mientras se espera la respuesta de un mensaje ENVIADO — sin esto el turno
+  // aparecía recién al reiniciar la app. Al disparar un guardado se consulta `/reply` dos veces (el backend
+  // inserta el turno después de guardar): una lectura inmediata no lo vería.
+  useEffect(() => {
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    const cancelar = alGuardarActividad(() => {
+      for (const ms of [1500, 4000]) {
+        const t = setTimeout(() => {
+          timers.delete(t);
+          void poll();
+        }, ms);
+        timers.add(t);
+      }
+    });
+    return () => {
+      cancelar();
+      timers.forEach(clearTimeout);
+    };
   }, [poll]);
 
   const send = useCallback(

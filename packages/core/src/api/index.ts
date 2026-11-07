@@ -368,7 +368,7 @@ export type {
   TipoDestino,
 } from './miDia';
 /** SM-P19 B: el chat principal publica su `session_id`; los 6 guardados lo mandan para que el turno aparezca. */
-export { conSessionIdActividad, fijarSessionIdActividad } from './actividadAlHilo';
+export { alGuardarActividad, conSessionIdActividad, fijarSessionIdActividad } from './actividadAlHilo';
 /**
  * `GET /mi-dia/calendario?desde&hasta` (BL-J13, K-13) — agenda de varios días: 4 grupos fijos, rango
  * armado por el cliente (<= 14 días). «Nuevo evento» va por el chat (`dejarPendiente`), sin endpoint.
