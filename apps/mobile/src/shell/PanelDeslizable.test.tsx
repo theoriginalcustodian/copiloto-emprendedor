@@ -437,8 +437,8 @@ describe('SM-N22 — el asa queda ENCIMA del campo (pieAbajo)', () => {
 // tap siguiente no reabría el IME (medido 7/7 en el Samsung). Al terminar de ocultarse el teclado se baja el foco.
 describe('PanelDeslizable — al ocultarse el teclado se baja el foco del campo (SM-P12 punto 2)', () => {
   function espiarTeclado() {
-    const manejadores: Record<string, () => void> = {};
-    const alta = jest.spyOn(Keyboard, 'addListener').mockImplementation(((evento: string, fn: () => void) => {
+    const manejadores: Record<string, (e?: unknown) => void> = {};
+    const alta = jest.spyOn(Keyboard, 'addListener').mockImplementation(((evento: string, fn: (e?: unknown) => void) => {
       manejadores[evento] = fn;
       return { remove: jest.fn() };
     }) as never);
