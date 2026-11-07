@@ -397,3 +397,32 @@ el fail-open. Más 0 rojos en los otros 7 tests que sourcean la lib. El hallazgo
 dejado escrito exactamente este control («un test que declare `ROLES: backend — y no auditoria` y
 exija que `auditoria` NO esté en la salida») y la deuda vivió **tres semanas** con la receta ya
 escrita: [[un-falta-que-dice-imposible-describe-el-instrumento-del-dia]].
+
+## Refuerzo 2026-11-06 — el centinela lo escribió el PASO ANTERIOR, y el control usaba el mismo PREDICADO que el guard
+
+Dos capas, y la segunda es la que vuelve el fallo invisible.
+
+**El guard.** Un script idempotente que agregaba un bloque a una ficha del backlog usó como
+centinela la frase `"vencimientos de Odobi en Agenda"`. Imprimió «ya incorporado (idempotente)» y
+**no escribió nada** — porque esa frase ya estaba en el documento: la había escrito **yo mismo dos
+pasos antes**, en el campo `Dueño:` del `--marcar`, dentro del *mismo script*. El guard no se
+satisfizo con un comentario ajeno: se satisfizo con **su propio efecto colateral previo**.
+
+**El control, que es lo peor.** Mi verificación era `grep -c 'vencimientos de'` y dio `1`, así que
+declaré «4º frente escrito ✅». El control medía **el mismo predicado que el guard**, y el campo
+`Dueño:` lo satisface igual de bien que el bloque real. Un control que comparte predicado con el
+guard no puede contradecirlo nunca: **confirma el falso éxito en vez de destaparlo.** Es el mismo
+esqueleto que [[el-control-que-mide-la-propiedad-destapa-el-defecto-ajeno-el-que-mide-mi-accion-no]].
+
+**Las dos reglas, barajas:**
+1. **El centinela de idempotencia tiene que ser una cadena que NADA MÁS en el destino pueda
+   producir** — ni otro campo, ni un paso anterior del propio script. Acá pasó a ser `CUARTO frente`.
+   Antes de elegirlo: *¿puede aparecer esta frase por cualquier otra vía que el bloque que estoy
+   escribiendo?*
+2. **El control no grepea el centinela.** Grepea el **contenido** del bloque, y **dentro del alcance**
+   (`awk '/^### SM-P20/,0'`), no en el documento entero: si el control y el guard preguntan lo mismo,
+   el verde sólo acredita que coinciden.
+
+El orden también importó: el `--marcar` corrió **antes** del bloque en el mismo script, así que el
+script se contaminó a sí mismo. **Dos escrituras al mismo archivo en un script: la segunda no puede
+usar como centinela nada que la primera pueda haber escrito.**
