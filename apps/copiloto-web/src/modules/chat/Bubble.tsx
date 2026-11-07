@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { formatearDuracion } from '@copiloto/core';
+import { formatearDuracion, segmentarNegrita } from '@copiloto/core';
 
 import { Surface } from '../../design-system';
 import { Marca } from '../../design-system/Marca';
@@ -90,7 +90,11 @@ export function Bubble({ role, text, card, porVoz }: BubbleProps) {
           <Marca size={AVATAR_ASISTENTE} />
         </span>
         <Surface variant="bubble" blur className="chat-bubble chat-bubble--assistant">
-          <p className="chat-bubble__text">{linkifyText(text)}</p>
+          <p className="chat-bubble__text">
+            {segmentarNegrita(text).map((s, i) =>
+              s.negrita ? <strong key={i}>{linkifyText(s.texto)}</strong> : <span key={i}>{linkifyText(s.texto)}</span>,
+            )}
+          </p>
         </Surface>
       </div>
       {artifactCard && <ArtifactView card={artifactCard} />}

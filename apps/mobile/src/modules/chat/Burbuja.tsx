@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { formatearDuracion } from '@copiloto/core';
+import { formatearDuracion, segmentarNegrita } from '@copiloto/core';
 
 import { useTema } from '../../theme/ThemeProvider';
 import { sombraNivel } from '../../theme/glass/relieve';
@@ -85,7 +85,20 @@ export function Burbuja({ role, text, porVoz, recibido = false, hora = null }: B
         />
         {/* Línea de luz superior: el canto iluminado que despega la burbuja. */}
         <View style={[styles.luzSuperior, { backgroundColor: g.hi }]} pointerEvents="none" />
-        <Text style={{ color: esUsuario ? g.tintaMio : tema.color.texto, fontSize: tema.tipo.base }}>{text}</Text>
+        <Text style={{ color: esUsuario ? g.tintaMio : tema.color.texto, fontSize: tema.tipo.base }}>
+          {/* El asistente contesta con **negrita**; lo del usuario es literal (si tipea asteriscos, se ven). */}
+          {esUsuario
+            ? text
+            : segmentarNegrita(text).map((s, i) =>
+                s.negrita ? (
+                  <Text key={i} style={styles.negrita}>
+                    {s.texto}
+                  </Text>
+                ) : (
+                  s.texto
+                ),
+              )}
+        </Text>
         {porVoz && (
           <Text testID="chat-bubble-voz" style={[styles.chipVoz, { color: tema.color.textoTenue }]}>
             {`Por voz · ${formatearDuracion(porVoz.duracionSeg)}`}
@@ -132,6 +145,7 @@ const styles = StyleSheet.create({
   },
   luzSuperior: { position: 'absolute', top: 0, left: 0, right: 0, height: 1 },
   chipVoz: { fontSize: 12, marginTop: 4 },
+  negrita: { fontWeight: '700' },
   // Fuera de la burbuja, pegada a su borde derecho: es una línea de estado, no parte del mensaje.
   meta: { fontSize: 11, alignSelf: 'flex-end' },
 });
