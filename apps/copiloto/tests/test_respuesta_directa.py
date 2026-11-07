@@ -26,6 +26,23 @@ def activo(monkeypatch):
 _OBS = {"result": "x", rd.CAMPO: "En octubre de 2026 entraron $10 y salieron $5."}
 
 
+_FICHA = {"result": "x", rd.CAMPO: "Con ClienteJ4: le facturaste $235.000 en 4 facturas y le cobraste $30.000 en 1 cobro."}
+
+
+def test_si_pregunta_por_un_tema_que_la_frase_omite_redacta_el_llm(activo):
+    # Regresión real del eval SM-P21 (2026-11-07): la frase omite lo que está en cero.
+    assert rd.elegir(_turno("¿cuántos presupuestos tiene ClienteJ4?", "consultar_cliente",
+                            {"nombre": "ClienteJ4"}, _FICHA)) is None
+
+
+def test_si_la_frase_cubre_el_tema_preguntado_contesta_el_codigo(activo):
+    assert rd.elegir(_turno("¿cuánto le facturé a ClienteJ4?", "consultar_cliente",
+                            {"nombre": "ClienteJ4"}, _FICHA)) == _FICHA[rd.CAMPO]
+    deben = {"result": "x", rd.CAMPO: "Te deben $205.000 en total, de eso, $205.000 está vencido."}
+    assert rd.elegir(_turno("¿cuánto tengo vencido sin cobrar?", "consultar_negocio",
+                            {"consulta": "por_cobrar"}, deben)) == deben[rd.CAMPO]
+
+
 def test_sin_flag_redacta_el_llm(monkeypatch):
     monkeypatch.delenv("COPILOTO_RESPUESTA_DIRECTA", raising=False)
     assert rd.elegir(_turno("¿cuánto entró en octubre?", "consultar_negocio",

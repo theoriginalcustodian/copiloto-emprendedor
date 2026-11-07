@@ -48,6 +48,10 @@ _SCOPES_POR_TOOLKIT = {
     "googlecalendar": (
         "https://www.googleapis.com/auth/userinfo.email",
         "https://www.googleapis.com/auth/calendar.events",
+        # GOOGLECALENDAR_CREATE_EVENT hace calendar.v3.Calendars.Get(primary) ANTES del insert;
+        # sin un scope de lectura de calendarios da 403 ACCESS_TOKEN_SCOPE_INSUFFICIENT (medido
+        # 2026-11-07, prueba autorizada; quitar el Meet no cambia nada). Mínimo privilegio.
+        "https://www.googleapis.com/auth/calendar.calendars.readonly",
     ),
 }
 

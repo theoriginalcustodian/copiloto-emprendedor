@@ -11,6 +11,7 @@ variable y reiniciar el worker.
 Cuándo NO contesta el código aunque esté activo (devuelve None y redacta el LLM):
 - la pregunta es de CAUSA («¿por qué bajaron…?»): ahí hace falta aclarar qué no se puede saber;
 - la pregunta pide además A QUIÉN y la consulta no es un ranking de clientes (pregunta doble);
+- la pregunta nombra un tema (presupuestos, facturas, cobros) que la frase armada no menciona;
 - en el turno ya corrió más de una tool (el modelo está encadenando: que termine él);
 - la tool no dejó `respuesta_directa` (error, otra tool, flag apagado cuando corrió).
 """
@@ -64,7 +65,25 @@ def elegir(messages: list[dict]) -> str | None:
     except (ValueError, TypeError):  # observation no-JSON: no hay frase armada, redacta el LLM como siempre
         return None
     texto = obs.get(CAMPO) if isinstance(obs, dict) else None
-    return texto if isinstance(texto, str) and texto.strip() else None
+    if not (isinstance(texto, str) and texto.strip()):
+        return None
+    if _omite_lo_preguntado(pregunta, texto):
+        return None
+    return texto
+
+
+# Lo que la pregunta nombra y la frase armada tiene que mencionar para contestarla. La frase omite lo que
+# está en cero (no dice «0 presupuestos»): si justo eso se preguntó, contestar la ficha genérica es no
+# contestar (eval SM-P21 2026-11-07: «¿cuántos presupuestos tiene ClienteJ4?» → facturas y cobros).
+_TEMAS = (
+    (re.compile(r"presupuest", re.I), re.compile(r"presupuest", re.I)),
+    (re.compile(r"\bfactur", re.I), re.compile(r"factur", re.I)),
+    (re.compile(r"\bcobr", re.I), re.compile(r"cobr|deben|vencid", re.I)),  # «sin cobrar» = lo que te deben
+)
+
+
+def _omite_lo_preguntado(pregunta: str, texto: str) -> bool:
+    return any(p.search(pregunta) and not t.search(texto) for p, t in _TEMAS)
 
 
 # ── redacción: consultar_negocio ──────────────────────────────────────────────────────────────────────
