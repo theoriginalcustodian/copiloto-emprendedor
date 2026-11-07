@@ -154,6 +154,17 @@ export function TarjetaMiDiaRow({
             >
               {tarjeta.texto}
             </Text>
+            {/* Prototipo (`prototipo/index.html`, «Para hoy»): cerrada, la tarjeta es título + línea breve
+                («Vence en 12 días», «31 días sin respuesta») en el color de su tono; el detalle va debajo de la flecha. */}
+            {!expandida && chip != null && (
+              <Text
+                testID={`midia-tarjeta-${tarjeta.id}-resumen`}
+                numberOfLines={1}
+                style={{ color: colorChip, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}
+              >
+                {chip.texto}
+              </Text>
+            )}
             {expandida && prosa != null && (
               <Text
                 testID={`midia-tarjeta-${tarjeta.id}-prosa`}
@@ -242,6 +253,15 @@ export function TarjetaMiDiaRow({
               </View>
             )}
           </View>
+          {/* La flecha es la afordancia de «se abre para ver el detalle»: baja cerrada, sube abierta. */}
+          <Text
+            testID={`midia-tarjeta-${tarjeta.id}-flecha`}
+            accessible={false}
+            importantForAccessibility="no"
+            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, lineHeight: 22 }}
+          >
+            {expandida ? '⌃' : '⌄'}
+          </Text>
         </View>
       </Row>
   );
