@@ -84,16 +84,18 @@ async function dictar(espiaPan: ReturnType<typeof jest.spyOn>) {
   const recognizer = espiaPan.mock.results[espiaPan.mock.results.length - 1]?.value as {
     handlers: { onBegin?: (e: unknown) => void; onFinalize?: (e: unknown, exito: boolean) => void };
   };
-  let ahora = 1_000_000;
-  const relojEspia = jest.spyOn(Date, 'now').mockImplementation(() => ahora);
+  // `BotonVoz` arranca la grabación al cumplirse DURACION_MINIMA_MS de mantener (temporizador).
+  jest.useFakeTimers();
   await act(async () => {
     recognizer.handlers.onBegin?.({});
   });
-  ahora += 1100; // supera DURACION_MINIMA_MS (1000 ms) de BotonVoz
+  await act(async () => {
+    jest.advanceTimersByTime(1100);
+  });
+  jest.useRealTimers();
   await act(async () => {
     recognizer.handlers.onFinalize?.({}, true);
   });
-  relojEspia.mockRestore();
 }
 
 const DICTADO: Ingreso = {
