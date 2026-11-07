@@ -66,6 +66,7 @@ campo»*.
 | **SM-P20** | `sin-issue` | ✅ TERMINADO | DoD 5/5 @570e4153 (merge #1790, ancestro de origin/main; antes 568158a4 #1789, 4c5ae5f0 backend, 25371b4e la Agenda).… |
 | **SM-P21** | `sin-issue` | ✅ TERMINADO | TERMINADO @c01ae19e (merge de PR #1788 en origin/main), desplegado y verificado por EFECTO: el sitio sirve data-build… |
 | **SM-P22** | `sin-issue` | ✅ TERMINADO | DoD 2/2 @3b9ecc25 (merge del #1791 en origin/main, verificado ancestro por planificacion con git merge-base, no por e… |
+| **SM-P23** | `sin-issue` | ✅ TERMINADO | DoD 3/3. p1 y p2 @41cf2440 (merge #1792, CI 6/6): una sola definicion de segmentarNegrita en packages/core/src/chat/n… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -672,3 +673,35 @@ campo»*.
     faltarle el campo Decision:. Tenia razon dos veces -- ademas del campo, el estado era el
     equivocado: cerrarla habria borrado el punto 2, que sigue vivo. Una decision que cambia el COMO
     no cierra la ficha.
+
+### SM-P23 · `sin-issue` — La negrita de Markdown llegaba CRUDA a la burbuja del asistente
+
+- **Estado:** TERMINADO
+- **Dueno-activo:** frontend1
+- **Cierre:** DoD 3/3. p1 y p2 @41cf2440 (merge #1792, CI 6/6): una sola definicion de segmentarNegrita en packages/core/src/chat/negrita.ts -- verificado por CONTEO DE DEFINICIONES en origin/main (1), no por conteo de usos -- consumida por Burbuja.tsx (mobile) y Bubble.tsx (web), con control explicito de que el texto del emprendedor queda literal. p3 EN DEVICE (frontend1, Samsung RF8T318RN9T, e2e-device@copiloto.test, Metro sirviendo la rama con el fix, 2026-11-07 01:59): DOS burbujas reales del asistente, ambas sin asterisco y con el tramo en negrita -- una respuesta nueva y una historica con 2 tramos -- mas el control de que sus propios mensajes quedan literales. Captura n4.png fuera del repo publico. El verde final NO fue el primer verde: hubo un rojo real por m[1] undefined, corregido en 3e68a41a, y queda escrito en vez de desaparecer detras del tilde.
+  se VE: su sintoma era texto `**asi**` en pantalla, asi que la unica evidencia que lo acredita es la
+  burbuja renderizada en el telefono. frontend1 lo tomo y lo esta haciendo. Hasta entonces esta ficha
+  NO es TERMINADO, por la misma regla que el resto del sprint: lo tactil se prueba en device.
+- **Origen:** hallazgo de planificacion durante la verificacion de SM-P19/SM-P20. Se registro con
+  dueno y a proposito NO se metio en la cola viva de frontend1 para no interrumpir el punto 4 de
+  SM-P20; lo tomo ella sola al quedarse sin items, que es el uso correcto de un id registrado.
+- **POR QUE TIENE ID:** un trabajo sin id no circula y entonces no se marca nunca. Es
+  `memoria/el-registro-no-se-marcaba-porque-su-id-no-circulaba.md` — 18 de 26 fichas jamas nombradas
+  en 460 cierres, no por descuido al marcar sino porque el id no entraba al circuito de cierre.
+- **Lo hecho (frontend1), @41cf2440 (merge #1792, CI 6/6: core mobile web backend lint drift):**
+  `segmentarNegrita` en `packages/core/src/chat/negrita.ts` con 5/5 vitest y tsc limpio; `Burbuja.tsx`
+  en mobile con 2 tests nuevos (suite 8/8 jest local) y `Bubble.tsx` en web con 1 test nuevo.
+  El fix es de RAIZ y en la capa compartida: una sola funcion de core que consumen las DOS vistas, no
+  dos parseos paralelos — que es el defecto que `memoria/dos-implementaciones-del-mismo-cliente...`
+  describe y que este repo ya pago.
+- **El detalle que vale guardar:** la primera corrida de CI salio ROJA por `m[1]` undefined y se
+  corrigio en `3e68a41a`. O sea que el verde final no fue el primer verde: hubo un rojo real en el
+  medio, y queda escrito en vez de desaparecer detras del tilde.
+- **DoD (binario):**
+  1. Una sola implementacion del parseo, en core, consumida por mobile y por web (verificado por
+     conteo de definiciones, no de usos). ✅ @41cf2440
+  2. El texto del EMPRENDEDOR queda literal: sus asteriscos no se interpretan. ✅ control explicito
+     en los tests de las dos vistas.
+  3. La burbuja del asistente con `**...**` vista en device. ⏳ lo unico que falta.
+- **No autoriza:** tocar el tenant fiscal real · emitir facturas · instalar el APK sin avisar al
+  operador.
