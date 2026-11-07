@@ -65,7 +65,7 @@ campo»*.
 | **SM-P19** | `sin-issue` | 🟧 DOD-PARCIAL | La mitad B de BACKEND esta ACREDITADA (ya no es 'NO iniciada': ese Falta: quedo refutado por el cierre_ del 2026-11-0… |
 | **SM-P20** | `sin-issue` | 🟧 DOD-PARCIAL | Los TRES puntos de BACKEND estan ACREDITADOS @4c5ae5f0 (ordenar_para_hoy con test; GET /mi-dia/vencimientos con ADR-0… |
 | **SM-P21** | `sin-issue` | ✅ TERMINADO | TERMINADO @c01ae19e (merge de PR #1788 en origin/main), desplegado y verificado por EFECTO: el sitio sirve data-build… |
-| **SM-P22** | `sin-issue` | ⬜ PENDIENTE | backend |
+| **SM-P22** | `sin-issue` | 🟨 EN-CURSO | backend |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -640,7 +640,7 @@ campo»*.
 
 ### SM-P22 · `sin-issue` — La trampa «causa» trae montos reales: variabilidad del camino LLM, no regresion
 
-- **Estado:** PENDIENTE
+- **Estado:** EN-CURSO
 - **Dueno-activo:** backend
 - **Origen:** hallazgo de backend al re-evaluar SM-P21 el 2026-11-07 @c01ae19e. NO es un defecto
   introducido por el fix de respuesta directa, y por eso NO bloquea SM-P21: la misma pregunta
@@ -650,8 +650,24 @@ campo»*.
   septiembre ($165.000), y la regla de esa trampa exige cero montos. No inventa: trae un dato
   verdadero que no se pidio.
 - **DoD:**
-  1. Fix determinista: si la pregunta es de causa («por que…») y la tool no trae causa, la
-     negativa se responde POR CODIGO, sin montos. Determinista antes que LLM.
-  2. Test que ejercite la trampa con control positivo (que el test sea rojo si el guard no esta).
-  3. Re-eval sobre los MISMOS 20 casos: 20/20 en dos corridas consecutivas, porque el defecto es
-     intermitente y una sola corrida verde no distingue el fix de la suerte.
+  **DoD RE-REDACTADO el 2026-11-07.** La decision del operador (2026-11-07) fue la (b), no la (a):
+  el fix determinista que este DoD pedia queda RETIRADO, y lo que se corrige es la REGLA del
+  instrumento, no el codigo del producto. En la trampa «causa» los montos REALES VALEN; sigue
+  siendo falla el monto INVENTADO (ya lo mide el chequeo propio de inventados) y se EXIGE que la
+  respuesta niegue la causa de forma explicita. Backend ya lo aplico en eval_fidelidad.py y de paso
+  lo endurecio de un lado -- antes esa trampa no exigia la negativa y ahora si -- mas el regex de
+  negativas con «no permite(n) saber/explicar». NO HAY CODIGO DE PRODUCTO QUE TOCAR.
+  1. La regla nueva aplicada en eval_fidelidad.py, con la negativa explicita exigida. [HECHO,
+     pendiente de citar el sha cuando mergee]
+  2. 20/20 sobre los MISMOS 20 casos en DOS corridas CONSECUTIVAS. Esta parte NO se relaja: el caso
+     fallaba 2 de 6 veces, y una sola corrida verde de un defecto intermitente no distingue el fix
+     de la suerte. Si alguna de las dos no da 20/20, el hallazgo no era el de la regla y se reabre.
+  - **Nota de por que esta ficha existe y no se borro:** el caso rojo salio de SM-P21 para no
+    subirle el criterio despues de medir (DEC-18); se le dio ficha y dueno propios; y ahi el
+    operador lo resolvio un nivel mas arriba, en la regla. Ese recorrido es el registro. Lo que
+    evito es el modo de falla conocido: un caso que YA fallaba antes del fix cobrandose dentro de la
+    ficha de latencia, que entonces no cerraba nunca.
+  - **Lo que casi hago mal:** marque esta ficha CERRADO-POR-DECISION, y el gate la rechazo por
+    faltarle el campo Decision:. Tenia razon dos veces -- ademas del campo, el estado era el
+    equivocado: cerrarla habria borrado el punto 2, que sigue vivo. Una decision que cambia el COMO
+    no cierra la ficha.
