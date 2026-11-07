@@ -38,7 +38,7 @@ import { ResumenFacturacion } from './ResumenFacturacion';
 import { SeccionMeDeben, type SeccionMeDebenHandle } from './SeccionMeDeben';
 import { SeccionMisComprobantes, type SeccionMisComprobantesHandle } from './SeccionMisComprobantes';
 import { TarjetaComprobante } from './TarjetaComprobante';
-import { useDictadoFactura } from './useDictadoFactura';
+import { useDictadoFuncion } from '../voz/useDictadoFuncion';
 import './facturacion.css';
 
 const INTERVALO_POLL_EMISION_MS = 1500;
@@ -182,7 +182,7 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
   /** El borrador de afuera del que hay que hacerse cargo: el de `facturaIdInicial` o, desde SM-P13, el que
    *  el usuario dictó y eligió «Completar a mano». Mismo camino de adopción para los dos. */
   const [borradorAdoptar, setBorradorAdoptar] = useState<string | null>(facturaIdInicial ?? null);
-  const dictado = useDictadoFactura();
+  const dictado = useDictadoFuncion('factura');
   // La card se monta al FINAL de la pantalla, detrás del dock sticky: en navegador real (SM-P13) quedaba
   // fuera de pantalla sin ninguna señal. Al aparecer una propuesta nueva se la trae a la vista.
   const refTarjetaDictado = useRef<HTMLDivElement>(null);

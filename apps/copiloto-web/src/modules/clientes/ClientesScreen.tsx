@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { listarClientes, obtenerCliente, type Cliente, type DuplicadoCliente } from '@copiloto/core';
+import { listarClientes, obtenerCliente, type Cliente, type DatosCliente, type DuplicadoCliente } from '@copiloto/core';
 
 import { Button, Skeleton, Surface } from '../../design-system';
-import { DockFuncion } from '../voz';
+import { DockDictadoFuncion, useDictadoFuncion } from '../voz';
 import { FichaCliente } from './FichaCliente';
 import { FormularioCliente } from './FormularioCliente';
 import { TarjetaCliente } from './TarjetaCliente';
@@ -39,7 +39,7 @@ export interface ClientesScreenProps {
   onAbrirChat?: () => void;
 }
 
-export function ClientesScreen({ clienteIdInicial, onAbrirChat }: ClientesScreenProps = {}) {
+export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [total, setTotal] = useState(0);
@@ -47,7 +47,18 @@ export function ClientesScreen({ clienteIdInicial, onAbrirChat }: ClientesScreen
   const [busquedaAplicada, setBusquedaAplicada] = useState('');
   const [actualizando, setActualizando] = useState(false);
   const [ficha, setFicha] = useState<Cliente | null>(null);
-  const [formulario, setFormulario] = useState<{ edita: Cliente | null } | null>(null);
+  const [formulario, setFormulario] = useState<{ edita: Cliente | null; iniciales?: DatosCliente; clave?: number } | null>(null);
+  // SM-P19 mitad A: lo dictado/escrito en el dock se prellena ACÁ, sin chat. `DatosCliente` ya es la
+  // forma de `iniciales` del formulario; `clave` lo remonta para tomar un dictado nuevo.
+  const dictado = useDictadoFuncion('cliente');
+  const propuestaDictada = dictado.propuesta;
+  const limpiarDictado = dictado.limpiar;
+  useEffect(() => {
+    if (propuestaDictada == null) return;
+    setFicha(null);
+    setFormulario((f) => ({ edita: null, iniciales: propuestaDictada, clave: (f?.clave ?? 0) + 1 }));
+    limpiarDictado();
+  }, [propuestaDictada, limpiarDictado]);
   const [avisoDuplicado, setAvisoDuplicado] = useState<DuplicadoCliente | null>(null);
   /**
    * "Le vendiste a N clientes" tiene que ser el tamaño de TODA la cartera, no el de una búsqueda
@@ -213,7 +224,9 @@ export function ClientesScreen({ clienteIdInicial, onAbrirChat }: ClientesScreen
         <div className="clientes-screen__body">
           {formulario != null ? (
             <FormularioCliente
+              key={formulario.clave ?? 0}
               edita={formulario.edita}
+              iniciales={formulario.iniciales ?? null}
               onGuardado={alGuardar}
               onDuplicado={alDuplicado}
               onAbrirCliente={(c) => { setFormulario(null); setFicha(c); }}
@@ -322,7 +335,7 @@ export function ClientesScreen({ clienteIdInicial, onAbrirChat }: ClientesScreen
         />
       )}
 
-      {onAbrirChat && <DockFuncion onAbrirChat={onAbrirChat} placeholder="Contale un cliente al copiloto…" />}
+      <DockDictadoFuncion dictado={dictado} placeholder="Contale un cliente al copiloto…" />
     </div>
   );
 }

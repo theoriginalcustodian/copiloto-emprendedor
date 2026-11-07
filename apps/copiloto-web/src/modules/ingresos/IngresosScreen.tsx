@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { borrarIngreso, formatearFechaCorta, listarIngresos, obtenerResumenIngresos, type Ingreso, type ResumenIngresos as ResumenIngresosDato } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
-import { DockFuncion } from '../voz';
+import { DockDictadoFuncion, inicialesDeIngreso, useDictadoFuncion, type PropuestaDe } from '../voz';
+import type { ValoresInicialesIngreso } from './FormularioIngreso';
 import { FormularioIngreso } from './FormularioIngreso';
 import { ResumenIngresos } from './ResumenIngresos';
 import { TarjetaIngreso } from './TarjetaIngreso';
@@ -35,13 +36,26 @@ export interface IngresosScreenProps {
   onAbrirChat?: () => void;
 }
 
-export function IngresosScreen({ onAbrirChat }: IngresosScreenProps = {}) {
+export function IngresosScreen(_props: IngresosScreenProps = {}) {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [ingresos, setIngresos] = useState<Ingreso[]>([]);
   const [resumen, setResumen] = useState<ResumenIngresosDato | null>(null);
   const [vista, setVista] = useState<Vista>('listado');
   const [actualizando, setActualizando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // SM-P19 mitad A: lo dictado/escrito en el dock se prellena ACÁ, sin chat. `claveAlta` remonta el form.
+  const dictado = useDictadoFuncion('ingreso');
+  const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesIngreso | undefined>(undefined);
+  const [claveAlta, setClaveAlta] = useState(0);
+  const propuestaDictada: PropuestaDe<'ingreso'> | null = dictado.propuesta;
+  const limpiarDictado = dictado.limpiar;
+  useEffect(() => {
+    if (propuestaDictada == null) return;
+    setInicialesDictado(inicialesDeIngreso(propuestaDictada));
+    setClaveAlta((n) => n + 1);
+    setVista('formulario');
+    limpiarDictado();
+  }, [propuestaDictada, limpiarDictado]);
   const vivo = useRef(true);
   useEffect(() => {
     vivo.current = true;
@@ -80,10 +94,13 @@ export function IngresosScreen({ onAbrirChat }: IngresosScreenProps = {}) {
 
   function alGuardar() {
     setVista('listado');
+    setInicialesDictado(undefined);
     void cargar(true);
   }
 
   function abrirFormularioEnBlanco() {
+    setInicialesDictado(undefined);
+    setClaveAlta((n) => n + 1);
     setVista('formulario');
   }
 
@@ -151,9 +168,11 @@ export function IngresosScreen({ onAbrirChat }: IngresosScreenProps = {}) {
         <div className="ingresos-screen__body">
           {vista === 'formulario' ? (
             <FormularioIngreso
+              key={claveAlta}
               origen="manual"
+              iniciales={inicialesDictado}
               onGuardado={alGuardar}
-              onCancelar={() => setVista('listado')}
+              onCancelar={() => { setVista('listado'); setInicialesDictado(undefined); }}
             />
           ) : (
             <>
@@ -201,7 +220,7 @@ export function IngresosScreen({ onAbrirChat }: IngresosScreenProps = {}) {
         </div>
       )}
 
-      {onAbrirChat && <DockFuncion onAbrirChat={onAbrirChat} placeholder="Contale un cobro al copiloto…" />}
+      <DockDictadoFuncion dictado={dictado} placeholder="Contale un cobro al copiloto…" />
     </div>
   );
 }

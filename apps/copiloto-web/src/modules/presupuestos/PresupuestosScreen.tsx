@@ -11,9 +11,9 @@ import {
 } from '@copiloto/core';
 
 import { Button, Skeleton, Surface } from '../../design-system';
-import { DockFuncion } from '../voz';
+import { DockDictadoFuncion, inicialesDePresupuesto, useDictadoFuncion } from '../voz';
 import { DetallePresupuesto } from './DetallePresupuesto';
-import { FormularioPresupuesto } from './FormularioPresupuesto';
+import { FormularioPresupuesto, type ValoresInicialesPresupuesto } from './FormularioPresupuesto';
 import { TarjetaPresupuesto } from './TarjetaPresupuesto';
 import './presupuestos.css';
 
@@ -91,7 +91,7 @@ export interface PresupuestosScreenProps {
  * `Presupuesto.estado` en core). Tratar `null` como pendiente inflaría la cifra con datos que no se
  * conocen.
  */
-export function PresupuestosScreen({ onFacturar, presupuestoIdInicial, onAbrirChat }: PresupuestosScreenProps) {
+export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: PresupuestosScreenProps) {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
   const [vista, setVista] = useState<Vista>('listado');
@@ -101,6 +101,21 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial, onAbrirCh
   const [sugerenciaMail, setSugerenciaMail] = useState<{ docLink: string } | null>(null);
   const [actualizando, setActualizando] = useState(false);
   const [verHistorial, setVerHistorial] = useState(false);
+  // SM-P19 mitad A: lo dictado/escrito en el dock se prellena ACÁ, sin chat. `claveAlta` remonta el form.
+  const dictado = useDictadoFuncion('presupuesto');
+  const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesPresupuesto | null>(null);
+  const [claveAlta, setClaveAlta] = useState(0);
+  const propuestaDictada = dictado.propuesta;
+  const limpiarDictado = dictado.limpiar;
+  useEffect(() => {
+    if (propuestaDictada == null) return;
+    setInicialesDictado(inicialesDePresupuesto(propuestaDictada));
+    setCorrigiendo(null);
+    setDetalle(null);
+    setClaveAlta((n) => n + 1);
+    setVista('formulario');
+    limpiarDictado();
+  }, [propuestaDictada, limpiarDictado]);
   // `vivo.current = true` DENTRO del setup del efecto — StrictMode, ver el comentario equivalente en
   // GastosScreen/ClientesScreen.
   const vivo = useRef(true);
@@ -155,6 +170,7 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial, onAbrirCh
   function alCrear(nuevo: Presupuesto, sugerencias: SugerenciasPresupuesto | null) {
     setVista('listado');
     setCorrigiendo(null);
+    setInicialesDictado(null);
     // Se RELEE en vez de insertar el objeto en la lista local: el alta puede haber reemplazado a
     // otro, que tiene que DESAPARECER del listado vigente.
     void cargar(true);
@@ -164,11 +180,15 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial, onAbrirCh
 
   function abrirFormularioEnBlanco() {
     setCorrigiendo(null);
+    setInicialesDictado(null);
+    setClaveAlta((n) => n + 1);
     setVista('formulario');
   }
 
   function abrirCorreccion(p: Presupuesto) {
     setDetalle(null);
+    setInicialesDictado(null);
+    setClaveAlta((n) => n + 1);
     setCorrigiendo(p);
     setVista('formulario');
   }
@@ -241,11 +261,14 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial, onAbrirCh
         <div className="presupuestos-screen__body">
           {vista === 'formulario' ? (
             <FormularioPresupuesto
+              key={claveAlta}
               corrige={corrigiendo}
+              iniciales={inicialesDictado}
               onCreado={alCrear}
               onCancelar={() => {
                 setVista('listado');
                 setCorrigiendo(null);
+                setInicialesDictado(null);
               }}
             />
           ) : (
@@ -329,7 +352,7 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial, onAbrirCh
         />
       )}
 
-      {onAbrirChat && <DockFuncion onAbrirChat={onAbrirChat} placeholder="Pedile un presupuesto al copiloto…" />}
+      <DockDictadoFuncion dictado={dictado} placeholder="Pedile un presupuesto al copiloto…" />
     </div>
   );
 }
