@@ -62,8 +62,8 @@ campo»*.
 | **SM-P16** | `sin-issue` | ✅ TERMINADO | sha 2d50aa8a03c3df4f9a428995acfc9efbb588f079 (#1733) y 4752fa6d939a1cda6c4befe32e7b7f862b69053e (#1764). DoD: (1) arr… |
 | **SM-P18** | `sin-issue` | ✅ TERMINADO | c16b989ff2e76032e0e52cb18ad4df22f301997e (#1744, ancestro de origin/main). DoD completo en device RF8T318RN9T, e2e-de… |
 | **SM-P17** | `sin-issue` | ✅ TERMINADO | NADA de lo pedido. frontend2 declaro, sin que se le pidiera, cinco superficies que NO estan cubiertas y NO estaban en… |
-| **SM-P19** | `sin-issue` | 🟧 DOD-PARCIAL | mitad A: corrida real tipeando contra el backend en el navegador con e2e-device (LLM real) -- NO hecha; instrumento: … |
-| **SM-P20** | `sin-issue` | 🟨 EN-CURSO | frontend1 (Agenda + flecha, PR #1780 con device medido 2026-11-06 23:10-23:11) + backend (el ORDEN de «Para hoy» y lo… |
+| **SM-P19** | `sin-issue` | 🟧 DOD-PARCIAL | mitad B (al GUARDAR el turno aparece en el chat): NO iniciada. CONTRATADA el 2026-11-06 23:22 a backend -- make_pg_re… |
+| **SM-P20** | `sin-issue` | 🟧 DOD-PARCIAL | TRES puntos son de BACKEND y frontend1 no los puede resolver: (1) el ORDEN de «Para hoy» (criticas primero, luego ven… |
 
 <!-- TABLA-ESTADO:FIN -->
 
@@ -495,8 +495,8 @@ campo»*.
 ### SM-P19 · `sin-issue` — La card se prellena DENTRO de la función y al GUARDAR la actividad va al chat (las 5)
 
 - **Estado:** DOD-PARCIAL
-- **Falta:** mitad A: corrida real tipeando contra el backend en el navegador con e2e-device (LLM real) -- NO hecha; instrumento: navegador + web desplegada, no device. mitad B (al GUARDAR el turno aparece en el chat): NO iniciada, contratada el 2026-11-06 23:22 a backend (reply_sink + card kind actividad_registrada) y su precondicion de cierre es el test adversarial cross-tenant del ADR-013. La prop onAbrirChat queda en las pantallas sin uso, reservada para B.
-- **Cierre:** mitad A MERGEADA y DESPLEGADA @ e3e28fe9e9156480a0481e1d8b67bb2dbf6f54a0 (PR #1781, squash en origin/main, web con sync-web.sh y data-build-sha verificado). Las 5 funciones prellenan EN la funcion con un solo useDictadoFuncion + DockDictadoFuncion; retirados useDictadoFactura y DockFuncion. Evidencia: vitest web 149 archivos / 1460 tests, tsc limpio, CI 6/6. Arregla de raiz el CHAT_NO_LISTO: test por pantalla de que sin onAbrirChat el dock monta y no aparece. Nada se guarda ni se emite -- FacturaWorkflow.confirmar intacto.
+- **Falta:** mitad B (al GUARDAR el turno aparece en el chat): NO iniciada. CONTRATADA el 2026-11-06 23:22 a backend -- make_pg_reply_sink + card kind actividad_registrada + idem_key act-<tipo>-<id>, sin endpoint nuevo-- y su precondicion de cierre es el test adversarial cross-tenant del ADR-013. La prop onAbrirChat queda en las pantallas sin uso, reservada para B. Mitad A, dos puntos sin medir con su INSTRUMENTO: la corrida real tipeando contra el backend con LLM real pide NAVEGADOR y web desplegada, no device; y el guard del grabador liberado (#1777) con una grabacion VIVA al abrir una funcion pide el TELEFONO CON UNA PERSONA -- con adb de un solo puntero no se logra fijar una grabacion (el intento mando un audio corto «Musica» al chat del usuario canonico, inofensivo).
+- **Cierre:** DOS lados, y citarlos juntos es el punto -- mi marcado previo tenia solo el web. WEB (frontend2) @ e3e28fe9e9156480a0481e1d8b67bb2dbf6f54a0 (PR #1781 squash): un solo useDictadoFuncion + DockDictadoFuncion, retirados useDictadoFactura y DockFuncion, vitest 149 archivos / 1460 tests, tsc limpio, CI 6/6, web desplegada con sync-web.sh y data-build-sha verificado; arregla de raiz el CHAT_NO_LISTO con un test por pantalla de que sin onAbrirChat el dock monta. MOBILE (frontend1) en main por #1772 39debff0, #1774 ba2c230f, #1775 b84eacd1, #1777 6a7daf33 y la espera con isotipo #1778: las 5 funciones (Gastos, Ingresos, Presupuestos, Facturacion, Clientes) prellenan la card DENTRO de la funcion al tipear, probado en device RF8T318RN9T con e2e-device@copiloto.test el 2026-11-06; isotipo Odobi animado como espera en las 5 (no en Inteligencia de Negocio), con EsperaOdobi.test.tsx; Mi dia solo lista sin Borrar; el mic ya no arranca con un toque corto (mantener 1 s), BotonVoz.test.tsx 24/24. Nada se guarda ni se emite: FacturaWorkflow.confirmar intacto.
 - **Dueño:** frontend1 (mobile) + frontend2 (web) + backend (la mitad B)
 - **Orden del operador (2026-11-06), textual y PRESENCIADA en el hilo de planificación:** «si remite
   al chat pero de manera diferente... primero muestra la card prellenada dentro de la función y
@@ -556,8 +556,10 @@ campo»*.
 
 ### SM-P20 · `sin-issue` — Agenda y tarjetas de Mi día alineadas al prototipo + el orden de «Para hoy»
 
-- **Estado:** EN-CURSO
+- **Estado:** DOD-PARCIAL
 - **Dueno-activo:** frontend1 (Agenda + flecha, PR #1780 con device medido 2026-11-06 23:10-23:11) + backend (el ORDEN de «Para hoy» y los vencimientos de Odobi en Agenda)
+- **Falta:** TRES puntos son de BACKEND y frontend1 no los puede resolver: (1) el ORDEN de «Para hoy» (criticas primero, luego vencimiento) en mi_dia_web.py -- hoy mi_dia_tarjeta_store.py:168 es ORDER BY creada_en DESC y la app no reordena; (2) «Vencen esta semana» del prototipo son vencimientos de ODOBI (CAE, certificado) y leerAgenda no los trae -- hoy la app rellena ese bloque con el grupo  de Google Calendar, dos cosas distintas bajo el mismo titulo; (3) el lugar del evento: leerAgenda no devuelve ubicacion. DOS puntos sin medir, y su INSTRUMENTO: la Agenda con un evento REAL de Google Calendar (se vio con fixture temporal revertido porque el calendario del usuario canonico esta vacio; fabricar el evento pide HITL de calendar_book) y la piel CLARA de Agenda en device.
+- **Cierre:** frente APP mergeado @ 25371b4e5df343c1111f80dea93033fcba9d18cb (PR #1780, squash en origin/main, CI 6/6: lint mobile core web backend drift). Agenda igual a prototipo/index.html?ver=agenda -- rejilla 76 px/h con bloques por duracion, linea del ahora, encabezado «Hoy/Manana», pildora «+ Nuevo evento», Manana/Esta semana/Sin hora como listas; flecha ⌄/⌃ en las tarjetas de Mi dia con una abierta a la vez. Device RF8T318RN9T con e2e-device@copiloto.test, 2026-11-06 23:10 y 23:11. Contraste en piel oscura corregido tras verlo en device. Tests PantallaAgenda.test.tsx + PantallaMiDia.test.tsx.
 - **Dueño:** backend (el ORDEN) + frontend1 (Agenda y la línea de detalle de las tarjetas)
 - **Origen:** `pedido_` de frontend1 a planificación del 2026-11-06, con capturas del prototipo y
   del teléfono que el operador le pasó. **Prioridad declarada en el propio pedido: DESPUÉS de
