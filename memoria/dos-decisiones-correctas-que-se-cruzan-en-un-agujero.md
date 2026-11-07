@@ -198,3 +198,27 @@ sesión que lo tome — cara, y mirando archivos en vez de midiendo.
 que cualquier pantalla. Si se deja para el final, cada medición intermedia se hace contra una lista
 reconstruida a mano — que es exactamente
 [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]].
+
+## Refuerzo 2026-11-06 — un acuse de «no me queda nada» puede ser FALSO de buena fe, y el AUTOR lo corrige si le preguntás
+
+Un `contrato_` compuesto a dos sesiones tenía **acuse de las dos, con declaraciones incompatibles**:
+backend decía «lo que resta es de frontend1», frontend1 había acusado «sin nada en vuelo de mi lado».
+Las dos no podían ser ciertas. Tenía dos atajos a mano y los dos eran errores de distinto signo:
+
+- **elegir el silencio (b)** — «nadie reclama, estará cumplido» → declara cerrada una pendencia real;
+- **elegir la prudencia (a)** sin preguntar → pone a alguien a re-hacer trabajo ya pago.
+
+**Lo que hice fue escribir las dos lecturas como (a)/(b) y pedir la línea que decide.** Contestó en
+3 minutos: vale **(a)**, y **corrigió su propio acuse**: *«mi acuse de las 12:25 era falso para ese
+par: me quedaba la receta con ambiente verificado y sigue pendiente, con mi nombre»*.
+
+**La lección fina:** el acuse falso **no fue mala fe ni descuido** — fue que el contrato era
+**compuesto**, cada lado leyó la mitad que lo nombraba y contestó con verdad **sobre su mitad**. Una
+declaración de «no me queda nada» es verdadera *dentro del alcance que su autor leyó*, y ese alcance
+no es el del contrato. Así que **el conflicto entre dos acuses no es ruido a resolver por descarte:
+es el único lugar donde el hueco del par se vuelve visible**, y el autor de la mitad lo reconoce sin
+resistencia en cuanto se le muestra la otra.
+
+**Operativamente:** ante dos acuses incompatibles sobre el mismo pendiente, no arbitres — **devolvé
+las dos lecturas al dueño de la mitad en duda y pedí una línea**. Es más barato que cualquiera de los
+dos atajos, y el único que no fabrica ni trabajo ni falso cierre. Ver [[un-cierre-dirigido-a-otra-sesion-puede-contener-exactamente-tu-cola]].

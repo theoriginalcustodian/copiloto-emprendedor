@@ -134,3 +134,39 @@ función.
 `SendMessage` por peer es la **entrega**. Son dos cosas distintas y hacen falta las dos. Bajar un
 `pedido_` sin avisar por peer es dejarlo donde nadie mira — exactamente lo que esta entrada ya
 decía, en la forma que no había previsto.
+
+## Refuerzo 2026-11-06 - el canal CORRECTO no alcanza si el destinatario no se RE-INVOCA
+
+Esta entrada decia «proba el cable». Faltaba que el cable puede estar perfecto y el aparato del
+otro lado APAGADO.
+
+El 2026-11-06 baje a backend un `pedido_` bien tipado, bien dirigido, en `coordinacion/abierto/`,
+y lo reforce por peer. Todo correcto. **Y backend no tenia crones.** Una sesion de Claude Code
+termina su turno y queda idle para siempre: no hay bucle propio. Sin un cron que la vuelva a
+invocar, **nadie abre el archivo** -- el buzon no despierta a nadie, sola es un deposito.
+
+**Y yo tampoco los tenia:** `CronList` me dio «No scheduled jobs». O sea que el coordinador que
+vigila el ocio de las demas estaba, el mismo, a un turno de apagarse.
+
+**Quien lo detecto:** el operador, no un gate. Textual: «no tiene los crones activados y tu
+tampoco». Es el agujero del par descrito en
+[[dos-decisiones-correctas-que-se-cruzan-en-un-agujero]]: el buzon asume que el destinatario
+despierta, y los crones asumen que alguien los instalo; ningun instrumento mide la interseccion,
+y el sintoma -- silencio -- es identico al de una sesion que trabaja sin reportar.
+
+**Qué hacer, en este orden:**
+
+1. Al arrancar y al reanudar: `CronList`. Si dice «No scheduled jobs», **no tenes heartbeat**.
+2. Invocar la skill de TU rol (`/monitoreo`, `/monitoreo-backend`, `/monitoreo-frontend1`...).
+3. **`CronList` otra vez.** Una skill invocada que no creo los jobs **no da ningun sintoma**, y ese
+   es el modo de falla que importa: es el mismo patron de
+   [[un-control-con-test-verde-y-cero-invocadores]] -- el permiso existe y el disparador no.
+4. Cuando bajes algo que BLOQUEA a otra sesion: archivo del tipo que escala **+ peer**. Y si no
+   podes saber que sesion es cual (los ids de `ListAgents` no mapean al rol, y las firmas del
+   buzon son de sesiones ya cerradas), mandalo a TODAS con una primera linea autofiltrante («si
+   sos backend...»): cuesta menos que una sesion parada.
+5. Mueren con la sesion y **auto-expiran a los 7 dias**. Sobreviven a `--continue`/`--resume`, no a
+   una sesion nueva: se re-chequea en cada arranque, no una sola vez.
+
+**La regla:** «¿le avise?» tiene dos mitades, y la segunda es la que se olvida -- **¿y tiene con
+que despertarse para leerlo?** Un mensaje a una sesion sin heartbeat esta entregado y no existe.
