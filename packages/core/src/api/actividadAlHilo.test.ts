@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { conSessionIdActividad, fijarSessionIdActividad } from './actividadAlHilo';
+import { alGuardarActividad, conSessionIdActividad, fijarSessionIdActividad } from './actividadAlHilo';
 import { crearGasto } from './gastos';
 import { configurarApi } from './config';
 import type { HttpPort, PeticionHttp } from './http';
@@ -39,6 +39,21 @@ describe('actividadAlHilo (SM-P19 B, lado app)', () => {
     expect(conSessionIdActividad({ monto: 5 })).toEqual({ monto: 5, session_id: 's-1' });
     fijarSessionIdActividad('');
     expect(conSessionIdActividad({ monto: 5 })).toEqual({ monto: 5 });
+  });
+
+  it('avisa a los oyentes SÓLO con hilo activo; un oyente roto no rompe el guardado; se puede cancelar', () => {
+    let n = 0;
+    const cancelar = alGuardarActividad(() => { n += 1; });
+    const cancelarRoto = alGuardarActividad(() => { throw new Error('boom'); });
+    conSessionIdActividad({ a: 1 });
+    expect(n).toBe(0);
+    fijarSessionIdActividad('s-3');
+    expect(conSessionIdActividad({ a: 1 })).toEqual({ a: 1, session_id: 's-3' });
+    expect(n).toBe(1);
+    cancelar();
+    cancelarRoto();
+    conSessionIdActividad({ a: 1 });
+    expect(n).toBe(1);
   });
 
   it('el guardado REAL (crearGasto) manda el session_id del hilo y, sin hilo, no lo manda', async () => {
