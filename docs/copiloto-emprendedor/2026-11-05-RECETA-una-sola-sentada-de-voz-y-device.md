@@ -160,3 +160,12 @@ cuenta). Es un spike corto del dueño del device, no una certeza heredada.
 **Si el canario discrimina y una frase transcribe, los bloques A, B y C dejan de necesitar al
 operador** y pasan a ser trabajo de la sesión que tiene el teléfono. El bloque D nunca necesitó voz:
 son cuatro chequeos a ojo.
+
+
+---
+
+## ESTADO (2026-11-07) - la receta no tenia estado y se le pidio al operador lo mismo 4 veces
+
+- Guard #1777 (grabacion liberada y vuelta a preparar): HECHO 2026-11-07 - evidencia: ~45 pruebas de voz del operador en device RF8T318RN9T; voz-vivo2.log 35 lineas, 0 'already released', 0 'prepareToRecordAsync'. Acredita SOLO el guard; NO acredita el Bloque A (mic igual en las tres pantallas) ni el punto 8 de SM-P12 (mic de las funciones transcribe y abre la card: sin medir en su sujeto, cerrado por decision 2026-11-06).
+- Bloques B, C, D: sin corrida acreditada en esta receta; no se repiten por voz (planificacion cerro la voz el 2026-11-07).
+- Regla: al correr un paso, anotar 'HECHO <fecha> - evidencia:' aca; el estado es el archivo, no la memoria de nadie.

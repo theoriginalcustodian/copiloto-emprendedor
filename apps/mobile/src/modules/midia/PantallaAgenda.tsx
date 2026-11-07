@@ -11,11 +11,13 @@ import {
   horaDeEvento,
   KEY_GOOGLE_CALENDAR,
   leerAgenda,
+  leerVencimientos,
   listarCatalogo,
   rangoAgenda,
   type AgendaMiDia,
   type EstadoConexion,
   type EventoAgenda,
+  type Vencimiento,
 } from '@copiloto/core';
 
 import { dejarPendiente } from '../chat/mensajePendiente';
@@ -40,6 +42,19 @@ function columnaHora(grupo: string, ev: EventoAgenda): string {
     return '—';
   }
   return horaDeEvento(ev.inicioCrudo) ?? '—';
+}
+
+/** SM-P20: «detalle · Oficina Centro». Sin ubicación (null/ausente) no se agrega nada: no se inventa. */
+const conUbicacion = (base: string, ev: Pick<EventoAgenda, 'ubicacion'>): string =>
+  ev.ubicacion != null && ev.ubicacion !== '' ? `${base} · ${ev.ubicacion}` : base;
+
+/** SM-P20 punto 2: el texto de plazo de un vencimiento. `dias: null` = no se pudo leer (no se inventa fecha). */
+function plazoVencimiento(v: Vencimiento): string {
+  if (v.dias == null) return 'Sin fecha legible';
+  if (v.vencido || v.dias < 0) return v.dias === -1 ? 'Venció ayer' : `Venció hace ${Math.abs(v.dias)} días`;
+  if (v.dias === 0) return 'Vence hoy';
+  if (v.dias === 1) return 'Vence mañana';
+  return `Vence en ${v.dias} días`;
 }
 
 /** `.lista`: la tarjeta blanca de filas (prototipo 1273). */
@@ -93,7 +108,19 @@ export function PantallaAgenda() {
   // BL-V23 (mobile): la salud DE Google Calendar puntual — desempata "nunca conectada" de "caída"
   // más abajo, algo que `leerAgenda` no distingue (mismo patrón que `PantallaMiDia`/`PanelCalendario`).
   const [estadoGoogleCalendar, setEstadoGoogleCalendar] = useState<EstadoConexion | null>(null);
+  // SM-P20 punto 2: «Vencen esta semana» (CAE, certificado de ARCA). Carga propia: si cae, la Agenda sigue.
+  const [vencimientos, setVencimientos] = useState<readonly Vencimiento[] | null>(null);
   const vivo = useRef(true);
+
+  const cargarVencimientos = useCallback(async () => {
+    try {
+      const res = await leerVencimientos();
+      if (!vivo.current) return;
+      setVencimientos(res.status === 'ok' ? res.vencimientos : null);
+    } catch {
+      /* fail-soft: sin vencimientos la sección no se muestra. */
+    }
+  }, []);
 
   const cargar = useCallback(async () => {
     setEstado('cargando');
@@ -123,10 +150,11 @@ export function PantallaAgenda() {
     vivo.current = true;
     void cargar();
     void cargarSaludConexiones();
+    void cargarVencimientos();
     return () => {
       vivo.current = false;
     };
-  }, [cargar, cargarSaludConexiones]);
+  }, [cargar, cargarSaludConexiones, cargarVencimientos]);
 
   function nuevoEvento() {
     dejarPendiente(TEXTO_NUEVO_EVENTO);
@@ -241,7 +269,7 @@ export function PantallaAgenda() {
                   <>
                     {rejilla.sinHora.map((ev) => (
                       <View key={ev.id} testID={`agenda-evento-${ev.id}`} style={estiloLista(tema)}>
-                        <FilaEvento hora="—" titulo={ev.titulo} detalle={`${franjaDeEvento(ev) ?? 'Sin hora'} · Google Calendar`} />
+                        <FilaEvento hora="—" titulo={ev.titulo} detalle={conUbicacion(`${franjaDeEvento(ev) ?? 'Sin hora'} · Google Calendar`, ev)} />
                       </View>
                     ))}
                     {rejilla.bloques.length > 0 && (
@@ -282,7 +310,7 @@ export function PantallaAgenda() {
                                 </Text>
                                 {!b.corto && ev != null && (
                                   <Text numberOfLines={1} style={{ color: tema.color.textoTenue, fontSize: 11, marginTop: 2 }}>
-                                    {`${franjaDeEvento(ev) ?? ''} · Google Calendar`}
+                                    {conUbicacion(`${franjaDeEvento(ev) ?? ''} · Google Calendar`, ev)}
                                   </Text>
                                 )}
                               </View>
@@ -314,7 +342,7 @@ export function PantallaAgenda() {
                         <FilaEvento
                           hora={columnaHora(g.id, ev)}
                           titulo={ev.titulo}
-                          detalle={`${ev.diaCompleto ? 'Todo el día' : g.id === 'semana' ? (horaDeEvento(ev.inicioCrudo) ?? '') : ''}${ev.diaCompleto || (g.id === 'semana' && horaDeEvento(ev.inicioCrudo) != null) ? ' · ' : ''}Google Calendar`}
+                          detalle={conUbicacion(`${ev.diaCompleto ? 'Todo el día' : g.id === 'semana' ? (horaDeEvento(ev.inicioCrudo) ?? '') : ''}${ev.diaCompleto || (g.id === 'semana' && horaDeEvento(ev.inicioCrudo) != null) ? ' · ' : ''}Google Calendar`, ev)}
                         />
                       </View>
                     ))}
@@ -323,6 +351,36 @@ export function PantallaAgenda() {
               </View>
             );
           })}
+
+        {/* SM-P20 punto 2: obligaciones del NEGOCIO que vencen (CAE, certificado de ARCA), no eventos de
+            Calendar: va aparte y NO depende de que Calendar esté conectada. Lo vencido sale primero (el
+            backend ya ordena) y se marca; un certificado ilegible se dice, no se esconde. Sin vencimientos
+            o con el endpoint caído la sección no se muestra (ausente ≠ «todo en orden» inventado). */}
+        {vencimientos != null && vencimientos.length > 0 && (
+          <View testID="agenda-vencimientos" style={{ gap: tema.espacio.sm }}>
+            <Text
+              accessibilityRole="header"
+              style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}
+            >
+              Vencen esta semana
+            </Text>
+            <View style={estiloLista(tema)}>
+              {vencimientos.map((v, i) => (
+                <View
+                  key={`${v.tipo}-${v.id}`}
+                  testID={`agenda-vencimiento-${v.tipo}-${v.id}`}
+                  style={i > 0 ? { borderTopWidth: 1, borderTopColor: tema.color.fondo } : undefined}
+                >
+                  <FilaEvento
+                    hora={v.tipo === 'cae' ? 'CAE' : 'ARCA'}
+                    titulo={v.titulo}
+                    detalle={v.fecha != null ? `${plazoVencimiento(v)} · ${v.fecha}` : plazoVencimiento(v)}
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
       </ScrollFormulario>
     </MarcoGlass>
   );

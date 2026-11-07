@@ -8,12 +8,12 @@ jest.mock('expo-router', () => ({
 /** Partial mock: sólo la red. El parseo, el clamp de 14 días y la franja se prueban en core. */
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
-  return { ...actual, leerAgenda: jest.fn(), listarCatalogo: jest.fn() };
+  return { ...actual, leerAgenda: jest.fn(), leerVencimientos: jest.fn(), listarCatalogo: jest.fn() };
 });
 
 import { router } from 'expo-router';
 
-import { KEY_GOOGLE_CALENDAR, TEXTO_NUEVO_EVENTO, leerAgenda, listarCatalogo, type AgendaMiDia } from '@copiloto/core';
+import { KEY_GOOGLE_CALENDAR, TEXTO_NUEVO_EVENTO, leerAgenda, leerVencimientos, listarCatalogo, type AgendaMiDia } from '@copiloto/core';
 
 import { tomarPendiente } from '../chat/mensajePendiente';
 import { ThemeProvider } from '../../theme/ThemeProvider';
@@ -21,6 +21,7 @@ import { PantallaAgenda } from './PantallaAgenda';
 
 const mockLeer = leerAgenda as jest.MockedFunction<typeof leerAgenda>;
 const mockListarCatalogo = listarCatalogo as jest.MockedFunction<typeof listarCatalogo>;
+const mockVenc = leerVencimientos as jest.MockedFunction<typeof leerVencimientos>;
 
 const AGENDA: AgendaMiDia = {
   conectado: true,
@@ -56,6 +57,57 @@ describe('PantallaAgenda (BL-J13)', () => {
     tomarPendiente();
     mockLeer.mockResolvedValue({ status: 'ok', agenda: AGENDA });
     mockListarCatalogo.mockResolvedValue({ status: 'ok', servicios: [] });
+    mockVenc.mockResolvedValue({ status: 'ok', vencimientos: [] });
+  });
+
+  describe('SM-P20: ubicación del evento y «Vencen esta semana»', () => {
+    it('la ubicación se suma al detalle del evento; sin ubicación no se agrega nada', async () => {
+      mockLeer.mockResolvedValue({
+        status: 'ok',
+        agenda: {
+          ...AGENDA,
+          grupos: AGENDA.grupos.map((g) =>
+            g.id === 'manana'
+              ? { ...g, eventos: [{ ...g.eventos[0]!, ubicacion: 'Oficina Centro' }] }
+              : g,
+          ),
+        },
+      });
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('agenda-evento-ev1')).toBeTruthy());
+      expect(screen.getByTestId('agenda-evento-ev1')).toHaveTextContent(/Google Calendar · Oficina Centro/);
+      expect(screen.getByTestId('agenda-evento-ev2')).not.toHaveTextContent(/·\s*$/);
+    });
+
+    it('lista CAE, certificado ilegible y lo ya vencido, cada uno con su plazo', async () => {
+      mockVenc.mockResolvedValue({
+        status: 'ok',
+        vencimientos: [
+          { tipo: 'cae', id: '7', titulo: 'CAE de la factura N° 3', fecha: '2026-11-01', dias: -6, vencido: true },
+          { tipo: 'cae', id: '12', titulo: 'CAE de la factura N° 5', fecha: '2026-11-09', dias: 2, vencido: false },
+          { tipo: 'certificado', id: '20111111112', titulo: 'No se pudo leer el certificado de ARCA', fecha: null, dias: null, vencido: false },
+        ],
+      });
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('agenda-vencimientos')).toBeTruthy());
+      expect(screen.getByTestId('agenda-vencimiento-cae-7')).toHaveTextContent(/Venció hace 6 días/);
+      expect(screen.getByTestId('agenda-vencimiento-cae-12')).toHaveTextContent(/Vence en 2 días · 2026-11-09/);
+      expect(screen.getByTestId('agenda-vencimiento-certificado-20111111112')).toHaveTextContent(/Sin fecha legible/);
+    });
+
+    it('sin vencimientos la sección no aparece', async () => {
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('agenda-grupo-hoy')).toBeTruthy());
+      expect(screen.queryByTestId('agenda-vencimientos')).toBeNull();
+    });
+
+    it('con el endpoint caído la sección no aparece y la Agenda sigue', async () => {
+      mockVenc.mockResolvedValue({ status: 'no_disponible' });
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('agenda-grupo-hoy')).toBeTruthy());
+      expect(mockVenc).toHaveBeenCalled();
+      expect(screen.queryByTestId('agenda-vencimientos')).toBeNull();
+    });
   });
 
   it('pinta los 4 grupos con el título del backend y el estado vacío de cada uno', async () => {

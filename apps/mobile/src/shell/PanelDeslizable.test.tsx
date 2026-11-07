@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import type React from 'react';
 import { useRef } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Keyboard, StyleSheet, Text, TextInput } from 'react-native';
 import * as Reanimated from 'react-native-reanimated';
 
 // Jest (jest-expo) — render de RNTL 14 es ASYNC (await). El COMPORTAMIENTO del gesto (drag/snap/
@@ -17,6 +17,8 @@ import {
   levantarPorTeclado,
   alturaDeTecladoPlausible,
   MARGEN_TIRADOR,
+  RECONCILIAR_TECLADO_MS,
+  reconciliarTeclado,
   opacidadRotuloAbajo,
   PanelDeslizable,
   panelYAlCambiarRecorrido,
@@ -428,5 +430,69 @@ describe('SM-N22 — el asa queda ENCIMA del campo (pieAbajo)', () => {
       </ThemeProvider>,
     );
     expect(screen.queryByTestId('panel-pie-abajo')).toBeNull();
+  });
+});
+
+// 🔴 SM-P12 punto 2 — tras cerrar el teclado con «atrás», el campo quedaba ENFOCADO con el teclado oculto y un
+// tap siguiente no reabría el IME (medido 7/7 en el Samsung). Al terminar de ocultarse el teclado se baja el foco.
+describe('PanelDeslizable — al ocultarse el teclado se baja el foco del campo (SM-P12 punto 2)', () => {
+  function espiarTeclado() {
+    const manejadores: Record<string, (e?: unknown) => void> = {};
+    const alta = jest.spyOn(Keyboard, 'addListener').mockImplementation(((evento: string, fn: (e?: unknown) => void) => {
+      manejadores[evento] = fn;
+      return { remove: jest.fn() };
+    }) as never);
+    const dismiss = jest.spyOn(Keyboard, 'dismiss').mockImplementation(() => undefined);
+    return { manejadores, dismiss, restaurar: () => { alta.mockRestore(); dismiss.mockRestore(); } };
+  }
+
+  it('keyboardDidHide baja el foco del campo; keyboardDidShow no lo toca (control positivo)', async () => {
+    const t = espiarTeclado();
+    try {
+      await envolver();
+      expect(t.manejadores.keyboardDidHide).toBeDefined();
+      expect(t.manejadores.keyboardDidShow).toBeDefined();
+      t.manejadores.keyboardDidShow?.({ endCoordinates: { screenY: 494 } } as never);
+      expect(t.dismiss).not.toHaveBeenCalled();
+      t.manejadores.keyboardDidHide?.();
+      expect(t.dismiss).toHaveBeenCalledTimes(1);
+    } finally {
+      t.restaurar();
+    }
+  });
+});
+// 🔴 SM-P12 punto 2, DoD 4/5 — el panel vuelve aunque el keyboardDidHide NO llegue.
+describe('reconciliarTeclado — un teclado sin campo enfocado no levanta el panel (SM-P12 DoD 4)', () => {
+  it('hide perdido + campo sin foco: el alto vuelve a 0', () => {
+    expect(reconciliarTeclado(358, false)).toBe(0);
+  });
+
+  it('control positivo: con el campo enfocado el alto del teclado se conserva', () => {
+    expect(reconciliarTeclado(358, true)).toBe(358);
+    expect(reconciliarTeclado(0, true)).toBe(0);
+  });
+});
+
+describe('PanelDeslizable — el reconciliador corre sólo con el panel levantado (SM-P12 DoD 4)', () => {
+  it('tras un show sin hide, el reconciliador consulta el foco; antes del show no consulta nada', async () => {
+    jest.useFakeTimers();
+    const manejadores: Record<string, (e?: unknown) => void> = {};
+    const alta = jest.spyOn(Keyboard, 'addListener').mockImplementation(((evento: string, fn: () => void) => {
+      manejadores[evento] = fn;
+      return { remove: jest.fn() };
+    }) as never);
+    const foco = jest.spyOn(TextInput.State, 'currentlyFocusedInput').mockReturnValue(null as never);
+    try {
+      await envolver();
+      jest.advanceTimersByTime(RECONCILIAR_TECLADO_MS * 3);
+      expect(foco).not.toHaveBeenCalled();
+      manejadores.keyboardDidShow?.({ endCoordinates: { screenY: 1000 } });
+      jest.advanceTimersByTime(RECONCILIAR_TECLADO_MS + 10);
+      expect(foco).toHaveBeenCalled();
+    } finally {
+      foco.mockRestore();
+      alta.mockRestore();
+      jest.useRealTimers();
+    }
   });
 });

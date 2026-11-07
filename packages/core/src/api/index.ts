@@ -378,10 +378,19 @@ export {
   TEXTO_NUEVO_EVENTO,
   franjaDeEvento,
   leerAgenda,
+  leerVencimientos,
   posicionLineaAhora,
   rangoAgenda,
 } from './agenda';
-export type { AgendaMiDia, EventoAgenda, GrupoAgenda, IdGrupoAgenda, RangoAgenda } from './agenda';
+export type {
+  AgendaMiDia,
+  EventoAgenda,
+  GrupoAgenda,
+  IdGrupoAgenda,
+  RangoAgenda,
+  TipoVencimiento,
+  Vencimiento,
+} from './agenda';
 /**
  * `/inteligencia/portada` — el resumen del negocio (caja, mes, serie, mejores clientes, por cobrar).
  * **[CONNECT]** — construido contra el contrato §3.1, el endpoint todavía NO está publicado; degrada a
