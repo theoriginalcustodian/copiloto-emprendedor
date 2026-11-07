@@ -1,5 +1,6 @@
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
+import { EsperaOdobi } from '../splash/EsperaOdobi';
 import { useTema } from '../../theme/ThemeProvider';
 
 export interface AvisoDictadoProps {
@@ -24,7 +25,7 @@ export function AvisoDictado({ ocupado, aviso, testID }: AvisoDictadoProps) {
   if (ocupado) {
     return (
       <View testID={`${testID}-ocupado`} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <ActivityIndicator color={tema.color.acento} />
+        <EsperaOdobi size={40} testID={`${testID}-logo`} />
         <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Entendiendo lo que dijiste…</Text>
       </View>
     );
