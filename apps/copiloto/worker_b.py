@@ -33,7 +33,8 @@ from backend.agent.conversation_workflow import ConversationWorkflow
 from clients.agent.channels.web import WebChannelAdapter
 from clients.agent.providers.composio_gateway import ComposioGateway
 from clients.agent.providers.crypto import FernetCrypto
-from clients.agent.providers.llm import LlmProvider
+from backend.agent.observabilidad import log_evento
+from clients.agent.providers.llm import LlmProvider, RouterPrimerPaso
 from clients.agent.providers.mercadopago_gateway import MercadoPagoGateway
 from clients.agent.providers.mp_refresh_activities import refresh_credential, set_refresh_deps
 from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
@@ -122,12 +123,27 @@ def _grafo_client_factory():
     return lambda: client
 
 
-def build_llm() -> LlmProvider:
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+
+def build_llm(env=os.environ):
     # `COPILOTO_LLM_MODEL` cambia el modelo del ReAct sin deploy (p. ej. `gpt-6-luna`); sin setear, el de siempre.
-    modelo = os.environ.get("COPILOTO_LLM_MODEL") or "gpt-4o-mini"
-    return LlmProvider(primary_model=modelo, failover_model=modelo,
-                       api_key_env=OPENAI_API_KEY_ENV, url="https://api.openai.com/v1/chat/completions",
-                       quantizations=())
+    modelo = env.get("COPILOTO_LLM_MODEL") or "gpt-4o-mini"
+    principal = LlmProvider(primary_model=modelo, failover_model=modelo,
+                            api_key_env=OPENAI_API_KEY_ENV, url="https://api.openai.com/v1/chat/completions",
+                            quantizations=())
+    # `COPILOTO_LLM_ROUTER_MODEL` (p. ej. `openai/gpt-oss-120b`): el PRIMER paso del turno (elegir la tool)
+    # va a ese modelo en Groq; si falla, al principal. Vacío/ausente = sin router (rollback sin código).
+    router = (env.get("COPILOTO_LLM_ROUTER_MODEL") or "").strip()
+    if not router:
+        return principal
+    rapido = LlmProvider(primary_model=router, failover_model=router,
+                         api_key_env=env.get("COPILOTO_LLM_ROUTER_KEY_ENV") or "GROQ_API_KEY",
+                         url=env.get("COPILOTO_LLM_ROUTER_URL") or GROQ_URL, quantizations=(),
+                         # Corto a propósito: si Groq cuelga, el usuario espera esto + el principal.
+                         timeout=float(env.get("COPILOTO_LLM_ROUTER_TIMEOUT_S") or 8))
+    return RouterPrimerPaso(rapido, principal, on_fallback=lambda m, motivo: log_evento(
+        "LLM_ROUTER_FALLBACK", {"modelo": m, "motivo": motivo}))
 
 
 def _perfil_provider(conn_factory: Callable) -> Callable:

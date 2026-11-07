@@ -199,8 +199,10 @@ CONSULTAR_NEGOCIO_SCHEMA = {"type": "function", "function": {
                    "facturó, le deben, mejores clientes, gastos por categoría) y se los muestra en una "
                    "tarjeta. Es de SOLO LECTURA (no requiere confirmación). Elegí `consulta` según la "
                    "pregunta: " + _cuando_usar_negocio() + ". NO inventes ni calcules números: decí los "
-                   "que muestra la tarjeta. No sirve para preguntas de causa ni de atribución "
-                   "(«cuántos volvieron a comprar»): eso no se puede saber con estos datos.",
+                   "que muestra la tarjeta. No explica CAUSAS ni atribución («cuántos volvieron a "
+                   "comprar»), pero ante una pregunta de causa («¿por qué bajaron las ventas?») igual "
+                   "usala para mostrar los números del período, y aclará que la causa no se puede saber "
+                   "con estos datos. Nunca contestes una pregunta sobre el negocio sin consultar.",
     "parameters": {"type": "object", "properties": {
         "consulta": {"type": "string", "enum": list(CONSULTAS_NEGOCIO),
                      "description": "cuál de los números del negocio mostrar"},
@@ -222,9 +224,13 @@ CONSULTAR_HISTORIAL_SCHEMA = {"type": "function", "function": {
                    "del flete?'). Es de SOLO LECTURA. Reglas: respondé SOLO con los hechos que "
                    "devuelve, citando su fecha; los resultados son una muestra de los más parecidos "
                    "a la pregunta, así que NUNCA los sumes ni los cuentes para dar un total — para "
-                   "totales y números usá `consultar_negocio` o `consultar_cliente`. Si no devuelve "
+                   "totales y números usá `consultar_negocio` o `consultar_cliente` (CUÁNTOS "
+                   "presupuestos, facturas o cobros tiene un cliente, o qué cobros le registró → "
+                   "`consultar_cliente`). Si no devuelve "
                    "nada pertinente, decí que no lo tenés registrado; no lo deduzcas ni lo inventes. "
-                   "No sirve para preguntas de causa ('¿por qué bajaron las ventas?').",
+                   "Para preguntas de CAUSA ('¿por qué bajaron las ventas?') NUNCA contestes sin "
+                   "consultar: usá `consultar_negocio` para mostrar los números del período y aclará "
+                   "que la causa no se puede saber con estos datos.",
     "parameters": {"type": "object", "properties": {
         "pregunta": {"type": "string", "description": "lo que quiere saber, con los nombres tal como "
                                                       "los dijo ('presupuesto de Pérez')"},

@@ -147,11 +147,13 @@ _CONSULTAS: dict[str, tuple[Callable[[object, dict], dict], str]] = {
     "facturacion_por_mes": (_facturacion_por_mes,
                             "cuánto facturó mes a mes, cómo viene la facturación"),
     "entro_vs_salio": (_entro_vs_salio,
-                       "cuánto ENTRÓ o cuánto SALIÓ/GASTÓ en total en cualquiera de los últimos 6 "
+                       "cuánto ENTRÓ o cuánto SALIÓ/GASTÓ en total —un solo número, ej. «¿cuánto "
+                       "gasté en octubre?»— en cualquiera de los últimos 6 "
                        "meses (incluidos los pasados), si entró más de lo que salió, cómo viene la plata"),
     "torta_categorias": (_torta_categorias,
-                         "en QUÉ categorías gastó y cuál pesa más, con el total del mes (acepta `mes` "
-                         "YYYY-MM; sin mes, el actual)"),
+                         "SÓLO si pide el DESGLOSE: en QUÉ categorías gastó y cuál pesa más (para "
+                         "«¿cuánto gasté?» usá `entro_vs_salio`; NO dice A QUIÉN se le pagó: si pregunta "
+                         "a quién, usá `consultar_historial`). Acepta `mes` YYYY-MM; sin mes, el actual"),
 }
 
 CONSULTAS = tuple(_CONSULTAS)

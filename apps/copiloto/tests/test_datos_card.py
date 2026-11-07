@@ -118,6 +118,26 @@ def test_la_guia_de_ruteo_manda_los_meses_pasados_a_entro_vs_salio_no_a_portada(
     assert "PASADO" in guia and "entro_vs_salio" in guia.split("`portada`")[1].split("`por_cobrar`")[0]
 
 
+def test_la_guia_manda_cuanto_gaste_a_entro_vs_salio_y_el_a_quien_al_historial():
+    """Comparativa de router 2026-11-06 (88 corridas): «¿cuánto gasté en octubre?» iba a la torta y «¿a
+    quién le pagué?» también — la torta no dice a quién. Las dos derivaciones viven en la guía."""
+    guia = datos_card.cuando_usar()
+    torta = guia.split("`torta_categorias`: ")[1]
+    assert "DESGLOSE" in torta and "entro_vs_salio" in torta and "consultar_historial" in torta
+    assert "cuánto gasté en octubre" in guia.split("`entro_vs_salio`: ")[1].split("`torta_categorias`: ")[0]
+
+
+def test_las_tools_de_lectura_prohiben_contestar_una_causa_sin_consultar():
+    """gpt-oss obedecía «no sirve para preguntas de causa» y contestaba «¿por qué bajaron las ventas?» SIN
+    datos: el riesgo de alucinación que el eval de fidelidad existe para impedir."""
+    from tool_catalog import CONSULTAR_HISTORIAL_SCHEMA, CONSULTAR_NEGOCIO_SCHEMA
+    hist = CONSULTAR_HISTORIAL_SCHEMA["function"]["description"]
+    neg = CONSULTAR_NEGOCIO_SCHEMA["function"]["description"]
+    assert "NUNCA contestes sin consultar" in hist and "No sirve para preguntas de causa" not in hist
+    assert "Nunca contestes una pregunta sobre el negocio sin consultar" in neg
+    assert "CUÁNTOS" in hist and "`consultar_cliente`" in hist
+
+
 @pytest.mark.parametrize("mes_pedido, esperado", [("2026-09", "2026-09"), ("septiembre", None),
                                                    ("2026-13", None), ("2026-9", None), (None, None),
                                                    (202609, None)])
