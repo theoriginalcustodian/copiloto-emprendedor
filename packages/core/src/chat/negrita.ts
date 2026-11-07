@@ -19,7 +19,7 @@ export function segmentarNegrita(texto: string): SegmentoTexto[] {
   for (const m of texto.matchAll(PAR_NEGRITA)) {
     const ini = m.index ?? 0;
     if (ini > desde) segmentos.push({ texto: texto.slice(desde, ini), negrita: false });
-    segmentos.push({ texto: m[1], negrita: true });
+    segmentos.push({ texto: m[1] ?? '', negrita: true });
     desde = ini + m[0].length;
   }
   if (desde < texto.length) segmentos.push({ texto: texto.slice(desde), negrita: false });
