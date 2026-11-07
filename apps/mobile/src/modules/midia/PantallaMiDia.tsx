@@ -146,7 +146,7 @@ export function PantallaMiDia({
 }: PantallaMiDiaProps = {}) {
   const hora = useHoraActual();
   const tema = useTema();
-  const { estado, tablero, cargar, borrar } = useTableroMiDia();
+  const { estado, tablero, cargar } = useTableroMiDia();
   // `undefined`: no tocó nada, va abierta la primera. `null`: cerró la que estaba abierta.
   const [expandida, setExpandida] = useState<string | null | undefined>(undefined);
   const [estadoCalendario, setEstadoCalendario] = useState<EstadoLista>('cargando');
@@ -340,7 +340,6 @@ export function PantallaMiDia({
                 onPress={() => setExpandida(abierta === t.id ? null : t.id)}
                 onAccion={onDestino}
                 onAviso={onAvisoAlChat}
-                onBorrar={() => void borrar(t.id)}
               />
             ))}
           </View>

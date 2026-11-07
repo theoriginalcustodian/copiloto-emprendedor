@@ -221,7 +221,7 @@ export function TarjetaMiDiaRow({
                 </Text>
               </Pressable>
             )}
-            {expandida && accion == null && tarjeta.verbo != null && aviso == null && (tarjeta.regla != null || onBorrar == null) && (
+            {expandida && accion == null && tarjeta.verbo != null && aviso == null && tarjeta.regla != null && (
               <Text
                 testID={`midia-tarjeta-${tarjeta.id}-verbo`}
                 style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}
