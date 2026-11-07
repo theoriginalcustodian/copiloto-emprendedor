@@ -90,16 +90,18 @@ async function dictar(espiaPan: ReturnType<typeof jest.spyOn>) {
   const recognizer = espiaPan.mock.results[espiaPan.mock.results.length - 1]?.value as {
     handlers: { onBegin?: (e: unknown) => void; onFinalize?: (e: unknown, exito: boolean) => void };
   };
-  let ahora = 1_000_000;
-  const relojEspia = jest.spyOn(Date, 'now').mockImplementation(() => ahora);
+  // `BotonVoz` arranca la grabación al cumplirse DURACION_MINIMA_MS de mantener (temporizador).
+  jest.useFakeTimers();
   await act(async () => {
     recognizer.handlers.onBegin?.({});
   });
-  ahora += 1100; // supera DURACION_MINIMA_MS (1000 ms) de BotonVoz
+  await act(async () => {
+    jest.advanceTimersByTime(1100);
+  });
+  jest.useRealTimers();
   await act(async () => {
     recognizer.handlers.onFinalize?.({}, true);
   });
-  relojEspia.mockRestore();
 }
 
 function gasto(over: Partial<Gasto> = {}): Gasto {
@@ -559,16 +561,27 @@ describe('PantallaGastos — dictado por chat (contrato 2026-10-13)', () => {
 
   it('mientras espera la card se ve «Entendiendo…» y el mic queda bloqueado', async () => {
     let resolver: (v: unknown) => void = () => {};
-    mockDictar.mockReturnValue(
-      new Promise((r) => {
-        resolver = r;
-      }),
+    // `ocupado` pasa a true recién al pedir la card (como el hook real): con el mic ya bloqueado
+    // desde el primer render, `BotonVoz` no arranca la grabación y no hay dictado que esperar.
+    const estado = { ocupado: false };
+    mockDictar.mockImplementation(
+      () =>
+        new Promise((r) => {
+          estado.ocupado = true;
+          resolver = r;
+        }),
     );
-    hook({ ocupado: true });
+    mockUseDictado.mockImplementation(() => ({ ocupado: estado.ocupado, aviso: null, dictar: mockDictar }));
 
-    await montar();
+    const vista = await montar();
     await waitFor(() => expect(screen.getByTestId('gastos-nuevo')).toBeTruthy());
     await dictar(espiaPan);
+    // El hook real re-renderiza al pasar a `ocupado`; el mock estático necesita el empujón.
+    vista.rerender(
+      <ThemeProvider>
+        <PantallaGastos />
+      </ThemeProvider>,
+    );
 
     await waitFor(() => expect(screen.getByTestId('gastos-dictado-ocupado')).toBeTruthy());
     // Sigue en el listado: el formulario sólo abre cuando hay resultado.
