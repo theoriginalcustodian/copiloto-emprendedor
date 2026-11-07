@@ -592,6 +592,19 @@ campo»*.
   acreditar los puntos 2 y 3 hace falta **fabricar** el caso «presupuesto sin respuesta» — si no, se
   va a medir un vacío y a leerlo como defecto
   (`memoria/dato-degenerado-imita-ausencia-del-mecanismo.md`).
+- **🆕 CUARTO frente, medido por frontend1 el 2026-11-06 23:11 y que esta ficha NO tenía — es de
+  BACKEND:** «Vencen esta semana» del prototipo **no son eventos de Calendar**: son vencimientos de
+  Odobi (CAE, certificado). `leerAgenda` no los trae, así que hoy la app rellena ese bloque con el
+  grupo `semana` de Google Calendar — **dos cosas distintas bajo el mismo título**, que es el modo de
+  falla que `CONTEXT.md` nombra. Pide dato de backend, no maquetado. Lo mismo el **lugar del
+  evento**: el subtítulo «lugar · Google Calendar» del prototipo no se puede armar porque
+  `leerAgenda` no devuelve ubicación. **Ninguno de los dos lo puede resolver frontend1 sola.**
+- **Lo medido en device y lo que NO** (frontend1, RF8T318RN9T, `e2e-device@copiloto.test`): la flecha
+  de las tarjetas y la Agenda (rejilla 76 px/h, línea del ahora, encabezado, píldora) sí, a las 23:10
+  y 23:11, **con eventos de PRUEBA inyectados por un fixture temporal revertido** — el calendario del
+  usuario canónico está vacío, así que sin fixture sólo se ve «Nada por acá»
+  (`memoria/dato-degenerado-imita-ausencia-del-mecanismo.md`). **Queda sin medir con un evento REAL**
+  (fabricarlo pide HITL de `calendar_book`) y **la piel clara de Agenda**.
 - **DoD (binario):**
   1. Backend ordena en `mi_dia_web.py` con el criterio de arriba, con test de unidad que fije el
      orden **y** el caso sin fecha al final; la app no reordena (verificado por grep, no por
