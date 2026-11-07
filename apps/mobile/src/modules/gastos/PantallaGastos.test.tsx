@@ -95,7 +95,7 @@ async function dictar(espiaPan: ReturnType<typeof jest.spyOn>) {
   await act(async () => {
     recognizer.handlers.onBegin?.({});
   });
-  ahora += 400; // supera DURACION_MINIMA_MS (350ms) de BotonVoz
+  ahora += 1100; // supera DURACION_MINIMA_MS (1000 ms) de BotonVoz
   await act(async () => {
     recognizer.handlers.onFinalize?.({}, true);
   });

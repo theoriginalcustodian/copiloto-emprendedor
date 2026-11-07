@@ -184,10 +184,10 @@ describe('PanelDeslizable — senalBajar', () => {
   });
 });
 
-// 🔴 El suite `PanelDeslizable — traba por captura viva` de DocuMed (props `bloqueado`/
-// `hintBloqueado`) se retiró junto con esos props — ver el docstring de `PanelDeslizable.tsx` (decisión
-// D6). No queda nada que ejercitar acá: el copiloto no tiene una grabación viva que se pueda "dejar
-// corriendo sin darse cuenta" al deslizar el panel.
+// 🔴 El bloqueo del panel por captura viva (orden 2026-11-06, revierte D6) vive en un shared value que leen los
+// callbacks del gesto; el mock de Gesture Handler no ejecuta esos callbacks, así que el contrato del registro que
+// lo alimenta se ejercita en `navegacion/capturaEnCurso.test.ts` y el de la navegación en `empujarUnaVez.test.ts`.
+// El comportamiento del panel se verifica en device (gesto real).
 
 /**
  * SM-I4 (D1): con el escritorio abierto la tira del chat sale por abajo y queda una sola solapa. La cuenta es

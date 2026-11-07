@@ -37,6 +37,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { useHayCapturaEnCurso } from '../navegacion/capturaEnCurso';
 import { useTema } from '../theme/ThemeProvider';
 import { CristalVidrio } from '../theme/glass/CristalVidrio';
 import { espacioSuperior } from './PanelDeslizable';
@@ -117,6 +118,13 @@ export function PanelFunciones({
   const y = useSharedValue(0);
   const inicio = useSharedValue(0);
   const alto = useSharedValue(0);
+  // Espejo en el hilo de UI de «hay un audio sin resolver» (ver `navegacion/capturaEnCurso`): los gestos lo leen sin
+  // reconstruirse. Mismo criterio que `PanelDeslizable`.
+  const capturaViva = useSharedValue(false);
+  const hayCaptura = useHayCapturaEnCurso();
+  useEffect(() => {
+    capturaViva.value = hayCaptura;
+  }, [hayCaptura, capturaViva]);
   const [abierto, setAbierto] = useState(false);
 
   // Por `ref`, como en `PanelDeslizable`: `marcar` entra en las dependencias del gesto y tiene que ser estable.
@@ -180,7 +188,7 @@ export function PanelFunciones({
       .withTestId(`${testID}-toque`)
       .maxDuration(500)
       .onEnd((_e, success) => {
-        if (success) alternar();
+        if (success && !capturaViva.value) alternar();
       });
 
     const arrastre = Gesture.Pan()
@@ -188,9 +196,11 @@ export function PanelFunciones({
         inicio.value = y.value;
       })
       .onUpdate((e) => {
+        if (capturaViva.value) return; // orden 2026-11-06: con un audio sin resolver el escritorio no se mueve
         y.value = Math.min(Math.max(inicio.value + e.translationY, -alto.value), 0);
       })
       .onEnd((e) => {
+        if (capturaViva.value) return;
         // Un toque de verdad es quieto en las DOS cosas: poco desplazamiento y poca velocidad. Un
         // flick corto llega acá con `translationY` casi en cero y no es un toque.
         if (Math.abs(e.translationY) < UMBRAL_TAP && Math.abs(e.velocityY) < VELOCIDAD_FLICK) {
@@ -213,7 +223,7 @@ export function PanelFunciones({
       });
 
     return Gesture.Race(arrastre, toque);
-  }, [y, inicio, alto, marcar, testID]);
+  }, [y, inicio, alto, marcar, testID, capturaViva]);
 
   /**
    * El recorrido es el alto REAL de la capa menos lo que queda asomando (la pestaña, con su aire de arriba).

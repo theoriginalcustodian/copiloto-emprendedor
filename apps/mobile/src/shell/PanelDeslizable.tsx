@@ -21,6 +21,7 @@
  */
 import type { PropsWithChildren, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useHayCapturaEnCurso } from '../navegacion/capturaEnCurso';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Dimensions, Keyboard, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -331,13 +332,13 @@ export function alturaDeTecladoPlausible(alturaVentana: number, screenY: number)
 }
 
 /**
- * 🔴 **Sin `bloqueado`/`hintBloqueado` a propósito (decisión D6, sprint mobile-first).** En DocuMed
- * este panel trababa el gesto entero mientras había una grabación clínica viva, para que el médico no
- * pudiera minimizar el HUD y olvidarse el micrófono abierto. Acá esa amenaza no existe: el dictado del
- * copiloto es un mensaje corto (no una consulta larga con captura en curso), así que no hay una
- * grabación que se pueda "dejar corriendo sin darse cuenta" al deslizar. Portar el guard sin la
- * amenaza que lo justifica sería ruido para el próximo lector — si el copiloto suma captura de audio
- * de larga duración en el futuro, este es el punto a revisar primero.
+ * 🔴 **Bloqueo durante la grabación (orden del operador, 2026-11-06; REVIERTE la decisión D6).** D6 había
+ * omitido el guard de DocuMed argumentando que el dictado es un mensaje corto y no se puede «dejar corriendo».
+ * Medido en device: sí se puede — se grababa en Mi día, se deslizaba al chat y el audio seguía corriendo sin
+ * pantalla que lo mostrara. Ahora, mientras haya un audio sin resolver (grabando / pausado / listo, ver
+ * `navegacion/capturaEnCurso`), el panel NO se mueve (ni arrastre ni toque en el asa) hasta que el usuario
+ * lo envíe o lo cancele. El guard va en los callbacks de los gestos vía un shared value, no con `enabled`,
+ * para no reconstruir los gestos.
  */
 export function PanelDeslizable({
   fondo,
@@ -359,6 +360,13 @@ export function PanelDeslizable({
   // 0 = abierto (conversación tapa todo) · RECORRIDO_MAX = abajo (revela el escritorio).
   const panelY = useSharedValue(0);
   const inicio = useSharedValue(0);
+  // Espejo en el hilo de UI de «hay un audio sin resolver»: los gestos lo leen sin reconstruirse (el `useMemo`
+  // de abajo se arma UNA vez) y sin cruzar al hilo de JS en cada movimiento.
+  const capturaViva = useSharedValue(false);
+  const hayCaptura = useHayCapturaEnCurso();
+  useEffect(() => {
+    capturaViva.value = hayCaptura;
+  }, [hayCaptura, capturaViva]);
   // SM-P16: `enTope` lo escribe la lista del cuerpo (vía contexto); `cuerpoY0` es dónde apoyó el dedo.
   const enTope = useSharedValue(true);
   const cuerpoY0 = useSharedValue(0);
@@ -509,10 +517,12 @@ export function PanelDeslizable({
         inicio.value = panelY.value;
       })
       .onUpdate((e) => {
+        if (capturaViva.value) return; // orden 2026-11-06: con un audio sin resolver el panel no se mueve
         // `none` mientras arrastra: seguimos el dedo 1:1, con clamp a [0, MAX].
         panelY.value = Math.min(Math.max(inicio.value + e.translationY, 0), recorrido.value);
       })
       .onEnd((e) => {
+        if (capturaViva.value) return; // ni el toque (alternar) ni el flick: el panel queda donde está
         // 🔴 **Un lanzamiento rápido NO es un toque, por poco que se haya desplazado.** El chequeo
         // miraba sólo `translationY`, y un flick corto y veloz llega acá con el desplazamiento casi
         // en cero: el dedo se levanta antes de que el gesto acumule recorrido. Un toque de verdad es
@@ -576,6 +586,10 @@ export function PanelDeslizable({
           // regla devolvería `fallar` en el movimiento siguiente: mataría el arrastre a mitad de camino (medido
           // en device: `activar` con panelY=0 y, un movimiento después, `fallar` con panelY=320).
           if (cuerpoActivo.value) return;
+          if (capturaViva.value) {
+            estado.fail(); // con un audio sin resolver el cuerpo no arrastra el panel; el scroll de la lista sigue
+            return;
+          }
           const dy = (e.allTouches[0]?.absoluteY ?? cuerpoY0.value) - cuerpoY0.value;
           const decision = decidirArrastreCuerpo(dy, enTope.value, panelY.value);
           if (decision === 'activar') {
@@ -584,7 +598,7 @@ export function PanelDeslizable({
           } else if (decision === 'fallar') estado.fail();
         }),
     };
-  }, [panelY, inicio, recorrido, setPanelAbajoConAviso, avisarBajada, insetTop, cuerpoY0, cuerpoActivo, enTope, refGestoCuerpo]);
+  }, [panelY, inicio, recorrido, setPanelAbajoConAviso, avisarBajada, insetTop, cuerpoY0, cuerpoActivo, enTope, refGestoCuerpo, capturaViva]);
   const { gestoAsa, gestoPie, gestoCuerpo } = gestos;
 
   // SM-P5: el techo del recorrido cambia cuando entra/sale el teclado; `panelY` lo sigue si estaba abajo. En el hilo

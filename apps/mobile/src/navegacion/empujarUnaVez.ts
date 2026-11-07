@@ -1,5 +1,7 @@
 import { router } from 'expo-router';
 
+import { hayCapturaEnCurso } from './capturaEnCurso';
+
 /**
  * `empujarUnaVez` — desde una pantalla lanzadora se abre UN glass, y no otro hasta volver a ella.
  *
@@ -81,6 +83,9 @@ export interface DestinoConParams {
  * puerta cerrada, sólo pasa si `desde` es el destino que la cerró.
  */
 export function empujarUnaVez(destino: string | DestinoConParams, desde?: string): void {
+  // Orden del operador (2026-11-06): con un audio sin resolver (grabando / pausado / listo) no se abre ninguna otra
+  // función hasta que el usuario lo cancele o lo envíe. No cierra la puerta: al resolverse, el toque siguiente pasa.
+  if (hayCapturaEnCurso()) return;
   if (!puertaAbierta && (desde === undefined || sinQuery(desde) !== cerradaPor)) return;
   puertaAbierta = false;
   cerradaPor = sinQuery(typeof destino === 'string' ? destino : destino.pathname);
