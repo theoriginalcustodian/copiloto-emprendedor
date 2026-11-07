@@ -15,6 +15,7 @@ import {
   espacioSuperior,
   holguraArrastreArriba,
   levantarPorTeclado,
+  alturaDeTecladoPlausible,
   MARGEN_TIRADOR,
   opacidadRotuloAbajo,
   PanelDeslizable,
@@ -280,6 +281,32 @@ describe('levantarPorTeclado — el panel abajo sube lo que tapa el teclado', ()
 
   it('sin recorrido medido no inventa nada', () => {
     expect(levantarPorTeclado(0, 0, 358)).toBe(0);
+  });
+
+  it('🔴 SM-P12 p.2: un teclado absurdo nunca levanta más que el recorrido (el campo no sale por arriba)', () => {
+    expect(levantarPorTeclado(recorrido, recorrido, 5000)).toBe(recorrido);
+  });
+});
+
+/** SM-P12 punto 2 (foto del operador): el campo quedó pegado arriba; ver `alturaDeTecladoPlausible`. */
+describe('alturaDeTecladoPlausible — un teclado que ningún teclado tiene se ignora', () => {
+  it('el caso medido (ventana 853, screenY 495) da 358', () => {
+    expect(alturaDeTecladoPlausible(853, 495)).toBe(358);
+  });
+
+  it('🔴 screenY ≈ 0 (alto = toda la ventana) NO es un teclado: 0', () => {
+    expect(alturaDeTecladoPlausible(853, 0)).toBe(0);
+    expect(alturaDeTecladoPlausible(853, 128)).toBe(0);
+  });
+
+  it('screenY en el borde o fuera de la ventana: 0', () => {
+    expect(alturaDeTecladoPlausible(853, 853)).toBe(0);
+    expect(alturaDeTecladoPlausible(853, 900)).toBe(0);
+  });
+
+  it('entradas no finitas o ventana sin medir: 0', () => {
+    expect(alturaDeTecladoPlausible(853, Number.NaN)).toBe(0);
+    expect(alturaDeTecladoPlausible(0, 400)).toBe(0);
   });
 });
 

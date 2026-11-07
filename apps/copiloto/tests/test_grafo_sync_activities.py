@@ -26,9 +26,16 @@ class _FakeCur:
         s = sql.strip().upper()
         if s.startswith("SELECT SET_CONFIG"):
             return
-        if s.startswith("SELECT ID, ENTIDAD_TIPO"):
+        if s.startswith("SELECT ID, ENTIDAD_TIPO") and "AND ID=%S" in s:
+            cid, orden = params   # `_leer_evento`: la transición vigente de una corrida anterior
+            self._row = next((r for r in self._db["eventos"] if r[0] == orden), None)
+        elif s.startswith("SELECT ID, ENTIDAD_TIPO"):
             cid, desde = params
             self._rows = [r for r in self._db["eventos"] if r[0] > desde]
+        elif s.startswith("SELECT ULTIMO_ORDEN"):
+            cid, tipo, eid, campo = params
+            fila = self._db["vigencias"].get((cid, tipo, eid, campo))
+            self._row = (fila[0],) if fila else None
         elif s.startswith("SELECT ULTIMO_EVENTO_ID"):
             self._row = self._db["cursores"].get(params[0])
         elif s.startswith("INSERT") and "COPILOTO_GRAFO_CURSOR" in s:
@@ -164,6 +171,59 @@ def test_segunda_transicion_en_otra_corrida_invalida_la_vigente_de_la_corrida_an
     assert r2["sincronizados"] == 1                 # sólo el tramo NUEVO, no re-lee el evento 1
     assert patches2 == [edge_uuid_primera]           # invalida la de la corrida anterior, ninguna otra
     assert db["vigencias"][(CID, "presupuesto", "225", "estado")][0] == 2   # la 2ª es la nueva vigente
+
+
+def _evento_imputacion(id_, gasto_id, eslabon, ref, ocurrido_en):
+    valor = {"eslabon": eslabon, "ref": ref} if ref else None
+    return (id_, "gasto", gasto_id, "imputado", "imputacion", valor, {}, ocurrido_en)
+
+
+def _al_trabajo_posteados(posts):
+    from grafo_mapeo import AL_TRABAJO, IMPUTACION
+    from graph_identity import edge_uuid, node_uuid
+    g, salida = f"negocio-{CID}", []
+    for body in posts:
+        e = body["mapping"]["source_entity"]["edges"][0]
+        if e["edge_type"] != AL_TRABAJO:
+            continue
+        for r in body["rows"]:
+            salida.append(edge_uuid(g, node_uuid(g, IMPUTACION, r["imputacion_key"]), AL_TRABAJO,
+                                    node_uuid(g, e["target_entity_type"], r["ref_key"])))
+    return salida
+
+
+def test_reimputar_en_otra_corrida_invalida_tambien_el_al_trabajo_viejo():
+    """Regresión del defecto medido en prod (2026-11-06): tras re-imputar un gasto, el AL_TRABAJO de
+    la imputación vieja seguía vigente y el grafo contestaba que el gasto estaba en DOS trabajos."""
+    db = _db_con_eventos(_evento_imputacion(1, "246", "comprobante", "421",
+                                            datetime.datetime(2026, 11, 1, tzinfo=Z)))
+    posts1, patches1 = [], []
+    sincronizar_tenant(lambda: _FakeConn(db), CID, negocio_nombre="Mi Negocio",
+                       client=_cliente_mock(_handler_ok(posts1, patches1)))
+    imputado_viejo = db["vigencias"][(CID, "gasto", "246", "imputacion")][1]
+
+    db["eventos"].append(_evento_imputacion(2, "246", "comprobante", "422",
+                                            datetime.datetime(2026, 11, 2, tzinfo=Z)))
+    posts2, patches2 = [], []
+    sincronizar_tenant(lambda: _FakeConn(db), CID, negocio_nombre="Mi Negocio",
+                       client=_cliente_mock(_handler_ok(posts2, patches2)))
+    assert imputado_viejo in patches2
+    assert len(patches2) == 2                         # IMPUTADO_A + AL_TRABAJO viejos, nada más
+    al_trabajo_nuevo = set(_al_trabajo_posteados(posts2))
+    assert al_trabajo_nuevo and not al_trabajo_nuevo & set(patches2)
+
+
+def test_desimputar_invalida_las_dos_aristas_de_la_imputacion_vigente():
+    db = _db_con_eventos(_evento_imputacion(1, "246", "presupuesto", "P-1",
+                                            datetime.datetime(2026, 11, 1, tzinfo=Z)))
+    sincronizar_tenant(lambda: _FakeConn(db), CID, negocio_nombre="Mi Negocio",
+                       client=_cliente_mock(_handler_ok([], [])))
+    db["eventos"].append(_evento_imputacion(2, "246", None, None,
+                                            datetime.datetime(2026, 11, 2, tzinfo=Z)))
+    patches2 = []
+    sincronizar_tenant(lambda: _FakeConn(db), CID, negocio_nombre="Mi Negocio",
+                       client=_cliente_mock(_handler_ok([], patches2)))
+    assert len(patches2) == 2
 
 
 def test_dos_transiciones_en_la_misma_corrida_encadenan_sin_tocar_la_db_previa():

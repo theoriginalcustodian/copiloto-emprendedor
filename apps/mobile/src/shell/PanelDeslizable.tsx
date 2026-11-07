@@ -308,7 +308,26 @@ export function opacidadRotuloAbajo(panelY: number, recorrido: number): number {
 export function levantarPorTeclado(panelY: number, recorrido: number, teclado: number): number {
   'worklet';
   if (recorrido <= 0 || teclado <= 0) return 0;
-  return teclado * opacidadRotuloAbajo(panelY, recorrido);
+  // SM-P12 punto 2: nunca levantar más que el recorrido — con más, el campo salía por arriba de la pantalla.
+  return Math.min(teclado, recorrido) * opacidadRotuloAbajo(panelY, recorrido);
+}
+
+/** Un teclado real no ocupa más de esta fracción de la ventana (medido: 358 dp de 853 ≈ 42 %; tablets/splits, menos). */
+export const TECLADO_MAX_FRACCION_VENTANA = 0.6;
+
+/**
+ * SM-P12 punto 2 (foto del operador, 2026-11-06 07:39): el campo de Mi día quedó PEGADO ARRIBA, por encima del
+ * encabezado, con el teclado cerrado — el panel se levantó ~725 dp, el doble de los 358 dp del teclado medido. Un
+ * `keyboardDidShow` con un `screenY` absurdo (≈ 0, un teclado flotante o un evento de Samsung fuera de orden) daba
+ * `teclado` = alto de ventana y nada lo corregía. Una altura que ningún teclado tiene no es geometría de teclado:
+ * se ignora (0) en vez de levantar el panel. 🔴 La causa del `screenY` absurdo NO está reproducida: esto acota el
+ * daño, no la atribuye.
+ */
+export function alturaDeTecladoPlausible(alturaVentana: number, screenY: number): number {
+  if (!(alturaVentana > 0) || !Number.isFinite(screenY)) return 0;
+  const alto = alturaVentana - screenY;
+  if (alto <= 0 || alto > alturaVentana * TECLADO_MAX_FRACCION_VENTANA) return 0;
+  return alto;
 }
 
 /**
@@ -350,7 +369,7 @@ export function PanelDeslizable({
   const teclado = useSharedValue(0);
   useEffect(() => {
     const abre = Keyboard.addListener('keyboardDidShow', (e) => {
-      teclado.value = Math.max(Dimensions.get('window').height - e.endCoordinates.screenY, 0);
+      teclado.value = alturaDeTecladoPlausible(Dimensions.get('window').height, e.endCoordinates.screenY);
     });
     const cierra = Keyboard.addListener('keyboardDidHide', () => {
       teclado.value = 0;

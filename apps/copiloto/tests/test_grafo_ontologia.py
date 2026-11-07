@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import datetime
 
+from grafo_mapeo import (COBRADO_A, E_FICHA_CLIENTE, E_REGISTRO_COBRO, ESTADO_CONCEPTO, FACTURADO_EN,
+                         TIENE_CLIENTE)
 from grafo_mapeo import (AL_TRABAJO, COBRO, COMPROBANTE, CONCEPTO, DE_CONCEPTO, DIRIGIDO_A, E_COBRO,
                          E_PRESUPUESTO, EMITIO, ESTADO, ESTADO_COMPROBANTE, ESTADO_PRESUPUESTO,
                          FACTURADO_A, GASTO, IMPUTACION, IMPUTADO_A, INCLUYE, MapeadorEstado,
@@ -21,11 +23,12 @@ def _todos_los_edge_types_del_mapeo() -> set[str]:
     propios acumuladores, no transcritos a mano (si el mapeo agrega un tipo, este set lo sigue solo)."""
     ev = MapeadorEvento(negocio_key="t-1", negocio_nombre="Mi Negocio")
     tipos = {EMITIO, FACTURADO_A, REGISTRO_GASTO, PAGADO_A, E_PRESUPUESTO, DIRIGIDO_A, INCLUYE,
-            E_COBRO, REEMPLAZA_A}
+            E_COBRO, REEMPLAZA_A, TIENE_CLIENTE, COBRADO_A, FACTURADO_EN}
     assert set(ev._acc.keys()) == tipos, "el set de arriba no coincide con los acumuladores reales"
-    # MapeadorEstado arma sus acumuladores lazy (recién al procesar), así que los 5 tipos de estado se
+    # MapeadorEstado arma sus acumuladores lazy (recién al procesar), así que los tipos de estado se
     # declaran acá directo desde las constantes del módulo — son los únicos edge_type que emite.
-    tipos |= {ESTADO_PRESUPUESTO, ESTADO_COMPROBANTE, PRECIO_DE, DE_CONCEPTO, IMPUTADO_A, AL_TRABAJO}
+    tipos |= {ESTADO_PRESUPUESTO, ESTADO_COMPROBANTE, PRECIO_DE, DE_CONCEPTO, IMPUTADO_A, AL_TRABAJO,
+              ESTADO_CONCEPTO, E_REGISTRO_COBRO, E_FICHA_CLIENTE}
     return tipos
 
 
@@ -33,6 +36,15 @@ def test_ontologia_declara_todos_los_edge_types_del_mapeo():
     _, edge_types = ontologia()
     nombres = {e["name"] for e in edge_types}
     assert nombres == _todos_los_edge_types_del_mapeo()
+
+
+def test_ontologia_respeta_el_limite_de_edge_types_de_graphity():
+    """Graphity rechaza con 422 más de 20 edge types (medido en prod 2026-11-06 con 21): el sync de
+    TODOS los tenants quedó caído hasta reducirla. Los tests de estructura no lo veían."""
+    from grafo_mapeo import MAX_EDGE_TYPES
+    _, edge_types = ontologia()
+    assert MAX_EDGE_TYPES == 20 and len(edge_types) <= MAX_EDGE_TYPES
+    assert len({e["name"] for e in edge_types}) == len(edge_types), "edge type duplicado"
 
 
 def test_ontologia_entity_types_cubren_todos_los_source_target_referenciados():

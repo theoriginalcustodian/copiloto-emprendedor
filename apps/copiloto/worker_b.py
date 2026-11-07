@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+import logging
 import os
 import sys
 from pathlib import Path
@@ -105,6 +106,20 @@ _ACTIVITIES = [call_llm, dispatch_intent, send_channel_message, notify_staff, wa
 
 def _now_iso() -> str:
     return datetime.datetime.now(datetime.timezone.utc).astimezone().isoformat()
+
+
+def _grafo_client_factory():
+    """`() -> GraphityStructuredClient | None`. Un solo cliente (un pool httpx) por worker; `None` si
+    faltan las vars del grafo de negocio (el grafo es opcional para el resto del chat)."""
+    from graphity_structured_client import GraphityStructuredClient
+    try:
+        client = GraphityStructuredClient.from_env()
+    except RuntimeError:
+        # degradar es correcto: sin grafo, `consultar_historial` responde error de negocio explícito.
+        logging.getLogger("copiloto.worker_b").warning("grafo de negocio sin configurar: "
+                                                       "consultar_historial queda apagada")
+        return lambda: None
+    return lambda: client
 
 
 def build_llm() -> LlmProvider:
@@ -290,7 +305,10 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
         inteligencia_queries_factory=_inteligencia_queries_factory,
         # RAG al chat (contrato 2026-11-05): mismo orquestador y corpus «cómo usar la app» que el
         # worker de soporte. Sin RAG_ORQUESTADOR_* en el env la factory da None → outcome=unavailable.
-        rag_client_factory=build_rag_client_factory(rag_namespace_de(env), env))
+        rag_client_factory=build_rag_client_factory(rag_namespace_de(env), env),
+        # Inteligencia de Negocio: el MISMO cliente del grafo de negocio que usa el sync. Sin
+        # GRAPHITY_GRAFO_* la factory da None → la tool devuelve error de negocio, nunca un vacío.
+        grafo_client_factory=_grafo_client_factory())
     register_domain("emprendedor", system_prompt=system_prompt_react, llm_provider=llm,
                     dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso, llm=llm,
                                                mp_dedup_factory=_mp_dedup_factory),  # C1: mismo dedup que
