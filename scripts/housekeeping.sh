@@ -65,6 +65,21 @@ done
 # El ancestro se mide contra el ORIGIN fresco, no contra el reflog local: una rama puede estar
 # mergeada hace horas y el local no saberlo. Sin este fetch el script no borra nada y parece que
 # "no había basura" — el falso negativo más caro posible para un limpiador.
+# ¿Podemos preguntarle a GitHub? Se mide UNA vez: una llamada por rama multiplicada por 35
+# worktrees es lento, y un `gh` sin auth que falla callado haría caer todo al fallback sin decirlo.
+GH_OK=0; SLUG=""
+if command -v gh >/dev/null 2>&1; then
+  SLUG="$(git -C "$ROOT" config --get remote.origin.url | sed -E 's#.*github.com[:/]##; s#\.git$##')"
+  if [ -n "$SLUG" ] && gh pr list --repo "$SLUG" --limit 1 --json number >/dev/null 2>&1; then
+    GH_OK=1
+  else
+    echo "⚠️  gh no pudo consultar $SLUG: se cae al fallback por diff de árbol, que sólo acierta"
+    echo "    mientras main no haya avanzado desde el merge. Puede haber FALSOS NEGATIVOS."
+  fi
+else
+  echo "⚠️  no hay gh: fallback por diff de árbol (ver aviso de arriba)."
+fi
+
 echo "── fetch de $REF (el ancestro se mide contra el remoto, no contra el local) ──"
 if ! git -C "$ROOT" fetch origin main --quiet 2>/dev/null; then
   echo "⚠️  el fetch falló: sin red, lo que sigue mide contra un $REF POSIBLEMENTE RANCIO."
@@ -82,7 +97,30 @@ fi
 # Lo que SÍ es cierto después de un squash es que el árbol de la rama es idéntico al de origin/main
 # — así que se mide el contenido, que es lo que importaba desde el principio: «¿queda algo acá que
 # no esté en main?». Cubre squash, merge normal y fast-forward por igual.
-_ya_entro() { git -C "$ROOT" diff --quiet "$REF" "refs/heads/$1" 2>/dev/null; }
+# 🔴 SEGUNDA CORRECCIÓN, mismo día. El diff de árbol contra $REF mide «¿esta rama es IDÉNTICA a
+# main?», y eso sólo es cierto mientras main no avance. Medido por efecto sobre las tres ramas de
+# esta sesión: la tercera dio «sí», y las dos primeras dieron «NO» — no porque no estuvieran
+# mergeadas (lo estaban, 390daf8a y 3e629c8d) sino porque main ya tenía encima los PRs posteriores.
+# O sea: el criterio caduca a los minutos, y un limpiador que sólo ve la ÚLTIMA rama mergeada es el
+# mismo falso negativo de antes con otra cara. La pregunta real nunca fue «¿es igual a main?» sino
+# «¿lo que esta rama aportó ya está adentro?», y con squash eso no se deduce de la historia local:
+# el commit desaparece y los patch-id no sobreviven al aplastado de varios commits en uno.
+# La señal canónica es el PR: si GitHub dice MERGED para esa rama, el aporte entró. El diff de árbol
+# queda como fallback para cuando no hay red o no hay `gh` — correcto cuando acierta, nunca peor que
+# no mirar.
+_ya_entro() {
+  if [ "$GH_OK" = 1 ]; then
+    if [ -n "$(gh pr list --repo "$SLUG" --head "$1" --state merged --limit 1 --json number -q '.[0].number' 2>/dev/null)" ]; then
+      return 0
+    fi
+    # `gh` responde y NO hay PR mergeado: eso es información, no ignorancia. Si además hay un PR
+    # ABIERTO, la rama está viva por definición y no se evalúa el fallback.
+    if [ -n "$(gh pr list --repo "$SLUG" --head "$1" --state open --limit 1 --json number -q '.[0].number' 2>/dev/null)" ]; then
+      return 1
+    fi
+  fi
+  git -C "$ROOT" diff --quiet "$REF" "refs/heads/$1" 2>/dev/null
+}
 
 # Un diff vacío NO dice nada de lo que todavía no se commiteó. Esta guarda es la que evita el único
 # borrado irreversible que importa: un worktree cuyo contenido ya está en main pero que tiene
