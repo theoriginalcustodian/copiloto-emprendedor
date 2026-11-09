@@ -71,7 +71,23 @@ if ! git -C "$ROOT" fetch origin main --quiet 2>/dev/null; then
   echo "    No se borra nada en ese estado." ; APLICAR=0
 fi
 
-_es_ancestro() { git -C "$ROOT" merge-base --is-ancestor "$1" "$REF" 2>/dev/null; }
+# 🔴 EL CRITERIO NO ES LA ANCESTRÍA DEL COMMIT, ES LA IGUALDAD DEL CONTENIDO.
+# Primera versión (2026-11-09) preguntaba `merge-base --is-ancestor <rama> origin/main`. Este repo
+# mergea con SQUASH: el merge crea un commit NUEVO con el mismo árbol, y el commit de la rama no
+# queda en la historia de main. O sea que el criterio daba FALSO para toda rama realmente mergeada
+# y el limpiador clasificaba BASURA=0 SIEMPRE — un gate que no puede disparar nunca, que es
+# justamente el modo de falla que no da síntoma: la salida decía «el sistema está limpio» con 35
+# worktrees y 1.220 ramas encima. Lo cazó el control POR EFECTO de autoaplicarlo a su propio PR
+# (#1799, mergeado 390daf8a): la rama estaba mergeada y el script no la veía.
+# Lo que SÍ es cierto después de un squash es que el árbol de la rama es idéntico al de origin/main
+# — así que se mide el contenido, que es lo que importaba desde el principio: «¿queda algo acá que
+# no esté en main?». Cubre squash, merge normal y fast-forward por igual.
+_ya_entro() { git -C "$ROOT" diff --quiet "$REF" "refs/heads/$1" 2>/dev/null; }
+
+# Un diff vacío NO dice nada de lo que todavía no se commiteó. Esta guarda es la que evita el único
+# borrado irreversible que importa: un worktree cuyo contenido ya está en main pero que tiene
+# trabajo sin commitear encima.
+_limpio() { [ -z "$(git -C "$1" status --porcelain 2>/dev/null)" ]; }
 
 MERGEADOS=(); VIVOS=(); SALTADOS=()
 while IFS= read -r line; do
@@ -87,12 +103,14 @@ while IFS= read -r line; do
 
   if [ -z "$BR" ]; then
     if [ "$DETACHED" = 1 ]; then MERGEADOS+=("$WTN|")
-    else SALTADOS+=("$WTN  [detached: sin rama no hay ancestro que medir — usá --incluir-detached]"); fi
+    else SALTADOS+=("$WTN  [detached: sin rama no hay nada que comparar — usá --incluir-detached]"); fi
     continue
   fi
   if [ -n "$RAMA" ] && [ "$BR" != "$RAMA" ]; then SALTADOS+=("$WTN  [--rama $RAMA no la incluye]"); continue; fi
 
-  if _es_ancestro "refs/heads/$BR"; then MERGEADOS+=("$WTN|$BR"); else VIVOS+=("$WTN|$BR"); fi
+  if ! _ya_entro "$BR"; then VIVOS+=("$WTN|$BR"); continue; fi
+  if ! _limpio "$WTN"; then SALTADOS+=("$WTN  [su contenido ya está en $REF, pero tiene cambios SIN COMMITEAR: no se toca]"); continue; fi
+  MERGEADOS+=("$WTN|$BR")
 done < <(git -C "$ROOT" worktree list --porcelain)
 
 echo
@@ -102,7 +120,7 @@ echo
 echo "── saltados por guarda: ${#SALTADOS[@]} ──"
 for e in "${SALTADOS[@]}"; do echo "   · $e"; done
 echo
-echo "── BASURA (rama ya es ancestro de $REF ⇒ el trabajo está adentro): ${#MERGEADOS[@]} ──"
+echo "── BASURA (árbol idéntico a $REF y sin cambios locales ⇒ no queda nada acá): ${#MERGEADOS[@]} ──"
 for e in "${MERGEADOS[@]}"; do _b="${e##*|}"; echo "   · ${e%%|*}  →  ${_b:-<detached>}"; done
 
 if [ "${#MERGEADOS[@]}" -eq 0 ]; then

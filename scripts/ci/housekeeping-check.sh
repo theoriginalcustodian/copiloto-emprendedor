@@ -35,7 +35,10 @@ RAMA_ACTUAL="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
 
 git -C "$ROOT" fetch origin main --quiet 2>/dev/null || true
 
-_ancestro() { git -C "$ROOT" merge-base --is-ancestor "$1" "$REF" 2>/dev/null; }
+# Mismo criterio corregido que housekeeping.sh: CONTENIDO, no ancestría. El repo mergea con squash,
+# así que `--is-ancestor` da falso para toda rama realmente mergeada y el medidor no podía disparar.
+_ya_entro() { git -C "$ROOT" diff --quiet "$REF" "refs/heads/$1" 2>/dev/null; }
+_limpio_aqui() { [ -z "$(git -C "$ROOT" status --porcelain 2>/dev/null)" ]; }
 
 # ── 1. el caso duro: estoy sentado en un worktree cuyo trabajo YA entró ──
 rc=0
@@ -43,7 +46,7 @@ if [ -n "$RAMA_ACTUAL" ] && [ "$RAMA_ACTUAL" != "HEAD" ] && [ "$ACTUAL" != "$PRI
   # "con commits propios" distingue basura de trabajo sin empezar: una rama recién creada desde
   # origin/main TAMBIÉN es ancestro, y marcarla sería el falso positivo que desarma el guard.
   propios="$(git -C "$ROOT" rev-list --count "$REF".."refs/heads/$RAMA_ACTUAL" 2>/dev/null || echo 0)"
-  if _ancestro "refs/heads/$RAMA_ACTUAL" && [ "${propios:-0}" = "0" ]; then
+  if _ya_entro "$RAMA_ACTUAL" && _limpio_aqui && [ "${propios:-0}" = "0" ]; then
     # ancestro + 0 commits propios: puede ser recién creada (limpio) o ya mergeada (basura).
     # Se distingue por si la rama tiene commits que origin/main NO tenía al crearse: si el reflog
     # del worktree muestra trabajo, es basura. Sin eso, se asume limpio y sólo se avisa.
