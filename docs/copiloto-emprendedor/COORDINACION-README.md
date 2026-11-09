@@ -297,7 +297,7 @@ documentos que mientan.** Son dos listas, las dos binarias.
 
 ```bash
 bash scripts/housekeeping.sh              # reporta, no borra
-bash scripts/housekeeping.sh --aplicar    # borra lo que YA es ancestro de origin/main
+bash scripts/housekeeping.sh --aplicar    # borra lo que ya no tiene nada propio frente a origin/main
 ```
 
 #### B. Lo que se ASIENTA al terminar
