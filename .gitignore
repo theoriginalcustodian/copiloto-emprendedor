@@ -13,7 +13,16 @@ venv/
 .env
 .env.*
 !.env*.template
+# Archivos de credenciales que vivieron SUELTOS en la raiz de este repo PUBLICO.
+# MOVIDOS FUERA el 2026-11-09 a una carpeta de secretos fuera del arbol (nunca estuvieron en la
+# historia: `git log --all -- <cada uno>` vacio, medido ese dia). Las lineas se DEJAN como tripwire:
+# si alguno reaparece aca, queda ignorado en vez de publicable.
+# ⚠️ `Afipsdk token.md` NO estaba ignorado y SI estaba untracked en la raiz: un `git add -A` lo
+# publicaba. Por eso ahora esta listado — el ignore no sustituye a la regla de rutas explicitas, la respalda.
 Openai apikeyp grafity backup 341.txt
+afip sdk tincho toc.txt
+Afipsdk token.md
+Usuario y clave fiscal David Huck Afip.txt
 afip sdk tincho toc.txt
 Usuario y clave fiscal David Huck Afip.txt
 
