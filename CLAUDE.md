@@ -189,10 +189,16 @@ ganan las reglas de este repo.
 
 ## 3.quater Tres sesiones paralelas — el buzón manda
 
-El repo se trabaja con **tres sesiones simultáneas**: **planificación**, **backend** y
-**frontend/app**. Las reglas vivas —quién es dueño de qué, git, estado compartido, tipos de mensaje,
-prompts de los crones— están en **`coordinacion/COORDINACION.md`**, y se leen **al arrancar la sesión
-y antes de cualquier commit**. Diseño y razonamiento:
+El repo se trabaja con **varias sesiones simultáneas** (hay **6** skills de rol instaladas:
+planificación, backend, frontend-1, frontend-2, auditoría, manejo-de-errores). Las reglas vivas
+—quién es dueño de qué, git, estado compartido, tipos de mensaje, prompts de los crones— están en
+**`coordinacion/COORDINACION.md`**, y se leen **al arrancar la sesión y antes de cualquier commit**.
+
+📖 **Entrada para quien llega de cero (o clona el repo): [`docs/copiloto-emprendedor/COORDINACION-README.md`](docs/copiloto-emprendedor/COORDINACION-README.md)**
+— el manual de operación de las sesiones: roles, arranque, buzón, tipos de mensaje, git compartido,
+los 4 estados de «terminado», el **housekeeping obligatorio al cerrar (§9.bis)** y los instrumentos.
+Vive en `docs/` **a propósito**: `coordinacion/` no está versionada, así que un README ahí adentro no
+lo ve nadie que clone. `COORDINACION.md` sigue siendo la norma canónica — si discrepan, gana ella. Diseño y razonamiento:
 `docs/superpowers/specs/2026-07-21-formato-coordinacion-tres-sesiones-design.md`.
 
 ⚠️ **`coordinacion/` NO es parte del repo** (`.gitignore`). Es una carpeta física única apuntada por

@@ -29,6 +29,32 @@ if [ -f "$SCRIPT_DIR/scripts/ci/atribucion.sh" ]; then
   fi
 fi
 
+# --- Gate de HOUSEKEEPING (modo REPORTE) ----------------------------------------------
+# Mide la basura que dejó trabajo YA mergeado: worktrees cuya rama es ancestro de
+# origin/main, ramas locales acumuladas, `.bak` sueltos en coordinacion/. No borra nada.
+#
+# POR QUÉ ACÁ Y NO EN lint.sh: su corpus vive FUERA del repo (worktrees, ramas locales), así
+# que en CI daría vacío y mediría al equipo en vez del commit. El propio script se autodeclara
+# NO-APLICABLE si detecta CI, para no salir verde estando ciego.
+#
+# POR QUÉ EN MODO REPORTE: al embarcarlo había 35 worktrees vivos, 1220 ramas locales y 77
+# `.bak` (28 MB) — un guard que grita en el caso normal se desarma solo. Bloquea sólo el caso
+# sin falso positivo posible (estás sentado en un worktree cuyo trabajo ya entró) y sube a
+# bloqueo general con UC_HOUSEKEEPING_BLOQUEA=1 cuando el pasivo esté saldado.
+# 🔴 Se distingue HALLAZGO de FALLO DEL INSTRUMENTO, porque un `|| true` plano deja el gate
+# incapaz de disparar NUNCA — ni con el flag puesto — y un gate que no dispara es peor que no
+# tenerlo: ocupa el lugar del control que falta
+# (memoria/medir-si-un-gate-dispara-antes-de-embarcarlo.md).
+#   rc=0 → sin hallazgo · rc=1 → hallazgo (aborta el push) · rc>1 → el medidor se rompió (avisa y sigue)
+if [ -f "$SCRIPT_DIR/scripts/ci/housekeeping-check.sh" ]; then
+  bash "$SCRIPT_DIR/scripts/ci/housekeeping-check.sh" || _hk_rc=$?
+  case "${_hk_rc:-0}" in
+    0) : ;;
+    1) echo "[pre-push] ❌ housekeeping: hay basura de trabajo ya mergeado (ver arriba)." >&2; exit 1 ;;
+    *) echo "[pre-push] ⚠️  housekeeping-check se rompió (rc=${_hk_rc}): no bloquea, pero NO midió nada." >&2 ;;
+  esac
+fi
+
 # -----------------------------------------------------------------------------
 # Sync del grafo de código (arco autopoiético)
 # -----------------------------------------------------------------------------
