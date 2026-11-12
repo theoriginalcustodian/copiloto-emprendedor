@@ -71,6 +71,26 @@ INSTRUMENTO="${1:-}"; shift || true
 # que invoca, para que cinco crones no se peleen el mismo índice.
 if [ -n "${UC_VIGIA_PIN:-}" ]; then
   PIN="$UC_VIGIA_PIN"
+  # 🔴 GUARD: el pin se REBOBINA (`worktree add --detach` / `fetch` a `$REF`, ver abajo). Si le
+  # apuntás `UC_VIGIA_PIN` a un worktree donde estás TRABAJANDO, el lanzador lo deja en detached
+  # sobre `origin/main` y tu rama se queda ATRÁS de tu propio commit — sin error, porque desde el
+  # punto de vista del lanzador hizo justo lo que tenía que hacer.
+  # MEDIDO el 2026-11-12 en `wt-plan-hk`: commit `7a78c685` hecho y `git push` con exit 0, pero la
+  # ref de la rama seguía en `869c3f0d` (= `origin/main`), así que `gh pr create` contestó «No
+  # commits between main and <rama>» — un mensaje que acusa al PR y no al pin, que es por donde se
+  # va el rato. El commit no se había perdido: HEAD estaba detached encima.
+  # Se avisa y NO se bloquea: usar el worktree propio como pin es el gancho de test legítimo
+  # (`:48`), y un guard que grita en el caso normal se desarma solo.
+  #     -> memoria: git-push-puede-salir-exit-0-sin-haber-pusheado
+  _pin_abs="$(cd "$PIN" 2>/dev/null && pwd -P || echo "$PIN")"
+  _cwd_top="$(git rev-parse --show-toplevel 2>/dev/null | tr -d '\r' || true)"
+  _cwd_abs="$(cd "${_cwd_top:-.}" 2>/dev/null && pwd -P || echo "")"
+  if [ -n "$_cwd_abs" ] && [ "$_pin_abs" = "$_cwd_abs" ]; then
+    printf '%s\n' "⚠️  vigia.sh: UC_VIGIA_PIN apunta al worktree desde el que corrés ($_pin_abs)." >&2
+    printf '%s\n' "    Va a quedar DETACHED en $REF y tu rama se queda atrás de tu último commit." >&2
+    printf '%s\n' "    Si estás por commitear o pushear acá: verificá la ref después" >&2
+    printf '%s\n' "    (git rev-parse <rama> vs git rev-parse HEAD) antes de abrir el PR." >&2
+  fi
 else
   _common="$(git -C "$REPO_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
   if [ -n "$_common" ]; then
