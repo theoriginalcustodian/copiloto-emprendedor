@@ -54,7 +54,8 @@ def frase(tipo: str, resumen: dict) -> str:
         detalle = resumen.get("proveedor") or resumen.get("descripcion") or resumen.get("categoria")
         return f"Anoté un gasto de {_plata(resumen.get('monto'))}" + (f" ({detalle})." if detalle else ".")
     if tipo == "cobro":
-        ing = resumen.get("ingreso") or {}
+        # `ingreso` = cobro suelto (POST /ingresos) · `cobro` = cobro sobre una factura (POST /afip/.../cobros).
+        ing = resumen.get("ingreso") or resumen.get("cobro") or {}
         quien = ing.get("cliente_nombre")
         texto = f"Anoté un cobro de {_plata(ing.get('monto'))}" + (f" de {quien}." if quien else ".")
         falta = [{"cliente": "de quién", "medio": "cómo te pagaron", "concepto": "por qué"}[f]

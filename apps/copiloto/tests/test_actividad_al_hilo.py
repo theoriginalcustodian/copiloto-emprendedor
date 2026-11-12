@@ -48,6 +48,8 @@ def test_un_tipo_desconocido_es_error_de_programacion():
     ("gasto", {"monto": "2500.50", "proveedor": "Corralón"}, "Anoté un gasto de $2.500,50 (Corralón)."),
     ("cobro", {"ingreso": {"monto": "85000.00", "cliente_nombre": "Kiosco", "falta": []}},
      "Anoté un cobro de $85.000 de Kiosco."),
+    ("cobro", {"cobro": {"monto": "400.00", "cliente_nombre": "", "falta": []}, "comprobante": {}},
+     "Anoté un cobro de $400."),
     ("cobro", {"ingreso": {"monto": "100.00", "cliente_nombre": "", "falta": ["cliente", "medio"]}},
      "Anoté un cobro de $100. Si querés, después completás de quién y cómo te pagaron."),
     ("presupuesto", {"presupuesto": {"numero": 8, "total": "100000.00", "receptor": {"nombre": "Los Tilos"}}},

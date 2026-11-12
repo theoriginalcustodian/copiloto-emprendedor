@@ -40,6 +40,8 @@ class CobroBody(BaseModel):
     medio: str | None = None
     fecha: str | None = None
     idem_key: str | None = None
+    # SM-P19: el hilo al que va el turno del cobro. Opcional (app vieja / cobro fuera del chat → sin turno).
+    session_id: str | None = Field(default=None, max_length=SESSION_ID_MAX)
 
 
 class IngresoBody(CobroBody):
@@ -56,8 +58,7 @@ class IngresoBody(CobroBody):
     cliente_nombre: str | None = None
     concepto: str | None = None
     confirmar_duplicado: bool = False
-    # SM-P19 B: el hilo donde se guardó (`actividad_al_hilo`). Opcional.
-    session_id: str | None = Field(default=None, max_length=SESSION_ID_MAX)
+    # `session_id` (SM-P19) se hereda de `CobroBody`.
 
 
 class CompletarIngresoBody(BaseModel):
@@ -630,7 +631,12 @@ def create_afip_app(
             raise HTTPException(status_code=400, detail=str(exc)) from None
         if cobro is None:
             raise HTTPException(status_code=404, detail="comprobante no encontrado")
-        return {"cobro": cobro, "comprobante": resumen}
+        respuesta = {"cobro": cobro, "comprobante": resumen}
+        if publicar_actividad is not None:
+            # Con la misma `idem_key` el store devuelve el MISMO cobro → mismo id → `act-cobro-<id>`: un turno.
+            await asyncio.to_thread(publicar_actividad, cliente_id, body.session_id, "cobro",
+                                    cobro["id"], respuesta)
+        return respuesta
 
     @app.delete("/afip/comprobantes/{comprobante_id}/cobros/{cobro_id}")
     async def borrar_cobro(comprobante_id: int, cobro_id: int,
