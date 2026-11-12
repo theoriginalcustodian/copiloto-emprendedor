@@ -1405,11 +1405,13 @@ def test_adversarial_http_clientes_a_cannot_read_b_cliente(two_tenants, conn_de_
 from actividad_al_hilo import KIND, make_publicar_actividad  # noqa: E402
 
 
-def _build_guardar_http_app(two_tenants):
+def _build_guardar_http_app(two_tenants, *, reply_sink=None):
+    """`reply_sink=None` es el camino REAL (`make_pg_reply_sink` con el tenant declarado por el request). Los
+    controles del aislamiento inyectan un sink DEFECTUOSO a propósito, ver `_sink_que_confia_en_el_session_id`."""
     a, b = two_tenants
     cf = conexion_con_tenant(_conn_factory_cruda())
     rt = _RequireTenantByToken({a.token: a.cliente_id, b.token: b.cliente_id})
-    publicar = make_publicar_actividad(make_pg_reply_sink(cf))
+    publicar = make_publicar_actividad(reply_sink or make_pg_reply_sink(cf))
     app = FastAPI()
     app.include_router(create_afip_app(
         require_tenant=rt, perfil_store_factory=lambda cid: None, cred_store_factory=lambda cid: None,
@@ -1496,23 +1498,88 @@ def test_sm_p19_reintentar_el_guardado_deja_un_solo_turno(two_tenants, conn_de_t
         _limpiar_negocio(conn_de_tenant, a.cliente_id, b.cliente_id)
 
 
+def _sink_que_confia_en_el_session_id(two_tenants, *, conn_de_tenant=None):
+    """Sink DEFECTUOSO a propósito: ignora el `cliente_id` que le pasa el handler (el del token) y escribe bajo el
+    DUEÑO del `session_id` que mandó el body — el defecto que `actividad_al_hilo` declara impedir.
+
+    Sin `conn_de_tenant` escribe por la conexión del request (el tenant de A): la base lo rechaza (RLS).
+    Con `conn_de_tenant` la conexión también nace atada al dueño, o sea SIN la red de RLS: modela un defecto
+    aguas arriba donde el contexto entero confía en el body. Ahí sí hay fuga, y es lo que el control necesita."""
+    a, b = two_tenants
+    dueno_de = {a.session_id: a.cliente_id, b.session_id: b.cliente_id}
+    cf = conexion_con_tenant(_conn_factory_cruda())
+
+    def sink(cliente_id, session_id, *args, **kw):
+        dueno = dueno_de.get(session_id, cliente_id)
+        make_pg_reply_sink(conn_de_tenant(dueno) if conn_de_tenant else cf)(dueno, session_id, *args, **kw)
+    return sink
+
+
+def _a_guarda_con_el_session_id_de_b_y_se_mide_el_aislamiento(two_tenants, conn_de_tenant, *, reply_sink=None):
+    """A guarda los 5 mandando el `session_id` DE B y se miden las aserciones de aislamiento. Las comparte el
+    test real y su control: lo que el control prueba es que ESTAS MISMAS aserciones saltan ante una fuga."""
+    a, b = two_tenants
+    client = TestClient(_build_guardar_http_app(two_tenants, reply_sink=reply_sink))
+    h_a, h_b = {"Authorization": f"Bearer {a.token}"}, {"Authorization": f"Bearer {b.token}"}
+    _guardar_los_cinco(client, h_a, b.session_id, uuid.uuid4().hex[:6])
+
+    assert _turnos_actividad(conn_de_tenant, b.cliente_id, b.session_id) == []
+    assert [r["reply_text"] for r in read_replies(conn_de_tenant(b.cliente_id), b.cliente_id,
+                                                  b.session_id, 0)] == ["reply de B"]
+    assert len(_turnos_actividad(conn_de_tenant, a.cliente_id, b.session_id)) == 5   # el turno SÍ existe (bajo A)
+    assert client.get("/gastos", headers=h_b).json()["total"] == 0
+    assert client.get("/clientes", headers=h_b).json()["total"] == 0
+    assert client.get("/gastos", headers=h_a).json()["total"] == 1
+
+
 def test_adversarial_sm_p19_a_manda_el_session_id_de_b_y_b_no_ve_nada(two_tenants, conn_de_tenant):
     """🔴 ADR-013 / BOLA: A guarda los 5 mandando el `session_id` DE B. El hilo de B no recibe ningún turno,
-    las filas quedan bajo el `cliente_id` de A y nada de B se toca. CONTROL POSITIVO: el turno SÍ existe
-    (bajo A) — si el sink no escribiera para nadie, «B no ve nada» pasaría igual sin probar aislamiento."""
+    las filas quedan bajo el `cliente_id` de A y nada de B se toca. Control positivo de que el sink escribe:
+    el turno SÍ existe (bajo A) — sin eso, «B no ve nada» pasaría igual sin probar aislamiento. El control
+    de que ESTAS aserciones detectan una fuga es el test siguiente."""
     a, b = two_tenants
     try:
-        client = TestClient(_build_guardar_http_app(two_tenants))
-        h_a, h_b = {"Authorization": f"Bearer {a.token}"}, {"Authorization": f"Bearer {b.token}"}
-        _guardar_los_cinco(client, h_a, b.session_id, uuid.uuid4().hex[:6])
+        _a_guarda_con_el_session_id_de_b_y_se_mide_el_aislamiento(two_tenants, conn_de_tenant)
+    finally:
+        _limpiar_negocio(conn_de_tenant, a.cliente_id, b.cliente_id)
 
-        assert _turnos_actividad(conn_de_tenant, b.cliente_id, b.session_id) == []
-        assert [r["reply_text"] for r in read_replies(conn_de_tenant(b.cliente_id), b.cliente_id,
-                                                      b.session_id, 0)] == ["reply de B"]
-        assert len(_turnos_actividad(conn_de_tenant, a.cliente_id, b.session_id)) == 5   # control positivo
-        assert client.get("/gastos", headers=h_b).json()["total"] == 0
-        assert client.get("/clientes", headers=h_b).json()["total"] == 0
-        assert client.get("/gastos", headers=h_a).json()["total"] == 1
+
+def test_adversarial_sm_p19_control_positivo_un_sink_que_confia_en_el_session_id_SI_filtra(two_tenants,
+                                                                                          conn_de_tenant):
+    """Control positivo del test anterior (SM-P19 / ADR-013). Un gate roto hacia el «no» no da síntoma
+    (`memoria/un-mecanismo-roto-hacia-el-no-no-da-sintoma.md`): se lo rompe a propósito. Con un sink que saca el
+    tenant del `session_id` del body y escribe SIN la red de RLS, las MISMAS aserciones de aislamiento tienen que
+    SALTAR. Si pasaran, el test real no mediría nada. Se exige además la causa —los 5 turnos que A mandó
+    aterrizan en el hilo de B— para que un rojo por otra razón (fixture caído, DB) no se lea como «funcionó»."""
+    a, b = two_tenants
+    try:
+        mutante = _sink_que_confia_en_el_session_id(two_tenants, conn_de_tenant=conn_de_tenant)
+        with pytest.raises(AssertionError) as salto:
+            _a_guarda_con_el_session_id_de_b_y_se_mide_el_aislamiento(
+                two_tenants, conn_de_tenant, reply_sink=mutante)
+        n = len(_turnos_actividad(conn_de_tenant, b.cliente_id, b.session_id))
+        # B con 5 turnos implica que `_turnos_actividad(B) == []` falló: la causa queda probada por efecto.
+        assert n == 5, f"el control saltó por OTRA causa (B ve {n} turnos, no 5): {salto.value}"
+    finally:
+        _limpiar_negocio(conn_de_tenant, a.cliente_id, b.cliente_id)
+
+
+def test_adversarial_sm_p19_segunda_capa_un_write_cruzado_lo_rechaza_rls(two_tenants, conn_de_tenant):
+    """Defensa en profundidad, medida por EFECTO: el mismo defecto de arriba pero con la conexión del request
+    (la de A). `copiloto_web_replies` tiene `FORCE ROW LEVEL SECURITY`, así que escribir bajo el `cliente_id`
+    de B desde la sesión de A es rechazado por la base (`InsufficientPrivilege`, que `publicar` traga a
+    propósito: el guardado ya está hecho). Resultado: ni B ni A reciben turno — NO hay fuga aunque el código
+    de la primera capa estuviera roto. Sin este test, nadie notaría que aflojar el `WITH CHECK` deja la
+    única defensa en el `cliente_id` del token."""
+    a, b = two_tenants
+    try:
+        sink = _sink_que_confia_en_el_session_id(two_tenants)        # sin `conn_de_tenant`: conexión de A
+        client = TestClient(_build_guardar_http_app(two_tenants, reply_sink=sink))
+        _guardar_los_cinco(client, {"Authorization": f"Bearer {a.token}"}, b.session_id, uuid.uuid4().hex[:6])
+        assert _turnos_actividad(conn_de_tenant, b.cliente_id, b.session_id) == []   # B: nada, ni fuga
+        assert _turnos_actividad(conn_de_tenant, a.cliente_id, b.session_id) == []   # y tampoco quedó bajo A
+        # control: los guardados SÍ ocurrieron (sólo el turno murió) — el 201 no se convirtió en error.
+        assert client.get("/gastos", headers={"Authorization": f"Bearer {a.token}"}).json()["total"] == 1
     finally:
         _limpiar_negocio(conn_de_tenant, a.cliente_id, b.cliente_id)
 
