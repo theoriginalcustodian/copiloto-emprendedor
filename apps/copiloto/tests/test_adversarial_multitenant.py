@@ -1498,6 +1498,75 @@ def test_sm_p19_reintentar_el_guardado_deja_un_solo_turno(two_tenants, conn_de_t
         _limpiar_negocio(conn_de_tenant, a.cliente_id, b.cliente_id)
 
 
+def _comprobante_de(conn_de_tenant, cliente_id: str, total: str = "1000.00") -> int:
+    conn = conn_de_tenant(cliente_id)()
+    with conn.cursor() as cur:
+        cur.execute("""INSERT INTO uc_factory.afip_comprobantes
+                       (cliente_id, cuit, tipo_cbte, punto_venta, nro, cae, fecha_emision, total,
+                        estado, receptor_nombre)
+                       VALUES (%s, '30712345678', 6, 1, %s, 'CAE-TEST', CURRENT_DATE, %s, 'emitida', 'Panadería')
+                       RETURNING id""", (cliente_id, uuid.uuid4().int % 10**8, total))
+        id_ = cur.fetchone()[0]
+    conn.commit()
+    conn.close()
+    return id_
+
+
+def test_sm_p19_cobro_sobre_factura_inserta_su_turno_y_reintentar_deja_uno(two_tenants, conn_de_tenant):
+    """DoD 1 y 2 (SM-P19, cobro sobre factura): el POST con `session_id` inserta el turno `cobro` con el resumen
+    LITERAL de la respuesta; repetirlo con la misma `idem_key` devuelve el mismo cobro y deja UN solo turno."""
+    a, b = two_tenants
+    try:
+        client = TestClient(_build_guardar_http_app(two_tenants))
+        h_b = {"Authorization": f"Bearer {b.token}"}
+        comp = _comprobante_de(conn_de_tenant, b.cliente_id)
+        cuerpo = {"monto": "400", "medio": "transferencia", "idem_key": uuid.uuid4().hex, "session_id": b.session_id}
+        r1 = client.post(f"/afip/comprobantes/{comp}/cobros", json=cuerpo, headers=h_b)
+        r2 = client.post(f"/afip/comprobantes/{comp}/cobros", json=cuerpo, headers=h_b)
+        assert r1.status_code == 201 and r2.status_code == 201, (r1.text, r2.text)
+        assert r1.json()["cobro"]["id"] == r2.json()["cobro"]["id"]
+        turnos = _turnos_actividad(conn_de_tenant, b.cliente_id, b.session_id)
+        assert len(turnos) == 1
+        card = turnos[0]["card"]
+        assert card["tipo"] == "cobro" and card["id"] == r1.json()["cobro"]["id"]
+        assert card["resumen"] == r1.json()                       # resumen = la respuesta, literal
+        assert "$400" in turnos[0]["reply_text"]                  # texto armado por código, con el monto real
+        sin = client.post(f"/afip/comprobantes/{comp}/cobros",   # sin session_id: cobra, pero no toca el hilo
+                          json={"monto": "100", "idem_key": uuid.uuid4().hex}, headers=h_b)
+        assert sin.status_code == 201
+        assert len(_turnos_actividad(conn_de_tenant, b.cliente_id, b.session_id)) == 1
+    finally:
+        _limpiar_negocio(conn_de_tenant, a.cliente_id, b.cliente_id)
+
+
+def test_adversarial_sm_p19_cobro_sobre_factura_a_manda_el_session_id_de_b_y_b_no_ve_nada(two_tenants,
+                                                                                         conn_de_tenant):
+    """DoD 3: A cobra SU factura mandando el `session_id` DE B. El hilo de B no recibe turno (el turno queda
+    bajo A: control positivo de que el sink escribió) y la factura de B no se toca. Y A no puede cobrar la
+    factura de B (404): el cobro ajeno no publica nada en ningún hilo."""
+    a, b = two_tenants
+    try:
+        client = TestClient(_build_guardar_http_app(two_tenants))
+        h_a = {"Authorization": f"Bearer {a.token}"}
+        comp_a = _comprobante_de(conn_de_tenant, a.cliente_id)
+        comp_b = _comprobante_de(conn_de_tenant, b.cliente_id)
+        r = client.post(f"/afip/comprobantes/{comp_a}/cobros",
+                        json={"monto": "400", "idem_key": uuid.uuid4().hex, "session_id": b.session_id}, headers=h_a)
+        assert r.status_code == 201, r.text
+        assert _turnos_actividad(conn_de_tenant, b.cliente_id, b.session_id) == []
+        assert [x["reply_text"] for x in read_replies(conn_de_tenant(b.cliente_id), b.cliente_id,
+                                                      b.session_id, 0)] == ["reply de B"]
+        assert len(_turnos_actividad(conn_de_tenant, a.cliente_id, b.session_id)) == 1   # existe, bajo A
+        ajeno = client.post(f"/afip/comprobantes/{comp_b}/cobros",
+                            json={"monto": "400", "session_id": b.session_id}, headers=h_a)
+        assert ajeno.status_code == 404
+        assert _turnos_actividad(conn_de_tenant, b.cliente_id, b.session_id) == []
+        assert client.get(f"/afip/comprobantes/{comp_b}/cobros",
+                          headers={"Authorization": f"Bearer {b.token}"}).json()["cobros"] == []
+    finally:
+        _limpiar_negocio(conn_de_tenant, a.cliente_id, b.cliente_id)
+
+
 def _sink_que_confia_en_el_session_id(two_tenants, *, conn_de_tenant=None):
     """Sink DEFECTUOSO a propósito: ignora el `cliente_id` que le pasa el handler (el del token) y escribe bajo el
     DUEÑO del `session_id` que mandó el body — el defecto que `actividad_al_hilo` declara impedir.
