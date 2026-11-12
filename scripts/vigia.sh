@@ -222,30 +222,42 @@ fi
 #
 # En Python el equivalente del grep de arriba es `__file__`: un instrumento que derive su raiz de
 # `__file__` mide el arbol del PIN y NO entra.
+# ── POR QUE `housekeeping.sh` ESTA EN LA WHITELIST DE ABAJO.
+#
+# Criterio de la whitelist (ver arriba): *cambia lo que el instrumento MIDE segun de donde salga el
+# archivo?* El limpiador NO cambia: su corpus sale de `rev-parse --git-common-dir`
+# (`housekeeping.sh:33`), que apunta al repo PRINCIPAL desde cualquier worktree, pin incluido. El
+# `show-toplevel` de su `:48` no define el corpus -- resuelve el worktree desde el que corres, para
+# no borrarse a si mismo. O sea que el grep descalificador de arriba, que es sintactico, aca da un
+# FALSO POSITIVO: es el espejo del caso ya anotado, donde ese mismo grep no pudo VER el
+# descalificador real de `no-ocio-check.sh` (un `basename` del slug). Un grep no decide esto solo.
+#
+# Sin esta linea el limpiador no se podia invocar por el lanzador y habia que correrlo a mano desde
+# un worktree en la ref remota, que es la caida al arbol viejo que este lanzador existe para evitar.
+#
+# Verificado por EFECTO con el gancho `UC_VIGIA_PIN`: admitido desde dos cwd distintos con la misma
+# salida, y el control negativo (`deploy.sh`) sigue rechazado. El gancho es necesario porque este
+# lanzador se RE-EJECUTA desde la copia del pin, y el pin es la ref remota: la whitelist de una rama
+# NO decide hasta estar mergeada. Un control positivo hecho sin el gancho mide el pin y sale
+# rechazado igual.
+#
+# 🔴 Y POR QUE ESTE PARRAFO VIVE ACA, FUERA DEL BLOQUE, Y NO CITA PATRONES LITERALES:
+# `test-vigia-lanzador.sh` (caso 6) DERIVA la lista de instrumentos permitidos parseando el bloque
+# de abajo con un `sed` de rango + un `grep -oE` de nombres `.sh`/`.py`. Dos veces seguidas mi
+# propia prosa entro a ese corpus:
+#   1) con la explicacion ADENTRO del bloque, el grep extrajo de ella el nombre del propio lanzador
+#      y acuso a los 5 comandos de monitoreo de invocarlo con path relativo -- que es justo como
+#      DEBEN invocarlo. 5 falsos positivos, lint rojo, con la rama base limpia en 33/33.
+#   2) moverla afuera no alcanzo, porque al explicar el mecanismo habia CITADO el patron de arranque
+#      del `sed`: el rango volvia a empezar en mi comentario. La trampa una capa mas abajo.
+# Moraleja operativa, no filosofica: lo que se escribe cerca de un corpus derivado forma parte del
+# corpus. Si hay que explicar el instrumento que lo parsea, se describe sin tipear sus literales.
+#     -> memoria: el-guard-se-satisface-con-su-propio-comentario
+#
 case "$INSTRUMENTO" in
   vigilancia-check.sh|cola-check.sh|deuda-check.sh|no-ocio-check.sh|foco-check.sh|\
   escaladores-buzon.sh|archivar-buzon.sh|lint-contratos-referencias.sh|podar-worktrees.sh|\
   mi-buzon.sh|ci-verde.sh|medir-mapeo-implementacion.py|housekeeping.sh) ;;
-  # `housekeeping.sh` ENTRA, y entra a pesar de que el grep de arriba lo señala: contiene
-  # `show-toplevel`. El criterio real es *¿cambia lo que el instrumento MIDE segun de donde salga el
-  # archivo?*, y acá NO cambia — su corpus sale de `git rev-parse --git-common-dir`
-  # (`housekeeping.sh:33`), que apunta al repo PRINCIPAL desde cualquier worktree, pin incluido. El
-  # `show-toplevel` de `:48` no define el corpus: resuelve `ACTUAL`, el worktree desde el que corrés,
-  # y sirve justamente para NO borrarse a sí mismo. O sea que el grep es sintáctico y acá da un FALSO
-  # POSITIVO, que es el espejo del caso ya documentado en `:189` — allá el grep no pudo VER el
-  # descalificador real de `no-ocio-check.sh` (un `basename` del slug), acá acusa a uno que califica.
-  # Un grep no puede decidir esto solo; la pregunta se contesta leyendo de dónde sale el corpus.
-  # Verificado por EFECTO con `UC_VIGIA_PIN` apuntando a esta rama (el gancho de `:48`), porque el
-  # lanzador se RE-EJECUTA desde el `vigia.sh` del PIN (`:30`) y el pin es `origin/main`: hasta que
-  # esto esté mergeado, el `vigia.sh` de una rama NO puede admitir nada — su propia whitelist no es
-  # la que decide. Eso NO es un defecto, es el diseño (la whitelist canónica vive en main), pero
-  # significa que un control positivo hecho sin el gancho mide el pin y sale rechazado igual: me
-  # pasó dos veces seguidas antes de leer `:30`. Con el gancho: admitido, y el bloque BASURA da la
-  # MISMA lista desde el checkout compartido y desde un worktree detached. Sin esta línea el
-  # instrumento no
-  # se podía invocar por el lanzador y había que correrlo a mano desde un worktree en `origin/main`,
-  # que es exactamente la caída al árbol viejo que `vigia.sh` existe para evitar.
-  #     -> memoria: no-era-que-no-cazaba-el-patron-era-que-no-lo-cazaba-en-su-forma-real
   *)
     printf '%s\n' "vigia.sh: instrumento no permitido: '${INSTRUMENTO:-<vacío>}'" >&2
     printf '%s\n' "  permitidos: vigilancia-check.sh cola-check.sh deuda-check.sh no-ocio-check.sh" >&2
