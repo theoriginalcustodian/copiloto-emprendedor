@@ -205,7 +205,27 @@ fi
 case "$INSTRUMENTO" in
   vigilancia-check.sh|cola-check.sh|deuda-check.sh|no-ocio-check.sh|foco-check.sh|\
   escaladores-buzon.sh|archivar-buzon.sh|lint-contratos-referencias.sh|podar-worktrees.sh|\
-  mi-buzon.sh|ci-verde.sh|medir-mapeo-implementacion.py) ;;
+  mi-buzon.sh|ci-verde.sh|medir-mapeo-implementacion.py|housekeeping.sh) ;;
+  # `housekeeping.sh` ENTRA, y entra a pesar de que el grep de arriba lo señala: contiene
+  # `show-toplevel`. El criterio real es *¿cambia lo que el instrumento MIDE segun de donde salga el
+  # archivo?*, y acá NO cambia — su corpus sale de `git rev-parse --git-common-dir`
+  # (`housekeeping.sh:33`), que apunta al repo PRINCIPAL desde cualquier worktree, pin incluido. El
+  # `show-toplevel` de `:48` no define el corpus: resuelve `ACTUAL`, el worktree desde el que corrés,
+  # y sirve justamente para NO borrarse a sí mismo. O sea que el grep es sintáctico y acá da un FALSO
+  # POSITIVO, que es el espejo del caso ya documentado en `:189` — allá el grep no pudo VER el
+  # descalificador real de `no-ocio-check.sh` (un `basename` del slug), acá acusa a uno que califica.
+  # Un grep no puede decidir esto solo; la pregunta se contesta leyendo de dónde sale el corpus.
+  # Verificado por EFECTO con `UC_VIGIA_PIN` apuntando a esta rama (el gancho de `:48`), porque el
+  # lanzador se RE-EJECUTA desde el `vigia.sh` del PIN (`:30`) y el pin es `origin/main`: hasta que
+  # esto esté mergeado, el `vigia.sh` de una rama NO puede admitir nada — su propia whitelist no es
+  # la que decide. Eso NO es un defecto, es el diseño (la whitelist canónica vive en main), pero
+  # significa que un control positivo hecho sin el gancho mide el pin y sale rechazado igual: me
+  # pasó dos veces seguidas antes de leer `:30`. Con el gancho: admitido, y el bloque BASURA da la
+  # MISMA lista desde el checkout compartido y desde un worktree detached. Sin esta línea el
+  # instrumento no
+  # se podía invocar por el lanzador y había que correrlo a mano desde un worktree en `origin/main`,
+  # que es exactamente la caída al árbol viejo que `vigia.sh` existe para evitar.
+  #     -> memoria: no-era-que-no-cazaba-el-patron-era-que-no-lo-cazaba-en-su-forma-real
   *)
     printf '%s\n' "vigia.sh: instrumento no permitido: '${INSTRUMENTO:-<vacío>}'" >&2
     printf '%s\n' "  permitidos: vigilancia-check.sh cola-check.sh deuda-check.sh no-ocio-check.sh" >&2
