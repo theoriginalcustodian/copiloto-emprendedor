@@ -48,3 +48,33 @@ el otro tiene, esa capa **sobra, sea del color que sea**.
 **Caso hermano:** [[el-control-que-mide-la-propiedad-destapa-el-defecto-ajeno-el-que-mide-mi-accion-no]]
 (ahí la propiedad acertó y acusó a otro; acá la propiedad acertó y **absolvió al propio**).
 Y el primer eslabón: [[un-control-a-nivel-archivo-no-ve-la-divergencia-adentro]].
+
+## Refuerzo 2026-11-12 — tres veces en un día, y la forma siempre fue la misma
+
+El eje no es «verifiqué poco»: es que **verifiqué una PROPIEDAD del artefacto en vez de la
+PREGUNTA**, y la propiedad salió verde. Tres casos del mismo día, en tres dominios:
+
+1. **`eas.json` por perfil.** Pregunta: *¿el APK de `preview` lleva `EXPO_PUBLIC_API_BASE`?*
+   Verifiqué: *¿existe la clave en el archivo?* → sí, en `:26-27`. Estaba en **`release-medicion`**,
+   no en `preview`. Con eso declaré «ya está en main» una rama cuyo aporte era real, **después** de
+   haber declarado lo contrario. Dos veredictos opuestos, los dos mal, por medir el archivo y no el
+   perfil. El dato que lo cerró fue la cronología: `release-medicion` entró el 02-11 y el commit es
+   del 04-11, o sea POSTERIOR — no un resto que main ya cubrió.
+2. **Cobertura de un test.** Pregunta: *¿está ejercitado el aislamiento de `actividad_al_hilo`?*
+   Verifiqué: *¿qué hay en `test_actividad_al_hilo.py`?* → 5 tests, ninguno adversarial. El test
+   vivía en `test_adversarial_multitenant.py`. **El archivo que lleva el nombre del MÓDULO no es el
+   que lleva el nombre de la PREGUNTA**, y el pedido salió pidiendo más de lo que faltaba.
+3. **Un `.mcp.json` con un token.** Pregunta: *¿el archivo con el token está vivo en `main`?*
+   Verifiqué: `grep 'odobi-ui/.mcp.json'` sobre el árbol → 1. Era **`.mcp.json.example`**, que el
+   prefijo matchea y que no tiene `Bearer`. Un grep de ruta sin anclar el final convierte un
+   `.example` en alarma de seguridad.
+
+**El chequeo, que cuesta una línea:** antes de aceptar un verde, escribí la pregunta y el sujeto
+sobre el que medís, y comprobá que sean el MISMO. «¿existe la clave?» ≠ «¿la tiene ese perfil?» ·
+«¿qué hay en este archivo?» ≠ «¿está cubierta esta pregunta?» · «¿matchea la ruta?» ≠ «¿es ese
+archivo?». Los tres verdes eran ciertos; ninguno respondía lo que preguntaba.
+
+**Y el orden importa:** en el caso 1 escribí el `pedido_` y medí **en el mismo script, después**.
+Escribir primero y medir después no es un detalle de prolijidad — produce un pedido que manda a
+hacer trabajo ya hecho. Ver [[el-contrato-que-manda-a-hacer-algo-ya-hecho]] y
+[[prometer-no-es-ejecutar-el-gate-media-la-palabra]].
