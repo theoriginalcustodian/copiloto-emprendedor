@@ -71,6 +71,26 @@ INSTRUMENTO="${1:-}"; shift || true
 # que invoca, para que cinco crones no se peleen el mismo índice.
 if [ -n "${UC_VIGIA_PIN:-}" ]; then
   PIN="$UC_VIGIA_PIN"
+  # 🔴 GUARD: el pin se REBOBINA (`worktree add --detach` / `fetch` a `$REF`, ver abajo). Si le
+  # apuntás `UC_VIGIA_PIN` a un worktree donde estás TRABAJANDO, el lanzador lo deja en detached
+  # sobre `origin/main` y tu rama se queda ATRÁS de tu propio commit — sin error, porque desde el
+  # punto de vista del lanzador hizo justo lo que tenía que hacer.
+  # MEDIDO el 2026-11-12 en `wt-plan-hk`: commit `7a78c685` hecho y `git push` con exit 0, pero la
+  # ref de la rama seguía en `869c3f0d` (= `origin/main`), así que `gh pr create` contestó «No
+  # commits between main and <rama>» — un mensaje que acusa al PR y no al pin, que es por donde se
+  # va el rato. El commit no se había perdido: HEAD estaba detached encima.
+  # Se avisa y NO se bloquea: usar el worktree propio como pin es el gancho de test legítimo
+  # (`:48`), y un guard que grita en el caso normal se desarma solo.
+  #     -> memoria: git-push-puede-salir-exit-0-sin-haber-pusheado
+  _pin_abs="$(cd "$PIN" 2>/dev/null && pwd -P || echo "$PIN")"
+  _cwd_top="$(git rev-parse --show-toplevel 2>/dev/null | tr -d '\r' || true)"
+  _cwd_abs="$(cd "${_cwd_top:-.}" 2>/dev/null && pwd -P || echo "")"
+  if [ -n "$_cwd_abs" ] && [ "$_pin_abs" = "$_cwd_abs" ]; then
+    printf '%s\n' "⚠️  vigia.sh: UC_VIGIA_PIN apunta al worktree desde el que corrés ($_pin_abs)." >&2
+    printf '%s\n' "    Va a quedar DETACHED en $REF y tu rama se queda atrás de tu último commit." >&2
+    printf '%s\n' "    Si estás por commitear o pushear acá: verificá la ref después" >&2
+    printf '%s\n' "    (git rev-parse <rama> vs git rev-parse HEAD) antes de abrir el PR." >&2
+  fi
 else
   _common="$(git -C "$REPO_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
   if [ -n "$_common" ]; then
@@ -202,10 +222,42 @@ fi
 #
 # En Python el equivalente del grep de arriba es `__file__`: un instrumento que derive su raiz de
 # `__file__` mide el arbol del PIN y NO entra.
+# ── POR QUE `housekeeping.sh` ESTA EN LA WHITELIST DE ABAJO.
+#
+# Criterio de la whitelist (ver arriba): *cambia lo que el instrumento MIDE segun de donde salga el
+# archivo?* El limpiador NO cambia: su corpus sale de `rev-parse --git-common-dir`
+# (`housekeeping.sh:33`), que apunta al repo PRINCIPAL desde cualquier worktree, pin incluido. El
+# `show-toplevel` de su `:48` no define el corpus -- resuelve el worktree desde el que corres, para
+# no borrarse a si mismo. O sea que el grep descalificador de arriba, que es sintactico, aca da un
+# FALSO POSITIVO: es el espejo del caso ya anotado, donde ese mismo grep no pudo VER el
+# descalificador real de `no-ocio-check.sh` (un `basename` del slug). Un grep no decide esto solo.
+#
+# Sin esta linea el limpiador no se podia invocar por el lanzador y habia que correrlo a mano desde
+# un worktree en la ref remota, que es la caida al arbol viejo que este lanzador existe para evitar.
+#
+# Verificado por EFECTO con el gancho `UC_VIGIA_PIN`: admitido desde dos cwd distintos con la misma
+# salida, y el control negativo (`deploy.sh`) sigue rechazado. El gancho es necesario porque este
+# lanzador se RE-EJECUTA desde la copia del pin, y el pin es la ref remota: la whitelist de una rama
+# NO decide hasta estar mergeada. Un control positivo hecho sin el gancho mide el pin y sale
+# rechazado igual.
+#
+# 🔴 Y POR QUE ESTE PARRAFO VIVE ACA, FUERA DEL BLOQUE, Y NO CITA PATRONES LITERALES:
+# `test-vigia-lanzador.sh` (caso 6) DERIVA la lista de instrumentos permitidos parseando el bloque
+# de abajo con un `sed` de rango + un `grep -oE` de nombres `.sh`/`.py`. Dos veces seguidas mi
+# propia prosa entro a ese corpus:
+#   1) con la explicacion ADENTRO del bloque, el grep extrajo de ella el nombre del propio lanzador
+#      y acuso a los 5 comandos de monitoreo de invocarlo con path relativo -- que es justo como
+#      DEBEN invocarlo. 5 falsos positivos, lint rojo, con la rama base limpia en 33/33.
+#   2) moverla afuera no alcanzo, porque al explicar el mecanismo habia CITADO el patron de arranque
+#      del `sed`: el rango volvia a empezar en mi comentario. La trampa una capa mas abajo.
+# Moraleja operativa, no filosofica: lo que se escribe cerca de un corpus derivado forma parte del
+# corpus. Si hay que explicar el instrumento que lo parsea, se describe sin tipear sus literales.
+#     -> memoria: el-guard-se-satisface-con-su-propio-comentario
+#
 case "$INSTRUMENTO" in
   vigilancia-check.sh|cola-check.sh|deuda-check.sh|no-ocio-check.sh|foco-check.sh|\
   escaladores-buzon.sh|archivar-buzon.sh|lint-contratos-referencias.sh|podar-worktrees.sh|\
-  mi-buzon.sh|ci-verde.sh|medir-mapeo-implementacion.py) ;;
+  mi-buzon.sh|ci-verde.sh|medir-mapeo-implementacion.py|housekeeping.sh) ;;
   *)
     printf '%s\n' "vigia.sh: instrumento no permitido: '${INSTRUMENTO:-<vacío>}'" >&2
     printf '%s\n' "  permitidos: vigilancia-check.sh cola-check.sh deuda-check.sh no-ocio-check.sh" >&2
