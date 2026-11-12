@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { configurarApi } from './config';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
 import type { AlmacenTokens } from './tokens';
+import { fijarSessionIdActividad } from './actividadAlHilo';
 import { borrarCobro, listarImpagos, registrarCobro } from './cobros';
 
 /**
@@ -57,6 +58,23 @@ describe('registrarCobro', () => {
     // 🔴 `monto` OMITIDO, no `null`: omitido significa "el saldo pendiente completo", que es el caso
     // del botón «Cobrada» de v1. Mandarlo en `null` sería otra cosa.
     expect(cuerpo).toEqual({ idem_key: 'uuid-del-gesto' });
+  });
+
+  it('SM-P19: con un hilo activo, el cobro sobre factura manda `session_id` para que el turno llegue al chat', async () => {
+    // El backend publica el turno «Anoté…» sólo si el body trae `session_id`. Sin este test, quitar
+    // `conSessionIdActividad` de `registrarCobro` dejaba todo verde y el cobro dejaba de llegar al chat.
+    let cuerpo: Record<string, unknown> = {};
+    responder = (p) => {
+      cuerpo = p.cuerpoJson as Record<string, unknown>;
+      return respuesta(201, { cobro: { id: 1, monto: '12500.00' }, comprobante: { id: 9 } });
+    };
+    fijarSessionIdActividad('hilo-activo-1');
+    try {
+      await registrarCobro(9, { idemKey: 'g1' });
+      expect(cuerpo).toEqual({ idem_key: 'g1', session_id: 'hilo-activo-1' });
+    } finally {
+      fijarSessionIdActividad(null);
+    }
   });
 
   it('cuando el monto viene, viaja tal cual — string decimal, sin pasar por Number', async () => {
