@@ -64,6 +64,8 @@ jest.mock('./PanelDeslizable', () => {
   const { View } = require('react-native');
   return {
     ALTO_HANDLE: 13,
+    AIRE_PESTANA: 44,
+    ALTO_ZONA_ARRASTRE: 44,
     espacioSuperior: (insetTop: number) => insetTop,
     PanelDeslizable: (props: any) => {
       alBajarDelPanel = props.alBajar;

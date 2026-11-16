@@ -23,7 +23,17 @@ import { StyleSheet, Text, View } from 'react-native';
 import { formatearImporte, obtenerResumenContabilidad, type ResumenContabilidad } from '@copiloto/core';
 
 import { Tarjeta } from '../../theme/Tarjeta';
+import { conAlfa } from '../../theme/glass/conAlfa';
 import { useTema } from '../../theme/ThemeProvider';
+import { MedidorTope } from './graficos/MedidorTope';
+
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+/** `2027-03` → «marzo de 2027». */
+function mesLargo(periodo: string): string {
+  const [anio, mes] = periodo.split('-');
+  return `${MESES[Number(mes) - 1] ?? mes} de ${anio}`;
+}
 
 export function AcumuladoAnual({ testID = 'inteligencia-acumulado' }: { testID?: string }) {
   const tema = useTema();
@@ -49,13 +59,9 @@ export function AcumuladoAnual({ testID = 'inteligencia-acumulado' }: { testID?:
 
   if (facturado == null) return null;
 
-  // Sin token de "advertencia" en la paleta (sólo `exito`/`peligro`): `amarillo` cae en `acento`, el
-  // único color que llama la atención sin afirmar ni éxito ni peligro que no le constan a este bloque.
-  const colorSemaforo: Record<string, string> = {
-    verde: tema.color.exito,
-    amarillo: tema.color.acento,
-    rojo: tema.color.peligro,
-  };
+  const tope = facturado.tope;
+  // Cuánto falta para el tope: la resta de los dos números que ya están en pantalla.
+  const resto = tope != null ? Number(tope.valor) - Number(facturado.doceMeses) : null;
 
   // SM-N45 DoD 2 (prototipo `index.html:1996-1998`): «Acumulado del año» es la etiqueta de SECCIÓN
   // (`.lista-lbl`) y va FUERA de la card; el `h4` de la card es «Facturado en los últimos 12 meses».
@@ -64,43 +70,45 @@ export function AcumuladoAnual({ testID = 'inteligencia-acumulado' }: { testID?:
       <Text
         testID={`${testID}-etiqueta`}
         accessibilityRole="header"
-        style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}
+        style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande }}
       >
         Acumulado del año
       </Text>
-      <Tarjeta testID={testID} rotulo="Facturado en los últimos 12 meses">
+      <Tarjeta testID={testID} rotulo="Facturado en los últimos 12 meses" rotuloAdentro>
       <View style={styles.cuerpo}>
         <Text
           testID={`${testID}-doce-meses`}
-          style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}
+          style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: 28, lineHeight: 34 }}
         >
           {formatearImporte(facturado.doceMeses)}
         </Text>
 
-        {facturado.tope != null && (
+        {tope != null && (
           <View style={styles.medidor} testID={`${testID}-tope`}>
-            <View style={[styles.medidorFondo, { backgroundColor: tema.color.borde }]}>
-              <View
-                style={[
-                  styles.medidorBarra,
-                  {
-                    backgroundColor: colorSemaforo[facturado.tope.semaforo] ?? tema.color.textoTenue,
-                    // Topeado al 100%: pasado el tope la barra no crece más, y el número de al lado
-                    // sigue diciendo la verdad. Una barra que se desborda del riel se lee como un
-                    // error de dibujo, no como «te pasaste».
-                    width: `${Math.min(facturado.tope.porcentaje, 100)}%`,
-                  },
-                ]}
-              />
-            </View>
-            <Text
-              style={{
-                color: colorSemaforo[facturado.tope.semaforo] ?? tema.color.textoTenue,
-                fontSize: tema.tipo.chico,
-              }}
-            >
-              {facturado.tope.porcentaje}% del tope de monotributo
+            <MedidorTope testID={`${testID}-medidor`} porcentaje={tope.porcentaje} semaforo={tope.semaforo} proyectado={tope.proyeccion?.porcentaje} />
+            <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, textAlign: 'center' }}>
+              del tope de monotributo
             </Text>
+            {resto != null && Number.isFinite(resto) && (
+              <Text testID={`${testID}-resto`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18, textAlign: 'center' }}>
+                {resto >= 0
+                  ? `Te quedan ${formatearImporte((resto).toFixed(2))} antes de pasarte.`
+                  : `Te pasaste por ${formatearImporte((-resto).toFixed(2))}.`}
+              </Text>
+            )}
+            {/* 🟡 La proyección es un PEDIDO al backend (`ProyeccionTope`): si no llega, esta línea no existe. */}
+            {tope.proyeccion != null && (
+              <View style={[styles.proyeccion, { borderTopColor: conAlfa(tema.color.texto, 0.12) }]}>
+                <Text testID={`${testID}-proyeccion`} style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base, lineHeight: 22 }}>
+                  {tope.proyeccion.mesAlcance != null
+                    ? `A este ritmo llegás al tope en ${mesLargo(tope.proyeccion.mesAlcance)}.`
+                    : `A este ritmo no llegás al tope: en un año vas a estar en el ${tope.proyeccion.porcentaje}%.`}
+                </Text>
+                <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
+                  La línea punteada es lo que te falta recorrer si seguís facturando como este mes.
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </View>
@@ -110,9 +118,8 @@ export function AcumuladoAnual({ testID = 'inteligencia-acumulado' }: { testID?:
 }
 
 const styles = StyleSheet.create({
-  seccion: { gap: 8 },
+  seccion: { gap: 10 },
   cuerpo: { gap: 4 },
-  medidor: { gap: 6, marginTop: 8 },
-  medidorFondo: { height: 8, borderRadius: 4, overflow: 'hidden' },
-  medidorBarra: { height: 8, borderRadius: 4 },
+  medidor: { gap: 6, marginTop: 16 },
+  proyeccion: { gap: 4, marginTop: 14, paddingTop: 14, borderTopWidth: 1 },
 });

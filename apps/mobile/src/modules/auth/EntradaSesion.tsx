@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { TEXTOS_REVEAL } from '@copiloto/core';
 
 import { PantallaLogin } from './PantallaLogin';
+import { PantallaMetodo } from './PantallaMetodo';
+import { PantallaRegistro } from './PantallaRegistro';
 import { RevealEntrada } from './RevealEntrada';
 import { useSession } from './useSession';
 
@@ -18,17 +20,32 @@ import { useSession } from './useSession';
  * `PantallaLogin` (`login-aviso-sesion`); pasar por el reveal sumaría un toque antes de verlo y rompería SM-K6,
  * que acredita ese aviso. Test: `EntradaSesion.test.tsx` («sesión caída SOLA…»).
  *
- * «Crear una nueva cuenta»: mobile no tiene pantalla de alta propia — el alta self-service de la
- * beta es Google (`loginConGoogle`, BETA-5), donde «entrar» y «crear cuenta» son el mismo acto, ya
- * cubierto por «Empecemos»/«Entrar». No hay alta distinta que ofrecer: el botón secundario de
- * `primeraVez` no se dibuja (mismo tratamiento que web, decisión operador #3 resuelta 2026-08-04).
+ * Desde el 12/11 hay alta propia con mail (`PantallaRegistro`) y la elección de método (`PantallaMetodo`).
+ */
+type Paso = { tipo: 'reveal' } | { tipo: 'metodo'; nuevo: boolean } | { tipo: 'login'; email: string } | { tipo: 'registro'; email: string };
+
+/**
+ * Flujo «Entrada a Odobi» (Martin 12/11): reveal → «Elegí cómo seguir» (Apple · Google · mail) → con mail,
+ * entrar o crear la cuenta. Quien salió a propósito («volver») vuelve a entrar directo con su mail;
+ * «Entrar con otra cuenta» pasa por la elección de método.
  */
 export function EntradaSesion() {
   const { cierreVoluntario, primeraVez } = useSession();
-  const [paso, setPaso] = useState<{ tipo: 'reveal' } | { tipo: 'login'; email: string }>({ tipo: 'reveal' });
+  const [paso, setPaso] = useState<Paso>({ tipo: 'reveal' });
 
+  const aLogin = (email: string) => setPaso({ tipo: 'login', email });
+  const aRegistro = (email: string) => setPaso({ tipo: 'registro', email });
+  // `nuevo`: llegó por «Empecemos» — con mail, lo más probable es que no tenga cuenta y va directo a crearla.
+  const aMetodo = (nuevo = false) => setPaso({ tipo: 'metodo', nuevo });
+
+  if (paso.tipo === 'metodo') {
+    return <PantallaMetodo onMail={() => (paso.nuevo ? aRegistro('') : aLogin(''))} />;
+  }
+  if (paso.tipo === 'registro') return <PantallaRegistro emailInicial={paso.email} onIrAIngreso={aLogin} onVolver={() => aMetodo(true)} />;
   if ((cierreVoluntario == null && !primeraVez) || paso.tipo === 'login') {
-    return <PantallaLogin emailInicial={paso.tipo === 'login' ? paso.email : ''} />;
+    return (
+      <PantallaLogin emailInicial={paso.tipo === 'login' ? paso.email : ''} onCrearCuenta={aRegistro} onOtrasFormas={() => aMetodo()} />
+    );
   }
 
   const textos = cierreVoluntario != null ? TEXTOS_REVEAL.volver : TEXTOS_REVEAL.primeraVez;
@@ -37,8 +54,8 @@ export function EntradaSesion() {
       variante={cierreVoluntario != null ? 'reveal' : 'splash'}
       primario={textos.primario}
       secundario={cierreVoluntario != null ? textos.secundario : ''}
-      onPrimario={() => setPaso({ tipo: 'login', email: cierreVoluntario?.email ?? '' })}
-      onSecundario={() => setPaso({ tipo: 'login', email: '' })}
+      onPrimario={() => (cierreVoluntario != null ? aLogin(cierreVoluntario.email ?? '') : aMetodo(true))}
+      onSecundario={() => aMetodo()}
     />
   );
 }

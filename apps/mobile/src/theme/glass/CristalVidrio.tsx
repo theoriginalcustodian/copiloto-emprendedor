@@ -93,19 +93,26 @@ export interface CristalVidrioProps extends PropsWithChildren {
    * tarjeta detrás del campo.
    */
   sinFondo?: boolean;
+  /**
+   * Cómo recibe toques el cristal. `box-none`: el cristal en sí no los toma —pasan a lo que haya detrás— pero
+   * sus hijos sí. Para un panel colapsado y transparente que queda encima de otra pantalla.
+   */
+  pointerEvents?: 'auto' | 'box-none';
   testID?: string;
 }
 
-export function CristalVidrio({ nivel = 'conversacion', style, alturaAuto = false, sinFondo = false, testID, children }: CristalVidrioProps) {
+export function CristalVidrio({ nivel = 'conversacion', style, alturaAuto = false, sinFondo = false, pointerEvents = 'auto', testID, children }: CristalVidrioProps) {
   const tema = useTema();
   const cfg = NIVELES[nivel];
 
   return (
     <View
       testID={testID}
+      pointerEvents={pointerEvents}
       style={[styles.externo, sinFondo ? null : sombraNivel(tema.glass.relieve.nivel4, cfg.ancladoAbajo), style]}
     >
       <View
+        pointerEvents={pointerEvents}
         style={[
           alturaAuto ? styles.internoAuto : styles.interno,
           {

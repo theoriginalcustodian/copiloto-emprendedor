@@ -3,9 +3,9 @@ import { Text } from 'react-native';
 import type { ArtefactoEnlace } from '@copiloto/core';
 
 import { FilaBotones } from '../../theme/glass/campos';
-import { Tile } from '../../theme/glass/Tile';
 import { useTema } from '../../theme/ThemeProvider';
 import { abrirLink } from '../../util/abrirYCompartir';
+import { TarjetaChat } from './TarjetaChat';
 
 export interface TarjetaArtefactoProps {
   artefacto: ArtefactoEnlace;
@@ -24,7 +24,7 @@ export function TarjetaArtefacto({ artefacto, testID = 'tarjeta-artefacto' }: Ta
   const tema = useTema();
   const { titulo, url, etiqueta } = artefacto;
   return (
-    <Tile testID={testID}>
+    <TarjetaChat testID={testID}>
       {titulo != null && (
         <Text
           testID={`${testID}-titulo`}
@@ -46,6 +46,6 @@ export function TarjetaArtefacto({ artefacto, testID = 'tarjeta-artefacto' }: Ta
           ]}
         />
       )}
-    </Tile>
+    </TarjetaChat>
   );
 }

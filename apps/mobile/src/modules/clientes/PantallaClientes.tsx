@@ -15,11 +15,15 @@ import {
 import { FichaCliente } from './FichaCliente';
 import { FormularioCliente } from './FormularioCliente';
 import { TarjetaCliente } from './TarjetaCliente';
+import { DIBUJO_CLIENTE } from './dibujoCliente';
+import { IconoLupa } from '../actividad/BuscadorActividad';
 import { AvisoDictado, DockFuncion, useDictadoPorFuncion } from '../voz';
+import { BotonAcceso, IconoLapiz } from '../../theme/BotonAcceso';
 import { CampoTexto, FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
-import { BloqueCifra } from '../../theme/BloqueCifra';
+import { BloqueCifra, elevacion } from '../../theme/BloqueCifra';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
+import { VacioFuncion } from '../../theme/VacioFuncion';
 
 const PLACEHOLDER_DOCK = 'Un cliente nuevo, o hablá…';
 
@@ -248,7 +252,7 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
   const clientesOrdenados = ordenarAlfabetico(clientes);
 
   return (
-    <MarcoGlass titulo="Clientes" icono="clientes" testID="pantalla-clientes">
+    <MarcoGlass titulo="Clientes" icono="clientes" sinIcono testID="pantalla-clientes">
       {estado === 'cargando' && (
         <View style={styles.centro}>
           <ActivityIndicator testID="clientes-cargando" color={tema.color.acento} />
@@ -277,7 +281,7 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
       {estado === 'ok' && (
         <ScrollFormulario
           testID="clientes-lista"
-          contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.md, paddingBottom: 120 }}
+          contentContainerStyle={{ padding: tema.espacio.md, gap: 24, paddingBottom: 120 }}
           refreshControl={
             <RefreshControl
               refreshing={refrescando}
@@ -326,19 +330,14 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
 
               {/* BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`: dictar acá abre el
                   alta con `nombre` prellenado (K-10, `/transcribir`, sin sesión de chat). */}
-              <View style={styles.filaAlta}>
-                <FilaBotones
-                    testID="clientes-acciones"
-                  compacto
-                    botones={[
-                      {
-                        etiqueta: 'Nuevo cliente',
-                        onPress: abrirFormularioEnBlanco,
-                        variante: 'primario',
-                        testID: 'clientes-nuevo',
-                      },
-                    ]}
-                  />
+              {/* Mismo criterio que Gastos (Martin 14/11, ver `BotonAcceso`). */}
+              <View testID="clientes-acciones">
+                <BotonAcceso
+                  testID="clientes-nuevo"
+                  onPress={abrirFormularioEnBlanco}
+                  icono={<IconoLapiz color={tema.color.acentoTinta} />}
+                  etiqueta="Nuevo cliente"
+                />
               </View>
 
               {errorMic != null && (
@@ -372,26 +371,45 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
                 </View>
               )}
 
-              <CampoTexto
-                etiqueta="Buscar"
-                valor={busqueda}
-                onChange={setBusqueda}
-                placeholder="Nombre del cliente"
-                autoCapitalize="none"
-                testID="clientes-buscar"
-              />
-
-              {!hayClientes && (
-                <Text testID="clientes-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-                  {buscando
-                    ? 'No encontramos ningún cliente con ese nombre.'
-                    : 'Tu cartera se va a armar sola con lo que factures y presupuestes — y mientras tanto podés cargar el primero a mano.'}
-                </Text>
+              {/* El buscador se va sólo con la cartera vacía de verdad. Si no hay resultados porque se está
+                  buscando, se queda: sin el campo no habría cómo borrar lo escrito. */}
+              {(hayClientes || buscando) && (
+                <CampoTexto
+                  etiqueta="Buscar"
+                  etiquetaOculta
+                  accesorioDerecha={<IconoLupa color={tema.color.textoTenue} />}
+                  valor={busqueda}
+                  onChange={setBusqueda}
+                  placeholder="Buscar un cliente"
+                  autoCapitalize="none"
+                  testID="clientes-buscar"
+                />
               )}
 
-              {clientesOrdenados.map((c) => (
-                <TarjetaCliente key={c.id} cliente={c} onPress={setFicha} />
-              ))}
+              {!hayClientes && buscando && (
+                <Text testID="clientes-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
+                  No encontramos ningún cliente con ese nombre.
+                </Text>
+              )}
+              {!hayClientes && !buscando && (
+                <VacioFuncion
+                  testID="clientes-vacio"
+                  dibujo={DIBUJO_CLIENTE}
+                  titulo="Todavía no hay clientes"
+                  cuerpo="Tu cartera se arma sola con lo que factures y presupuestes. Mientras tanto, cargá el primero a mano."
+                />
+              )}
+
+              {hayClientes && (
+                <View
+                  testID="clientes-tarjeta"
+                  style={[styles.tarjeta, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}
+                >
+                  {clientesOrdenados.map((c, i) => (
+                    <TarjetaCliente key={c.id} cliente={c} onPress={setFicha} conDivisor={i > 0} />
+                  ))}
+                </View>
+              )}
             </>
           )}
 
@@ -427,6 +445,6 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
 }
 
 const styles = StyleSheet.create({
-  filaAlta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  tarjeta: { borderRadius: 22, paddingHorizontal: 16 },
 });

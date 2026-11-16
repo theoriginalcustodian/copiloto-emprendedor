@@ -10,12 +10,13 @@ import {
   View,
 } from 'react-native';
 
-import { TEXTO_CREDENCIALES_INCORRECTAS, TEXTO_PIE_INGRESAR } from '@copiloto/core';
+import { TEXTO_CREDENCIALES_INCORRECTAS } from '@copiloto/core';
 
 import { COLOR_PALABRA_MARCA } from '../../theme/identidadPalette';
 import { pressableStyle } from '../../theme/glass/presion';
-import { Marca } from '../../theme/Marca';
 import { useTema } from '../../theme/ThemeProvider';
+import { AyudaContrasena } from './AyudaContrasena';
+import { estilosEntrada } from './layoutEntrada';
 import { useSession } from './useSession';
 
 type FormState = 'idle' | 'enviando' | 'error-credenciales' | 'no-habilitada' | 'error-red';
@@ -24,9 +25,6 @@ type FormState = 'idle' | 'enviando' | 'error-credenciales' | 'no-habilitada' | 
 // viven acá y no en los tokens porque son propias de ESTE hero, no del sistema compartido (evita
 // inflar la escala global `tipo` con un tamaño que sólo usa una pantalla).
 /** El wordmark «Odobi» del lockup: `.ig-marca .w{font-size:32px}` (`prototipo/index.html:517`). SM-Z4 parte 1 (era 34). */
-const HERO = 32;
-/** El símbolo del lockup. El wordmark va al lado, no debajo — ver el bloque de marca del render. */
-const LOCKUP_SIMBOLO = 38;
 const ALTO_CAMPO = 52;
 // SM-L4 entrada 03: el campo del mapa es radio 14 (--r-s) y padding 14 (.ig-campo, index.html:526-527), con borde
 // terracota profunda + halo de 3px al 16% en foco (.ig-campo.foco, :529). Antes: radio 22 y padding 16, sin foco.
@@ -40,20 +38,25 @@ const ALTO_BOTON = 54;
  * vía `useSession().login`, mismos `testID`) sobre primitivos RN, rebrandeada al Copiloto del
  * Emprendedor (sin lenguaje clínico).
  *
- * **Botón de Google** (BETA-4b, portado tras el signup email/password): usa
- * `useSession().loginConGoogle`, que abre el selector NATIVO de cuenta de Android (Credential
- * Manager vía `@react-native-google-signin/google-signin`, sin browser) y después intercambia el
- * `idToken` por un token propio en el backend (`modules/auth/oauth.ts`). Camino independiente del
- * de abajo -- no comparte estado con el formulario de email/password salvo el `FormState` de la
- * alerta.
+ * **Sin botón de Google desde el 12/11** (flujo «Entrada a Odobi», Martin): Apple, Google y mail se
+ * eligen antes, en `PantallaMetodo`. Esta pantalla es el camino del MAIL: entrar con contraseña o,
+ * con `onCrearCuenta`, ir a crear la cuenta.
  *
  * Vive en `modules/auth` (no en `app/login.tsx`) a propósito: el módulo es autocontenido y el parent
  * decide DÓNDE montarlo (la ruta de expo-router) y cómo cablear `<SessionProvider>` + el guard que,
  * tras un login exitoso, saca al usuario de esta pantalla — acá NO se navega a mano.
  */
-export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } = {}) {
+export interface PantallaLoginProps {
+  emailInicial?: string;
+  /** «¿Es tu primera vez? Creá tu cuenta» (flujo «Entrada a Odobi»). Sin callback, el enlace no se dibuja. */
+  onCrearCuenta?: (email: string) => void;
+  /** «Otras formas de entrar»: vuelve a la pantalla de Apple · Google · mail. */
+  onOtrasFormas?: () => void;
+}
+
+export function PantallaLogin({ emailInicial = '', onCrearCuenta, onOtrasFormas }: PantallaLoginProps = {}) {
   const tema = useTema();
-  const { estado, avisoSesion, login, loginConGoogle } = useSession();
+  const { estado, avisoSesion, login } = useSession();
   const [email, setEmail] = useState(emailInicial);
   const [password, setPassword] = useState('');
   const [formState, setFormState] = useState<FormState>('idle');
@@ -78,19 +81,6 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
     if (resultado.ok) return;
     if (resultado.error === 'credenciales') setFormState('error-credenciales');
     else if (resultado.error === 'no-habilitada') setFormState('no-habilitada');
-    else setFormState('error-red');
-  }
-
-  // Spinner propio (no reusa `enviando`, que deshabilita los campos de email/password): los dos
-  // caminos son independientes y no deben bloquearse entre sí.
-  const [procesandoGoogle, setProcesandoGoogle] = useState(false);
-
-  async function manejarGoogle() {
-    setProcesandoGoogle(true);
-    const resultado = await loginConGoogle();
-    setProcesandoGoogle(false);
-    if (resultado.ok || resultado.error === 'cancelado') return; // cancelar no es error, es silencio
-    if (resultado.error === 'no-habilitada') setFormState('no-habilitada');
     else setFormState('error-red');
   }
 
@@ -129,7 +119,7 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
     >
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[styles.scroll, { padding: tema.espacio.lg }]}
+        contentContainerStyle={[estilosEntrada.scrollFormulario, { paddingHorizontal: tema.espacio.lg }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -147,12 +137,9 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
           * La separación símbolo↔wordmark es **0,3 × el ancho del símbolo** (spec del isotipo), no
           * un número elegido a ojo.
           */}
-        <View style={[styles.marca, { gap: Math.round(LOCKUP_SIMBOLO * 0.3), marginBottom: tema.espacio.xl }]}>
-          {/* SM-N30: `desnudo` = el símbolo SIN badge, terracota, como el mapa (`prototipo/index.html:2571`,
-              `<svg width="38">` con `stroke: var(--terracota)`). Era `tinta`, que es el avatar redondo de
-              Soporte: el login importó el círculo sin su motivo. En `desnudo` el `size` es el del SIGNO
-              (38, como el mapa), no el de un tile; el `gap` de abajo sigue siendo 0,3 × ese ancho. */}
-          <Marca size={LOCKUP_SIMBOLO} tono="desnudo" />
+        {/* Martin 12/11: sin el isotipo — el nombre solo, centrado. */}
+        {/* Martin 12/11: misma disposición que «Creá tu cuenta» (`layoutEntrada`) — nombre + formulario centrados. */}
+        <View style={[styles.marca, estilosEntrada.zonaMarcaFormulario]}>
           {/* El wordmark es la marca en su forma más literal: usa `fuente.display` (Plus Jakarta
               Sans Bold), no `fuente.uiBold` como el resto de la UI. */}
           {/* SM-Z4 parte 2 (DECIDIDO por el operador, 2026-11-03): el wordmark es el LOGOTIPO y va en la terracota de marca del mapa
@@ -161,10 +148,8 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
               (LOGOTIPOS_TEXTO, paresPintadosContraste.test.tsx). No copiar este color a otro <Text>. */}
           <Text
             testID="login-wordmark"
-            style={[
-              styles.titulo,
-              { color: COLOR_PALABRA_MARCA, fontSize: HERO, fontFamily: tema.fuente.display },
-            ]}
+            accessibilityRole="header"
+            style={[estilosEntrada.wordmarkFormulario, { color: COLOR_PALABRA_MARCA, fontFamily: tema.fuente.display }]}
           >
             Odobi
           </Text>
@@ -172,15 +157,12 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
 
         <Text
           testID="login-titulo"
-          style={[styles.encabezado, { color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.titulo }]}
+          style={[styles.encabezado, { color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: 22, letterSpacing: -0.3 }]}
         >
           Entrá a tu cuenta
         </Text>
-        <Text style={[styles.bajada, { color: tema.color.textoTenue, fontSize: tema.tipo.base }]}>
-          Con el mail y la contraseña que ya usás.
-        </Text>
 
-        <View style={{ gap: tema.espacio.md }}>
+        <View style={{ gap: 14 }}>
           <View style={{ gap: tema.espacio.xs }}>
             <Text style={[styles.etiqueta, { color: tema.color.textoTenue, fontSize: tema.tipo.chico }]}>Mail</Text>
             <View style={halo('email')}>
@@ -275,35 +257,15 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
             {enviando ? (
               <ActivityIndicator color={tema.color.acentoTexto} />
             ) : (
-              <Text style={{ color: tema.color.acentoTexto, fontSize: tema.tipo.grande, fontWeight: '700' }}>
+              <Text style={{ color: tema.color.acentoTexto, fontSize: 17, fontFamily: tema.fuente.display, letterSpacing: -0.2 }}>
                 Entrar
               </Text>
             )}
           </Pressable>
 
-          <Pressable
-            testID="login-google"
-            disabled={procesandoGoogle}
-            onPress={manejarGoogle}
-            style={pressableStyle([
-              styles.boton,
-              {
-                // Sin borde (`.btn2` del prototipo, BL-X12m): la jerarquía la da el relleno, no un marco.
-                backgroundColor: tema.color.superficie,
-                borderRadius: tema.radio.completo,
-                height: ALTO_BOTON,
-                opacity: procesandoGoogle ? 0.7 : 1,
-              },
-            ])}
-          >
-            {procesandoGoogle ? (
-              <ActivityIndicator color={tema.color.texto} />
-            ) : (
-              <Text style={{ color: tema.color.texto, fontSize: tema.tipo.grande, fontWeight: '700' }}>
-                Entrar con Google
-              </Text>
-            )}
-          </Pressable>
+          {/* Martin 12/11: quien no se acuerda la contraseña tiene que tener una salida acá mismo. */}
+          {onOtrasFormas != null && <AyudaContrasena testID="login-ayuda-contrasena" onOtrasFormas={onOtrasFormas} />}
+
 
           {/* CTA5 — la sesión se cayó sola. Sólo mientras el formulario no tenga nada propio que
               decir: en cuanto el usuario reintenta, lo que importa es el resultado de ESE intento.
@@ -321,10 +283,24 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
               {avisoSesion}
             </Text>
           )}
-          <Text testID="login-pie" style={[styles.alerta, { color: tema.color.textoTenue, fontSize: tema.tipo.chico }]}>
-            {TEXTO_PIE_INGRESAR}
-          </Text>
         </View>
+
+        {/* Google y Apple viven en la portada (`PantallaMetodo`); acá, las dos salidas en una fila, como en «Creá tu cuenta». */}
+        {(onCrearCuenta != null || onOtrasFormas != null) && (
+          <View style={styles.salidas}>
+            {onCrearCuenta != null && (
+              <Pressable testID="login-crear-cuenta" onPress={() => onCrearCuenta(email.trim())} hitSlop={10}>
+                <Text style={{ color: tema.color.acentoTinta, fontSize: 15, fontFamily: tema.fuente.uiMedium }}>Creá tu cuenta</Text>
+              </Pressable>
+            )}
+            {onCrearCuenta != null && onOtrasFormas != null && <Text style={{ color: tema.color.textoTenue }}>·</Text>}
+            {onOtrasFormas != null && (
+              <Pressable testID="login-otras-formas" onPress={onOtrasFormas} hitSlop={10}>
+                <Text style={{ color: tema.color.textoTenue, fontSize: 15, fontFamily: tema.fuente.uiMedium }}>Otras formas de entrar</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -332,13 +308,11 @@ export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } =
 
 const styles = StyleSheet.create({
   contenedor: { flex: 1 },
-  // Centra el formulario cuando no hay teclado; con teclado el ScrollView deja subir el contenido.
-  scroll: { flexGrow: 1, justifyContent: 'center' },
   // El lockup es una LÍNEA: símbolo y nombre al lado, centrados en el ancho.
   marca: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  encabezado: { textAlign: 'center' },
-  bajada: { textAlign: 'center', marginBottom: 20 },
-  titulo: { fontWeight: '800', letterSpacing: -0.5 },
+  // Martin 12/11: más aire entre título y bajada, y antes de los campos.
+  encabezado: { textAlign: 'center', marginBottom: 20 },
+  salidas: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginTop: 22 },
   tagline: {},
   etiqueta: { fontWeight: '600' },
   input: { borderWidth: 1 },

@@ -24,7 +24,7 @@ import { useFocusEffect } from 'expo-router';
 import { useInicialCuenta } from '../modules/midia/useInicialCuenta';
 import { useSharedValue } from 'react-native-reanimated';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, View } from 'react-native';
+import { BackHandler, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { listarActividad, type ActividadItem, type ArchivoSubida, type AvisoAlChat, type CierreAviso } from '@copiloto/core';
@@ -39,7 +39,9 @@ import { hrefDeRuta } from '../modules/midia/destinoTarjeta';
 import { PantallaMiDia } from '../modules/midia/PantallaMiDia';
 import { tomarAvisoParaElChat } from '../navegacion/avisoParaElChat';
 import { empujarUnaVez, reabrirNavegacion } from '../navegacion/empujarUnaVez';
-import { ALTO_HANDLE, espacioSuperior, PanelDeslizable } from './PanelDeslizable';
+import { AIRE_PESTANA, ALTO_HANDLE, ALTO_ZONA_ARRASTRE, espacioSuperior, PanelDeslizable } from './PanelDeslizable';
+import { TutorialPrimerIngreso } from './TutorialPrimerIngreso';
+import { tomarTutorialPendiente } from './tutorialPendiente';
 import { PanelFunciones } from './PanelFunciones';
 
 /**
@@ -158,6 +160,10 @@ export function PantallaPrincipal() {
    * instante en que la conversación empieza a bajar, para que se cierren en paralelo.
    */
   const [senalCerrar, setSenalCerrar] = useState(0);
+  // Tutorial del primer ingreso (Martin 13/11): se toma del buzón UNA vez, al montar. Es una capa encima de
+  // esta pantalla: no mueve ni toca las capas reales (muestra la conversación y las funciones con hojas de
+  // demostración propias).
+  const [tutorial, setTutorial] = useState(() => tomarTutorialPendiente());
   // SM-I4: el BACK cierra primero lo que está arriba. `progresoFunciones` lleva el gesto a la tira del chat.
   const [escritorioAbierto, setEscritorioAbierto] = useState(false);
   const progresoFunciones = useSharedValue(0);
@@ -262,6 +268,7 @@ export function PantallaPrincipal() {
    * competir por él.
    */
   return (
+    <View style={estilosRaiz.raiz}>
     <PanelDeslizable
       testID="panel-principal"
       senalSubir={senalSubir}
@@ -294,6 +301,9 @@ export function PantallaPrincipal() {
           }
         >
           <PantallaMiDia
+            // Durante TODO el tutorial (Martin 14/11): la tira de abajo es transparente y el texto del vacío
+            // («Nada urgente por hoy.») queda justo detrás del campo, ensuciando los pasos que lo dejan nítido.
+            ocultarVacio={tutorial}
             onConexionCaida={setConexionCaida}
             onAgenda={() => empujarUnaVez('/agenda')}
             onVerTablero={() => empujarUnaVez('/midia')}
@@ -306,7 +316,9 @@ export function PantallaPrincipal() {
               // La tira de la conversación tapa el borde de abajo: el asa más el campo (ver `PanelFunciones`).
               // SM-N38: sin el spacer de status bar. Colapsado el panel no pinta superficie, así que ese
               // espacio sólo dejaba un hueco entre «Para hoy» y la línea; el spacer queda transparente.
-              <View testID="midia-reserva-tira" style={{ height: ALTO_HANDLE + ALTO_COMPOSER_REPOSO }} />
+              // Martin 15/11: más 44 de aire. La zona de agarre de la línea se extiende hacia arriba, y sin este
+              // margen la última tarjeta de «Para hoy» terminaba metida en ella aun con el scroll al final.
+              <View testID="midia-reserva-tira" style={{ height: ALTO_HANDLE + ALTO_COMPOSER_REPOSO + ALTO_ZONA_ARRASTRE }} />
             }
           />
         </PanelFunciones>
@@ -316,8 +328,18 @@ export function PantallaPrincipal() {
         onVolverAlTablero={alVolverAlTablero}
         audioEntrante={audioEntrante}
         onPendienteMandado={alMandarPendiente}
-        desplazamientoTeclado={ALTO_HANDLE + espacioSuperior(insets.top)}
+        margenSuperior={ALTO_HANDLE + AIRE_PESTANA + espacioSuperior(insets.top)}
       />
     </PanelDeslizable>
+      {tutorial && (
+        <TutorialPrimerIngreso
+          // El MISMO escritorio de la app, sin acciones: lo que el tutorial deja ver es lo que hay de verdad.
+          muestraFunciones={<EscritorioFunciones inicialCuenta={inicialCuenta} sinActividad />}
+          onFin={() => setTutorial(false)}
+        />
+      )}
+    </View>
   );
 }
+
+const estilosRaiz = StyleSheet.create({ raiz: { flex: 1 } });

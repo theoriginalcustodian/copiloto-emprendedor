@@ -12,7 +12,7 @@
  * aplica igual acá — `automatizaciones recurrentes` y `trazabilidad` ya están anotadas como candidatas
  * post-v1 en la memoria del proyecto, así que este escritorio va a crecer.
  *
- * 🔵 **Grid 3×2 FIJO, sin scroll (Ola 4).** Hasta el 2026-09-18 eran 9 tiles en dos filas con scroll
+ * 🔵 **Grid FIJO, sin scroll (Ola 4; 2 columnas × 3 filas desde el 14/11).** Hasta el 2026-09-18 eran 9 tiles en dos filas con scroll
  * horizontal, más su afordancia de «hay más a la derecha» (fade + solapa + medición de anchos): la
  * mitad de las funciones vivía fuera de pantalla. Con 6 entra todo, así que el scroll y la
  * afordancia se fueron — una flecha que señala el vacío enseña a desconfiar de las que sí señalan
@@ -22,7 +22,7 @@
  * y el bloque negro con el encabezado TAPEABLE "Actividad reciente" (→ `/recientes`) y su lista, que scrollea
  * adentro. El negro va abajo, en lo que ya pasó: en Mi día va arriba, en lo que hay que hacer.
  */
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
 /**
  * 🔴 **`ScrollView` sale de Gesture Handler, NO de `react-native`, y no es preferencia de estilo.**
  *
@@ -50,7 +50,7 @@ import { EncabezadoListado } from '../../theme/glass/EncabezadoListado';
 import { GlassIcon } from '../../theme/glass/GlassIcon';
 import type { NombreIconoGlass } from '../../theme/glass/icons';
 import { Tile } from '../../theme/glass/Tile';
-import { useTema } from '../../theme/ThemeProvider';
+import { useSkin, useTema } from '../../theme/ThemeProvider';
 
 /** Las funciones del escritorio del copiloto. Ver `TILES` para la regla que fija su ORDEN. */
 export type FuncionKey =
@@ -121,6 +121,23 @@ export const TILES: readonly DefinicionTile[] = [
 
 
 /**
+ * El DIBUJO de cada función (Martin 14/11): trazo negro a mano + una mancha arena, en la familia de la taza de
+ * Mi día. Reemplaza al glifo sobre chip rosa, que se leía frío. ⚠️ Son PNG de PRUEBA con fondo blanco: sólo
+ * empalman con la casilla en la piel clara, así que las pieles oscuras siguen con el glifo. Cuando Martin
+ * cierre el trazo pasan a SVG y esta salvedad se va.
+ */
+/* eslint-disable @typescript-eslint/no-require-imports -- Metro resuelve los PNG con `require`, igual que la fuente en `app/_layout.tsx`. */
+const DIBUJOS: Record<FuncionKey, ImageSourcePropType> = {
+  gastos: require('../../../assets/funciones/gastos.png'),
+  ingresos: require('../../../assets/funciones/ingresos.png'),
+  facturacion: require('../../../assets/funciones/facturacion.png'),
+  presupuestos: require('../../../assets/funciones/presupuestos.png'),
+  clientes: require('../../../assets/funciones/clientes.png'),
+  inteligencia: require('../../../assets/funciones/inteligencia.png'),
+};
+/* eslint-enable @typescript-eslint/no-require-imports */
+
+/**
  * Las funciones OPERATIVAS, en orden. Es lo que el DoD del contrato exige que se vea sin scrollear, y
  * lo que el test usa para frenar a quien meta una función nueva arriba sin pensarlo.
  */
@@ -132,15 +149,17 @@ export const KEYS_OPERATIVAS: readonly FuncionKey[] = [
 ];
 
 /**
- * Columnas del grid. **3×2 fijo, sin scroll** (`odobi-ui/CLAUDE.md` §Modelo de capas): con 6
- * funciones entra todo, y lo que entra no se esconde.
+ * Columnas del grid. **2×3 fijo, sin scroll** (Martin 14/11; eran 3 columnas): con 6 funciones entra
+ * todo, y lo que entra no se esconde. Dos columnas dan casillas anchas —el dibujo arriba, el nombre
+ * abajo a la izquierda—, «Inteligencia de Negocio» deja de apretarse y el grid ocupa la mitad de la
+ * pantalla que con tres columnas quedaba vacía.
  *
  * ⚠️ **Si mañana vuelven a ser 7+, esto NO se resuelve agregando una 3ª fila ni volviendo al scroll
  * horizontal** — se resuelve decidiendo qué función no es un lugar. El scroll horizontal existió
  * mientras el escritorio tenía 9 tiles, y lo que enseñó es que la mitad de las funciones vivían
  * fuera de pantalla.
  */
-const COLUMNAS_GRID = 3;
+const COLUMNAS_GRID = 2;
 
 /**
  * Agrupa `items` en filas de `porFila` elementos, preservando el orden. Genérica y sin el conteo de
@@ -194,6 +213,9 @@ export interface EscritorioFuncionesProps {
   inicialCuenta?: string;
   /** Enciende el punto del avatar. Ver `AvatarCuenta`. */
   avisa?: boolean;
+  /** Sólo para la muestra del tutorial del primer ingreso (Martin 14/11): sin el bloque «Actividad reciente»,
+   *  que ahí no tiene nada que mostrar y le saca lugar a los accesos. En la app real nunca se pasa. */
+  sinActividad?: boolean;
 }
 
 export function EscritorioFunciones({
@@ -205,8 +227,11 @@ export function EscritorioFunciones({
   onAjustes,
   inicialCuenta,
   avisa = false,
+  sinActividad = false,
 }: EscritorioFuncionesProps) {
   const tema = useTema();
+  const [skin] = useSkin();
+  const conDibujo = skin === 'claro';
 
   return (
     <View style={styles.contenedor}>
@@ -217,7 +242,7 @@ export function EscritorioFunciones({
         Tus funciones
       </Text>
 
-      {/* 3×2 fijo. Se fue el `ScrollView` horizontal con su fade y su solapa: con 6 funciones no hay
+      {/* 2×3 fijo. Se fue el `ScrollView` horizontal con su fade y su solapa: con 6 funciones no hay
           nada a la derecha que anunciar, y una afordancia que señala hacia el vacío enseña a
           desconfiar de las que sí señalan algo. */}
       <View style={styles.contenedorGrid} testID="escritorio-grid-contenedor">
@@ -235,10 +260,21 @@ export function EscritorioFunciones({
                 // oscuro en device. En claro los dos son iguales: sin cambio.
                 style={[styles.tile, { backgroundColor: tema.color.superficie }]}
               >
-                {/* El chip es pastel fijo en las dos pieles, y por eso el glifo también va fijo. */}
-                <View style={[styles.chipIcono, { backgroundColor: tema.color.tileFuncion.arena }]}>
-                  <GlassIcon name={t.icono} size={22} color={tema.color.tileFuncion.tinta} />
-                </View>
+                {conDibujo ? (
+                  // Decorativo: el nombre de la función ya lo dice el rótulo y el `accessibilityLabel` de la casilla.
+                  <Image
+                    testID={`dibujo-${t.key}`}
+                    source={DIBUJOS[t.key]}
+                    style={styles.dibujo}
+                    resizeMode="contain"
+                    accessible={false}
+                  />
+                ) : (
+                  // El chip es pastel fijo en las pieles oscuras, y por eso el glifo también va fijo.
+                  <View style={[styles.chipIcono, { backgroundColor: tema.color.tileFuncion.arena }]}>
+                    <GlassIcon name={t.icono} size={22} color={tema.color.tileFuncion.tinta} />
+                  </View>
+                )}
                 {/* `numberOfLines={2}` acota el peor caso: una etiqueta más larga que las actuales
                     no puede volver a romper la grilla creciendo a 3 líneas — se recorta con "…". */}
                 <Text
@@ -262,38 +298,44 @@ export function EscritorioFunciones({
           sería una regresión (quedaría inalcanzable desde el principal). El título tapeable, en cambio,
           es adelantable sobre el layout actual, y de yapa destraba ver la lista COMPLETA, que hoy no
           tiene entrada. */}
-      <View
-        testID="escritorio-bloque-actividad"
-        style={[styles.bloque, { backgroundColor: tema.color.bloque }]}
-      >
+      {!sinActividad && (
+      // Martin 14/11: SIN el bloque negro, que acá pesaba más que las funciones. Rótulo de sección suelto sobre
+      // el lienzo y, si hay movimientos, la lista en una tarjeta como las casillas. Vacío: una línea, sin caja.
+      <View testID="escritorio-bloque-actividad" style={styles.seccionReciente}>
         <EncabezadoListado
           titulo="Actividad reciente"
           onPress={onVerRecientes}
-          color={tema.color.bloqueApoyo}
           style={styles.encabezadoReciente}
           testID="escritorio-encabezado-recientes"
         />
 
-        <ScrollView style={styles.scrollReciente} testID="escritorio-actividad">
-          {!cargandoActividad && actividad.length === 0 && (
-            <Text
-              testID="escritorio-actividad-vacia"
-              style={[styles.vacio, { color: tema.color.bloqueApoyo, fontFamily: tema.fuente.mono }]}
-            >
-              Todavía no hay movimientos. Lo que hagas va a aparecer acá.
-            </Text>
-          )}
-          {actividad.map((item, i) => (
-            <FilaActividad
-              key={item.id}
-              item={item}
-              onPress={onAbrirActividad}
-              enBloque
-              ultima={i === actividad.length - 1}
-            />
-          ))}
-        </ScrollView>
+        {!cargandoActividad && actividad.length === 0 && (
+          <Text
+            testID="escritorio-actividad-vacia"
+            style={[styles.vacio, { color: tema.color.textoTenue, fontFamily: tema.fuente.ui }]}
+          >
+            Todavía no hay movimientos. Lo que hagas va a aparecer acá.
+          </Text>
+        )}
+        {actividad.length > 0 && (
+          <ScrollView
+            style={[styles.scrollReciente, styles.tarjetaReciente, { backgroundColor: tema.color.superficie }]}
+            testID="escritorio-actividad"
+          >
+            {actividad.map((item, i) => (
+              <FilaActividad
+                key={item.id}
+                item={item}
+                onPress={onAbrirActividad}
+                enBloque
+                sobreClaro
+                ultima={i === actividad.length - 1}
+              />
+            ))}
+          </ScrollView>
+        )}
       </View>
+      )}
     </View>
   );
 }
@@ -302,30 +344,32 @@ const styles = StyleSheet.create({
   // `paddingTop` y la fila del avatar repiten los de `PantallaMiDia`: si no, el avatar saltaría al cambiar de capa.
   contenedor: { flex: 1, paddingTop: 58, paddingHorizontal: 16, paddingBottom: 16 },
   filaAvatar: { flexDirection: 'row', justifyContent: 'flex-end', paddingBottom: 8 },
-  titulo: { fontSize: 20, lineHeight: 24, paddingHorizontal: 8, paddingBottom: 8 },
-  contenedorGrid: { marginBottom: 16, gap: 10 },
-  filaGrid: { flexDirection: 'row', gap: 10 },
+  // El título se alinea con el contenido de las casillas (16 + 4), no flota suelto más adentro.
+  titulo: { fontSize: 28, lineHeight: 32, paddingHorizontal: 4, paddingTop: 4, paddingBottom: 20 },
+  contenedorGrid: { marginBottom: 20, gap: 12 },
+  filaGrid: { flexDirection: 'row', gap: 12 },
   // `flex:1` y NO un ancho fijo: sin scroll horizontal las tres columnas se reparten el ancho real
   // del teléfono, que es lo que hace que el grid entre igual en un 360 y en un 430.
-  // Las casillas de una fila miden lo mismo porque la fila las estira.
-  // `paddingHorizontal` chico porque el rótulo es lo más ancho de la casilla: con los 16 de `Tile`
-  // «Presupuestos» se partía (SM-N6).
+  // Alto FIJO: todas las casillas miden lo mismo aunque un rótulo ocupe dos renglones (con `minHeight` la
+  // fila de «Inteligencia de Negocio» salía más alta que la otra). Dibujo arriba, nombre abajo a la izquierda.
   tile: {
     flex: 1,
-    alignItems: 'center',
-    gap: 8,
-    minHeight: 96,
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    height: 128,
     paddingVertical: 14,
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
     borderRadius: 22,
     borderWidth: 0,
   },
+  dibujo: { width: 44, height: 44 },
   chipIcono: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  labelTile: { fontSize: 13, lineHeight: 16, textAlign: 'center' },
+  labelTile: { fontSize: 15, lineHeight: 19 },
   // `flexShrink`: con muchas operaciones el bloque termina en el borde y la lista scrollea adentro. Con pocas,
   // mide lo que mide su contenido y no se estira hasta la pestaña.
-  bloque: { flexShrink: 1, borderRadius: 26, paddingTop: 16, paddingHorizontal: 16, paddingBottom: 8 },
-  encabezadoReciente: { marginBottom: 4 },
+  seccionReciente: { flexShrink: 1, paddingTop: 4 },
+  encabezadoReciente: { marginBottom: 10, paddingHorizontal: 4 },
   scrollReciente: { flexGrow: 0 },
-  vacio: { fontSize: 11, paddingVertical: 12 },
+  tarjetaReciente: { borderRadius: 22, paddingHorizontal: 16, paddingVertical: 4 },
+  vacio: { fontSize: 13, lineHeight: 18, paddingHorizontal: 4 },
 });

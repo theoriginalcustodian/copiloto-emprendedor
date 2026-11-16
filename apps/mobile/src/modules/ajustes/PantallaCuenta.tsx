@@ -7,9 +7,9 @@ import { ScrollView } from 'react-native-gesture-handler';
 import { useSession } from '../auth';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { FilaBotones } from '../../theme/glass/campos';
-import { Row } from '../../theme/glass/Row';
 import { CambiarCredenciales } from './CambiarCredenciales';
 import { Chevron } from './Chevron';
+import { FilaGrupo, GrupoFilas } from './GrupoFilas';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
@@ -76,7 +76,7 @@ export function PantallaCuenta() {
   }
 
   return (
-    <MarcoGlass titulo="Mi cuenta" icono="cuenta" testID="pantalla-cuenta">
+    <MarcoGlass titulo="Mi cuenta" icono="cuenta" sinIcono testID="pantalla-cuenta">
       {/* 🔴 SM-K5: ScrollView, no View. Con la pantalla entera en una `View flex:1` el contenido que no
           entraba se CORTABA contra el borde: en una cuenta con «Aceptar la versión vigente» arriba, la
           confirmación «Sí, cerrar sesión / No» quedaba en el último píxel y no se alcanzaba a fuente
@@ -85,116 +85,92 @@ export function PantallaCuenta() {
       <ScrollView
         ref={scrollRef}
         style={styles.contenedor}
-        contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.md }}
+        contentContainerStyle={{ padding: tema.espacio.md, gap: 24, paddingBottom: tema.espacio.xl }}
       >
-        <Row testID="cuenta-identidad">
-          <View style={{ gap: 2 }}>
-            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              Con qué entrás a Odobi
-            </Text>
-            {/* Sin email el backend devolvió `null` — se DICE, no se inventa un placeholder que
-                parezca una dirección real. */}
-            <Text
-              testID="cuenta-email"
-              style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}
-            >
-              {me?.email ?? 'Tu cuenta no tiene un email asociado.'}
-            </Text>
-            {desdeDeAlta(me?.fecha_alta) != null && (
-              <Text testID="cuenta-desde" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-                Desde {desdeDeAlta(me?.fecha_alta)}
+        <GrupoFilas>
+          <FilaGrupo primera testID="cuenta-identidad">
+            <View style={{ flex: 1, gap: 3 }}>
+              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Con qué entrás a Odobi</Text>
+              {/* Sin email el backend devolvió `null` — se DICE, no se inventa un placeholder que
+                  parezca una dirección real. */}
+              <Text
+                testID="cuenta-email"
+                style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}
+              >
+                {me?.email ?? 'Tu cuenta no tiene un email asociado.'}
               </Text>
-            )}
-          </View>
-        </Row>
-
-        <CambiarCredenciales cuentaGoogle={me?.cuenta_google === true} />
+              {desdeDeAlta(me?.fecha_alta) != null && (
+                <Text testID="cuenta-desde" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+                  Desde {desdeDeAlta(me?.fecha_alta)}
+                </Text>
+              )}
+            </View>
+          </FilaGrupo>
+          <CambiarCredenciales cuentaGoogle={me?.cuenta_google === true} />
+        </GrupoFilas>
 
         {/* 🔴 **BL-O6 parte A (2026-09-22): van ACÁ y no en el alta, porque mobile no tiene alta.**
-            El DoD original decía "desde el alta de mobile se llega a ToS y a Privacidad" — pero
-            `PantallaLogin` es login-only (no hay `SignupScreen` en esta plataforma, sólo en web).
-            Mismo criterio que las filas de Feedback/Soporte antes de Ola 5 (ver el bloque de abajo):
-            un enlace suelto vive acá hasta que junte compañía propia. */}
+            `PantallaLogin` es login-only (no hay `SignupScreen` en esta plataforma, sólo en web). */}
         {/* 🔴 **BL-O6 «Informar» (v2, 2026-10-12): qué versión aceptó el tenant, con los CUATRO estados.**
             La lógica es `descripcionLegal` de core —la misma que usa web—, no una copia. El cuarto
             (el campo no llegó) NO se colapsa en «nunca aceptó»: decir eso cuando en realidad no se
             pudo leer es una mentira sin alarma. Sólo informa: no bloquea nada. */}
-        <Row>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>
-              Términos y privacidad
-            </Text>
-            <Text
-              testID="cuenta-legal-version"
-              style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
-            >
-              {descripcionLegal(meLegal)}
-            </Text>
-          </View>
-        </Row>
-        {/* SM-C4: mobile no tiene alta, así que acá es donde se acepta. Es una OFERTA que registra la
-            versión que muestra la pantalla de Términos: no bloquea nada (INFORMA, v2 LEGALNOOPERA). */}
-        {ofrecerAceptarLegal(meLegal) && (
-          <FilaBotones
-            testID="cuenta-legal-aceptar-botones"
-            botones={[
-              {
-                etiqueta: aceptando ? 'Registrando…' : `Aceptar la versión vigente (${LEGAL_VERSION})`,
-                onPress: () => void aceptar(),
-                deshabilitado: aceptando,
-                testID: 'cuenta-legal-aceptar',
-              },
-            ]}
-          />
-        )}
-        {errorAceptar !== null && (
-          <Text testID="cuenta-legal-aceptar-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
-            {errorAceptar}
-          </Text>
-        )}
-        <Row testID="cuenta-legal-tos" onPress={() => router.push('/legal?kind=tos')}>
-          <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, flex: 1 }}>
-            Términos y Condiciones
-          </Text>
-          <Chevron />
-        </Row>
-        <Row testID="cuenta-legal-privacidad" onPress={() => router.push('/legal?kind=privacidad')}>
-          <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, flex: 1 }}>
-            Política de Privacidad
-          </Text>
-          <Chevron />
-        </Row>
-
-        {/* 🔴 **Acá había tres filas —Feedback, Soporte técnico y «Cómo uso la app»— y se fueron a
-            Ajustes › Ayuda (Ola 5).** Estaban acá por una razón que en su momento fue buena: la
-            grilla de Ajustes acababa de reforzar su disciplina de "sin ícono repetido" y sumar tiles
-            la rompía. El costo apareció después: para pedir ayuda había que entrar a la pantalla
-            donde se cambia el mail, y nadie la busca ahí. El prototipo tiene un grupo **Ayuda**
-            propio, que es lo que ahora existe.
-
-            Las pantallas no cambiaron —`/ajustes-feedback` y `/ajustes-soporte` son las mismas—:
-            cambió la puerta. */}
-
-        {/* 🔴 Llegó de "Configuración del sistema", y sigue SIN `onPress` a propósito. «No molestar»
-            muta un ajuste GLOBAL del teléfono y necesita un restaurador ante crash: si el copiloto lo
-            prende y la app se cae antes de apagarlo, el teléfono queda en silencio sin que nadie lo
-            haya decidido. Eso es MAYOR —muta estado FUERA del sandbox— y se resuelve en otra tarea.
-            Un toggle que no hace nada, o que sólo cambia visualmente, sería peor que esta fila: es un
-            dato inventado aplicado a una acción. */}
-        {/* Mapeo `cuenta` (index.html:2372-2384): rótulo «Avisos», fila con chip «Pronto» y el motivo
-            del prototipo como nota — «pronto» a secas es una promesa; con el porqué es una explicación. */}
-        <Text testID="cuenta-avisos-rotulo" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}>
-          Avisos
-        </Text>
-        <Row testID="cuenta-no-molestar" accessibilityLabel="No molestar (pendiente)">
-          <View style={[styles.filaEntre, { gap: tema.espacio.sm }]}>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>
-                No molestar
+        <View style={{ gap: tema.espacio.sm }}>
+          <GrupoFilas rotulo="Términos y privacidad">
+            <FilaGrupo primera>
+              <Text testID="cuenta-legal-version" style={{ flex: 1, color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
+                {descripcionLegal(meLegal)}
               </Text>
-              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-                Silenciar los avisos de Odobi
+            </FilaGrupo>
+            <FilaGrupo testID="cuenta-legal-tos" onPress={() => router.push('/legal?kind=tos')}>
+              <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiMedium, flex: 1 }}>
+                Términos y Condiciones
               </Text>
+              <Chevron />
+            </FilaGrupo>
+            <FilaGrupo testID="cuenta-legal-privacidad" onPress={() => router.push('/legal?kind=privacidad')}>
+              <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiMedium, flex: 1 }}>
+                Política de Privacidad
+              </Text>
+              <Chevron />
+            </FilaGrupo>
+          </GrupoFilas>
+          {/* SM-C4: mobile no tiene alta, así que acá es donde se acepta. Es una OFERTA que registra la
+              versión que muestra la pantalla de Términos: no bloquea nada (INFORMA, v2 LEGALNOOPERA). */}
+          {ofrecerAceptarLegal(meLegal) && (
+            <FilaBotones
+              testID="cuenta-legal-aceptar-botones"
+              botones={[
+                {
+                  etiqueta: aceptando ? 'Registrando…' : `Aceptar la versión vigente (${LEGAL_VERSION})`,
+                  onPress: () => void aceptar(),
+                  deshabilitado: aceptando,
+                  testID: 'cuenta-legal-aceptar',
+                },
+              ]}
+            />
+          )}
+          {errorAceptar !== null && (
+            <Text testID="cuenta-legal-aceptar-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+              {errorAceptar}
+            </Text>
+          )}
+        </View>
+
+        {/* 🔴 «No molestar» sigue SIN `onPress` a propósito: muta un ajuste GLOBAL del teléfono y necesita un
+            restaurador ante crash (si la app se cae antes de apagarlo, el teléfono queda en silencio sin que
+            nadie lo haya decidido). Un toggle que no hace nada sería peor que esta fila. «Pronto» a secas es
+            una promesa; con el porqué (la nota) es una explicación. */}
+        <GrupoFilas
+          rotulo="Avisos"
+          rotuloTestID="cuenta-avisos-rotulo"
+          notaTestID="cuenta-no-molestar-nota"
+          nota="Para silenciarme tengo que tocar una configuración de tu teléfono, y no quiero que se te quede mudo por accidente. Lo estamos terminando con cuidado."
+        >
+          <FilaGrupo primera testID="cuenta-no-molestar" accessibilityLabel="No molestar (pendiente)">
+            <View style={{ flex: 1, gap: 3 }}>
+              <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiMedium }}>No molestar</Text>
+              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Silenciar los avisos de Odobi</Text>
             </View>
             <Text
               testID="cuenta-no-molestar-pronto"
@@ -211,12 +187,8 @@ export function PantallaCuenta() {
             >
               Pronto
             </Text>
-          </View>
-        </Row>
-        <Text testID="cuenta-no-molestar-nota" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-          Para silenciarme tengo que tocar una configuración de tu teléfono, y no quiero que se te quede mudo por
-          accidente. Lo estamos terminando con cuidado.
-        </Text>
+          </FilaGrupo>
+        </GrupoFilas>
 
         {!confirmando ? (
           <FilaBotones
@@ -236,9 +208,9 @@ export function PantallaCuenta() {
             // Al aparecer la confirmación se lleva a la vista: aparece al pie, justo donde antes se cortaba.
             onLayout={() => scrollRef.current?.scrollToEnd({ animated: true })}
             style={{
-              backgroundColor: tema.color.superficieAlta,
-              borderRadius: tema.radio.md,
-              padding: tema.espacio.sm,
+              backgroundColor: tema.color.superficie,
+              borderRadius: 22,
+              padding: tema.espacio.md,
               gap: tema.espacio.sm,
             }}
           >
@@ -274,5 +246,4 @@ export function PantallaCuenta() {
 
 const styles = StyleSheet.create({
   contenedor: { flex: 1 },
-  filaEntre: { flexDirection: 'row', alignItems: 'center' },
 });

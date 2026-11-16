@@ -82,11 +82,50 @@ describe('PantallaInteligencia — lo que muestra', () => {
     expect(screen.getByText('Panadería Los Tilos')).toBeTruthy();
   });
 
-  it('la serie mensual dibuja una barra por mes', async () => {
+  it('«Lo que te quedó» abre en el último mes y dice la resta, no dos barras', async () => {
     await montar();
 
-    await waitFor(() => expect(screen.getByTestId('inteligencia-barra-2026-03')).toBeTruthy());
-    expect(screen.getByTestId('inteligencia-barra-2026-04')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-ganancia-frase')).toHaveTextContent('En abril te quedaron'));
+    expect(screen.getByTestId('inteligencia-ganancia-neto')).toHaveTextContent('$64.000,00');
+    expect(screen.getByTestId('inteligencia-ganancia-detalle')).toHaveTextContent('Entró $95.000,00 · Salió $31.000,00');
+  });
+
+  it('tocar otro mes cambia la frase a ese mes', async () => {
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('inteligencia-ganancia-mes-2026-03')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('inteligencia-ganancia-mes-2026-03'));
+    expect(screen.getByTestId('inteligencia-ganancia-frase')).toHaveTextContent('En marzo te quedaron');
+    expect(screen.getByTestId('inteligencia-ganancia-neto')).toHaveTextContent('$60.000,00');
+  });
+
+  it('tocar sobre el gráfico elige el mes de esa posición', async () => {
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('inteligencia-ganancia-superficie')).toBeTruthy());
+    await fireEvent(screen.getByTestId('inteligencia-ganancia-superficie').parent!, 'layout', { nativeEvent: { layout: { width: 300, height: 148 } } });
+    await fireEvent(screen.getByTestId('inteligencia-ganancia-superficie'), 'touchStart', { nativeEvent: { locationX: 40 } });
+    expect(screen.getByTestId('inteligencia-ganancia-frase')).toHaveTextContent('En marzo te quedaron');
+  });
+
+  it('🔴 un mes en el que salió más de lo que entró dice «perdiste», y uno sin dato no inventa un cero', async () => {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      portada: {
+        ...PORTADA,
+        serieMensual: [
+          { mes: '2026-03', ingresos: '80000.00', gastos: null },
+          { mes: '2026-04', ingresos: '20000.00', gastos: '31000.00' },
+        ],
+      },
+    } as never);
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('inteligencia-ganancia-frase')).toHaveTextContent('En abril perdiste'));
+    expect(screen.getByTestId('inteligencia-ganancia-neto')).toHaveTextContent('$11.000,00');
+    await fireEvent.press(screen.getByTestId('inteligencia-ganancia-mes-2026-03'));
+    expect(screen.getByTestId('inteligencia-ganancia-frase')).toHaveTextContent('De marzo todavía no tengo lo que entró y lo que salió.');
+    expect(screen.queryByTestId('inteligencia-ganancia-neto')).toBeNull();
   });
 
   it('lo vencido se muestra aparte, porque es lo accionable', async () => {
@@ -106,7 +145,7 @@ describe('SM-N45 — las secciones del prototipo son CARDS, y la portada sigue s
   const SECCIONES = [
     'inteligencia-por-cobrar',
     'inteligencia-grafico-categorias',
-    'inteligencia-grafico-entro-vs-salio',
+    'inteligencia-serie',
     'inteligencia-clientes',
     'inteligencia-acumulado',
     'inteligencia-grafico-margen-trabajo',
@@ -149,6 +188,33 @@ describe('SM-N45 — las secciones del prototipo son CARDS, y la portada sigue s
     // Control negativo: la etiqueta NO está dentro de la card (sería el estado de antes, título adentro).
     expect(screen.getByTestId('inteligencia-acumulado')).not.toContainElement(screen.getByTestId('inteligencia-acumulado-etiqueta'));
     expect(screen.getByTestId('inteligencia-acumulado-doce-meses')).toHaveTextContent('$4.420.000,00');
+  });
+
+  const conTope = async (proyeccion: unknown) => {
+    jest.mocked(obtenerResumenContabilidad).mockResolvedValue({
+      status: 'ok',
+      resumen: { facturado: { doceMeses: '4420000.00', tope: { valor: '10000000.00', porcentaje: 44, semaforo: 'verde', proyeccion } } },
+    } as never);
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-acumulado-tope')).toBeTruthy());
+  };
+
+  it('🔴 sin proyección del backend NO se dibuja ninguna: la app no la calcula', async () => {
+    await conTope(null);
+    expect(screen.queryByTestId('inteligencia-acumulado-proyeccion')).toBeNull();
+    expect(screen.queryByTestId('inteligencia-acumulado-medidor-proyeccion')).toBeNull();
+    expect(screen.getByTestId('inteligencia-acumulado-resto')).toHaveTextContent('Te quedan $5.580.000,00 antes de pasarte.');
+  });
+
+  it('con proyección dice en qué mes se llega al tope y dibuja el tramo punteado', async () => {
+    await conTope({ mesAlcance: '2027-03', porcentaje: 120 });
+    expect(screen.getByTestId('inteligencia-acumulado-proyeccion')).toHaveTextContent('A este ritmo llegás al tope en marzo de 2027.');
+    expect(screen.getByTestId('inteligencia-acumulado-medidor-proyeccion')).toBeTruthy();
+  });
+
+  it('si a este ritmo no se llega, lo dice con el porcentaje', async () => {
+    await conTope({ mesAlcance: null, porcentaje: 60 });
+    expect(screen.getByTestId('inteligencia-acumulado-proyeccion')).toHaveTextContent('A este ritmo no llegás al tope: en un año vas a estar en el 60%.');
   });
 });
 
@@ -269,24 +335,25 @@ describe('PantallaInteligencia — SM-J3: mes en la cabecera y «Sin ventas toda
     expect(screen.queryByTestId('glass-etiqueta')).toBeNull();
   });
 
-  it('con todo en cero medido dice «Sin ventas todavía»', async () => {
+  it('con todo en cero medido dice que todavía no hay ventas', async () => {
     leerMock.mockResolvedValue({ status: 'ok', portada: VACIA });
     await montar();
-    expect(await screen.findByText('Sin ventas todavía')).toBeTruthy();
+    // 14/11: el aviso pasó a ser el vacío con dibujo (`VacioFuncion`); se busca por testID, no por el copy.
+    expect(await screen.findByTestId('inteligencia-sin-ventas')).toHaveTextContent(/Todavía no hay ventas/);
   });
 
   it('🔴 control: con ventas NO lo dice', async () => {
     leerMock.mockResolvedValue({ status: 'ok', portada: PORTADA });
     await montar();
     await screen.findByTestId('inteligencia-portada');
-    expect(screen.queryByText('Sin ventas todavía')).toBeNull();
+    expect(screen.queryByTestId('inteligencia-sin-ventas')).toBeNull();
   });
 
   it('🔴 un `null` («no se puede calcular») NO se lee como cero: tampoco lo dice', async () => {
     leerMock.mockResolvedValue({ status: 'ok', portada: { ...VACIA, mes: { ...VACIA.mes, ingresos: null } } });
     await montar();
     await screen.findByTestId('inteligencia-portada');
-    expect(screen.queryByText('Sin ventas todavía')).toBeNull();
+    expect(screen.queryByTestId('inteligencia-sin-ventas')).toBeNull();
   });
 });
 

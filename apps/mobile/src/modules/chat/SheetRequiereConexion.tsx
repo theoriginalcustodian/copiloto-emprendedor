@@ -1,12 +1,11 @@
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 
 import { etiquetaCondicion, type RequiereConexion } from '@copiloto/core';
 
 import { LogoMarca, hayLogoDe } from '../apps/LogoMarca';
 import { CristalVidrio } from '../../theme/glass/CristalVidrio';
 import { FilaBotones } from '../../theme/glass/campos';
-import { PHOSPHOR, VIEWBOX_PHOSPHOR } from '../../theme/glass/phosphor';
+import { Glifo, existeGlifo } from '../../theme/glass/Glifo';
 import { useTema } from '../../theme/ThemeProvider';
 
 export interface SheetRequiereConexionProps {
@@ -26,13 +25,8 @@ export interface SheetRequiereConexionProps {
 const GLIFO_CONDICION: Record<string, string> = { solo_lectura: 'eye', requiere_ok: 'check' };
 const GLIFO_CAPACIDAD = 'plugs-connected';
 
-/** Los glifos que ESTE archivo nombra por su cuenta: el test los cruza contra `PHOSPHOR`. */
+/** Los glifos que ESTE archivo nombra por su cuenta: el test los cruza contra `GLIFOS`. */
 export const GLIFOS_DECLARADOS: readonly string[] = [...Object.values(GLIFO_CONDICION), GLIFO_CAPACIDAD];
-
-/** `PHOSPHOR` es un objeto plano: `PHOSPHOR['toString']` existe. Sólo cuentan las claves propias. */
-function existeGlifo(nombre: string | undefined): nombre is string {
-  return nombre != null && Object.prototype.hasOwnProperty.call(PHOSPHOR, nombre) && PHOSPHOR[nombre]!.length > 0;
-}
 
 /**
  * SM-I7 · el glifo de una fila, en tres pasos y fail-safe: (1) el `icono` que mandó el backend, si EXISTE en
@@ -43,16 +37,6 @@ export function resolverGlifo(icono: string | undefined, condicion: string): str
   if (existeGlifo(icono)) return icono;
   const derivado = GLIFO_CONDICION[condicion];
   return existeGlifo(derivado) ? derivado : GLIFO_CAPACIDAD;
-}
-
-function Glifo({ nombre, tamano, color }: { nombre: string; tamano: number; color: string }) {
-  return (
-    <Svg width={tamano} height={tamano} viewBox={VIEWBOX_PHOSPHOR} fill="none">
-      {(PHOSPHOR[nombre] ?? PHOSPHOR[GLIFO_CAPACIDAD] ?? []).map((d, i) => (
-        <Path key={i} d={d} fill={color} stroke="none" />
-      ))}
-    </Svg>
-  );
 }
 
 /**
@@ -95,7 +79,7 @@ export function SheetRequiereConexion({ conexion, onConectar, onAhoraNo, ocupado
                     >
                       <Glifo
                         nombre={resolverGlifo(a.icono, a.condicion)}
-                        tamano={18}
+                        size={18}
                         color={tema.color.tileFuncion.tinta}
                       />
                     </View>
@@ -125,7 +109,7 @@ export function SheetRequiereConexion({ conexion, onConectar, onAhoraNo, ocupado
               testID="sheet-requiere-conexion-pendiente"
               style={[styles.pendiente, { backgroundColor: tema.color.tileFuncion.arena, borderRadius: tema.radio.md, padding: tema.espacio.md }]}
             >
-              <Glifo nombre="clock-counter-clockwise" tamano={16} color={tema.color.tileFuncion.tinta} />
+              <Glifo nombre="clock-counter-clockwise" size={16} color={tema.color.tileFuncion.tinta} />
               <Text style={[styles.textoPendiente, { color: tema.color.tileFuncion.tinta, fontSize: tema.tipo.chico, lineHeight: Math.round(tema.tipo.chico * 1.5) }]}>
                 Apenas conectes sigo con lo tuyo:{' '}
                 <Text style={{ fontFamily: tema.fuente.uiSemibold }}>{conexion.pendiente}</Text>.

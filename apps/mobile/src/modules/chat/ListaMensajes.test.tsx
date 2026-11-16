@@ -851,7 +851,7 @@ describe('ListaMensajes', () => {
       await envolver(mensajes);
 
       expect(screen.getByTestId('gasto-propuesto-guardado')).toBeTruthy();
-      expect(screen.queryByTestId('gasto-monto-input')).toBeNull();
+      expect(screen.queryByTestId('gasto-guardar')).toBeNull();
     });
 
     it('gasto: sin `gastoResuelto` sigue editable (control negativo)', async () => {
@@ -866,7 +866,8 @@ describe('ListaMensajes', () => {
 
       await envolver(mensajes);
 
-      expect(screen.getByTestId('gasto-monto-input')).toBeTruthy();
+      // 14/11: la card es un resumen; «editable» = sigue ofreciendo guardar.
+      expect(screen.getByTestId('gasto-guardar')).toBeTruthy();
     });
 
     it('gasto: descartar llama a `onResolverTarjeta` con el `mensaje.id` real y el patch bajo `gastoResuelto`', async () => {

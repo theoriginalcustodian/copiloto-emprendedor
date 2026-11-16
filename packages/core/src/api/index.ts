@@ -73,8 +73,8 @@ export * from './types';
 
 // `/catalog` + `/composio/connect` — las integraciones y su vinculación. El catálogo lo decide el
 // BACKEND (policy real de toolkits), no una lista en el cliente: ver el docstring de `catalogo.ts`.
-export { cambiarContrasena, cambiarEmail } from './auth';
-export type { ResultadoCambioCredencial } from './auth';
+export { cambiarContrasena, cambiarEmail, registrarCuenta } from './auth';
+export type { ResultadoAlta, ResultadoCambioCredencial } from './auth';
 export {
   completarOnboarding,
   debeMostrarOnboarding,
@@ -198,6 +198,7 @@ export type {
   ResumenContabilidad,
   ResumenFacturado,
   ResumenGastosContabilidad,
+  ProyeccionTope,
   TopeMonotributo,
 } from './contabilidad';
 

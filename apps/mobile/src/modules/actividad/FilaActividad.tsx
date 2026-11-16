@@ -4,7 +4,8 @@ import { Pressable } from 'react-native-gesture-handler';
 import { formatearImporte, type ActividadItem } from '@copiloto/core';
 
 import { GlassIcon } from '../../theme/glass/GlassIcon';
-import { pressableStyle } from '../../theme/glass/presion';
+import { conAlfa } from '../../theme/glass/conAlfa';
+import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import type { NombreIconoGlass } from '../../theme/glass/icons';
 import { Row } from '../../theme/glass/Row';
 import { useTema } from '../../theme/ThemeProvider';
@@ -52,22 +53,35 @@ export interface FilaActividadProps {
   enBloque?: boolean;
   /** Dentro del bloque, la última fila no lleva separador. */
   ultima?: boolean;
+  /**
+   * La fila compacta de `enBloque`, pero sobre una tarjeta CLARA (Martin 14/11: el bloque negro del escritorio
+   * pesaba demasiado). Mismo dibujo —una línea con su separador, sin vidrio ni ícono— con los colores de
+   * siempre: texto, tenue y el verde/rojo del monto, que sobre claro sí están pensados.
+   */
+  sobreClaro?: boolean;
+  /**
+   * Fila DENTRO de una tarjeta blanca (los resultados de búsqueda, rediseño Martin 15/11): ícono en su casilla
+   * arena, importe en tinta —el signo dice si entra o sale— y línea fina arriba salvo en la primera.
+   */
+  enTarjeta?: boolean;
+  primera?: boolean;
 }
 
-export function FilaActividad({ item, onPress, testID, enBloque = false, ultima = false }: FilaActividadProps) {
+export function FilaActividad({ item, onPress, testID, enBloque = false, ultima = false, sobreClaro = false, enTarjeta = false, primera = false }: FilaActividadProps) {
   const tema = useTema();
   const icono = ICONO_POR_TIPO[item.tipo] ?? 'actividadReciente';
   // En el bloque el monto va en el color del texto: el verde y el rojo no están pensados para el negro, y el
   // signo sigue diciendo si entra o sale.
-  const colorMonto = enBloque
+  const enNegro = enBloque && !sobreClaro;
+  const colorMonto = enNegro
     ? tema.color.bloqueTexto
     : item.signo === 'entra'
       ? tema.color.exito
       : item.signo === 'sale'
         ? tema.color.peligro
         : tema.color.textoTenue;
-  const colorTitulo = enBloque ? tema.color.bloqueTexto : tema.color.texto;
-  const colorDetalle = enBloque ? tema.color.bloqueApoyo : tema.color.textoTenue;
+  const colorTitulo = enNegro ? tema.color.bloqueTexto : tema.color.texto;
+  const colorDetalle = enNegro ? tema.color.bloqueApoyo : tema.color.textoTenue;
 
   const contenido = (
     <>
@@ -100,6 +114,52 @@ export function FilaActividad({ item, onPress, testID, enBloque = false, ultima 
     </>
   );
 
+  if (enTarjeta) {
+    return (
+      <Pressable
+        testID={testID ?? `actividad-${item.id}`}
+        accessibilityRole={onPress != null ? 'button' : undefined}
+        accessibilityLabel={item.detalle !== '' ? `${item.titulo} · ${item.detalle}` : item.titulo}
+        onPress={onPress != null ? () => onPress(item) : undefined}
+        style={pressableStyle(styles.filaTarjeta, PRESS_FADE)}
+      >
+        <View style={[styles.casilla, { backgroundColor: tema.color.tileFuncion.arena }]}>
+          <GlassIcon name={icono} size={22} color={tema.color.tileFuncion.tinta} />
+        </View>
+        <View style={[styles.cuerpoTarjeta, !primera && { borderTopWidth: 1, borderTopColor: conAlfa(tema.color.texto, 0.12) }]}>
+          <View style={styles.texto}>
+            <Text
+              // Dos renglones: con el importe al lado, «Factura C 0001-00000045» no entra en uno.
+              numberOfLines={2}
+              style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base, lineHeight: 21 }}
+              testID={`actividad-${item.id}-titulo`}
+            >
+              {item.titulo}
+            </Text>
+            {item.detalle !== '' && (
+              <Text
+                numberOfLines={1}
+                style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, marginTop: 3 }}
+                testID={`actividad-${item.id}-detalle`}
+              >
+                {item.detalle}
+              </Text>
+            )}
+          </View>
+          {item.monto != null && (
+            <Text
+              style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.base }}
+              testID={`actividad-${item.id}-monto`}
+            >
+              {item.signo === 'sale' ? '−' : ''}
+              {formatearImporte(item.monto)}
+            </Text>
+          )}
+        </View>
+      </Pressable>
+    );
+  }
+
   if (enBloque) {
     return (
       <Pressable
@@ -109,7 +169,7 @@ export function FilaActividad({ item, onPress, testID, enBloque = false, ultima 
         onPress={onPress != null ? () => onPress(item) : undefined}
         style={pressableStyle([
           styles.filaBloque,
-          !ultima && { borderBottomWidth: 1, borderBottomColor: tema.color.bloqueChip },
+          !ultima && { borderBottomWidth: 1, borderBottomColor: enNegro ? tema.color.bloqueChip : tema.color.borde },
         ])}
       >
         {contenido}
@@ -142,6 +202,9 @@ export function FilaActividad({ item, onPress, testID, enBloque = false, ultima 
 const styles = StyleSheet.create({
   fila: { gap: 12, alignItems: 'center' },
   filaBloque: { flexDirection: 'row', gap: 12, alignItems: 'center', paddingVertical: 12 },
+  filaTarjeta: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  casilla: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  cuerpoTarjeta: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingVertical: 12, paddingRight: 16 },
   texto: { flex: 1 },
   titulo: { fontSize: 13 },
   detalle: { fontSize: 11, marginTop: 2 },

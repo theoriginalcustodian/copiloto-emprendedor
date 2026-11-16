@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { avisoErrorLecturaFoto, datosGastoPropuesto, leerFotoGasto } from '@copiloto/core';
 
 import { useCapturaFoto } from '../chat/useCapturaFoto';
-import { pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
+import { BotonAcceso } from '../../theme/BotonAcceso';
 import type { ValoresInicialesGasto } from './FormularioGasto';
 
 export interface FotoFuncionProps {
@@ -80,30 +80,21 @@ export function FotoFuncion({ onLectura, onError, disabled }: FotoFuncionProps) 
     // testID="foto-funcion" en el contenedor -- paridad con `data-testid="foto-funcion"` del div
     // raíz web (BL-Q1, gate de paridad de testID por pantalla): mismo patrón que `mic-funcion`
     // (nombre del componente en la raíz, `-boton`/`-chip` en las partes internas).
-    <View testID="foto-funcion">
-      <Pressable
+    <View testID="foto-funcion" style={styles.raiz}>
+      {/* «Ticket» a secas no decía qué pasaba al tocarlo. Mientras lee lo dice: sin eso el botón apagado
+          parece roto, y leer un ticket tarda. */}
+      <BotonAcceso
         testID="foto-funcion-boton"
-        accessibilityRole="button"
         accessibilityLabel="Leer un gasto desde una foto del ticket"
         disabled={disabled || leyendo}
         onPress={() => void alTocar()}
-        style={pressableStyle([
-          styles.boton,
-          {
-            backgroundColor: tema.glass.chip,
-            borderColor: tema.color.borde,
-            borderWidth: 1,
-            opacity: disabled || leyendo ? 0.5 : 1,
-          },
-        ])}
-      >
-        <IconoCamara color={tema.color.acentoTinta} />
-        <Text style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}>Ticket</Text>
-      </Pressable>
+        icono={<IconoCamara color={tema.color.acentoTinta} />}
+        etiqueta={leyendo ? 'Leyendo…' : 'Foto del ticket'}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  boton: { height: 38, paddingHorizontal: 12, borderRadius: 16, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' },
+  raiz: { flex: 1 },
 });

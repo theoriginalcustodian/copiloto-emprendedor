@@ -1,8 +1,10 @@
+import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ETIQUETA_CATEGORIA, formatearImporte, formatearMesDePeriodo, type ResumenGastos } from '@copiloto/core';
 
-import { BloqueCifra } from '../../theme/BloqueCifra';
+import { BloqueCifra, elevacion } from '../../theme/BloqueCifra';
+import { conAlfa } from '../../theme/glass/conAlfa';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
@@ -25,64 +27,89 @@ import { useTema } from '../../theme/ThemeProvider';
 
 export interface ResumenMesProps {
   resumen: ResumenGastos;
+  /** Lo que va entre la cifra y el desglose: las vías de alta, que tienen que quedar a mano bajo el total. */
+  entre?: ReactNode;
 }
 
-export function ResumenMes({ resumen }: ResumenMesProps) {
+/**
+ * Rediseño (Martin 15/11): el bloque negro lleva SÓLO la cifra del mes y su comparación; el desglose por
+ * categoría salió a una tarjeta blanca propia, «En qué se fue». Adentro del bloque eran cinco barras apretadas
+ * que lo estiraban a media pantalla y empujaban los botones de alta fuera de la vista.
+ */
+export function ResumenMes({ resumen, entre }: ResumenMesProps) {
   const tema = useTema();
   const sumaPorcentajes = resumen.porCategoria.reduce((a, c) => a + c.porcentaje, 0);
 
   return (
-    <BloqueCifra
-      testID="gastos-resumen"
-      // H-A4-6: `resumen.periodo` llega "YYYY-MM" (sin día) del backend: es un mes, no una fecha.
-      // Un formateador de fecha le inventa el día 1 y se lee «Gastado en 1 nov» (SM-N14).
-      rotulo={`Gastado en ${formatearMesDePeriodo(resumen.periodo).toLowerCase()}`}
-      cifra={formatearImporte(resumen.total)}
-      chip={resumen.mesAnterior != null ? `Mes anterior: ${formatearImporte(resumen.mesAnterior)}` : undefined}
-    >
-      <View style={styles.categorias}>
-        {resumen.porCategoria.map((c) => (
-          <View key={c.categoria} style={styles.filaCategoria} testID={`gastos-resumen-cat-${c.categoria}`}>
-            <View style={styles.encabezadoCategoria}>
-              <Text style={{ color: tema.color.bloqueTexto, fontSize: tema.tipo.chico, flex: 1 }}>
-                {ETIQUETA_CATEGORIA[c.categoria]}
-              </Text>
-              <Text
-                testID={`gastos-resumen-cat-${c.categoria}-importe`}
-                style={{ color: tema.color.bloqueApoyo, fontSize: tema.tipo.chico }}
-              >
-                {/* `gastos` (mapeo 2026-10-12): el prototipo muestra el porcentaje junto al importe. El
-                    dato ya viene del backend (`porcentaje`); se redondea sólo para mostrarlo — la barra
-                    sigue usando el valor crudo. */}
-                {formatearImporte(c.total)} · {Math.round(c.porcentaje)}%
-              </Text>
-            </View>
-            <View style={[styles.barraFondo, { backgroundColor: tema.color.bloqueChip }]}>
+    <View style={styles.raiz}>
+      <BloqueCifra
+        testID="gastos-resumen"
+        // H-A4-6: `resumen.periodo` llega "YYYY-MM" (sin día) del backend: es un mes, no una fecha.
+        // Un formateador de fecha le inventa el día 1 y se lee «Gastado en 1 nov» (SM-N14).
+        rotulo={`Gastado en ${formatearMesDePeriodo(resumen.periodo).toLowerCase()}`}
+        cifra={formatearImporte(resumen.total)}
+        chip={resumen.mesAnterior != null ? `Mes anterior: ${formatearImporte(resumen.mesAnterior)}` : undefined}
+      />
+
+      {entre}
+
+      {resumen.porCategoria.length > 0 && (
+        <View style={styles.seccion} testID="gastos-desglose">
+          <Text accessibilityRole="header" style={[styles.rotulo, { color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande }]}>
+            En qué se fue
+          </Text>
+          <View style={[styles.tarjeta, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}>
+            {resumen.porCategoria.map((c, i) => (
               <View
-                testID={`gastos-resumen-barra-${c.categoria}`}
-                style={[
-                  styles.barra,
-                  {
-                    // ⚠️ ARENA, no terracota: dentro del bloque el acento no separa (ver BloqueCifra).
-                    backgroundColor: tema.color.bloqueApoyo,
-                    // Sobre la suma real. Si `sumaPorcentajes` fuera 0 (todas en cero, que el backend
-                    // ya filtra) la división daría NaN y la barra desaparecería sin avisar.
-                    width: sumaPorcentajes > 0 ? `${(c.porcentaje / sumaPorcentajes) * 100}%` : '0%',
-                  },
-                ]}
-              />
-            </View>
+                key={c.categoria}
+                style={[styles.filaCategoria, i > 0 && { borderTopWidth: 1, borderTopColor: conAlfa(tema.color.texto, 0.12) }]}
+                testID={`gastos-resumen-cat-${c.categoria}`}
+              >
+                <View style={styles.encabezadoCategoria}>
+                  <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base, flex: 1 }}>
+                    {ETIQUETA_CATEGORIA[c.categoria]}
+                  </Text>
+                  <Text
+                    testID={`gastos-resumen-cat-${c.categoria}-importe`}
+                    style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+                  >
+                    {/* `gastos` (mapeo 2026-10-12): el prototipo muestra el porcentaje junto al importe. El
+                        dato ya viene del backend (`porcentaje`); se redondea sólo para mostrarlo — la barra
+                        sigue usando el valor crudo. */}
+                    {formatearImporte(c.total)} · {Math.round(c.porcentaje)}%
+                  </Text>
+                </View>
+                <View style={[styles.barraFondo, { backgroundColor: conAlfa(tema.color.texto, 0.06) }]}>
+                  <View
+                    testID={`gastos-resumen-barra-${c.categoria}`}
+                    style={[
+                      styles.barra,
+                      {
+                        // Arena, no terracota: la barra informa, no se toca (Decisión B).
+                        backgroundColor: tema.color.apoyo,
+                        // Sobre la suma real. Si `sumaPorcentajes` fuera 0 (todas en cero, que el backend
+                        // ya filtra) la división daría NaN y la barra desaparecería sin avisar.
+                        width: sumaPorcentajes > 0 ? `${(c.porcentaje / sumaPorcentajes) * 100}%` : '0%',
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+            ))}
           </View>
-        ))}
-      </View>
-    </BloqueCifra>
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  categorias: { gap: 8, marginTop: 12 },
-  filaCategoria: { gap: 4 },
-  encabezadoCategoria: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  raiz: { gap: 20 },
+  seccion: { gap: 12, paddingTop: 12 },
+  rotulo: { paddingHorizontal: 4 },
+  tarjeta: { borderRadius: 22, paddingHorizontal: 20 },
+  filaCategoria: { gap: 10, paddingVertical: 16 },
+  encabezadoCategoria: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
   barraFondo: { height: 6, borderRadius: 3, overflow: 'hidden' },
   barra: { height: 6, borderRadius: 3 },
 });

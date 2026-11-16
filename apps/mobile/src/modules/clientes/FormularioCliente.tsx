@@ -12,6 +12,18 @@ import {
 } from '@copiloto/core';
 
 import { CampoSelect, CampoTexto, FilaBotones, type OpcionSelect } from '../../theme/glass/campos';
+import {
+  AccionesResumen,
+  CampoAbierto,
+  CifraResumen,
+  DatoTexto,
+  EnlaceAgregar,
+  FilaResumen,
+  FranjaDatos,
+  FranjaPrincipal,
+  ResumenTarjeta,
+  useCamposAbiertos,
+} from '../../theme/ResumenTarjeta';
 import { useTema } from '../../theme/ThemeProvider';
 import { generarId } from '../../util/id';
 
@@ -96,8 +108,16 @@ export interface FormularioClienteProps {
    * `PantallaClientes`) la clave nace por gesto, como antes.
    */
   mensajeId?: string;
+  /**
+   * La card del chat (Martin 14/11): el MISMO formulario presentado como resumen —el nombre, una fila por dato
+   * con valor y los opcionales vacíos detrás de «Agregar…»—. Ver `theme/ResumenTarjeta`. Es presentación: el
+   * estado, el guardado y la pregunta del homónimo son los de siempre.
+   */
+  resumido?: boolean;
   testID?: string;
 }
+
+type CampoResumen = 'nombre' | 'doc' | 'domicilio' | 'email' | 'telefono' | 'notas';
 
 export function FormularioCliente({
   edita = null,
@@ -107,6 +127,7 @@ export function FormularioCliente({
   onAbrirCliente,
   onCancelar,
   mensajeId,
+  resumido = false,
   testID = 'formulario-cliente',
 }: FormularioClienteProps) {
   const tema = useTema();
@@ -134,6 +155,8 @@ export function FormularioCliente({
    * reintentar el mismo diff ya es seguro sin ella.
    */
   const claveAlta = useRef<string | null>(null);
+  // Sólo en `resumido`. El nombre arranca abierto si no vino: es el único dato obligatorio.
+  const { abiertos, abrir, cerrar } = useCamposAbiertos<CampoResumen>((base?.nombre ?? '').trim() !== '' ? [] : ['nombre']);
 
   /**
    * Lo tipeado, en la forma del contrato. Un campo vacío viaja como `null` ("no lo sé"), no como `""`:
@@ -237,24 +260,9 @@ export function FormularioCliente({
     }
   }
 
-  return (
-    <View testID={testID} style={{ gap: tema.espacio.md }}>
-      <Text
-        testID={`${testID}-titulo`}
-        style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.grande }}
-      >
-        {edita != null ? `Editar ${edita.nombre}` : 'Nuevo cliente'}
-      </Text>
-
-      <CampoTexto
-        testID={`${testID}-nombre`}
-        etiqueta="Nombre"
-        valor={nombre}
-        onChange={setNombre}
-        placeholder="ej.: Panadería Los Tilos"
-        maxLength={200}
-      />
-
+  // El documento son dos controles y un aviso: van juntos en el formulario abierto y en el resumen.
+  const documento = (
+    <>
       <CampoSelect
         testID={`${testID}-doc-tipo`}
         etiqueta="Tipo de documento"
@@ -287,48 +295,12 @@ export function FormularioCliente({
           Elegí si ese número es DNI o CUIT — si no, no lo vamos a poder guardar.
         </Text>
       )}
+    </>
+  );
 
-      <CampoTexto
-        testID={`${testID}-domicilio`}
-        etiqueta="Domicilio"
-        valor={domicilio}
-        onChange={setDomicilio}
-        placeholder="ej.: Av. Mitre 1234"
-        maxLength={200}
-      />
-      {/* 🔴 DOS campos, no uno de texto libre — y el teclado por tipo no es un mimo: es la diferencia
-          entre cargar un teléfono en dos segundos o en diez. ⛔ Ninguno valida formato: el campo es
-          opcional, así que una validación sólo se dispara con quien empezó a escribir y se arrepintió
-          a medias. Un mail mal escrito se descubre MANDANDO, con el error real de vuelta. */}
-      <CampoTexto
-        testID={`${testID}-email`}
-        etiqueta="Email"
-        valor={email}
-        onChange={setEmail}
-        placeholder="ej.: panaderia@gmail.com"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-        maxLength={120}
-      />
-      <CampoTexto
-        testID={`${testID}-telefono`}
-        etiqueta="Teléfono"
-        valor={telefono}
-        onChange={setTelefono}
-        placeholder="ej.: 11-5555-4444"
-        keyboardType="phone-pad"
-        maxLength={60}
-      />
-      <CampoTexto
-        testID={`${testID}-notas`}
-        etiqueta="Notas"
-        valor={notas}
-        onChange={setNotas}
-        placeholder="Lo que quieras recordar de este cliente"
-        maxLength={500}
-      />
-
+  // El error y la pregunta del homónimo: los mismos en las dos presentaciones.
+  const avisos = (
+    <>
       {error != null && (
         <Text testID={`${testID}-error`} style={{ color: tema.color.peligro, fontSize: tema.tipo.base }}>
           {error}
@@ -381,6 +353,167 @@ export function FormularioCliente({
           />
         </View>
       )}
+    </>
+  );
+
+  if (resumido) {
+    const nombreAbierto = abiertos.has('nombre') || nombre.trim() === '';
+    // El documento a medias (número sin tipo, o tipo sin número) pide atención: se muestra abierto.
+    const docCompleto = docTipo !== '' && docNro.trim() !== '';
+    const docVacio = docTipo === '' && docNro.trim() === '';
+    const docAbierto = abiertos.has('doc') || (!docCompleto && !docVacio);
+    const etiquetaDoc = OPCIONES_DOC.find((o) => o.valor === docTipo)?.etiqueta ?? '';
+    const textos: { campo: Exclude<CampoResumen, 'nombre' | 'doc'>; rotulo: string; nombre: string; valor: string; set: (v: string) => void; extra: Partial<Parameters<typeof DatoTexto>[0]> }[] = [
+      { campo: 'domicilio', rotulo: 'Domicilio', nombre: 'domicilio', valor: domicilio, set: setDomicilio, extra: { placeholder: 'ej.: Av. Mitre 1234', maxLength: 200 } },
+      { campo: 'email', rotulo: 'Email', nombre: 'email', valor: email, set: setEmail, extra: { placeholder: 'ej.: panaderia@gmail.com', keyboardType: 'email-address', autoCapitalize: 'none', autoCorrect: false, maxLength: 120 } },
+      { campo: 'telefono', rotulo: 'Teléfono', nombre: 'teléfono', valor: telefono, set: setTelefono, extra: { placeholder: 'ej.: 11-5555-4444', keyboardType: 'phone-pad', maxLength: 60 } },
+      { campo: 'notas', rotulo: 'Notas', nombre: 'notas', valor: notas, set: setNotas, extra: { placeholder: 'Lo que quieras recordar de este cliente', maxLength: 500 } },
+    ];
+    const textosVisibles = textos.filter((t) => t.valor.trim() !== '' || abiertos.has(t.campo));
+    const docVisible = docAbierto || docCompleto;
+    const ocultos: { campo: CampoResumen; nombre: string }[] = [
+      ...(docVisible ? [] : [{ campo: 'doc' as const, nombre: 'documento' }]),
+      ...textos.filter((t) => !textosVisibles.includes(t)).map((t) => ({ campo: t.campo, nombre: t.nombre })),
+    ];
+    const hayAvisos = error != null || homonimo != null;
+
+    return (
+      <ResumenTarjeta testID={testID}>
+        <FranjaPrincipal>
+          {nombreAbierto ? (
+            <CampoTexto
+              testID={`${testID}-nombre`}
+              etiqueta="Nombre"
+              valor={nombre}
+              onChange={setNombre}
+              onBlur={() => cerrar('nombre')}
+              placeholder="ej.: Panadería Los Tilos"
+              maxLength={200}
+            />
+          ) : (
+            <CifraResumen
+              testID={`${testID}-nombre-cambiar`}
+              testIDTexto={`${testID}-nombre-texto`}
+              nombre="Nombre"
+              texto={nombre.trim()}
+              onCambiar={() => abrir('nombre')}
+            />
+          )}
+        </FranjaPrincipal>
+
+        {(docVisible || textosVisibles.length > 0) && (
+          <FranjaDatos>
+            {docAbierto && <CampoAbierto>{documento}</CampoAbierto>}
+            {!docAbierto && docCompleto && (
+              <FilaResumen
+                testID={`${testID}-doc-cambiar`}
+                rotulo="Documento"
+                valor={`${etiquetaDoc} ${docNro.trim()}`}
+                onCambiar={() => abrir('doc')}
+              />
+            )}
+            {textosVisibles.map((t, i) => (
+              <DatoTexto
+                key={t.campo}
+                separado={docVisible || i > 0}
+                abierto={abiertos.has(t.campo)}
+                rotulo={t.rotulo}
+                etiqueta={t.rotulo}
+                valor={t.valor}
+                onChange={t.set}
+                onAbrir={() => abrir(t.campo)}
+                onCerrar={() => cerrar(t.campo)}
+                testID={`${testID}-${t.campo}`}
+                {...t.extra}
+              />
+            ))}
+          </FranjaDatos>
+        )}
+
+        <EnlaceAgregar
+          testID={`${testID}-mas-datos`}
+          nombres={ocultos.map((o) => o.nombre)}
+          onPress={() => abrir(...ocultos.map((o) => o.campo))}
+        />
+
+        {hayAvisos && <View style={{ gap: tema.espacio.md, paddingBottom: 14 }}>{avisos}</View>}
+
+        <AccionesResumen
+          testID={`${testID}-botones`}
+          testIDGuardar={`${testID}-guardar`}
+          testIDCancelar={`${testID}-cancelar`}
+          etiquetaGuardar={enviando ? 'Guardando…' : 'Guardar el cliente'}
+          deshabilitado={!puedeGuardar || enviando}
+          onGuardar={() => void guardar()}
+          onCancelar={onCancelar}
+        />
+      </ResumenTarjeta>
+    );
+  }
+
+  return (
+    <View testID={testID} style={{ gap: tema.espacio.md }}>
+      <Text
+        testID={`${testID}-titulo`}
+        accessibilityRole="header"
+        style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: 22, lineHeight: 28 }}
+      >
+        {edita != null ? `Editar ${edita.nombre}` : 'Nuevo cliente'}
+      </Text>
+
+      <CampoTexto
+        testID={`${testID}-nombre`}
+        etiqueta="Nombre"
+        valor={nombre}
+        onChange={setNombre}
+        placeholder="ej.: Panadería Los Tilos"
+        maxLength={200}
+      />
+
+      {documento}
+
+      <CampoTexto
+        testID={`${testID}-domicilio`}
+        etiqueta="Domicilio"
+        valor={domicilio}
+        onChange={setDomicilio}
+        placeholder="ej.: Av. Mitre 1234"
+        maxLength={200}
+      />
+      {/* 🔴 DOS campos, no uno de texto libre — y el teclado por tipo no es un mimo: es la diferencia
+          entre cargar un teléfono en dos segundos o en diez. ⛔ Ninguno valida formato: el campo es
+          opcional, así que una validación sólo se dispara con quien empezó a escribir y se arrepintió
+          a medias. Un mail mal escrito se descubre MANDANDO, con el error real de vuelta. */}
+      <CampoTexto
+        testID={`${testID}-email`}
+        etiqueta="Email"
+        valor={email}
+        onChange={setEmail}
+        placeholder="ej.: panaderia@gmail.com"
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        maxLength={120}
+      />
+      <CampoTexto
+        testID={`${testID}-telefono`}
+        etiqueta="Teléfono"
+        valor={telefono}
+        onChange={setTelefono}
+        placeholder="ej.: 11-5555-4444"
+        keyboardType="phone-pad"
+        maxLength={60}
+      />
+      <CampoTexto
+        testID={`${testID}-notas`}
+        etiqueta="Notas"
+        valor={notas}
+        onChange={setNotas}
+        placeholder="Lo que quieras recordar de este cliente"
+        maxLength={500}
+      />
+
+      {avisos}
 
       <FilaBotones
         testID={`${testID}-botones`}

@@ -8,6 +8,7 @@ import {
   ETIQUETA_CATEGORIA,
   ETIQUETA_ORIGEN_GASTO,
   esDecimalPositivo,
+  formatearImporte,
   normalizarDecimal,
   type CategoriaGasto,
   type Gasto,
@@ -17,6 +18,18 @@ import {
 import { CampoNumero, CampoSelect, CampoTexto, FilaBotones } from '../../theme/glass/campos';
 import { generarId } from '../../util/id';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
+import {
+  AccionesResumen,
+  CampoAbierto,
+  CifraResumen,
+  DatoTexto,
+  EnlaceAgregar,
+  FilaResumen,
+  FranjaDatos,
+  FranjaPrincipal,
+  ResumenTarjeta,
+  useCamposAbiertos,
+} from '../../theme/ResumenTarjeta';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
@@ -64,8 +77,21 @@ export interface FormularioGastoProps {
    * clave por instancia, como antes.
    */
   mensajeId?: string;
+  /**
+   * La card del chat (Martin 14/11): el MISMO formulario —mismo estado, misma validación, mismo guardado—
+   * presentado como RESUMEN. La cifra grande, una fila por dato que ya tiene valor con «Cambiar» a la
+   * derecha, y los opcionales vacíos detrás de un «Agregar…». Todo sigue siendo editable antes de guardar:
+   * tocar una fila abre su campo ahí mismo. Abierto entero, con los ocho chips de categoría y tres campos
+   * vacíos, la card no entraba en pantalla para un gasto de dos datos.
+   *
+   * 🔴 Es una PRESENTACIÓN, no un segundo formulario: la regla de «un solo componente para las dos
+   * puertas» de arriba se mantiene. Un dato obligatorio que falta (el monto) arranca con su campo abierto.
+   */
+  resumido?: boolean;
   testID?: string;
 }
+
+type CampoResumen = 'monto' | 'categoria' | 'descripcion' | 'proveedor' | 'medioPago';
 
 export function FormularioGasto({
   origen,
@@ -73,6 +99,7 @@ export function FormularioGasto({
   onCreado,
   onCancelar,
   mensajeId,
+  resumido = false,
   testID = 'formulario-gasto',
 }: FormularioGastoProps) {
   const tema = useTema();
@@ -85,6 +112,11 @@ export function FormularioGasto({
   const [error, setError] = useState<string | null>(null);
   // IDEM-gasto/BL-V33: misma derivación que `FormularioPresupuesto` — ver el docstring de `mensajeId`.
   const idemKey = useRef(mensajeId != null ? `gasto:${mensajeId}` : generarId());
+
+  // Sólo en `resumido`. El monto arranca abierto si no hay uno válido que mostrar.
+  const { abiertos, abrir, cerrar } = useCamposAbiertos<CampoResumen>(
+    esDecimalPositivo(iniciales?.monto ?? '') ? [] : ['monto'],
+  );
 
   // El backend rechaza monto ausente, cero, negativo o no numérico con 400 (medido). Esta condición
   // es la MISMA, no una más estricta: si divergen, la app traba altas que el backend aceptaría.
@@ -126,6 +158,137 @@ export function FormularioGasto({
       setError(detalle != null && detalle !== '' ? detalle : 'No pudimos guardar el gasto.');
       setGuardando(false);
     }
+  }
+
+  if (resumido) {
+    const montoAbierto = abiertos.has('monto') || !esDecimalPositivo(monto);
+    const vacio = (v: string, campo: CampoResumen) => v.trim() === '' && !abiertos.has(campo);
+    const ocultos: { campo: CampoResumen; nombre: string }[] = [
+      ...(vacio(descripcion, 'descripcion') ? [{ campo: 'descripcion' as const, nombre: 'detalle' }] : []),
+      ...(vacio(proveedor, 'proveedor') ? [{ campo: 'proveedor' as const, nombre: 'proveedor' }] : []),
+      ...(vacio(medioPago, 'medioPago') ? [{ campo: 'medioPago' as const, nombre: 'medio de pago' }] : []),
+    ];
+
+    return (
+      <ResumenTarjeta testID={testID}>
+        <FranjaPrincipal>
+          {montoAbierto ? (
+            <CampoNumero
+              etiqueta="Cuánto gastaste"
+              valor={monto}
+              onChange={setMonto}
+              onBlur={() => cerrar('monto')}
+              placeholder="15000,50"
+              testID="gasto-monto"
+            />
+          ) : (
+            <CifraResumen
+              testID="gasto-monto-cambiar"
+              testIDTexto="gasto-monto-cifra"
+              nombre="Monto"
+              texto={formatearImporte(normalizarDecimal(monto))}
+              onCambiar={() => abrir('monto')}
+            />
+          )}
+
+          {/* Mismo trato que en el formulario abierto: cita del ticket, tocable, sin tilde de validación. */}
+          {iniciales?.montoSugerido != null && (
+            <Pressable
+              testID="gasto-monto-sugerido"
+              onPress={() => setMonto(iniciales.montoSugerido as string)}
+              style={pressableStyle(undefined, PRESS_FADE)}
+              hitSlop={8}
+            >
+              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, textDecorationLine: 'underline' }}>
+                Del ticket leímos: {iniciales.montoSugerido} — tocá para usarlo
+              </Text>
+            </Pressable>
+          )}
+        </FranjaPrincipal>
+
+        <FranjaDatos>
+          {abiertos.has('categoria') ? (
+            <CampoAbierto>
+              <CampoSelect
+                etiqueta="Categoría"
+                opciones={CATEGORIAS_GASTO.map((c) => ({ valor: c, etiqueta: ETIQUETA_CATEGORIA[c] }))}
+                valor={categoria}
+                // Elegir cierra: la categoría es una sola, y con los ocho chips a la vista la card vuelve a crecer.
+                onChange={(v) => { setCategoria(v as CategoriaGasto); cerrar('categoria'); }}
+                testID="gasto-categoria"
+              />
+            </CampoAbierto>
+          ) : (
+            <FilaResumen
+              testID="gasto-categoria-cambiar"
+              rotulo="Categoría"
+              valor={ETIQUETA_CATEGORIA[categoria]}
+              onCambiar={() => abrir('categoria')}
+            />
+          )}
+          <DatoTexto
+            separado
+            abierto={abiertos.has('descripcion')}
+            rotulo="Detalle"
+            etiqueta="Detalle"
+            valor={descripcion}
+            onChange={setDescripcion}
+            onAbrir={() => abrir('descripcion')}
+            onCerrar={() => cerrar('descripcion')}
+            maxLength={500}
+            multiline
+            testID="gasto-descripcion"
+          />
+          <DatoTexto
+            separado
+            abierto={abiertos.has('proveedor')}
+            rotulo="Proveedor"
+            etiqueta="Proveedor"
+            valor={proveedor}
+            onChange={setProveedor}
+            onAbrir={() => abrir('proveedor')}
+            onCerrar={() => cerrar('proveedor')}
+            maxLength={120}
+            testID="gasto-proveedor"
+          />
+          <DatoTexto
+            separado
+            abierto={abiertos.has('medioPago')}
+            rotulo="Pago"
+            etiqueta="Cómo lo pagaste"
+            valor={medioPago}
+            onChange={setMedioPago}
+            onAbrir={() => abrir('medioPago')}
+            onCerrar={() => cerrar('medioPago')}
+            maxLength={40}
+            placeholder="efectivo, transferencia…"
+            testID="gasto-medio-pago"
+          />
+        </FranjaDatos>
+
+        <EnlaceAgregar
+          testID="gasto-mas-datos"
+          nombres={ocultos.map((o) => o.nombre)}
+          onPress={() => abrir(...ocultos.map((o) => o.campo))}
+        />
+
+        {error != null && (
+          <Text testID="gasto-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.base, paddingBottom: 12 }}>
+            {error}
+          </Text>
+        )}
+
+        <AccionesResumen
+          testID="gasto-acciones"
+          testIDGuardar="gasto-guardar"
+          testIDCancelar="gasto-cancelar"
+          etiquetaGuardar={guardando ? 'Guardando…' : 'Guardar el gasto'}
+          deshabilitado={!puedeGuardar}
+          onGuardar={() => void guardar()}
+          onCancelar={onCancelar}
+        />
+      </ResumenTarjeta>
+    );
   }
 
   return (

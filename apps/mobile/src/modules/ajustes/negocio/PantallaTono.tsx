@@ -110,7 +110,7 @@ export function PantallaTono({ onVolver, onGuardado }: PantallaTonoProps) {
   }
 
   return (
-    <MarcoGlass titulo="Cómo hablarle" icono="miNegocio" testID="pantalla-tono">
+    <MarcoGlass titulo="Cómo hablarle" icono="miNegocio" sinIcono testID="pantalla-tono">
       {estadoCarga === 'cargando' && (
         <View style={styles.centro}>
           <ActivityIndicator testID="tono-cargando" color={tema.color.acento} />

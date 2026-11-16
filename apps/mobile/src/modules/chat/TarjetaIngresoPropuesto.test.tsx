@@ -54,21 +54,55 @@ describe('TarjetaIngresoPropuesto', () => {
   it('dice explícitamente que TODAVÍA no se guardó', async () => {
     await montar();
 
-    expect(screen.getByTestId('ingreso-propuesto-aviso')).toHaveTextContent(
-      'Esto entendí. Revisalo y tocá Anotar que me pagaron — todavía no lo guardé.',
-    );
+    // 14/11: la card pasó a resumen. El título nombra el registro y el aviso es el contrato, textual.
+    expect(screen.getByTestId('ingreso-propuesto-titulo')).toHaveTextContent('Nuevo ingreso');
+    expect(screen.getByTestId('ingreso-propuesto-aviso')).toHaveTextContent('Todavía no se guardó nada.');
   });
 
-  it('muestra lo que se dictó, textual, para poder contrastarlo', async () => {
+  it('muestra lo que entendió como RESUMEN: la cifra y una fila por dato, sin la cita de lo dictado', async () => {
+    // 14/11 (Martin): la cita repetía lo que ya está en la burbuja del usuario y en la fila «Trabajo».
     await montar();
 
-    expect(screen.getByTestId('ingreso-propuesto-dicho')).toHaveTextContent('«pintura del local»');
+    expect(screen.queryByTestId('ingreso-propuesto-dicho')).toBeNull();
+    expect(screen.getByTestId('ingreso-propuesto-formulario-monto-cifra')).toHaveTextContent('$85.000,00');
+    expect(screen.getByTestId('ingreso-propuesto-formulario-cliente-cambiar')).toHaveTextContent(/Panadería La Esquina/);
+    expect(screen.getByTestId('ingreso-propuesto-formulario-medio-cambiar')).toHaveTextContent(/efectivo/);
+    expect(screen.getByTestId('ingreso-propuesto-formulario-concepto-cambiar')).toHaveTextContent(/pintura del local/);
+    // Nada abierto de entrada, y sin «Agregar…»: no quedó ningún opcional vacío.
+    expect(screen.queryByTestId('ingreso-propuesto-formulario-monto-input')).toBeNull();
+    expect(screen.queryByTestId('ingreso-propuesto-formulario-mas-datos')).toBeNull();
+  });
+
+  it('los opcionales que no se dictaron quedan detrás de «Agregar…» y se abren al tocarlo', async () => {
+    await montar(propuesta({ medio: null, cliente_nombre: null }));
+
+    expect(screen.queryByTestId('ingreso-propuesto-formulario-medio-input')).toBeNull();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('ingreso-propuesto-formulario-mas-datos'));
+    });
+    expect(screen.getByTestId('ingreso-propuesto-formulario-medio-input')).toBeTruthy();
+    expect(screen.getByTestId('ingreso-propuesto-formulario-cliente-input')).toBeTruthy();
+  });
+
+  it('una vez anotado, el encabezado deja de decir que no se guardó nada', async () => {
+    mockRegistrar.mockResolvedValue({ status: 'ok', ingreso: ingresoGuardado({ falta: ['medio'] }) });
+    await montar();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('ingreso-propuesto-formulario-guardar'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('ingreso-propuesto-aviso')).toHaveTextContent('Ya está anotado.'));
   });
 
   it('🔴 permite CORREGIR el monto mal transcripto antes de guardar', async () => {
     mockRegistrar.mockResolvedValue({ status: 'ok', ingreso: ingresoGuardado({ monto: '15000.00' }) });
     await montar();
 
+    // En el resumen el monto es una cifra; tocarla abre el campo ahí mismo.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('ingreso-propuesto-formulario-monto-cambiar'));
+    });
     await act(async () => {
       fireEvent.changeText(screen.getByTestId('ingreso-propuesto-formulario-monto-input'), '15000');
     });
@@ -159,7 +193,7 @@ describe('TarjetaIngresoPropuesto', () => {
       await montar(propuesta(), { resuelto: { estado: 'guardado', monto: '85000.00' } });
 
       expect(screen.getByTestId('ingreso-propuesto-guardado')).toHaveTextContent('Ingreso anotado: $85.000,00');
-      expect(screen.queryByTestId('ingreso-propuesto-formulario-monto-input')).toBeNull();
+      expect(screen.queryByTestId('ingreso-propuesto-formulario-guardar')).toBeNull();
       expect(mockRegistrar).not.toHaveBeenCalled();
     });
 
@@ -167,13 +201,15 @@ describe('TarjetaIngresoPropuesto', () => {
       await montar(propuesta(), { resuelto: { estado: 'descartado' } });
 
       expect(screen.getByTestId('ingreso-propuesto-descartado')).toBeTruthy();
-      expect(screen.queryByTestId('ingreso-propuesto-formulario-monto-input')).toBeNull();
+      expect(screen.queryByTestId('ingreso-propuesto-formulario-guardar')).toBeNull();
     });
 
     it('control negativo: sin `resuelto` sigue arrancando editable, como antes', async () => {
       await montar();
 
-      expect(screen.getByTestId('ingreso-propuesto-formulario-monto-input')).toBeTruthy();
+      // «Editable» = sigue ofreciendo guardar y cambiar; el campo del monto ya no está abierto de entrada.
+      expect(screen.getByTestId('ingreso-propuesto-formulario-guardar')).toBeTruthy();
+      expect(screen.getByTestId('ingreso-propuesto-formulario-monto-cambiar')).toBeTruthy();
       expect(screen.queryByTestId('ingreso-propuesto-guardado')).toBeNull();
     });
 

@@ -89,6 +89,8 @@ export interface MarcoGlassProps extends PropsWithChildren {
   titulo: string;
   /** El mismo glifo del tile de entrada: entrar por un ícono y llegar a otro desorienta. */
   icono: NombreIconoGlass;
+  /** Sólo el título, sin glifo al lado (Martin 14/11, Gastos: el dibujo de la función vive en su estado vacío). */
+  sinIcono?: boolean;
   /**
    * Reemplaza el encabezado (ícono + título + Volver) y el handle por el contenido crudo. Lo usa el
    * HUD de grabación: durante una captura viva no puede haber ni salida por gesto ni "Volver" — se
@@ -106,7 +108,7 @@ export interface MarcoGlassProps extends PropsWithChildren {
   testID?: string;
 }
 
-export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, etiqueta, testID, children }: MarcoGlassProps) {
+export function MarcoGlass({ titulo, icono, sinIcono = false, desnudo, encabezadoExtra, etiqueta, testID, children }: MarcoGlassProps) {
   const tema = useTema();
   const inercia = useInerteAlPerderFoco();
   const insets = useSafeAreaInsets();
@@ -276,7 +278,7 @@ export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, etiqueta, 
                       ]}
                       testID="glass-zona-arrastre-identidad"
                     >
-                      <GlassIcon name={icono} size={28} />
+                      {!sinIcono && <GlassIcon name={icono} size={28} />}
                       <Text
                         testID="glass-titulo"
                         style={{ color: tema.color.texto, fontSize: tema.tipo.titulo, fontFamily: tema.fuente.uiBold }}
@@ -296,8 +298,11 @@ export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, etiqueta, 
                         style={{
                           color: tema.color.textoTenue,
                           fontSize: tema.tipo.chico,
-                          paddingLeft: tema.espacio.md + 28 + tema.espacio.sm,
+                          // Sin ícono no hay sangría que respetar: la etiqueta se alinea con el título.
+                          paddingLeft: sinIcono ? tema.espacio.md : tema.espacio.md + 28 + tema.espacio.sm,
                           paddingRight: tema.espacio.md,
+                          // Aire debajo: sin esto la etiqueta quedaba pegada al borde donde empieza el contenido (Martin 15/11).
+                          paddingBottom: 12,
                         }}
                       >
                         {etiqueta}

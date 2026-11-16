@@ -42,7 +42,8 @@ async function montar(c: Cliente) {
 describe('TarjetaCliente — columna del monto (C-D1)', () => {
   it('con documento y compras: «$importe · N comprobantes», y un derivado con compras no lleva chip de estado', async () => {
     await montar(cliente({ facturasAtribuibles: true, montoFacturado: '320000.00', comprobantesCantidad: 3 }));
-    expect(screen.getByTestId('cliente-1-monto')).toHaveTextContent('$320.000,00 · 3 comprobantes');
+    expect(screen.getByTestId('cliente-1-monto')).toHaveTextContent('$320.000,00');
+    expect(screen.getByTestId('cliente-1-comprobantes')).toHaveTextContent('3 comprobantes');
     expect(screen.queryByTestId('cliente-1-estado')).toBeNull();
   });
 

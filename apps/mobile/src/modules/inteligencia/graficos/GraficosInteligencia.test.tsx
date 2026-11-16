@@ -79,10 +79,13 @@ beforeEach(() => {
 });
 
 describe('GraficosInteligencia — los 4 aparecen y cargan', () => {
-  it('muestra entró-vs-salió, categorías y margen por trabajo — y NO la tarjeta «Facturación» (SM-N32)', async () => {
+  it('muestra categorías y margen por trabajo — y NO las tarjetas «Facturación» (SM-N32) ni «Entró vs. salió» (15/11)', async () => {
     await montar();
 
-    await waitFor(() => expect(screen.getByTestId('inteligencia-grafico-entro-vs-salio')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('inteligencia-grafico-categorias')).toBeTruthy());
+    // «Entró vs. salió» lo dice ahora «Lo que te quedó», en la portada: acá no se dibuja ni se pide.
+    expect(screen.queryByTestId('inteligencia-grafico-entro-vs-salio')).toBeNull();
+    expect(entroVsSalioMock).not.toHaveBeenCalled();
     // Control: el mock de facturación devuelve `ok` con serie (beforeEach); si la tarjeta no aparece es
     // porque se retiró, no porque falte el dato. Y ya ni se pide el endpoint.
     expect(screen.queryByTestId('inteligencia-grafico-facturacion')).toBeNull();

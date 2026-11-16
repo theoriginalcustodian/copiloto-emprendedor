@@ -11,6 +11,8 @@ import {
   estadoFactura as consultarEstadoFactura,
   etiquetaCondicionIva,
   firmaDeEstado,
+  formatearImporteSinCentavosCero,
+  normalizarDecimal,
   quitarItem,
   setCliente,
   setDatosVenta,
@@ -33,7 +35,18 @@ import { PasoCliente } from '../facturacion/PasoCliente';
 import { PasoDatosVenta } from '../facturacion/PasoDatosVenta';
 import { PasoItems } from '../facturacion/PasoItems';
 import { FilaBotones } from '../../theme/glass/campos';
-import { Row } from '../../theme/glass/Row';
+import {
+  BotonLleno,
+  BotonTexto,
+  CifraResumen,
+  DetalleFila,
+  FilaResumen,
+  FranjaAcciones,
+  FranjaDatos,
+  FranjaPrincipal,
+  ResumenTarjeta,
+  useLineaResumen,
+} from '../../theme/ResumenTarjeta';
 import { useTema } from '../../theme/ThemeProvider';
 import { Recibo } from './Recibo';
 import { TarjetaPropuestaShell } from './TarjetaPropuestaShell';
@@ -107,6 +120,7 @@ export function TarjetaFacturaPropuesta({
   testID = 'factura-propuesta',
 }: TarjetaFacturaPropuestaProps) {
   const tema = useTema();
+  const linea = useLineaResumen();
   const facturaId = propuesta.facturaId;
   // GUARDM parte 2 — guard cross-remount: siembra sincrónicamente desde `resuelto` (patrón B), mismo
   // mecanismo que las otras 3 cards de propuesta. Sin esto, un remount tras emitir volvía a mostrar
@@ -403,127 +417,116 @@ export function TarjetaFacturaPropuesta({
   const delRegistro =
     propuesta.cliente?.delRegistro === true && (receptor == null || documento === propuesta.cliente.cuit);
 
+  // Los importes llegan como número en texto («50000»): se muestran como plata. Si algún día llegara otra
+  // cosa, se muestra tal cual antes que un «$NaN».
+  const plata = (v: string) => (/^-?\d+([.,]\d+)?$/.test(v.trim()) ? formatearImporteSinCentavosCero(normalizarDecimal(v)) : v);
+
   return (
+    // Martin 14/11: el mismo lenguaje que las otras cards (`theme/ResumenTarjeta`) —título que nombra, total
+    // grande, una franja por dato con su línea, «Emitir» lleno y el resto como texto—. Acá NO hay «Cambiar» por
+    // fila: una factura se corrige por sus pasos, contra el servidor, y esa puerta sigue siendo «Editar».
     <TarjetaPropuestaShell
       testID={testID}
-      aviso={
-        lista
-          ? 'Esto entendí. Revisalo y tocá Emitir la factura — todavía no la mandé.'
-          : 'Esto entendí, pero falta completar algo antes de emitirla.'
-      }
+      titulo="Nueva factura"
+      aviso={lista ? 'Todavía no se emitió nada.' : 'Todavía no se emitió nada. Falta completar algo antes de emitirla.'}
     >
-      <View style={{ gap: tema.espacio.xs }}>
-        {/* `fact-hitl` (mapeo 2026-10-12): el encabezado «Factura C · ARCA» del prototipo. El tipo es el
-            que manda el backend en la propuesta (`tipo_comprobante`) — no se escribe «C» a mano: según la
-            condición fiscal del emisor puede ser otro. Sin tipo, sin encabezado. */}
-        {propuesta.tipoComprobante != null && (
-          <Text
-            testID={`${testID}-tipo`}
-            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontWeight: '600' }}
-          >
-            {`Factura ${propuesta.tipoComprobante} · ARCA`}
-          </Text>
-        )}
-        {nombreCliente !== '' && (
-          <Row testID={`${testID}-cliente`}>
-            <View style={{ gap: 2, flex: 1 }}>
-              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Cliente</Text>
-              <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>{nombreCliente}</Text>
-              {condicionIva != null && (
-                <Text
-                  testID={`${testID}-cliente-condicion`}
-                  style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
-                >
-                  {condicionIva}
-                </Text>
-              )}
-              {/* 🔴 Lo único que le dice a quien va a emitir que está confirmando un CUIT/condición que no
-                  tipeó: salieron de su registro de clientes. Sin la marca, el dato ajeno parece dictado. */}
-              {delRegistro && (
-                <Text
-                  testID={`${testID}-cliente-registro`}
-                  style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.chico, fontWeight: '600' }}
-                >
-                  De tu registro de clientes
-                </Text>
-              )}
-            </View>
-          </Row>
+      <ResumenTarjeta>
+        <FranjaPrincipal>
+          <CifraResumen testID={`${testID}-total-fila`} testIDTexto={`${testID}-total`} nombre="Total" texto={plata(total)} />
+          {/* `fact-hitl` (mapeo 2026-10-12): «Factura C · ARCA». El tipo es el que manda el backend en la
+              propuesta (`tipo_comprobante`) — no se escribe «C» a mano: según la condición fiscal del emisor
+              puede ser otro. Sin tipo, sin rótulo. */}
+          {propuesta.tipoComprobante != null && (
+            <DetalleFila testID={`${testID}-tipo`}>{`Factura ${propuesta.tipoComprobante} · ARCA`}</DetalleFila>
+          )}
+        </FranjaPrincipal>
+
+        {(nombreCliente !== '' || items.length > 0) && (
+          <FranjaDatos>
+            {nombreCliente !== '' && (
+              <FilaResumen testID={`${testID}-cliente`} rotulo="Cliente" valor={nombreCliente}>
+                {condicionIva != null && <DetalleFila testID={`${testID}-cliente-condicion`}>{condicionIva}</DetalleFila>}
+                {/* 🔴 Lo único que le dice a quien va a emitir que está confirmando un CUIT/condición que no
+                    tipeó: salieron de su registro de clientes. Sin la marca, el dato ajeno parece dictado. */}
+                {delRegistro && (
+                  <DetalleFila testID={`${testID}-cliente-registro`} acento>
+                    De tu registro de clientes
+                  </DetalleFila>
+                )}
+              </FilaResumen>
+            )}
+
+            {items.map((item, indice) => (
+              <FilaResumen
+                key={`${item.descripcion}-${indice}`}
+                testID={`${testID}-item-${indice}`}
+                separada={nombreCliente !== '' || indice > 0}
+                rotulo={`Ítem ${indice + 1}`}
+                valor={item.descripcion}
+              >
+                <DetalleFila>
+                  {item.cantidad} × {plata(item.precioUnitario)}
+                </DetalleFila>
+              </FilaResumen>
+            ))}
+          </FranjaDatos>
         )}
 
-        {items.map((item, indice) => (
-          <Row key={`${item.descripcion}-${indice}`} testID={`${testID}-item-${indice}`}>
-            <View style={{ gap: 2, flex: 1 }}>
-              <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>{item.descripcion}</Text>
-              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-                {item.cantidad} × {item.precioUnitario}
+        {(lectura != null && lectura.faltantes.length > 0) || motivo != null || lista ? (
+          <View style={{ gap: tema.espacio.sm, paddingVertical: 12, borderTopWidth: 1, borderColor: linea }}>
+            {lectura != null && lectura.faltantes.length > 0 && (
+              <Text testID={`${testID}-faltantes`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+                {/* El backend manda un faltante por CAMPO, y varios comparten la misma frase. */}
+                {[...new Set(lectura.faltantes.map((f) => f.mensaje))].join(' · ')}
               </Text>
-            </View>
-          </Row>
-        ))}
+            )}
 
-        <Text testID={`${testID}-total`} style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.base, fontWeight: '600' }}>
-          Total: {total}
-        </Text>
+            {textoMotivo}
 
-        {lectura != null && lectura.faltantes.length > 0 && (
-          <Text testID={`${testID}-faltantes`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-            {/* El backend manda un faltante por CAMPO, y varios comparten la misma frase. */}
-            {[...new Set(lectura.faltantes.map((f) => f.mensaje))].join(' · ')}
-          </Text>
+            {lista && (
+              <Text
+                testID={`${testID}-aviso-anulacion`}
+                style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+              >
+                {AVISO_FACTURA_ANULACION}
+              </Text>
+            )}
+          </View>
+        ) : null}
+
+        {edicion === 'menu' ? (
+          // El menú de qué editar: cuatro destinos parejos, siguen como píldoras.
+          <View style={{ borderTopWidth: 1, borderColor: linea, paddingTop: 14 }}>
+            <FilaBotones
+              testID={`${testID}-botones`}
+              botones={[
+                { etiqueta: 'Datos de venta', onPress: () => setEdicion('datos_venta'), testID: `${testID}-menu-datos-venta` },
+                { etiqueta: 'Ítems', onPress: () => setEdicion('items'), testID: `${testID}-menu-items` },
+                { etiqueta: 'Cliente', onPress: () => setEdicion('cliente'), testID: `${testID}-menu-cliente` },
+                { etiqueta: 'Volver', onPress: () => setEdicion(null), testID: `${testID}-menu-volver` },
+              ]}
+            />
+          </View>
+        ) : (
+          // La acción que sigue va LLENA y primera: «Emitir» si está lista, «Editar» si falta algo. El resto, texto.
+          <FranjaAcciones testID={`${testID}-botones`}>
+            {lista ? (
+              <BotonLleno
+                testID={`${testID}-emitir`}
+                etiqueta={enviando || emitiendo ? 'Emitiendo…' : 'Emitir la factura'}
+                deshabilitado={apagados}
+                onPress={() => void emitir()}
+              />
+            ) : (
+              <BotonLleno testID={`${testID}-editar`} etiqueta="Editar" deshabilitado={apagados} onPress={() => void abrirEdicion()} />
+            )}
+            {lista && (
+              <BotonTexto testID={`${testID}-editar`} etiqueta="Editar" deshabilitado={apagados} onPress={() => void abrirEdicion()} />
+            )}
+            <BotonTexto testID={`${testID}-cancelar`} etiqueta="Cancelar" deshabilitado={apagados} onPress={() => void cancelar()} />
+          </FranjaAcciones>
         )}
-
-        {textoMotivo}
-
-        {lista && (
-          <Text
-            testID={`${testID}-aviso-anulacion`}
-            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
-          >
-            {AVISO_FACTURA_ANULACION}
-          </Text>
-        )}
-
-        <FilaBotones
-          testID={`${testID}-botones`}
-          botones={
-            edicion === 'menu'
-              ? [
-                  { etiqueta: 'Datos de venta', onPress: () => setEdicion('datos_venta'), testID: `${testID}-menu-datos-venta` },
-                  { etiqueta: 'Ítems', onPress: () => setEdicion('items'), testID: `${testID}-menu-items` },
-                  { etiqueta: 'Cliente', onPress: () => setEdicion('cliente'), testID: `${testID}-menu-cliente` },
-                  { etiqueta: 'Volver', onPress: () => setEdicion(null), testID: `${testID}-menu-volver` },
-                ]
-              : [
-                  {
-                    etiqueta: 'Editar',
-                    onPress: () => void abrirEdicion(),
-                    variante: lista ? 'secundario' : 'primario',
-                    deshabilitado: apagados,
-                    testID: `${testID}-editar`,
-                  },
-                  {
-                    etiqueta: 'Cancelar',
-                    onPress: () => void cancelar(),
-                    variante: 'peligro',
-                    deshabilitado: apagados,
-                    testID: `${testID}-cancelar`,
-                  },
-                  ...(lista
-                    ? [
-                        {
-                          etiqueta: enviando || emitiendo ? 'Emitiendo…' : 'Emitir la factura',
-                          onPress: () => void emitir(),
-                          variante: 'primario' as const,
-                          deshabilitado: apagados,
-                          testID: `${testID}-emitir`,
-                        },
-                      ]
-                    : []),
-                ]
-          }
-        />
-      </View>
+      </ResumenTarjeta>
     </TarjetaPropuestaShell>
   );
 }

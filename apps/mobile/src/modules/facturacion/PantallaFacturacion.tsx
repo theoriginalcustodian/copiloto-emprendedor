@@ -33,6 +33,7 @@ import {
 import { almacenClave } from '../../adapters/almacen';
 import { empujarUnaVez, reabrirNavegacion } from '../../navegacion/empujarUnaVez';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
+import { BotonAcceso, IconoLapiz } from '../../theme/BotonAcceso';
 import { useTema } from '../../theme/ThemeProvider';
 // `ScrollFormulario` (y no un `ScrollView`) porque los cuatro pasos son formularios: revela el campo
 // que recibe el foco en vez de dejarlo tapado por el teclado. Ver su docstring y el de `MarcoGlass`.
@@ -215,6 +216,8 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
   const [vista, setVista] = useState<'listado' | 'wizard'>(facturaIdInicial != null ? 'wizard' : 'listado');
   /** La fila cuyo detalle se está mirando. Vive ACÁ y no en la sección — ver el porqué en el render. */
   const [detalleComprobante, setDetalleComprobante] = useState<Comprobante | null>(null);
+  // Arranca en `true`: mientras la lista carga no se muestra un buscador que quizá no tenga dónde buscar.
+  const [sinComprobantes, setSinComprobantes] = useState(true);
   const refComprobantes = useRef<SeccionMisComprobantesHandle>(null);
   const refMeDeben = useRef<SeccionMeDebenHandle>(null);
   const refResumen = useRef<ResumenFacturadoHandle>(null);
@@ -615,11 +618,11 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
   const cuitConocido = gate.tipo === 'listo' || gate.tipo === 'bloqueado' ? gate.cuit : null;
 
   return (
-    <MarcoGlass titulo="Facturación" icono="facturacion" testID="pantalla-facturacion">
+    <MarcoGlass titulo="Facturación" icono="facturacion" sinIcono testID="pantalla-facturacion">
       <ScrollFormulario
         style={styles.scroll}
         testID="facturacion-lista"
-        contentContainerStyle={[styles.contenido, { padding: tema.espacio.lg, gap: tema.espacio.lg, paddingBottom: 120 }]}
+        contentContainerStyle={[styles.contenido, { padding: tema.espacio.md, gap: 24, paddingBottom: 120 }]}
         refreshControl={
           <RefreshControl
             testID="facturacion-refresco"
@@ -695,28 +698,28 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
             {/* `factura` (mapeo 2026-10-12): el resumen del mes abre la pantalla, como en el prototipo.
                 La cifra viene del backend (`portada.mes.facturado`) — ver `ResumenFacturado.tsx`. */}
             <ResumenFacturado ref={refResumen} />
-            {/* «Te deben» ANTES del listado completo: es la pregunta que se hace primero al abrir
-                Facturación. Sección de esta misma pantalla y no destino aparte — lo que se debe SON
-                las facturas emitidas, y separarlas obligaría a preguntarse en cuál de los dos
-                lugares está una factura concreta. */}
-            <SeccionMeDeben ref={refMeDeben} />
             {/* H-A4-5: fila FIJA (no condicionada a `vista`, igual que web) -- reusa `nuevaFactura`, el
                 mismo handler que ya resetea el wizard para arrancar otra factura desde los estados
                 terminales (comprobante/rechazada/cancelada). Siempre visible con `cuitConocido`: es la
                 MISMA acción que abandona un wizard a medio hacer y arranca uno nuevo, no sólo la puerta
                 de entrada desde el listado. Mismo testID que web (`facturacion-nueva-factura-pill`)
                 para la paridad que audita `scripts/ci/testid-paridad-excepciones.json`. */}
-            <FilaBotones
-              testID="facturacion-nueva-factura-fila"
-              botones={[
-                {
-                  etiqueta: 'Nueva factura',
-                  onPress: nuevaFactura,
-                  variante: 'primario',
-                  testID: 'facturacion-nueva-factura-pill',
-                },
-              ]}
-            />
+            {/* Mismo criterio que Gastos (Martin 14/11, ver `BotonAcceso`): la vía manual va callada, en tarjeta
+                blanca; la terracota queda para el micrófono del dock. */}
+            <View testID="facturacion-nueva-factura-fila">
+              <BotonAcceso
+                testID="facturacion-nueva-factura-pill"
+                onPress={nuevaFactura}
+                icono={<IconoLapiz color={tema.color.acentoTinta} />}
+                etiqueta="Nueva factura"
+              />
+            </View>
+            {/* Martin 15/11: «Nueva factura» subió y queda pegada a la cifra, como las vías de alta de Gastos. */}
+            {/* «Te deben» ANTES del listado completo: es la pregunta que se hace primero al abrir
+                Facturación. Sección de esta misma pantalla y no destino aparte — lo que se debe SON
+                las facturas emitidas, y separarlas obligaría a preguntarse en cuál de los dos
+                lugares está una factura concreta. */}
+            <SeccionMeDeben ref={refMeDeben} />
             {/* 🔴 Decisión C: el buscador envuelve SÓLO «Mis comprobantes» —no «Te deben» (otra
                 pregunta) ni el wizard—. Sin query, la sección rica (con anular, PDF, CAE) se muestra
                 intacta; con query pega a `/actividad?funcion=facturacion&q=` (cruza factura +
@@ -726,8 +729,15 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
               funcion="facturacion"
               testIDBase="facturacion-busqueda"
               placeholder="Buscar un comprobante"
+              sinEtiqueta
+              ocultarCampo={sinComprobantes}
             >
-              <SeccionMisComprobantes ref={refComprobantes} cuit={cuitConocido} onVerDetalle={setDetalleComprobante} />
+              <SeccionMisComprobantes
+                ref={refComprobantes}
+                cuit={cuitConocido}
+                onVerDetalle={setDetalleComprobante}
+                onVacio={setSinComprobantes}
+              />
             </BuscadorActividad>
           </>
         )}

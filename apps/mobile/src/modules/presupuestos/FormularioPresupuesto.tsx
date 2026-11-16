@@ -24,8 +24,24 @@ import {
 } from '../../theme/glass/campos';
 import { generarId } from '../../util/id';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
-import { Row } from '../../theme/glass/Row';
+import {
+  AccionesResumen,
+  BotonTexto,
+  CampoAbierto,
+  CifraResumen,
+  DatoTexto,
+  DetalleFila,
+  EnlaceAgregar,
+  EnlaceResumen,
+  FilaResumen,
+  FranjaDatos,
+  FranjaPrincipal,
+  ResumenTarjeta,
+  useCamposAbiertos,
+} from '../../theme/ResumenTarjeta';
 import { useTema } from '../../theme/ThemeProvider';
+import { elevacion } from '../../theme/BloqueCifra';
+import { conAlfa } from '../../theme/glass/conAlfa';
 
 /**
  * `FormularioPresupuesto` — el alta. Y también la corrección, que es la MISMA operación.
@@ -99,8 +115,16 @@ export interface FormularioPresupuestoProps {
    * manual desde `PantallaPresupuestos`, sin card) se mantiene una clave por instancia, como antes.
    */
   mensajeId?: string;
+  /**
+   * La card del chat (Martin 14/11): el MISMO formulario presentado como resumen —el total, una fila por dato
+   * y una por ítem, cada una con «Cambiar», y lo opcional vacío detrás de «Agregar…»—. Ver
+   * `theme/ResumenTarjeta`. Es presentación: el estado, la validación y el guardado son los de siempre.
+   */
+  resumido?: boolean;
   testID?: string;
 }
+
+type CampoResumen = 'concepto' | 'nombre' | 'doc' | 'contacto';
 
 export function FormularioPresupuesto({
   corrige = null,
@@ -109,6 +133,7 @@ export function FormularioPresupuesto({
   onCancelar,
   etiquetaCancelar = 'Cancelar',
   mensajeId,
+  resumido = false,
   testID = 'formulario-presupuesto',
 }: FormularioPresupuestoProps) {
   const tema = useTema();
@@ -155,6 +180,13 @@ export function FormularioPresupuesto({
    * vender. Son dos consumidores del mismo endpoint con necesidades opuestas.
    */
   const [conceptos, setConceptos] = useState<readonly Concepto[]>([]);
+  // Sólo en `resumido`. Los dos obligatorios arrancan abiertos si no vinieron.
+  const { abiertos, abrir, cerrar } = useCamposAbiertos<CampoResumen>([
+    ...((corrige?.concepto ?? iniciales?.concepto ?? '').trim() === '' ? (['concepto'] as const) : []),
+    ...((corrige?.receptor.nombre ?? iniciales?.receptor?.nombre ?? '').trim() === '' ? (['nombre'] as const) : []),
+  ]);
+  /** Los ítems abiertos, por índice. Quitar un ítem corre los índices, así que ahí se vacía. */
+  const [itemsAbiertos, setItemsAbiertos] = useState<ReadonlySet<number>>(() => new Set());
 
   useEffect(() => {
     let vivo = true;
@@ -208,6 +240,7 @@ export function FormularioPresupuesto({
     // Nunca se queda sin filas: un formulario de presupuesto sin ninguna línea no tiene qué mostrar
     // ni qué enviar, y el backend lo rechazaría con un 400 que el usuario no puede accionar.
     setItems((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== indice)));
+    setItemsAbiertos(new Set());
   }
 
   const itemsValidos: NuevoItemPresupuesto[] = items
@@ -261,35 +294,9 @@ export function FormularioPresupuesto({
 
   const aproximado = calcularTotalAproximado(items);
 
-  return (
-    <View testID={testID} style={{ gap: tema.espacio.md }}>
-      <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.grande }}>
-        {corrige != null ? `Corregir el N° ${corrige.numero}` : 'Nuevo presupuesto'}
-      </Text>
-
-      {corrige != null && (
-        <Text testID={`${testID}-aviso-correccion`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-          Se va a crear un presupuesto nuevo con número propio que reemplaza al N° {corrige.numero}. El
-          anterior queda en el historial — así, si ya se lo mandaste a tu cliente, los dos documentos
-          siguen siendo distinguibles.
-        </Text>
-      )}
-
-      <CampoTexto
-        testID={`${testID}-concepto`}
-        etiqueta="Concepto"
-        valor={concepto}
-        onChange={setConcepto}
-        placeholder="Instalación eléctrica"
-        maxLength={120}
-      />
-      <CampoTexto
-        testID={`${testID}-nombre`}
-        etiqueta="Cliente"
-        valor={nombre}
-        onChange={setNombre}
-        placeholder="Juan Pérez"
-      />
+  // El documento son dos controles: van juntos en el formulario abierto y en el resumen.
+  const documento = (
+    <>
       <CampoSelect
         testID={`${testID}-doc-tipo`}
         etiqueta="Tipo de documento"
@@ -308,25 +315,17 @@ export function FormularioPresupuesto({
           keyboardType="number-pad"
         />
       )}
-      <CampoTexto
-        testID={`${testID}-contacto`}
-        etiqueta="Contacto (mail o teléfono)"
-        valor={contacto}
-        onChange={setContacto}
-        placeholder="juan@mail.com"
-        autoCapitalize="none"
-      />
+    </>
+  );
 
-      <Text style={[styles.etiqueta, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}>
-        Ítems
-      </Text>
-
+  const catalogo = (
+    <>
       {/* La tira del catálogo. NO se dibuja si no hay conceptos: un renglón que diga "no tenés nada
           en tu lista" convertiría una función opcional en una carencia. */}
       {conceptos.length > 0 && (
         <View testID={`${testID}-catalogo`} style={styles.catalogo}>
-          <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-            De tu lista:
+          <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
+            Tocá un trabajo de tu lista para sumarlo:
           </Text>
           <View style={styles.chips}>
             {conceptos.map((c) => (
@@ -336,9 +335,11 @@ export function FormularioPresupuesto({
                 onPress={() => agregarDelCatalogo(c)}
                 accessibilityRole="button"
                 accessibilityLabel={`Agregar ${c.nombre} al presupuesto`}
-                style={pressableStyle([styles.chip, { borderColor: tema.color.acento }], PRESS_FADE)}
+                // Pastilla blanca sin borde: siete contornos terracota juntos pesaban más que el formulario.
+                style={pressableStyle([styles.chip, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }], PRESS_FADE)}
               >
-                <Text style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.chico }}>
+                <Text style={{ color: tema.color.texto, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiMedium }}>
+                  <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold }}>+ </Text>
                   {c.nombre}
                   {c.precioReferencia != null ? ` · ${formatearImporte(c.precioReferencia)}` : ''}
                 </Text>
@@ -347,10 +348,13 @@ export function FormularioPresupuesto({
           </View>
         </View>
       )}
+    </>
+  );
 
-      {items.map((it, i) => (
-        <Row key={i} testID={`${testID}-item-${i}`}>
-          <View style={styles.item}>
+  /** Los campos de un ítem. Los mismos en las dos presentaciones. */
+  function editorItem(i: number, it: FilaItem) {
+    return (
+      <View style={styles.item}>
             <CampoTexto
               testID={`${testID}-item-${i}-descripcion`}
               etiqueta="Descripción"
@@ -390,7 +394,212 @@ export function FormularioPresupuesto({
               </Pressable>
             )}
           </View>
-        </Row>
+    );
+  }
+
+  if (resumido) {
+    const docCompleto = docTipo !== '99' && docNro.trim() !== '';
+    const docAbierto = abiertos.has('doc') || (docTipo !== '99' && docNro.trim() === '');
+    const docVisible = docAbierto || docCompleto;
+    const contactoVisible = contacto.trim() !== '' || abiertos.has('contacto');
+    const etiquetaDoc = OPCIONES_DOC.find((o) => o.valor === docTipo)?.etiqueta ?? '';
+    const ocultos: { campo: CampoResumen; nombre: string }[] = [
+      ...(docVisible ? [] : [{ campo: 'doc' as const, nombre: 'documento' }]),
+      ...(contactoVisible ? [] : [{ campo: 'contacto' as const, nombre: 'contacto' }]),
+    ];
+    const itemAbierto = (i: number, it: FilaItem) => itemsAbiertos.has(i) || it.descripcion.trim() === '';
+    const algunItemAbierto = items.some((it, i) => itemAbierto(i, it));
+
+    return (
+      <ResumenTarjeta testID={testID}>
+        {aproximado != null && (
+          <FranjaPrincipal>
+            {/* Sin «Cambiar»: el total no se tipea, sale de los ítems. */}
+            <CifraResumen
+              testID={`${testID}-total`}
+              testIDTexto={`${testID}-total-cifra`}
+              nombre="Total aproximado"
+              texto={formatearImporteSinCentavosCero(aproximado)}
+            />
+            {/* 🔴 "aproximado" en el texto, no decorativo: el total definitivo lo calcula el backend. */}
+            <DetalleFila testID={`${testID}-total-aproximado`}>
+              Total aproximado — el definitivo lo calcula el sistema al guardar.
+            </DetalleFila>
+          </FranjaPrincipal>
+        )}
+
+        <FranjaDatos>
+          <DatoTexto
+            abierto={abiertos.has('concepto') || concepto.trim() === ''}
+            rotulo="Concepto"
+            etiqueta="Concepto"
+            valor={concepto}
+            onChange={setConcepto}
+            onAbrir={() => abrir('concepto')}
+            onCerrar={() => cerrar('concepto')}
+            placeholder="Instalación eléctrica"
+            maxLength={120}
+            testID={`${testID}-concepto`}
+          />
+          <DatoTexto
+            separado
+            abierto={abiertos.has('nombre') || nombre.trim() === ''}
+            rotulo="Cliente"
+            etiqueta="Cliente"
+            valor={nombre}
+            onChange={setNombre}
+            onAbrir={() => abrir('nombre')}
+            onCerrar={() => cerrar('nombre')}
+            placeholder="Juan Pérez"
+            testID={`${testID}-nombre`}
+          />
+          {docAbierto && <CampoAbierto separado>{documento}</CampoAbierto>}
+          {!docAbierto && docCompleto && (
+            <FilaResumen
+              separada
+              testID={`${testID}-doc-cambiar`}
+              rotulo="Documento"
+              valor={`${etiquetaDoc} ${docNro.trim()}`}
+              onCambiar={() => abrir('doc')}
+            />
+          )}
+          <DatoTexto
+            separado
+            abierto={abiertos.has('contacto')}
+            rotulo="Contacto"
+            etiqueta="Contacto (mail o teléfono)"
+            valor={contacto}
+            onChange={setContacto}
+            onAbrir={() => abrir('contacto')}
+            onCerrar={() => cerrar('contacto')}
+            placeholder="juan@mail.com"
+            autoCapitalize="none"
+            testID={`${testID}-contacto`}
+          />
+
+          {items.map((it, i) =>
+            itemAbierto(i, it) ? (
+              <CampoAbierto key={i} separado>
+                <View testID={`${testID}-item-${i}`}>{editorItem(i, it)}</View>
+                {/* Un ítem tiene tres campos: «al salir del campo» no sirve para cerrarlo, hace falta decirlo. */}
+                {it.descripcion.trim() !== '' && (
+                  <View style={styles.listo}>
+                    <BotonTexto
+                      testID={`${testID}-item-${i}-listo`}
+                      etiqueta="Listo"
+                      onPress={() =>
+                        setItemsAbiertos((a) => {
+                          const n = new Set(a);
+                          n.delete(i);
+                          return n;
+                        })
+                      }
+                    />
+                  </View>
+                )}
+              </CampoAbierto>
+            ) : (
+              <FilaResumen
+                key={i}
+                separada
+                testID={`${testID}-item-${i}-cambiar`}
+                rotulo={`Ítem ${i + 1}`}
+                valor={it.descripcion}
+                onCambiar={() => setItemsAbiertos((a) => new Set([...a, i]))}
+              >
+                <DetalleFila>
+                  {normalizarDecimal(it.cantidad) || '1'} ×{' '}
+                  {formatearImporteSinCentavosCero(normalizarDecimal(it.precioUnitario) || '0')}
+                </DetalleFila>
+              </FilaResumen>
+            ),
+          )}
+        </FranjaDatos>
+
+        {/* La tira «De tu lista» sólo mientras se está armando un ítem: cerrada, ocupaba lugar sin que nadie la pidiera. */}
+        {algunItemAbierto && conceptos.length > 0 && <View style={styles.catalogoResumen}>{catalogo}</View>}
+
+        <EnlaceResumen testID={`${testID}-agregar-item`} texto="Agregar ítem" onPress={agregarFila} />
+        <EnlaceAgregar
+          testID={`${testID}-mas-datos`}
+          nombres={ocultos.map((o) => o.nombre)}
+          onPress={() => abrir(...ocultos.map((o) => o.campo))}
+        />
+
+        {error != null && (
+          <Text testID={`${testID}-error`} style={{ color: tema.color.peligro, fontSize: tema.tipo.base, paddingBottom: 12 }}>
+            {error}
+          </Text>
+        )}
+
+        <AccionesResumen
+          testID={`${testID}-botones`}
+          testIDGuardar={`${testID}-guardar`}
+          testIDCancelar={`${testID}-cancelar`}
+          etiquetaGuardar={enviando ? 'Guardando…' : 'Guardar el presupuesto'}
+          deshabilitado={!puedeGuardar || enviando}
+          onGuardar={() => void guardar()}
+          onCancelar={onCancelar}
+          etiquetaCancelar={etiquetaCancelar}
+        />
+      </ResumenTarjeta>
+    );
+  }
+
+  return (
+    <View testID={testID} style={{ gap: tema.espacio.md }}>
+      <Text accessibilityRole="header" style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: 22, lineHeight: 28 }}>
+        {corrige != null ? `Corregir el N° ${corrige.numero}` : 'Nuevo presupuesto'}
+      </Text>
+
+      {corrige != null && (
+        <Text testID={`${testID}-aviso-correccion`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
+          Se va a crear un presupuesto nuevo con número propio que reemplaza al N° {corrige.numero}. El
+          anterior queda en el historial — así, si ya se lo mandaste a tu cliente, los dos documentos
+          siguen siendo distinguibles.
+        </Text>
+      )}
+
+      <CampoTexto
+        testID={`${testID}-concepto`}
+        etiqueta="Concepto"
+        valor={concepto}
+        onChange={setConcepto}
+        placeholder="Instalación eléctrica"
+        maxLength={120}
+      />
+      <Text accessibilityRole="header" style={[styles.subtitulo, { color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande }]}>
+        Para quién
+      </Text>
+      <CampoTexto
+        testID={`${testID}-nombre`}
+        etiqueta="Cliente"
+        valor={nombre}
+        onChange={setNombre}
+        placeholder="Juan Pérez"
+      />
+      {documento}
+      <CampoTexto
+        testID={`${testID}-contacto`}
+        etiqueta="Contacto (mail o teléfono)"
+        valor={contacto}
+        onChange={setContacto}
+        placeholder="juan@mail.com"
+        autoCapitalize="none"
+      />
+
+      {/* Rediseño (Martin 16/11): el formulario en dos partes con título —para quién y qué incluye—, en vez de
+          una tira de campos con «ÍTEMS» en letra de máquina a mitad de camino. */}
+      <Text accessibilityRole="header" style={[styles.subtitulo, { color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande }]}>
+        Qué incluye
+      </Text>
+
+      {catalogo}
+
+      {items.map((it, i) => (
+        <View key={i} testID={`${testID}-item-${i}`} style={[styles.cajaItem, { backgroundColor: conAlfa(tema.color.texto, 0.05) }]}>
+          {editorItem(i, it)}
+        </View>
       ))}
 
       <FilaBotones
@@ -433,10 +642,13 @@ export function FormularioPresupuesto({
 const styles = StyleSheet.create({
   catalogo: { gap: 6 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  chip: { borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 },
+  subtitulo: { marginTop: 12 },
+  cajaItem: { borderRadius: 22, padding: 14 },
   item: { flex: 1, gap: 8 },
   filaNumeros: { flexDirection: 'row', gap: 8 },
   mitad: { flex: 1 },
   quitar: { alignSelf: 'flex-start' },
-  etiqueta: { fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase' },
+  listo: { alignItems: 'flex-start' },
+  catalogoResumen: { paddingBottom: 12 },
 });

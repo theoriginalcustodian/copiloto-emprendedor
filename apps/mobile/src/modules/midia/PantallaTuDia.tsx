@@ -20,8 +20,11 @@ import {
 import { rutaDeDestino, type RutaDestino } from './destinoTarjeta';
 import { TarjetaMiDiaRow } from './TarjetaMiDiaRow';
 import { useTableroMiDia } from './useTableroMiDia';
+import { elevacion } from '../../theme/BloqueCifra';
+import { BotonAcceso, IconoLapiz } from '../../theme/BotonAcceso';
 import { EstadoVacio } from '../../theme/EstadoVacio';
 import { CampoTexto, FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
+import { conAlfa } from '../../theme/glass/conAlfa';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
@@ -65,9 +68,12 @@ const OPCIONES_SOLAPA: readonly { valor: IdSolapa; etiqueta: string }[] = [
 ];
 
 /**
- * Las solapas con su contador pegado al rótulo («Para hoy 3» · «Haciendo 1» · «Hechas»), como el
- * `.segb` del prototipo (`index.html:2490`). «Hechas» no lleva número —es historia, no pendiente— y un
- * contador en 0 no se dibuja: «Haciendo 0» no informa nada que el vacío de la solapa no diga.
+ * Las solapas como **control segmentado** (Martin 15/11): una pista gris a todo el ancho con los tres tramos
+ * iguales, y el activo como una pastilla blanca apoyada encima. Antes eran tres cajas con borde, la activa en
+ * terracota: se leían como tres botones sueltos y no como «una de tres vistas».
+ *
+ * El contador va pegado al rótulo («Para hoy 3» · «Haciendo 1» · «Hechas»), más tenue. «Hechas» no lleva número
+ * —es historia, no pendiente— y un contador en 0 no se dibuja: «Haciendo 0» no informa nada que el vacío no diga.
  */
 function Solapas({
   activa,
@@ -80,9 +86,10 @@ function Solapas({
 }) {
   const tema = useTema();
   return (
-    <View style={styles.solapas} testID="midia-solapas">
+    <View style={[styles.solapas, { backgroundColor: conAlfa(tema.color.texto, 0.06) }]} testID="midia-solapas">
       {OPCIONES_SOLAPA.map((o) => {
         const seleccionada = o.valor === activa;
+        const cuenta = o.valor !== 'hecha' ? (conteos[o.valor] ?? 0) : 0;
         return (
           <Pressable
             key={o.valor}
@@ -90,17 +97,25 @@ function Solapas({
             accessibilityRole="button"
             accessibilityState={{ selected: seleccionada }}
             onPress={() => onCambiar(o.valor)}
+            hitSlop={{ top: 4, bottom: 4 }}
             style={pressableStyle(styles.solapaPresionable)}
           >
-            <View style={[styles.solapa, { borderColor: seleccionada ? tema.color.acento : tema.color.borde }]}>
+            <View
+              style={[
+                styles.solapa,
+                seleccionada ? [elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }] : null,
+              ]}
+            >
               <Text
+                numberOfLines={1}
                 style={{
-                  color: seleccionada ? tema.color.acento : tema.color.textoTenue,
-                  fontFamily: tema.fuente.uiMedium,
-                  fontSize: tema.tipo.base,
+                  color: seleccionada ? tema.color.texto : tema.color.textoTenue,
+                  fontFamily: seleccionada ? tema.fuente.uiSemibold : tema.fuente.uiMedium,
+                  fontSize: tema.tipo.chico + 1,
                 }}
               >
-                {o.valor !== 'hecha' && (conteos[o.valor] ?? 0) > 0 ? `${o.etiqueta} ${conteos[o.valor]}` : o.etiqueta}
+                {o.etiqueta}
+                {cuenta > 0 && <Text style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.uiMedium }}> {cuenta}</Text>}
               </Text>
             </View>
           </Pressable>
@@ -148,19 +163,21 @@ function ChipsCategoria({
             onPress={() => onCambiar(c)}
             style={pressableStyle(undefined)}
           >
-            {/* Borde y texto, SIN relleno: son atajos para mirar, no decisiones. Con fill competirían
-                con los botones de acción de las tarjetas, que sí ejecutan algo (Decisión B: la
-                terracota marca lo que hace algo al tocarlo). */}
+            {/* Neutros, como el control segmentado (Martin 15/11): el activo es una pastilla blanca apoyada, los
+                demás un contorno fino. Son atajos para mirar, no decisiones: la terracota queda para los botones
+                de las tarjetas, que sí ejecutan algo (Decisión B). */}
             <View
               style={[
                 styles.chip,
-                { borderColor: seleccionada ? tema.color.acento : tema.color.borde },
+                seleccionada
+                  ? [elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie, borderColor: tema.color.superficie }]
+                  : { borderColor: conAlfa(tema.color.texto, 0.12) },
               ]}
             >
               <Text
                 style={{
-                  color: seleccionada ? tema.color.acento : tema.color.textoTenue,
-                  fontFamily: tema.fuente.uiMedium,
+                  color: seleccionada ? tema.color.texto : tema.color.textoTenue,
+                  fontFamily: seleccionada ? tema.fuente.uiSemibold : tema.fuente.uiMedium,
                   fontSize: tema.tipo.chico,
                 }}
               >
@@ -174,35 +191,12 @@ function ChipsCategoria({
   );
 }
 
-/** El contador del prototipo: «3 para hoy · 1 en curso · 1 crítico». */
-function ContadorTablero({ tablero }: { tablero: TableroMiDia | null }) {
-  const tema = useTema();
-  if (tablero == null) return null;
-  const cuenta = (id: IdSolapa) => tablero.solapas.find((s) => s.id === id)?.tarjetas.length ?? 0;
-  const paraHoy = cuenta('para_hoy');
-  const enCurso = cuenta('haciendo');
-  const criticas = tarjetasCriticas(tablero).length;
-  if (paraHoy === 0 && enCurso === 0) return null;
-
-  return (
-    <Text
-      testID="midia-contador"
-      style={{
-        color: tema.color.textoTenue,
-        fontSize: tema.tipo.chico,
-        paddingHorizontal: 16,
-        paddingTop: 8,
-      }}
-    >
-      {paraHoy} para hoy · {enCurso} en curso{criticas > 0 ? ` · ${criticas} crítico${criticas === 1 ? '' : 's'}` : ''}
-    </Text>
-  );
-}
-
 /**
- * El banner de alerta crítica (`.alerta` del prototipo): arriba de las solapas porque es transversal a
- * los tres estados. Sólo para `criticidad: 'critico'` — lo que ROMPE el negocio; usa el bloque (que ya
- * significa peso) en vez de un color de alarma. Sin tarjeta crítica no existe.
+ * El aviso de lo crítico (`.alerta` del prototipo): arriba de las solapas porque es transversal a los tres
+ * estados. Sólo para `criticidad: 'critico'` — lo que ROMPE el negocio. Sin tarjeta crítica no existe.
+ *
+ * 🔴 **Nunca sobre negro** (Martin 15/11: «las notificaciones con fondo negro no van»). Es una tarjeta blanca
+ * como las demás; la urgencia la dicen el rótulo «Urgente» en rojo y el lugar que ocupa, no un bloque que grita.
  */
 function BannerCritico({
   tablero,
@@ -219,11 +213,16 @@ function BannerCritico({
     <View
       testID="midia-alerta"
       accessibilityRole="alert"
-      style={[styles.alerta, { backgroundColor: tema.color.bloque, borderRadius: tema.radio.lg }]}
+      style={[styles.alerta, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}
     >
-      {criticas.map((t) => (
-        <View key={t.id} testID={`midia-alerta-${t.id}`} style={styles.alertaItem}>
-          <Text style={{ color: tema.color.bloqueTexto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
+      {criticas.map((t, i) => (
+        <View
+          key={t.id}
+          testID={`midia-alerta-${t.id}`}
+          style={[styles.alertaItem, i > 0 && { borderTopWidth: 1, borderTopColor: conAlfa(tema.color.texto, 0.12) }]}
+        >
+          <Text style={{ color: tema.color.peligro, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>Urgente</Text>
+          <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base, lineHeight: 22 }}>
             {t.texto}
           </Text>
           {t.verbo != null && (
@@ -238,10 +237,12 @@ function BannerCritico({
               hitSlop={10}
               style={[
                 styles.alertaAccion,
-                { borderColor: tema.color.bloqueApoyo, borderRadius: tema.radio.completo },
+                onAccion != null
+                  ? { backgroundColor: tema.color.acentoSuperficie, borderColor: tema.color.acentoSuperficie, borderRadius: tema.radio.completo }
+                  : { borderColor: tema.color.textoTenue, borderRadius: tema.radio.completo },
               ]}
             >
-              <Text style={{ color: tema.color.bloqueApoyo, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+              <Text style={{ color: onAccion != null ? tema.color.acentoTexto : tema.color.textoTenue, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
                 {t.verbo}
               </Text>
             </Pressable>
@@ -297,6 +298,8 @@ function AltaTarjeta({ onCreada }: { onCreada: () => void }) {
   const tema = useTema();
   const [texto, setTexto] = useState('');
   const [guardando, setGuardando] = useState(false);
+  // Cerrada es un botón, parejo con el «anotar a mano» de las funciones; el campo aparece al tocarlo.
+  const [abierta, setAbierta] = useState(false);
   const vacio = texto.trim() === '';
   // El teclado tapaba el botón aunque el campo se revelara: se revela el grupo campo + «Agregar».
   const refGrupo = useRef<View>(null);
@@ -324,8 +327,26 @@ function AltaTarjeta({ onCreada }: { onCreada: () => void }) {
     }
   }
 
+  if (!abierta) {
+    return (
+      <View style={styles.alta} testID="midia-alta">
+        <BotonAcceso
+          testID="midia-alta-abrir"
+          icono={<IconoLapiz color={tema.color.acentoTinta} />}
+          etiqueta="Anotar algo para hoy"
+          onPress={() => setAbierta(true)}
+        />
+      </View>
+    );
+  }
+
   return (
-    <View ref={refGrupo} collapsable={false} style={{ gap: tema.espacio.sm, paddingHorizontal: 16 }} testID="midia-alta">
+    <View
+      ref={refGrupo}
+      collapsable={false}
+      style={[styles.alta, styles.altaAbierta, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie, gap: tema.espacio.sm }]}
+      testID="midia-alta"
+    >
       <CampoTexto
         etiqueta="Anotar algo para hoy"
         revelarJunto={refGrupo}
@@ -338,6 +359,11 @@ function AltaTarjeta({ onCreada }: { onCreada: () => void }) {
         testID="midia-alta-acciones"
         compacto
         botones={[{
+          etiqueta: 'Cancelar',
+          onPress: () => { setTexto(''); setAbierta(false); },
+          variante: 'secundario',
+          testID: 'midia-alta-cancelar',
+        }, {
           etiqueta: 'Agregar',
           onPress: () => { void agregar(); },
           variante: 'primario',
@@ -371,17 +397,25 @@ export function PantallaTuDia({ onAjustes, onDestino, onAvisoAlChat }: PantallaT
     Alert.alert('No se pudo mover la tarjeta', 'Probá de nuevo en un momento.');
   }
 
+  /** «Realizado» de una tarjeta manual: derecho a «Hechas», esté en la solapa que esté. */
+  async function realizar(t: TarjetaMiDia) {
+    const res = await cambiarEstadoTarjetaMiDia(t.id, 'hecha');
+    if (res.status === 'ok') {
+      void cargar();
+      return;
+    }
+    Alert.alert('No se pudo marcar como realizada', res.status === 'estado_invalido' ? res.motivo : 'Probá de nuevo en un momento.');
+  }
+
   const solapa = tablero?.solapas.find((s) => s.id === solapaActiva) ?? null;
   const tarjetas = solapa != null ? filtrarPorCategoria(solapa.tarjetas, categoria) : [];
 
   return (
-    <MarcoGlass titulo="Tu día" icono="miDia" testID="pantalla-tu-dia">
+    <MarcoGlass titulo="Tu día" icono="miDia" sinIcono testID="pantalla-tu-dia">
       <ScrollFormulario style={styles.raiz} contentContainerStyle={styles.raizContenido} testID="midia-scroll">
         <Text testID="tudia-subtitulo" style={[styles.subtitulo, { color: tema.color.textoTenue, fontSize: tema.tipo.chico }]}>
           Lo que Odobi detectó y lo que anotaste vos.
         </Text>
-
-        <ContadorTablero tablero={tablero} />
 
         {/* 🔴 La píldora del banner lleva a Ajustes: es donde se resuelven las dos reglas críticas
             («Reconectala en Ajustes → Apps» · «Renovarlo» en ARCA) y lo único que `PantallaMiDia` ya
@@ -473,10 +507,19 @@ export function PantallaTuDia({ onAjustes, onDestino, onAvisoAlChat }: PantallaT
 
             {tarjetas.length > 0 && (
               <View style={styles.lista} testID="midia-lista">
-                {tarjetas.map((t) => (
+                {/* Una sola tarjeta con sus filas, como «Para hoy» en Mi día. La sombra va afuera y el recorte
+                    adentro: deslizar una fila deja ver sus acciones sin que se salgan de la tarjeta. */}
+                <View style={[styles.tarjetaLista, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}>
+                  <View style={styles.recorteLista}>
+                {tarjetas.map((t, i) => (
+                  <View key={t.id} style={[styles.filaLista, i > 0 && { borderTopWidth: 1, borderTopColor: conAlfa(tema.color.texto, 0.12) }]}>
                   <TarjetaMiDiaRow
-                    key={t.id}
                     tarjeta={t}
+                    enGrupo
+                    manual={{
+                      onRealizado: solapaActiva === 'hecha' ? undefined : () => void realizar(t),
+                      onBorrar: () => void borrar(t.id),
+                    }}
                     expandida={expandida === t.id}
                     onPress={() => setExpandida((prev) => (prev === t.id ? null : t.id))}
                     gestion={{
@@ -491,7 +534,10 @@ export function PantallaTuDia({ onAjustes, onDestino, onAvisoAlChat }: PantallaT
                     onAviso={onAvisoAlChat}
                     onBorrar={() => void borrar(t.id)}
                   />
+                  </View>
                 ))}
+                  </View>
+                </View>
                 {/* `.nota-sub` del prototipo (`index.html:2497`): cierra la lista y dice qué se mueve solo. */}
                 <Text testID="midia-nota" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, paddingTop: 4 }}>
                   Las que detecta Odobi se cierran solas cuando hacés la acción real. Las que anotaste vos las movés vos.
@@ -508,24 +554,24 @@ export function PantallaTuDia({ onAjustes, onDestino, onAvisoAlChat }: PantallaT
 const styles = StyleSheet.create({
   raiz: { flex: 1 },
   raizContenido: { flexGrow: 1 },
-  subtitulo: { paddingHorizontal: 16 },
-  solapas: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+  subtitulo: { paddingHorizontal: 20, lineHeight: 20 },
+  // La pista del control segmentado: 3 de aire para que la pastilla activa quede apoyada adentro.
+  solapas: { flexDirection: 'row', marginHorizontal: 16, marginTop: 24, marginBottom: 16, padding: 3, borderRadius: 12 },
+  alta: { paddingHorizontal: 16, paddingTop: 0 },
+  altaAbierta: { marginHorizontal: 16, marginTop: 0, padding: 20, borderRadius: 22 },
   // `ScrollView` crece por defecto: con la solapa vacía abría un hueco entre los chips y el alta.
   chipsScroll: { flexGrow: 0 },
-  chips: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 },
-  chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
-  alerta: { marginHorizontal: 16, marginTop: 12, padding: 16, gap: 12 },
-  alertaItem: { gap: 8, alignItems: 'flex-start' },
-  alertaAccion: { borderWidth: 1, paddingHorizontal: 12, paddingVertical: 4 },
-  solapaPresionable: { flexGrow: 1 },
-  solapa: {
-    minHeight: 0,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderRadius: 10,
-  },
+  // 10 abajo: lugar para la sombra de la pastilla activa, que el scroll horizontal recortaría.
+  chips: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 0, paddingBottom: 16 },
+  chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
+  alerta: { marginHorizontal: 16, marginTop: 20, paddingHorizontal: 20, borderRadius: 22 },
+  alertaItem: { gap: 8, alignItems: 'flex-start', paddingVertical: 20 },
+  alertaAccion: { borderWidth: 1, paddingHorizontal: 16, paddingVertical: 8, marginTop: 6 },
+  solapaPresionable: { flex: 1 },
+  solapa: { height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 9 },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  lista: { gap: 8, padding: 16, paddingBottom: 120 },
+  lista: { gap: 16, padding: 16, paddingTop: 24, paddingBottom: 120 },
+  tarjetaLista: { borderRadius: 22 },
+  recorteLista: { borderRadius: 22, overflow: 'hidden', paddingVertical: 2 },
+  filaLista: { marginHorizontal: 20 },
 });

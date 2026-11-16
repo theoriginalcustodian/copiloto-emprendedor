@@ -41,7 +41,7 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#F7F3EC"
+          "backgroundColor": "#DE7250"
         }
       ],
       "expo-font",
@@ -53,6 +53,15 @@
       "router": {},
       "eas": {
         "projectId": "05317fbe-ca0e-4f46-a63e-6f47a1cb118a"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "app.copiloto.emprendedor",
+      "appleTeamId": "S6PUM8T426",
+      "icon": {
+        "light": "./assets/icon.png",
+        "dark": "./assets/icon.png",
+        "tinted": "./assets/icon-tinted.png"
       }
     }
   }

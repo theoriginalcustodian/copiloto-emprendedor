@@ -135,8 +135,9 @@ function Tagline({ reducido, testID }: { reducido: boolean; testID: string }) {
     <Animated.Text
       testID={testID}
       style={[
-        // `.tagline{font-size:16px;font-weight:500;letter-spacing:.02em;color:var(--sec)}` (`index.html:1230`).
-        { color: COLOR_SPLASH_TAGLINE, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base, letterSpacing: 0.32 },
+        // Martin 12/11: el descriptor va en Plus Jakarta Bold y un escalón más grande (antes Inter 500 a 16,
+        // `.tagline` de `index.html:1230`). Sin `fontWeight`: la familia ya es la Bold.
+        { color: COLOR_SPLASH_TAGLINE, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande, letterSpacing: 0 },
         estiloAnim,
       ]}
     >
@@ -267,7 +268,8 @@ export function RevealEntrada({
           onPress={onPrimario}
           style={pressableStyle([styles.boton, { backgroundColor: tema.color.acentoSuperficie, borderRadius: tema.radio.md, height: ALTO_BOTON }])}
         >
-          <Text style={{ color: tema.color.acentoTexto, fontSize: tema.tipo.grande, fontWeight: '700' }}>{primario}</Text>
+          {/* Plus Jakarta Bold (`display`), no `fontWeight:'700'` suelto: sin familia, iOS dibujaba San Francisco. */}
+          <Text style={{ color: tema.color.acentoTexto, fontSize: tema.tipo.grande, fontFamily: tema.fuente.display }}>{primario}</Text>
         </Pressable>
         {secundario !== '' && (
           <Pressable
@@ -277,7 +279,7 @@ export function RevealEntrada({
             onPress={onSecundario}
             style={pressableStyle([styles.boton, { height: ALTO_BOTON }])}
           >
-            <Text style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.grande, fontWeight: '600' }}>{secundario}</Text>
+            <Text style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.grande, fontFamily: tema.fuente.display }}>{secundario}</Text>
           </Pressable>
         )}
       </ContenedorPuertas>

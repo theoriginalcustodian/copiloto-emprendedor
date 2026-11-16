@@ -15,6 +15,7 @@ import { useSession } from '../auth/useSession';
 import { DockEntrada } from '../chat/DockEntrada';
 import { ListaMensajes } from '../chat/ListaMensajes';
 import { empujarUnaVez, reabrirNavegacion } from '../../navegacion/empujarUnaVez';
+import { elevacion } from '../../theme/BloqueCifra';
 import { Marca } from '../../theme/Marca';
 import { DockSobreContenido } from '../../theme/glass/DockSobreContenido';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -89,6 +90,7 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
     <MarcoGlass
       titulo={TITULO[funcion]}
       icono="soporte"
+      sinIcono
       testID="pantalla-soporte"
       /**
        * 🔴 **La presentación de quién contesta, con el isotipo como avatar** (2026-09-18, Martin).
@@ -102,7 +104,9 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
        * conversación se hace larga y uno duda de con quién está hablando.
        */
       encabezadoExtra={
-        <View style={styles.presentacion}>
+        // Rediseño (Martin 16/11): la presentación va en una tarjeta blanca, como el resto de la app; antes era
+        // texto suelto pegado al título.
+        <View style={[styles.presentacion, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}>
           <Marca size={38} tono="tinta" />
           <View style={styles.presentacionTextos}>
             <Text
@@ -164,6 +168,6 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
 
 const styles = StyleSheet.create({
   contenedor: { flex: 1 },
-  presentacion: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingHorizontal: 16, paddingBottom: 12 },
-  presentacionTextos: { flex: 1, gap: 2 },
+  presentacion: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginHorizontal: 16, marginTop: 12, marginBottom: 12, padding: 16, borderRadius: 22 },
+  presentacionTextos: { flex: 1, gap: 4 },
 });

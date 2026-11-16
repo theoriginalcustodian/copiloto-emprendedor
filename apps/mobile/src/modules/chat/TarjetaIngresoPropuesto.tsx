@@ -70,11 +70,15 @@ export function TarjetaIngresoPropuesto({
   return (
     <TarjetaPropuestaShell
       testID={testID}
-      aviso="Esto entendí. Revisalo y tocá Anotar que me pagaron — todavía no lo guardé."
-      cita={propuesta.concepto}
+      // Martin 14/11: resumen, igual que la de gasto. Sin la cita: lo dictado ya está en la burbuja de arriba.
+      // El aviso cambia cuando el ingreso ya entró y sólo queda completar lo que faltó: decir «todavía no se
+      // guardó nada» ahí contradiría al «Anotado» de abajo.
+      titulo="Nuevo ingreso"
+      aviso={monto != null ? 'Ya está anotado.' : 'Todavía no se guardó nada.'}
     >
       <FormularioIngreso
         origen="voz"
+        resumido
         mensajeId={mensajeId}
         iniciales={inicialesDeIngreso(propuesta)}
         onGuardado={(ingreso) => {

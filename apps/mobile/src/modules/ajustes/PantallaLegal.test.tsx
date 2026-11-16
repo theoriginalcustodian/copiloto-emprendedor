@@ -41,10 +41,10 @@ describe('PantallaLegal — port mobile de LegalScreen (BL-O6 parte A)', () => {
 
   it('nombra los terceros reales verificados contra el código (mismo texto que web)', async () => {
     await montar('tos');
-    expect(screen.getByText(/Composio/)).toBeTruthy();
-    expect(screen.getByText(/ARCA/)).toBeTruthy();
-    expect(screen.getByText(/Mercado Pago/)).toBeTruthy();
-    expect(screen.getByText(/OpenRouter/)).toBeTruthy();
+    expect(screen.getAllByText(/Composio/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/ARCA/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Mercado Pago/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/OpenRouter/).length).toBeGreaterThan(0);
   });
 
   it('muestra la versión compartida del documento', async () => {

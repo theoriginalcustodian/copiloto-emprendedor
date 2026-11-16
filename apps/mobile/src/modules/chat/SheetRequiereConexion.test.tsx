@@ -5,7 +5,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import type { RequiereConexion } from '@copiloto/core';
 
-import { PHOSPHOR } from '../../theme/glass/phosphor';
+import { GLIFOS } from '../../theme/glass/glifos';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { GLIFOS_DECLARADOS, SheetRequiereConexion, resolverGlifo } from './SheetRequiereConexion';
 
@@ -94,7 +94,7 @@ describe('SheetRequiereConexion', () => {
     expect(screen.queryByTestId('sheet-requiere-conexion-icono-3')).toBeNull();
   });
 
-  // SM-I7 · el lookup `PHOSPHOR[nombre] ?? []` pintaba un TILE VACÍO ante un nombre desconocido. El test (a) sale
+  // SM-I7 · el lookup del set (`?? []`) pintaba un TILE VACÍO ante un nombre desconocido. El test (a) sale
   // verde con ese defecto puesto (nunca le manda un nombre desconocido): el que verifica el fix es el (b).
   // Cuenta los nodos con trazo (d) bajo el tile de la fila, recorriendo el árbol de instancias.
   type Nodo = { props?: { d?: unknown }; children?: readonly unknown[] };
@@ -102,10 +102,10 @@ describe('SheetRequiereConexion', () => {
     (typeof n.props?.d === 'string' ? 1 : 0) + (n.children ?? []).reduce<number>((acc, c) => acc + (typeof c === 'object' && c !== null ? contarTrazos(c as Nodo) : 0), 0);
   const trazosDeLaFila = (i: number) => contarTrazos(screen.getByTestId(`sheet-requiere-conexion-icono-${i}`) as unknown as Nodo);
 
-  it('SM-I7 (a): todo glifo que el sheet declara existe en PHOSPHOR, y «link» está (no «link-break»)', () => {
-    GLIFOS_DECLARADOS.forEach((g) => expect(PHOSPHOR[g]?.length).toBeGreaterThan(0));
-    expect(PHOSPHOR.link?.length).toBeGreaterThan(0);
-    expect(PHOSPHOR.link).not.toEqual(PHOSPHOR['link-break']);
+  it('SM-I7 (a): todo glifo que el sheet declara existe en el set, y «link» está (no «link-break»)', () => {
+    GLIFOS_DECLARADOS.forEach((g) => expect(GLIFOS[g]?.capas.length).toBeGreaterThan(0));
+    expect(GLIFOS.link?.capas.length).toBeGreaterThan(0);
+    expect(GLIFOS.link?.capas).not.toEqual(GLIFOS['link-break']?.capas);
   });
 
   it('🔴 SM-I7 (b) CONTROL NEGATIVO: un icono INVENTADO cae al genérico y la fila se dibuja CON trazos', async () => {

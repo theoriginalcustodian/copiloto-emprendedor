@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
-import { Tile } from '../../theme/glass/Tile';
+import { TarjetaChat } from './TarjetaChat';
 import { useTema } from '../../theme/ThemeProvider';
 
 export interface ReciboProps extends PropsWithChildren {
@@ -32,9 +32,28 @@ export interface ReciboProps extends PropsWithChildren {
 export function Recibo({ testID, tono, titulo, detalle, enlace, nota, children }: ReciboProps) {
   const tema = useTema();
   const color = tono === 'exito' ? tema.color.exito : tema.color.textoTenue;
+
+  // Un «No lo anotamos.» a secas NO es una card (Martin 14/11): no confirma nada ni tiene qué tocar. Va como una
+  // línea de estado centrada, igual que el separador de día. Con detalle, nota, enlace o contenido sí es card.
+  const soloTexto =
+    tono === 'tenue' && (detalle == null || detalle.length === 0) && enlace == null && nota == null && children == null;
+  if (soloTexto) {
+    return (
+      <View testID={testID} style={{ alignItems: 'center', paddingVertical: 2 }}>
+        <Text
+          testID={`${testID}-titulo`}
+          accessibilityLiveRegion="polite"
+          style={{ color, fontSize: tema.tipo.chico, textAlign: 'center' }}
+        >
+          {titulo}
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <Tile testID={testID}>
-      <View style={{ gap: tema.espacio.sm }}>
+    <TarjetaChat testID={testID}>
+      <View style={{ gap: tema.espacio.md - 4 }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: tema.espacio.sm }}>
           {/* El `.ok` del `REC` del prototipo: el check que marca el estado terminal. Sólo en éxito —
               «no lo anotamos» no es una confirmación. Decorativo: el título ya lo dice. */}
@@ -58,7 +77,11 @@ export function Recibo({ testID, tono, titulo, detalle, enlace, nota, children }
             <Text
               testID={`${testID}-titulo`}
               accessibilityLiveRegion="polite"
-              style={{ color, fontSize: tema.tipo.base, fontWeight: tono === 'exito' ? '600' : '400' }}
+              style={{
+                color,
+                fontSize: tema.tipo.base,
+                fontFamily: tono === 'exito' ? tema.fuente.uiMedium : tema.fuente.ui,
+              }}
             >
               {titulo}
             </Text>
@@ -96,6 +119,6 @@ export function Recibo({ testID, tono, titulo, detalle, enlace, nota, children }
           </Text>
         )}
       </View>
-    </Tile>
+    </TarjetaChat>
   );
 }

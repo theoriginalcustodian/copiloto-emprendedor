@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { elevacion } from '../../theme/BloqueCifra';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { pressableStyle } from '../../theme/glass/presion';
 import { SKINS, type NombreSkin, type Tokens } from '../../theme/tokens';
@@ -55,7 +56,7 @@ function SkinCard({ nombre, activo, onPress, temaActivo }: SkinCardProps) {
           // acento propio de esta paleta. No hay caso en que el anillo "no coincida" con la card.
           borderColor: activo ? temaActivo.color.acento : paleta.color.borde,
           borderWidth: activo ? 2 : 1,
-          borderRadius: temaActivo.radio.lg,
+          borderRadius: 22,
           padding: temaActivo.espacio.md,
           gap: temaActivo.espacio.sm,
         },
@@ -70,7 +71,7 @@ function SkinCard({ nombre, activo, onPress, temaActivo }: SkinCardProps) {
         {activo && (
           <Text
             testID={`skin-card-${nombre}-activo`}
-            style={{ color: paleta.color.acentoTinta, fontSize: temaActivo.tipo.chico, fontFamily: temaActivo.fuente.uiSemibold }}
+            style={{ color: paleta.color.texto, fontSize: temaActivo.tipo.chico, fontFamily: temaActivo.fuente.uiSemibold }}
           >
             ✓ Activo
           </Text>
@@ -105,11 +106,12 @@ function FilaSistema({ activo, onPress, temaActivo }: Omit<SkinCardProps, 'nombr
       onPress={onPress}
       style={pressableStyle([
         styles.filaSistema,
+        elevacion(temaActivo.color.sombra),
         {
           backgroundColor: temaActivo.color.superficie,
-          borderColor: activo ? temaActivo.color.acento : temaActivo.color.borde,
-          borderWidth: activo ? 2 : 1,
-          borderRadius: temaActivo.radio.lg,
+          borderColor: activo ? temaActivo.color.acento : 'transparent',
+          borderWidth: 2,
+          borderRadius: 22,
           padding: temaActivo.espacio.md,
         },
       ])}
@@ -125,7 +127,7 @@ function FilaSistema({ activo, onPress, temaActivo }: Omit<SkinCardProps, 'nombr
       {activo && (
         <Text
           testID="skin-card-sistema-activo"
-          style={{ color: temaActivo.color.acentoTinta, fontSize: temaActivo.tipo.chico, fontFamily: temaActivo.fuente.uiSemibold }}
+          style={{ color: temaActivo.color.texto, fontSize: temaActivo.tipo.chico, fontFamily: temaActivo.fuente.uiSemibold }}
         >
           ✓ Activo
         </Text>
@@ -153,20 +155,18 @@ export function PantallaSkins() {
   return (
     // Mismo ícono que la fila de entrada en la lista de Ajustes ('apariencia') -- entrar por un ícono
     // y llegar a otro desorienta. Título = «Apariencia», como la fila y el prototipo (antes «Skins»).
-    <MarcoGlass titulo="Apariencia" icono="apariencia" testID="pantalla-skins">
+    <MarcoGlass titulo="Apariencia" icono="apariencia" sinIcono testID="pantalla-skins">
       <ScrollView
       // 🔴 `flex:1` en el ScrollView MISMO, no sólo en su contenedor. Un ScrollView sin flex se
       // mide por su CONTENIDO: aunque el padre esté acotado, el hijo se estira más allá y lo
       // que sobra se recorta (overflow:hidden del vidrio) sin poder desplazarse. Verificado en
       // device: la lista de integraciones quedaba cortada en MercadoPago y el gesto no hacía nada.
       style={styles.scroll}
-        contentContainerStyle={[styles.contenedor, { padding: tema.espacio.md, gap: tema.espacio.md }]}
+        contentContainerStyle={[styles.contenedor, { padding: tema.espacio.md, gap: 24 }]}
       >
-        <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-          Dos temas. Cambia el fondo y el texto; la marca, la tipografía y los componentes son los mismos.
-        </Text>
         <Text
-          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}
+          accessibilityRole="header"
+          style={{ color: tema.color.texto, fontSize: tema.tipo.grande, fontFamily: tema.fuente.display, paddingHorizontal: 4, marginBottom: -6 }}
         >
           Elegí el tema
         </Text>
@@ -187,7 +187,7 @@ export function PantallaSkins() {
           onPress={() => setPreferencia('sistema')}
           temaActivo={tema}
         />
-        <Text testID="skins-nota" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+        <Text testID="skins-nota" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18, paddingHorizontal: 4 }}>
           El tema cambia el fondo y el texto. La terracota, la tipografía y los componentes son los mismos
           en los dos. Se aplica al instante y queda guardado para la próxima sesión.
         </Text>

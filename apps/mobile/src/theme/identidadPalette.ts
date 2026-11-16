@@ -21,3 +21,18 @@ export const COLOR_SPLASH_FONDO_ARRIBA = '#FFFFFF';
 export const COLOR_SPLASH_FONDO_ABAJO = '#F7F3EC';
 /** Descriptor del splash (`.tagline{color:var(--sec)}`, `index.html:17` + `1231`). */
 export const COLOR_SPLASH_TAGLINE = '#5C534C';
+
+/**
+ * Portada de entrada (`PantallaMetodo`, «Creá tu cuenta o iniciá sesión» — Martin 12/11, a lo Tinder/Bumble):
+ * la pantalla entera en terracota, como el splash. FIJA, no sale de la piel: es la pieza de marca que recibe,
+ * no una pantalla de uso, y por eso no aplica el tope de acento ≤10%. Contrastes medidos:
+ * - `tinta` sobre `fondo`: 5,9:1 (texto chico OK) · `marca` sobre `fondo`: 3,16:1 (logotipo, exento; además
+ *   texto grande ≥3:1) · `sobreTinta` sobre `tinta` y `tinta` sobre `papel`: >14:1.
+ */
+export const PORTADA = {
+  fondo: '#DE7250',
+  marca: '#FFFFFF',
+  tinta: '#1A1512',
+  papel: '#F7F3EC',
+  sobreTinta: '#F7F3EC',
+} as const;

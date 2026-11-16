@@ -16,14 +16,19 @@ import {
   type Portada,
 } from '@copiloto/core';
 
+import { LineaGanancia } from './graficos/LineaGanancia';
 import { AcumuladoAnual } from './AcumuladoAnual';
 import { GraficosInteligencia } from './graficos/GraficosInteligencia';
 import { ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { DockAlChat } from '../voz';
 import { BloqueCifra } from '../../theme/BloqueCifra';
+import { conAlfa } from '../../theme/glass/conAlfa';
+import { inicialesDe } from '../clientes/TarjetaCliente';
 import { Tarjeta } from '../../theme/Tarjeta';
 import { useTema } from '../../theme/ThemeProvider';
+import { VacioFuncion } from '../../theme/VacioFuncion';
+import { DIBUJO_LUPA } from './dibujoLupa';
 
 /**
  * `PantallaInteligencia` — la **portada de Inteligencia de Negocio** (hito 6): caja, el mes en curso,
@@ -121,6 +126,8 @@ export function PantallaInteligencia() {
 
   /** Un importe para un KPI: «—» si no vino, nunca «$0». */
   const kpi = (v: string | null) => (v != null ? formatearImporte(v) : '—');
+  const linea = conAlfa(tema.color.texto, 0.12);
+  const tenue = { color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 };
 
   return (
     // `etiqueta` = el mes del corte de caja («Agosto»), como `.per` del prototipo. Sin fecha de corte no hay
@@ -128,6 +135,7 @@ export function PantallaInteligencia() {
     <MarcoGlass
       titulo="Inteligencia de Negocio"
       icono="inteligencia"
+      sinIcono
       etiqueta={portada?.caja.fechaCorte != null ? formatearMesDePeriodo(portada.caja.fechaCorte) : undefined}
       testID="pantalla-inteligencia"
     >
@@ -172,7 +180,7 @@ export function PantallaInteligencia() {
         <ScrollFormulario
           onOffsetY={setArrastrePx}
           testID="inteligencia-portada"
-          contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.md, paddingBottom: 120 }}
+          contentContainerStyle={{ padding: tema.espacio.md, gap: 24, paddingBottom: 120 }}
           refreshControl={
             // 🔴 Indicador nativo FUERA DE CUADRO (N2, relevamiento 2026-10-16): el círculo con flecha de Android se
             // dibujaba ENCIMA del saldo al tirar, y el prototipo no lo tiene — dice sólo «Actualizando…»
@@ -225,55 +233,77 @@ export function PantallaInteligencia() {
             </View>
           </BloqueCifra>
 
+          {/* LO QUE TE QUEDÓ (Martin 15/11) — lo primero después de la caja: contesta «¿gano o pierdo?» sin leer
+              números. Reemplaza a las barras de «Mes a mes» y de «Entró vs. salió». Ver `LineaGanancia`. */}
+          {portada.serieMensual.length > 0 && (
+            <Tarjeta testID="inteligencia-serie" rotulo="Lo que te quedó">
+              <LineaGanancia
+                testID="inteligencia-ganancia"
+                puntos={portada.serieMensual.map((p) => ({ mes: p.mes, entro: p.ingresos, salio: p.gastos }))}
+              />
+            </Tarjeta>
+          )}
+
           {sinVentasTodavia(portada) && (
-            <Text
-              style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, textAlign: 'center' }}
-            >
-              Sin ventas todavía
-            </Text>
+            <VacioFuncion
+              testID="inteligencia-sin-ventas"
+              dibujo={DIBUJO_LUPA}
+              titulo="Todavía no hay ventas"
+              cuerpo="Cuando factures o anotes un cobro, acá vas a ver cómo viene tu negocio."
+            />
           )}
 
           {/* SM-N32: los cuatro del mes en NEGRO. El mockup 12 derogó la paleta verde/rojo («competiría con el único acento»). */}
           {/* EL MES — cuatro números en grilla de dos columnas + Rentabilidad en fila completa con
               su nota cuando falta el dato (mismo patrón que web `.kpi.sindato`: «no es cero, es que
               todavía no se puede calcular» — H-A4-3). */}
-          <Text style={rotulo(tema)}>ESTE MES</Text>
-          <View style={styles.grillaKpis}>
+          <Tarjeta testID="inteligencia-mes" rotulo="Este mes" style={styles.tarjetaFilas}>
             {(
               [
-                ['Ingresos', portada.mes.ingresos, tema.color.texto],
-                ['Gastos', portada.mes.gastos, tema.color.texto],
-                ['Facturado', portada.mes.facturado, tema.color.texto],
-                ['Cobrado', portada.mes.cobrado, tema.color.texto],
+                [
+                  ['Ingresos', portada.mes.ingresos],
+                  ['Gastos', portada.mes.gastos],
+                ],
+                [
+                  ['Facturado', portada.mes.facturado],
+                  ['Cobrado', portada.mes.cobrado],
+                ],
               ] as const
-            ).map(([etiqueta, valor, color]) => (
-              <View key={etiqueta} style={styles.kpiCelda} testID={`inteligencia-mes-${etiqueta.toLowerCase()}`}>
-                <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{etiqueta}</Text>
-                <Text style={{ color, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.titulo }}>
-                  {kpi(valor)}
-                </Text>
+            ).map((par, n) => (
+              <View key={par[0][0]} style={[styles.filaKpis, n > 0 && { borderTopWidth: 1, borderTopColor: linea }]}>
+                {par.map(([etiqueta, valor], k) => (
+                  <View
+                    key={etiqueta}
+                    testID={`inteligencia-mes-${etiqueta.toLowerCase()}`}
+                    style={[styles.kpiCelda, k > 0 && { borderLeftWidth: 1, borderLeftColor: linea, paddingLeft: 16 }]}
+                  >
+                    <Text style={tenue}>{etiqueta}</Text>
+                    <Text
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande, lineHeight: 26 }}
+                    >
+                      {kpi(valor)}
+                    </Text>
+                  </View>
+                ))}
               </View>
             ))}
             <View
-              style={[styles.kpiCelda, styles.kpiCeldaAncha]}
               testID="inteligencia-mes-rentabilidad"
+              style={[styles.filaKpis, styles.kpiRentabilidad, { borderTopWidth: 1, borderTopColor: linea }]}
             >
-              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Rentabilidad</Text>
-              <Text
-                style={{ color: tema.color.acento, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.titulo }}
-              >
+              <Text style={tenue}>Rentabilidad</Text>
+              <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande, lineHeight: 26 }}>
                 {kpi(portada.mes.rentabilidad)}
               </Text>
               {portada.mes.rentabilidad == null && (
-                <Text
-                  testID="inteligencia-rentabilidad-nota"
-                  style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
-                >
+                <Text testID="inteligencia-rentabilidad-nota" style={tenue}>
                   Falta asignar gastos a trabajos. No es cero: es que todavía no se puede calcular.
                 </Text>
               )}
             </View>
-          </View>
+          </Tarjeta>
 
           {/* ACUMULADO DEL AÑO + tope de monotributo — llegó de Contabilidad al fundirse las dos
               pantallas (Ola 4). Va DESPUÉS del mes y antes de lo por cobrar: es la lectura larga del
@@ -282,7 +312,7 @@ export function PantallaInteligencia() {
 
           {/* POR COBRAR — con lo vencido resaltado, que es lo accionable. */}
           <Tarjeta testID="inteligencia-por-cobrar" rotulo="Por cobrar">
-            <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: 28, letterSpacing: -0.5 }}>
+            <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: 28, lineHeight: 34 }}>
               {kpi(portada.porCobrar.total)}
             </Text>
             {portada.porCobrar.vencido != null && (
@@ -292,34 +322,38 @@ export function PantallaInteligencia() {
             )}
           </Tarjeta>
 
-          {/* SERIE MENSUAL — barras proporcionales, sin librería: ingresos vs gastos por mes. */}
-          {portada.serieMensual.length > 0 && (
-            <Tarjeta testID="inteligencia-serie" rotulo="Mes a mes">
-              <SerieBarras portada={portada} />
-            </Tarjeta>
-          )}
-
           {/* MEJORES CLIENTES — degrada a vacío si Clientes no está (contrato §3.1). */}
-          <Tarjeta testID="inteligencia-clientes" rotulo="Mejores clientes">
+          <Tarjeta testID="inteligencia-clientes" rotulo="Mejores clientes" style={portada.mejoresClientes.length > 0 ? styles.tarjetaFilas : undefined}>
           {portada.mejoresClientes.length === 0 ? (
-            <Text testID="inteligencia-clientes-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+            <Text testID="inteligencia-clientes-vacio" style={tenue}>
               Todavía no registraste ventas a ningún cliente. Cuando factures o anotes un cobro con nombre, el ranking se arma solo.
             </Text>
           ) : (
-            portada.mejoresClientes.map((c) => (
-              <View key={c.cliente} testID={`inteligencia-cliente-${c.cliente}`} style={styles.filaCliente}>
-                  <View style={{ flexShrink: 1 }}>
-                    <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>{c.cliente}</Text>
-                    {/* SM-N32: `null` = no se puede saber → se oculta; jamás «0 comprobantes». */}
-                    {c.comprobantes != null && (
-                      <Text testID={`inteligencia-cliente-${c.cliente}-comprobantes`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-                        {c.comprobantes} comprobante{c.comprobantes === 1 ? '' : 's'}
-                      </Text>
-                    )}
-                  </View>
-                  <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
-                    {kpi(c.total)}
+            portada.mejoresClientes.map((c, i) => (
+              <View
+                key={c.cliente}
+                testID={`inteligencia-cliente-${c.cliente}`}
+                style={[styles.filaCliente, i > 0 && { borderTopWidth: 1, borderTopColor: linea }]}
+              >
+                <View accessible={false} style={[styles.casilla, { backgroundColor: tema.color.tileFuncion.arena }]}>
+                  <Text style={{ color: tema.color.tileFuncion.tinta, fontFamily: tema.fuente.display, fontSize: tema.tipo.chico }}>
+                    {inicialesDe(c.cliente)}
                   </Text>
+                </View>
+                <View style={styles.clienteTextos}>
+                  <Text numberOfLines={1} style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base, lineHeight: 21 }}>
+                    {c.cliente}
+                  </Text>
+                  {/* SM-N32: `null` = no se puede saber → se oculta; jamás «0 comprobantes». */}
+                  {c.comprobantes != null && (
+                    <Text testID={`inteligencia-cliente-${c.cliente}-comprobantes`} style={tenue}>
+                      {c.comprobantes} comprobante{c.comprobantes === 1 ? '' : 's'}
+                    </Text>
+                  )}
+                </View>
+                <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.base, lineHeight: 21 }}>
+                  {kpi(c.total)}
+                </Text>
               </View>
             ))
           )}
@@ -339,63 +373,16 @@ export function PantallaInteligencia() {
   );
 }
 
-/**
- * Barras de la serie mensual, dibujadas con `View`s de alto proporcional — sin librería de gráficos
- * (una dependencia nueva para dos barras por mes sería sobreingeniería). La altura se normaliza contra
- * el máximo de la serie; un mes sin dato (`null`) no dibuja barra, no dibuja una de alto cero que se
- * leería como «cero».
- */
-function SerieBarras({ portada }: { portada: Portada }) {
-  const tema = useTema();
-  const nums = portada.serieMensual.flatMap((p) =>
-    [p.ingresos, p.gastos].filter((v): v is string => v != null).map(Number),
-  );
-  const max = nums.length > 0 ? Math.max(...nums, 1) : 1;
-  const ALTO = 80;
-
-  return (
-    <View style={styles.serieFila}>
-      {portada.serieMensual.map((p) => {
-        const barra = (valor: string | null, color: string) => {
-          if (valor == null) return <View style={[styles.barra, { height: 1, backgroundColor: tema.color.borde }]} />;
-          const h = Math.max(2, (Number(valor) / max) * ALTO);
-          return <View style={[styles.barra, { height: h, backgroundColor: color }]} />;
-        };
-        return (
-          <View key={p.mes} style={styles.serieCol} testID={`inteligencia-barra-${p.mes}`}>
-            <View style={styles.serieBarras}>
-              {barra(p.ingresos, tema.color.exito)}
-              {barra(p.gastos, tema.color.peligro)}
-            </View>
-            {/* `2026-04` → `04`: la etiqueta corta cabe; el año se repite y no aporta acá. */}
-            <Text style={{ color: tema.color.textoTenue, fontSize: 10 }}>{p.mes.slice(5)}</Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-/** El rótulo de sección — depende del tema, así que es una función, no una entrada de `StyleSheet`. */
-const rotulo = (tema: ReturnType<typeof useTema>) => ({
-  color: tema.color.acentoTinta,
-  fontFamily: tema.fuente.mono,
-  fontSize: 11,
-  letterSpacing: 1.2,
-  opacity: 0.7,
-});
-
 const styles = StyleSheet.create({
   raiz: { flex: 1 },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  grillaKpis: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  kpiCelda: { flexGrow: 1, flexBasis: '44%', gap: 2 },
-  kpiCeldaAncha: { flexBasis: '100%' },
-  filaCliente: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
+  tarjetaFilas: { paddingVertical: 4, gap: 0 },
+  filaKpis: { flexDirection: 'row', paddingVertical: 16 },
+  kpiCelda: { flex: 1, gap: 2 },
+  kpiRentabilidad: { flexDirection: 'column', gap: 2 },
+  filaCliente: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
+  casilla: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  clienteTextos: { flex: 1, gap: 2 },
   filaEntre: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  serieFila: { flexDirection: 'row', gap: 12, alignItems: 'flex-end', marginTop: 8 },
-  serieCol: { alignItems: 'center', gap: 4 },
-  serieBarras: { flexDirection: 'row', gap: 3, alignItems: 'flex-end' },
   bloqueCelda: { flex: 1, gap: 2 },
-  barra: { width: 12, borderRadius: 3 },
 });

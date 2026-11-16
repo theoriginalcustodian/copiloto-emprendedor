@@ -31,6 +31,8 @@ export interface ChatViewProps {
    * y el teclado tapa el campo (medido en device: padding 363 px donde hacían falta 537, la diferencia = 174 px = la tira).
    */
   desplazamientoTeclado?: number;
+  /** Alto de la pestaña de vidrio que flota sobre el borde de arriba del chat: el contenido arranca debajo. */
+  margenSuperior?: number;
   /**
    * `hitl (a)` — el aviso de una tarjeta de Mi día que el emprendedor llevó al chat. Entra **sembrado en
    * el composer** (lo manda él) y trae el chip «Desde tu aviso · …». `id` crece con cada aviso: el mismo
@@ -99,7 +101,7 @@ export interface ChatViewProps {
  * este ownership) que ya aporta el chrome — mismo criterio que `PantallaFacturacion`/`PantallaApps`
  * en `escritorio/`. Un `backgroundColor` acá taparía el vidrio detrás.
  */
-export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrante = null, desplazamientoTeclado = 0, onPendienteMandado }: ChatViewProps = {}) {
+export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrante = null, desplazamientoTeclado = 0, margenSuperior = 0, onPendienteMandado }: ChatViewProps = {}) {
   const tema = useTema();
   // `''` sólo si `me` todavía no resolvió (no debería pasar: el guard de `_layout.tsx` exige
   // `estado === 'autenticado'` antes de montar este árbol) — `useChat` degrada ese caso a sesión
@@ -236,6 +238,8 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
 
       {/* `.ctx-chip` del prototipo (`index.html:2750`): de dónde viene lo que está por decirse. SÓLO UI —
           el texto que viaja es el del composer. La salida es la del recibo del prototipo (`:2774`). */}
+      {/* Con el chip, el que baja es el chip: queda entero debajo de la pestaña y el hilo arranca tras él. */}
+      {avisoEntrante != null && margenSuperior > 0 && <View style={{ height: margenSuperior }} />}
       {avisoEntrante != null && (
         <View
           testID="chat-contexto-aviso"
@@ -280,6 +284,7 @@ export function ChatView({ avisoEntrante = null, onVolverAlTablero, audioEntrant
         onVolverDelRecibo={tarjetaDelAviso != null && onVolverAlTablero != null ? alVolverDelRecibo : undefined}
         volverDesdeIndice={mensajesAlEntrarElAviso.current?.n}
         margenInferior={altoDock}
+        margenSuperior={avisoEntrante != null ? 0 : margenSuperior}
       />
       </View>
 

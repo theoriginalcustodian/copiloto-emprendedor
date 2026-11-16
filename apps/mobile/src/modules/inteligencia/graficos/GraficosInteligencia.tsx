@@ -1,23 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import { router } from 'expo-router';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 
 import {
-  CATEGORIAS_GASTO,
   ETIQUETA_CATEGORIA,
   esCategoriaValida,
   formatearFechaCorta,
+  formatearImporte,
   imputacionDeTrabajos,
   leerGraficoCategorias,
-  leerGraficoEntroVsSalio,
   leerGraficoMargenTrabajo,
   margenPonderado,
 } from '@copiloto/core';
 
 import { Tarjeta } from '../../../theme/Tarjeta';
 import { useTema } from '../../../theme/ThemeProvider';
-import { GraficoBarras } from './GraficoBarras';
-import { GraficoTorta } from './GraficoTorta';
+import { conAlfa } from '../../../theme/glass/conAlfa';
+import { PRESS_FADE, pressableStyle } from '../../../theme/glass/presion';
+import { AnilloCategorias } from './AnilloCategorias';
 
 /**
  * `GraficosInteligencia` — los 4 gráficos del contrato de IN (§2), montados dentro de la portada
@@ -69,31 +70,6 @@ function Cargando({ testID }: { testID: string }) {
   );
 }
 
-function TarjetaEntroVsSalio() {
-  const tema = useTema();
-  const leer = useCallback(() => leerGraficoEntroVsSalio(), []);
-  const res = useGrafico(leer);
-
-  if (res == null) return <Cargando testID="inteligencia-grafico-entro-vs-salio-cargando" />;
-  if (res.status !== 'ok' || res.modo !== 'serie') return null;
-
-  return (
-    <Tarjeta testID="inteligencia-grafico-entro-vs-salio" rotulo="Entró vs. salió">
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <GraficoBarras
-          testID="grafico-entro-vs-salio"
-          puntos={res.serie.map((p) => p.mes)}
-          series={[
-            { id: 'entro', etiqueta: 'Entró', color: tema.color.exito, valores: res.serie.map((p) => p.entro) },
-            { id: 'salio', etiqueta: 'Salió', color: tema.color.peligro, valores: res.serie.map((p) => p.salio) },
-          ]}
-          epigrafe={res.periodo !== '' ? formatearPeriodo(res.periodo) : undefined}
-        />
-      </ScrollView>
-    </Tarjeta>
-  );
-}
-
 function TarjetaCategorias() {
   const leer = useCallback(() => leerGraficoCategorias(), []);
   const res = useGrafico(leer);
@@ -101,9 +77,6 @@ function TarjetaCategorias() {
   if (res == null) return <Cargando testID="inteligencia-grafico-categorias-cargando" />;
   if (res.status !== 'ok' || res.modo !== 'serie') return null;
 
-  // `orden` colorea por ÍNDICE — se construye con las mismas etiquetas que se muestran, para que el
-  // color de cada porción quede atado a la categoría (contrato: nunca a la posición en la respuesta).
-  const ordenEtiquetas = CATEGORIAS_GASTO.map((c) => ETIQUETA_CATEGORIA[c]);
   const porciones = res.serie.map((p) => ({
     categoria: esCategoriaValida(p.categoria) ? ETIQUETA_CATEGORIA[p.categoria] : p.categoria,
     valor: p.total,
@@ -111,16 +84,57 @@ function TarjetaCategorias() {
 
   return (
     <Tarjeta testID="inteligencia-grafico-categorias" rotulo="En qué se me va">
-      <GraficoTorta
+      <AnilloCategorias
         testID="grafico-categorias"
         porciones={porciones}
-        orden={ordenEtiquetas}
         epigrafe={res.periodo !== '' ? formatearPeriodo(res.periodo) : undefined}
       />
     </Tarjeta>
   );
 }
 
+const TITULO_MARGEN = 'Cuánto te deja cada trabajo';
+const LADO_ANILLO = 92;
+const GROSOR_ANILLO = 10;
+const RADIO_ANILLO = (LADO_ANILLO - GROSOR_ANILLO) / 2;
+const VUELTA = 2 * Math.PI * RADIO_ANILLO;
+
+/** El margen general como anillo: la parte en tinta es lo que queda de cada peso cobrado. */
+function AnilloMargen({ pct }: { pct: number }) {
+  const tema = useTema();
+  const avance = Math.max(0, Math.min(pct, 100)) / 100;
+  return (
+    <View style={styles.anilloMargen}>
+      <Svg width={LADO_ANILLO} height={LADO_ANILLO}>
+        <Circle cx={LADO_ANILLO / 2} cy={LADO_ANILLO / 2} r={RADIO_ANILLO} fill="none" stroke={conAlfa(tema.color.texto, 0.1)} strokeWidth={GROSOR_ANILLO} />
+        {avance > 0 && (
+          <Circle
+            cx={LADO_ANILLO / 2}
+            cy={LADO_ANILLO / 2}
+            r={RADIO_ANILLO}
+            fill="none"
+            stroke={tema.color.texto}
+            strokeWidth={GROSOR_ANILLO}
+            strokeLinecap="round"
+            strokeDasharray={`${avance * VUELTA} ${VUELTA}`}
+            // Arranca arriba, como un reloj.
+            transform={`rotate(-90 ${LADO_ANILLO / 2} ${LADO_ANILLO / 2})`}
+          />
+        )}
+      </Svg>
+      <View style={[StyleSheet.absoluteFill, styles.anilloCentro]} pointerEvents="none">
+        <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: 22 }}>{Math.round(pct)}%</Text>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * «Cuánto te deja cada trabajo» (Martin 15/11, segunda vuelta). La versión anterior mostraba el margen general,
+ * un renglón con regla por CADA trabajo y tres notas: «mucha información y muy dispersa». Ahora hay UNA lectura
+ * a la vista —el anillo con lo que queda de cada $100— y dos trabajos: el que más dejó y el que menos. La lista
+ * entera ya no se muestra; cómo se hizo la cuenta va en un pie chico.
+ */
 function TarjetaMargenTrabajo() {
   const tema = useTema();
   const leer = useCallback(() => leerGraficoMargenTrabajo(), []);
@@ -131,68 +145,104 @@ function TarjetaMargenTrabajo() {
 
   if (res.trabajos.length === 0 && res.sinIngreso.length === 0) {
     return (
-      <Tarjeta testID="inteligencia-grafico-margen-trabajo" rotulo="Margen por trabajo">
+      <Tarjeta testID="inteligencia-grafico-margen-trabajo" rotulo={TITULO_MARGEN}>
         <Text
           testID="inteligencia-grafico-margen-trabajo-vacio"
           style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
         >
-          Todavía no hay trabajos con presupuesto o factura para medir margen.
+          Todavía no hay trabajos con presupuesto o factura para medir cuánto te dejan.
         </Text>
       </Tarjeta>
     );
   }
 
   const resumen = margenPonderado(res.trabajos);
+  // Del que más deja al que menos. Un trabajo sin cobrado o sin margen legible va al final.
+  const filas = res.trabajos
+    .map((t) => {
+      const cobrado = t.cobrado != null ? Number(t.cobrado) : NaN;
+      const margen = t.margen != null ? Number(t.margen) : NaN;
+      const pct = cobrado > 0 && Number.isFinite(margen) ? (margen / cobrado) * 100 : null;
+      return { t, pct };
+    })
+    .sort((a, b) => (b.pct ?? -Infinity) - (a.pct ?? -Infinity));
+  const imputacion = imputacionDeTrabajos(res.trabajos);
+  const medibles = filas.filter((f) => f.pct != null);
+  const mejor = medibles[0] ?? null;
+  const peor = medibles.length > 1 ? medibles[medibles.length - 1] : null;
+  const linea = { borderTopWidth: 1, borderTopColor: conAlfa(tema.color.texto, 0.12) };
+  const tenue = { color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 };
+
+  const renglon = (f: (typeof filas)[number], rotulo: string | null, testID: string) => (
+    <View key={testID} testID={testID} style={[styles.filaTrabajo, linea]}>
+      <View style={styles.filaTrabajoTextos}>
+        {rotulo != null && <Text style={tenue}>{rotulo}</Text>}
+        <Text numberOfLines={1} style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
+          {f.t.etiqueta}
+        </Text>
+        {f.t.margen != null && <Text style={tenue}>Te quedaron {formatearImporte(f.t.margen)}</Text>}
+      </View>
+      <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande }}>
+        {f.pct != null ? `${Math.round(f.pct)}%` : '—'}
+      </Text>
+    </View>
+  );
 
   return (
-    <Tarjeta testID="inteligencia-grafico-margen-trabajo" rotulo="Margen por trabajo">
-      {res.trabajos.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <GraficoBarras
-            testID="grafico-margen-trabajo"
-            puntos={res.trabajos.map((t) => t.etiqueta)}
-            series={[
-              {
-                id: 'margen',
-                etiqueta: 'Margen',
-                color: tema.color.acentoTinta,
-                valores: res.trabajos.map((t) => t.margen),
-              },
-            ]}
-          />
-        </ScrollView>
-      )}
-      {/* SM-N32: margen del conjunto, PONDERADO (Σmargen/Σcobrado) — por eso «Sobre N», no «Promedio de N». */}
+    <Tarjeta testID="inteligencia-grafico-margen-trabajo" rotulo={TITULO_MARGEN} style={styles.tarjetaMargen}>
+      {/* SM-N32: margen del conjunto, PONDERADO (Σmargen/Σcobrado) — por eso «sobre N», no «promedio de N». */}
       {resumen.pct !== null && (
-        <View testID="inteligencia-grafico-margen-trabajo-resumen" style={{ marginTop: 4 }}>
-          <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
-            {Math.round(resumen.pct)}% · Sobre {resumen.n} trabajo{resumen.n === 1 ? '' : 's'} cerrado{resumen.n === 1 ? '' : 's'}
+        <View testID="inteligencia-grafico-margen-trabajo-resumen" style={styles.cabeceraMargen}>
+          <AnilloMargen pct={resumen.pct} />
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande, lineHeight: 24 }}>
+              De cada $100 que cobrás, te quedan ${Math.round(resumen.pct)}.
+            </Text>
+            <Text style={tenue}>
+              Sobre {resumen.n} trabajo{resumen.n === 1 ? '' : 's'} cerrado{resumen.n === 1 ? '' : 's'}.
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {mejor != null && renglon(mejor, peor != null ? 'El que más dejó' : null, 'inteligencia-grafico-margen-trabajo-mejor')}
+      {peor != null && renglon(peor, 'El que menos dejó', 'inteligencia-grafico-margen-trabajo-peor')}
+
+      {/* La lista entera va en su propia pantalla (Martin 15/11): acá sólo la puerta. */}
+      {filas.length > 2 && (
+        <Pressable
+          testID="inteligencia-grafico-margen-trabajo-ver-todos"
+          accessibilityRole="button"
+          onPress={() => router.push('/inteligencia-trabajos')}
+          style={pressableStyle([styles.puertaTrabajos, linea], PRESS_FADE)}
+        >
+          <Text style={{ flex: 1, color: tema.color.acentoTinta, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
+            Ver los {filas.length} trabajos
           </Text>
-          {resumen.peor !== null && resumen.n > 1 && (
-            <Text testID="inteligencia-grafico-margen-trabajo-peor" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              El de menor margen: {resumen.peor.etiqueta} · {Math.round(resumen.peor.pct)}%
+          <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.grande }}>›</Text>
+        </Pressable>
+      )}
+
+      {/* El pie: cómo se hizo la cuenta, siempre a la vista y sin desplegar nada (Martin 15/11: los desplegables
+          no convencían). SM-E3 sigue en pie: el conteo de gastos imputados acompaña al margen. Si hay trabajos
+          sin ningún gasto anotado el porcentaje se ve mejor de lo que es, y ese aviso va en tinta, no en gris. */}
+      {(res.trabajos.length > 0 || res.sinIngreso.length > 0) && (
+        <View style={[styles.notasMargen, linea]}>
+          {res.trabajos.length > 0 && (
+            <Text
+              testID="inteligencia-grafico-margen-trabajo-imputacion"
+              style={[tenue, imputacion.sinNingunGasto > 0 && { color: tema.color.texto }]}
+            >
+              {imputacion.texto}
+            </Text>
+          )}
+          {res.sinIngreso.length > 0 && (
+            <Text testID="inteligencia-grafico-margen-trabajo-sin-ingreso" style={tenue}>
+              {res.sinIngreso.length} trabajo{res.sinIngreso.length === 1 ? '' : 's'} sin cobro registrado
+              todavía — no entra{res.sinIngreso.length === 1 ? '' : 'n'} en la cuenta.
             </Text>
           )}
         </View>
-      )}
-      {/* SM-E3: el conteo va SIEMPRE que haya margen en pantalla -- un margen sobre cero gastos
-          imputados se ve igual que uno completo (`apps/copiloto/gastos_web.py:188`). */}
-      {res.trabajos.length > 0 && (
-        <Text
-          testID="inteligencia-grafico-margen-trabajo-imputacion"
-          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, marginTop: 4 }}
-        >
-          {imputacionDeTrabajos(res.trabajos).texto}
-        </Text>
-      )}
-      {res.sinIngreso.length > 0 && (
-        <Text
-          testID="inteligencia-grafico-margen-trabajo-sin-ingreso"
-          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, marginTop: 4 }}
-        >
-          {res.sinIngreso.length} trabajo{res.sinIngreso.length === 1 ? '' : 's'} sin cobro registrado
-          todavía — no entra{res.sinIngreso.length === 1 ? '' : 'n'} al margen.
-        </Text>
       )}
     </Tarjeta>
   );
@@ -203,7 +253,7 @@ export function GraficosInteligencia() {
     <View style={styles.contenedor} testID="inteligencia-graficos">
       {/* SM-N32 (decisión del operador, 2026-11-04): la tarjeta «Facturación» se RETIRA — el mapa no la
           dibuja. El gráfico de facturación sigue en core (`leerGraficoFacturacion`) por si vuelve. */}
-      <TarjetaEntroVsSalio />
+      {/* «Entró vs. salió» dejó de ser tarjeta (Martin 15/11): lo dice «Lo que te quedó», arriba de la pantalla. */}
       <TarjetaCategorias />
       <TarjetaMargenTrabajo />
     </View>
@@ -211,6 +261,14 @@ export function GraficosInteligencia() {
 }
 
 const styles = StyleSheet.create({
-  contenedor: { gap: 20 },
+  contenedor: { gap: 24 },
   centro: { minHeight: 60, alignItems: 'center', justifyContent: 'center' },
+  tarjetaMargen: { gap: 0, paddingBottom: 6 },
+  cabeceraMargen: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingBottom: 18 },
+  anilloMargen: { width: LADO_ANILLO, height: LADO_ANILLO },
+  anilloCentro: { alignItems: 'center', justifyContent: 'center' },
+  filaTrabajo: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
+  filaTrabajoTextos: { flex: 1, gap: 2 },
+  puertaTrabajos: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52, paddingVertical: 12 },
+  notasMargen: { gap: 4, paddingVertical: 14 },
 });

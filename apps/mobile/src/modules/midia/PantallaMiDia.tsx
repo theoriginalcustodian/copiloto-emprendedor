@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 
@@ -7,7 +7,7 @@ import {
   cambiarEstadoTarjetaMiDia,
   estadoDeServicio,
   fechaDeHoyMidia,
-  horaDeEvento,
+  instanteDeEvento,
   KEY_GOOGLE_CALENDAR,
   leerCalendario,
   hayConexionCaida,
@@ -21,12 +21,15 @@ import {
 } from '@copiloto/core';
 
 import type { RutaDestino } from './destinoTarjeta';
+import { cuandoEs, EN_CURSO_MS, horaCorta } from './tiempoEvento';
 import { PortadaNegocio } from './PortadaNegocio';
 import { TarjetaMiDiaRow } from './TarjetaMiDiaRow';
 import { useTableroMiDia, type EstadoLista } from './useTableroMiDia';
 import { EstadoVacio } from '../../theme/EstadoVacio';
 import { ScrollFormulario } from '../../theme/glass/campos';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
+import { elevacion } from '../../theme/BloqueCifra';
+import { conAlfa } from '../../theme/glass/conAlfa';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
@@ -47,6 +50,9 @@ import { useTema } from '../../theme/ThemeProvider';
  */
 
 export interface PantallaMiDiaProps {
+  /** Mientras corre el tutorial del primer ingreso: saca la taza y su texto, que quedan detrás del campo y de
+   *  la tarjeta del tutorial. Sólo oculta el vacío bueno; nunca una tarjeta real. */
+  ocultarVacio?: boolean;
   /** Avisa si el catálogo trae un servicio caído: el avatar del escritorio (el único que queda, SM-N28) lleva el punto. */
   onConexionCaida?: (caida: boolean) => void;
   /** BL-J13: abre la agenda de varios días. La cablea el shell (`empujarUnaVez`); sin él no hay entrada. */
@@ -143,10 +149,25 @@ export function PantallaMiDia({
   onAvisoAlChat,
   cierreDeAviso = null,
   pie,
+  ocultarVacio = false,
 }: PantallaMiDiaProps = {}) {
   const hora = useHoraActual();
+
+  /** «Realizado» de una tarjeta manual: pasa a «Hechas» en el servidor y el tablero se vuelve a leer. */
+  async function marcarRealizada(id: string) {
+    try {
+      const res = await cambiarEstadoTarjetaMiDia(id, 'hecha');
+      if (res.status === 'ok') {
+        void cargar();
+        return;
+      }
+      Alert.alert('No se pudo marcar como realizada', res.status === 'estado_invalido' ? res.motivo : 'Probá de nuevo en un momento.');
+    } catch {
+      Alert.alert('No se pudo marcar como realizada', 'Probá de nuevo en un momento.');
+    }
+  }
   const tema = useTema();
-  const { estado, tablero, cargar } = useTableroMiDia();
+  const { estado, tablero, cargar, borrar } = useTableroMiDia();
   // `undefined`: no tocó nada, va abierta la primera. `null`: cerró la que estaba abierta.
   const [expandida, setExpandida] = useState<string | null | undefined>(undefined);
   const [estadoCalendario, setEstadoCalendario] = useState<EstadoLista>('cargando');
@@ -285,7 +306,7 @@ export function PantallaMiDia({
                   : undefined
               }
             />
-            <PanelCalendario estado={estadoCalendario} calendario={calendario} estadoConexion={estadoGoogleCalendar} />
+            <PanelCalendario estado={estadoCalendario} calendario={calendario} estadoConexion={estadoGoogleCalendar} reloj={hora} />
           </>
         )}
 
@@ -318,7 +339,7 @@ export function PantallaMiDia({
           </View>
         )}
 
-        {estado === 'ok' && paraHoy.length === 0 && (
+        {estado === 'ok' && paraHoy.length === 0 && !ocultarVacio && (
           <View style={styles.centro}>
             {/* El vacío es una buena noticia y la ilustración la celebra. */}
             <EstadoVacio
@@ -331,16 +352,26 @@ export function PantallaMiDia({
         )}
 
         {estado === 'ok' && paraHoy.length > 0 && (
-          <View style={styles.lista} testID="midia-para-hoy">
-            {paraHoy.map((t) => (
-              <TarjetaMiDiaRow
-                key={t.id}
-                tarjeta={t}
-                expandida={abierta === t.id}
-                onPress={() => setExpandida(abierta === t.id ? null : t.id)}
-                onAccion={onDestino}
-                onAviso={onAvisoAlChat}
-              />
+          // Una sola tarjeta con sus filas (Martin 15/11), igual que la agenda de «Ahora»: antes cada pendiente
+          // era una caja y, con cinco, la sección se leía como una pila de tarjetas en vez de una lista.
+          <View
+            style={[styles.lista, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}
+            testID="midia-para-hoy"
+          >
+            {paraHoy.map((t, i) => (
+              <View key={t.id} style={i > 0 && { borderTopWidth: 1, borderTopColor: conAlfa(tema.color.texto, 0.12) }}>
+                <TarjetaMiDiaRow
+                  tarjeta={t}
+                  enGrupo
+                  expandida={abierta === t.id}
+                  onPress={() => setExpandida(abierta === t.id ? null : t.id)}
+                  onAccion={onDestino}
+                  onAviso={onAvisoAlChat}
+                  // Martin 15/11: lo que anotó el emprendedor se resuelve acá, sin ir al tablero. Corrige a SM-I1
+                  // («Mi día resume, Tu día gestiona») sólo para las tarjetas manuales.
+                  manual={{ onRealizado: () => void marcarRealizada(t.id), onBorrar: () => void borrar(t.id) }}
+                />
+              </View>
             ))}
           </View>
         )}
@@ -368,12 +399,17 @@ function PanelCalendario({
   estado,
   calendario,
   estadoConexion,
+  reloj,
 }: {
   estado: EstadoLista;
   calendario: CalendarioMiDia | null;
   estadoConexion: EstadoConexion | null;
+  /** La hora de «Ahora»: cambia cada minuto y con eso se recalcula cuánto falta para cada evento. */
+  reloj?: string;
 }) {
   const tema = useTema();
+  // `reloj` es el pulso: el instante se relee cuando cambia.
+  const ahora = useMemo(() => Date.now(), [reloj]);
 
   // `cargando`/`no_disponible` no tienen su propio texto: un calendario que no está listo (o que
   // falló) no puede competir por atención con el Kanban, que sí tiene evidencia real detrás — se
@@ -383,12 +419,12 @@ function PanelCalendario({
   const contenido = () => {
     if (!calendario.conectado) {
       return estadoConexion === 'caido' ? (
-        <Text testID="midia-calendario-caida" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+        <Text testID="midia-calendario-caida" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 19 }}>
           Se cayó la conexión con Google Calendar. Reconectala en Ajustes → Apps para volver a ver
           tus eventos de hoy.
         </Text>
       ) : (
-        <Text testID="midia-calendario-no-conectado" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+        <Text testID="midia-calendario-no-conectado" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 19 }}>
           Conectá Google Calendar en Ajustes → Apps para ver acá tus eventos de hoy.
         </Text>
       );
@@ -400,23 +436,38 @@ function PanelCalendario({
         </Text>
       );
     }
+    const linea = conAlfa(tema.color.texto, 0.12);
     return (
       <View testID="midia-calendario">
         {calendario.eventos.map((ev: EventoCalendario, i: number) => {
-          const hora = horaDeEvento(ev.inicioCrudo);
+          const instante = instanteDeEvento(ev.inicioCrudo);
+          const paso = instante != null && instante < ahora - EN_CURSO_MS;
           return (
+            // Dos columnas, como una fila de Plum (Martin 15/11): la hora a la izquierda, entera en un renglón;
+            // a la derecha el título en negrita —hasta dos renglones, ya no se corta— y debajo cuándo es.
             <View
               key={ev.id}
-              style={[styles.calendarioEvento, i > 0 && { borderTopWidth: 1, borderTopColor: tema.color.borde }]}
+              style={[styles.calendarioEvento, i > 0 && { borderTopWidth: 1, borderTopColor: linea }]}
               testID={`midia-calendario-evento-${ev.id}`}
             >
-              <Text style={[styles.calendarioHora, { color: tema.color.textoTenue, fontSize: tema.tipo.chico }]}>{hora ?? ''}</Text>
               <Text
-                style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base, flexShrink: 1 }}
+                testID={`midia-calendario-hora-${ev.id}`}
                 numberOfLines={1}
+                style={[styles.calendarioHora, { color: paso ? tema.color.textoTenue : tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.base }]}
               >
-                {ev.titulo}
+                {horaCorta(ev.inicioCrudo) ?? 'Hoy'}
               </Text>
+              <View style={styles.calendarioTextos}>
+                <Text
+                  numberOfLines={2}
+                  style={{ color: paso ? tema.color.textoTenue : tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base, lineHeight: 21 }}
+                >
+                  {ev.titulo}
+                </Text>
+                <Text testID={`midia-calendario-cuando-${ev.id}`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
+                  {instante == null ? 'Todo el día' : cuandoEs(instante, ahora)}
+                </Text>
+              </View>
             </View>
           );
         })}
@@ -425,7 +476,7 @@ function PanelCalendario({
   };
 
   return (
-    <View style={[styles.calendario, { backgroundColor: tema.color.superficieAlta, borderRadius: tema.radio.md }]}>
+    <View style={[styles.calendario, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}>
       {contenido()}
     </View>
   );
@@ -458,13 +509,21 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 8,
+    // Martin 13/11: los rótulos quedaban pegados a lo de arriba y a su propio contenido.
+    paddingTop: 28,
+    paddingBottom: 12,
   },
   seccionTitulo: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
-  calendario: { marginHorizontal: 16, paddingHorizontal: 16, paddingVertical: 8 },
-  calendarioEvento: { flexDirection: 'row', gap: 12, alignItems: 'baseline', paddingVertical: 10 },
-  calendarioHora: { width: 42 },
+  // El texto tocaba el borde redondeado (radio 22 con 8 de aire): ahora respira adentro de la tarjeta.
+  // 4 vertical: cada evento ya trae 12 arriba y abajo, y así el primero y el último respiran 16 contra el borde.
+  calendario: { marginHorizontal: 16, paddingHorizontal: 20, paddingVertical: 2, borderRadius: 22 },
+  calendarioEvento: { flexDirection: 'row', gap: 14, alignItems: 'flex-start', paddingVertical: 14 },
+  // Ancho fijo para «00:00» en negrita: la hora nunca salta de renglón y los títulos caen en una misma columna.
+  calendarioHora: { width: 50, lineHeight: 21 },
+  calendarioTextos: { flex: 1, gap: 2 },
   centro: { alignItems: 'center', justifyContent: 'center', padding: 24 },
-  lista: { gap: 8, paddingHorizontal: 16 },
+  // Mismo molde que la tarjeta de la agenda: 20 a los lados, y cada fila trae su aire vertical.
+  lista: { marginHorizontal: 16, paddingHorizontal: 20, paddingVertical: 2, borderRadius: 22 },
 });
+
+export { cuandoEs, horaCorta } from './tiempoEvento';

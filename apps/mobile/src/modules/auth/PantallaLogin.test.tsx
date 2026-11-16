@@ -58,13 +58,11 @@ describe('PantallaLogin', () => {
     process.env.EXPO_PUBLIC_API_BASE = 'https://copilotoemprendedor.duckdns.org';
   });
 
-  it('SM-N30: el lockup del login es el símbolo DESNUDO (sin badge) de 38, como `.ig-marca` del mapa', async () => {
+  it('Martin 12/11: el login muestra SÓLO el nombre «Odobi», sin el isotipo', async () => {
     await montar();
-    const caja = StyleSheet.flatten(screen.getByTestId('marca').props.style);
-    // Sin fondo de badge: con `tinta` (avatar redondo de Soporte) esto es el color `bloque`.
-    expect(caja.backgroundColor).toBe('transparent');
-    // `size` es el del signo (mapa: svg width=38), no un tile de 38 con un signo de 16 adentro.
-    expect(screen.getByTestId('marca-isotipo').props.width).toBe(38);
+    expect(screen.queryByTestId('marca')).toBeNull();
+    expect(screen.queryByTestId('marca-isotipo')).toBeNull();
+    expect(screen.getByTestId('login-wordmark')).toBeTruthy();
   });
 
   it('SM-Z4: el wordmark del login mide lo que dice `.ig-marca .w` del prototipo (leído de la fuente, no repetido)', async () => {
@@ -77,66 +75,9 @@ describe('PantallaLogin', () => {
     expect(wordmark.fontSize).toBe(Number(m![1]));
   });
 
-  it('botón "Entrar con Google" visible, no interfiere con el camino email/password', async () => {
-    await montar();
-    expect(screen.getByTestId('login-google')).toBeTruthy();
-  });
 
-  it('login con Google exitoso persiste los tokens que devuelve el backend tras el intercambio', async () => {
-    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({
-      type: 'success',
-      data: { idToken: 'google-id-token-real', user: {} },
-    } as any);
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ access_token: 'tok-google', refresh_token: 'refresh-google' }),
-    });
-    jest.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'cli-1', email: 'emprendedor@copiloto.test', es_admin: false, mp_connected: false, composio_connected: [], legal_aceptado: false, legal_version_aceptada: null });
 
-    await montar();
-    await fireEvent.press(screen.getByTestId('login-google'));
 
-    await waitFor(async () => expect(await almacenTokens.leerToken()).toBe('tok-google'));
-    expect(await almacenTokens.leerRefresh()).toBe('refresh-google');
-    expect(screen.queryByTestId('login-alert')).toBeNull();
-  });
-
-  it('cancelar el selector nativo de Google no muestra alerta (no es un error)', async () => {
-    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({ type: 'cancelled', data: null } as any);
-
-    await montar();
-    await fireEvent.press(screen.getByTestId('login-google'));
-
-    await waitFor(() => expect(GoogleSignin.signIn).toHaveBeenCalled());
-    expect(screen.queryByTestId('login-alert')).toBeNull();
-    expect(await almacenTokens.leerToken()).toBeNull();
-    expect(global.fetch).not.toHaveBeenCalled();
-  });
-
-  it('first-login de Google (403 en /me) auto-provisiona el tenant y no muestra alerta', async () => {
-    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({
-      type: 'success',
-      data: { idToken: 'google-id-token-nuevo', user: {} },
-    } as any);
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ access_token: 'tok-nuevo', refresh_token: 'refresh-nuevo' }),
-    });
-    // El probe /me da 403 la PRIMERA vez (user recién creado por Google, sin fila de tenant todavía)
-    // y 200 recién después de que `ensureOauthTenant` provisiona -- exactamente el gap que este test
-    // cubre (ver el fix en `SessionProvider.loginConGoogle`).
-    jest.mocked(api.me)
-      .mockRejectedValueOnce(new (jest.requireActual('@copiloto/core').ForbiddenError)('sin tenant'))
-      .mockResolvedValueOnce({ cliente_id: 'cli-nuevo', email: 'nuevo@gmail.com', es_admin: false, mp_connected: false, composio_connected: [], legal_aceptado: false, legal_version_aceptada: null });
-    jest.mocked(api.ensureOauthTenant).mockResolvedValueOnce({ cliente_id: 'cli-nuevo' });
-
-    await montar();
-    await fireEvent.press(screen.getByTestId('login-google'));
-
-    await waitFor(() => expect(api.ensureOauthTenant).toHaveBeenCalled());
-    await waitFor(() => expect(api.me).toHaveBeenCalledTimes(2));
-    expect(screen.queryByTestId('login-alert')).toBeNull();
-  });
 
   it('login exitoso persiste el access_token y el refresh_token', async () => {
     jest.mocked(api.login).mockResolvedValueOnce({
@@ -182,12 +123,11 @@ describe('PantallaLogin', () => {
     expect(await almacenTokens.leerToken()).toBeNull();
   });
 
-  it('BL-X12m: el pie tranquiliza a quien vuelve y, con error, el campo de contraseña pasa a terracota', async () => {
+  it('BL-X12m: sin pie y, con error, el campo de contraseña pasa a terracota', async () => {
     jest.mocked(api.login).mockRejectedValueOnce(new UnauthorizedError('x'));
     await montar();
-    expect(screen.getByTestId('login-pie').props.children).toBe(
-      'Tus datos quedan guardados: al volver a entrar está todo como lo dejaste.',
-    );
+    // Martin 12/11: el pie «Tus datos quedan guardados…» se sacó (no tenía sentido en el ingreso).
+    expect(screen.queryByTestId('login-pie')).toBeNull();
     const borde = () => StyleSheet.flatten(screen.getByTestId('login-password').props.style).borderColor;
     const bordeSinError = borde();
 
@@ -200,10 +140,6 @@ describe('PantallaLogin', () => {
     expect(borde()).not.toBe(bordeSinError);
   });
 
-  it('BL-X12m: «Entrar con Google» va sin borde (.btn2)', async () => {
-    await montar();
-    expect(StyleSheet.flatten(screen.getByTestId('login-google').props.style)?.borderWidth ?? 0).toBe(0);
-  });
 
   /** Orden de los testID en el árbol renderizado (recorrido en profundidad = orden de pantalla). */
   function ordenDeTestIds(): string[] {
@@ -235,7 +171,6 @@ describe('PantallaLogin', () => {
     expect(i('login-password')).toBeGreaterThanOrEqual(0);
     expect(i('login-alert')).toBeGreaterThan(i('login-password'));
     expect(i('login-submit')).toBeGreaterThan(i('login-alert'));
-    expect(i('login-google')).toBeGreaterThan(i('login-submit'));
   });
 
   it('BL-X12m: `emailInicial` precarga el mail (el reveal «Entrar» ya sabe quién era)', async () => {

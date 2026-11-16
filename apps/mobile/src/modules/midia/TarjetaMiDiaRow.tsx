@@ -1,5 +1,5 @@
-import { useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -9,7 +9,9 @@ import { avisoAlChat, type AvisoAlChat, type TarjetaMiDia } from '@copiloto/core
 
 import { llevaAlChat, rutaDeDestino, type RutaDestino } from './destinoTarjeta';
 import { TileCategoria } from './TileCategoria';
+import { Glifo } from '../../theme/glass/Glifo';
 import { Row } from '../../theme/glass/Row';
+import { conAlfa } from '../../theme/glass/conAlfa';
 import { pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
 
@@ -35,6 +37,82 @@ export interface GestionTarjeta {
   onBorrar: () => void;
 }
 
+/** Las dos acciones de una tarjeta manual que el servidor ya permite. «Editar» todavía no tiene con qué guardar. */
+export interface AccionesManual {
+  /** Ausente en «Hechas»: ahí ya está realizada y sólo queda editar o borrar. */
+  onRealizado?: () => void;
+  onBorrar: () => void;
+}
+
+/**
+ * ⚠️ El editor de una tarjeta manual: texto, y fecha y hora. **Se ve pero no guarda**: el servidor todavía no
+ * permite cambiar el texto de una tarjeta ni tiene dónde guardar su fecha (pedido a David, 15/11). Está para
+ * decidir el diseño; «Guardar» queda apagado y lo dice. Cuando exista el endpoint, se cablea acá.
+ */
+function EdicionManual({ tarjeta, onCancelar }: { tarjeta: TarjetaMiDia; onCancelar: () => void }) {
+  const tema = useTema();
+  const [texto, setTexto] = useState(tarjeta.texto);
+  const [cuando, setCuando] = useState('');
+  const linea = conAlfa(tema.color.texto, 0.12);
+  const campo = [styles.campoManual, { borderColor: linea, color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.ui }];
+  const rotulo = { color: tema.color.textoTenue, fontSize: tema.tipo.chico };
+  return (
+    <View testID={`midia-tarjeta-${tarjeta.id}-edicion`} style={styles.edicionManual}>
+      <View style={styles.grupoCampo}>
+        <Text style={rotulo}>Qué hay que hacer</Text>
+        <TextInput
+          testID={`midia-tarjeta-${tarjeta.id}-edicion-texto`}
+          value={texto}
+          onChangeText={setTexto}
+          multiline
+          style={campo}
+          placeholderTextColor={tema.color.textoTenue}
+        />
+      </View>
+      <View style={styles.grupoCampo}>
+        <Text style={rotulo}>Fecha y hora</Text>
+        <TextInput
+          testID={`midia-tarjeta-${tarjeta.id}-edicion-cuando`}
+          value={cuando}
+          onChangeText={setCuando}
+          placeholder="Mañana a las 9"
+          style={campo}
+          placeholderTextColor={tema.color.textoTenue}
+        />
+      </View>
+      <Text testID={`midia-tarjeta-${tarjeta.id}-edicion-aviso`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
+        Editar todavía no guarda: falta habilitarlo del lado del servidor.
+      </Text>
+      <View style={styles.accionesManual}>
+        <View
+          testID={`midia-tarjeta-${tarjeta.id}-edicion-guardar`}
+          accessibilityRole="button"
+          accessibilityLabel="Guardar"
+          accessibilityState={{ disabled: true }}
+          style={[
+            styles.accionFila,
+            styles.accionManual,
+            styles.apagado,
+            { backgroundColor: tema.color.acentoSuperficie, borderColor: tema.color.acentoSuperficie, borderRadius: tema.radio.completo },
+          ]}
+        >
+          <Text style={{ color: tema.color.acentoTexto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>Guardar</Text>
+        </View>
+        <Pressable
+          testID={`midia-tarjeta-${tarjeta.id}-edicion-cancelar`}
+          accessibilityRole="button"
+          accessibilityLabel="Cancelar"
+          onPress={onCancelar}
+          hitSlop={12}
+          style={pressableStyle(styles.accionTexto)}
+        >
+          <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>Cancelar</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 export function TarjetaMiDiaRow({
   tarjeta,
   expandida,
@@ -43,6 +121,9 @@ export function TarjetaMiDiaRow({
   onBorrar,
   onAccion,
   onAviso,
+  plana = false,
+  enGrupo = false,
+  manual,
 }: {
   tarjeta: TarjetaMiDia;
   expandida: boolean;
@@ -58,8 +139,19 @@ export function TarjetaMiDiaRow({
   onAccion?: (ruta: RutaDestino) => void;
   /** El puente al chat (`hitl a`). Sin él, o en una tarjeta sin puente (manual), el verbo es rótulo. */
   onAviso?: (aviso: AvisoAlChat) => void;
+  /** Tarjeta blanca (la de Tu día rediseñada) en lugar de la fila de vidrio. */
+  plana?: boolean;
+  /** Fila de una tarjeta que agrupa varias (Mi día): sin superficie propia; el divisor lo pone quien agrupa. */
+  enGrupo?: boolean;
+  /**
+   * Lo que se puede hacer con una tarjeta que anotó el emprendedor (Martin 15/11): al desplegarla ofrece
+   * «Realizado», «Editar» y «Borrar». Sólo aplica a tarjetas sin `regla`; las del detector se cierran solas.
+   */
+  manual?: AccionesManual;
 }) {
   const tema = useTema();
+  const [editando, setEditando] = useState(false);
+  const esManual = manual != null && tarjeta.regla == null;
   const swipeableRef = useRef<SwipeableMethods>(null);
   // Filas clave/valor como los `.kv` del prototipo (pantalla `#tablero`, `index.html:2493-2495`: «Monto ·
   // $180.000», «Enviado · 18 de julio»). El rótulo y el valor los decide la REGLA y llegan ya formateados en
@@ -94,6 +186,8 @@ export function TarjetaMiDiaRow({
   // El verbo se vuelve botón SÓLO cuando hay a dónde llevarlo: la `accion` de `presentacion` manda (ya
   // tiene su destino); sin ella, el verbo lleva el aviso al chat. La tarjeta manual no tiene puente.
   const aviso = accion == null && onAviso != null ? avisoAlChat(tarjeta) : null;
+  // La píldora es un botón sólo si tiene a dónde llevar; si no, queda como rótulo (DEVICE15 H5).
+  const accionViva = accionAlChat ? avisoDeAccion != null : rutaAccion != null && onAccion != null;
   const chip = presentacion?.chip ?? null;
   // `tono` reusa la escala de `criticidad`. Uno desconocido NO tiene color propio: se pinta neutro.
   const colorChip =
@@ -140,7 +234,10 @@ export function TarjetaMiDiaRow({
   const fila = (
       <Row
         gestual
-        onPress={onPress}
+        plana={plana}
+        desnuda={enGrupo}
+        // Con el editor abierto la fila no se cierra al tocarla: el toque es del campo.
+        onPress={editando ? undefined : onPress}
         testID={`midia-tarjeta-${tarjeta.id}`}
         accessibilityLabel={expandida ? `${tarjeta.texto}, contraer` : `${tarjeta.texto}, expandir`}
       >
@@ -150,7 +247,7 @@ export function TarjetaMiDiaRow({
           <View style={styles.tarjeta}>
             <Text
               numberOfLines={expandida ? undefined : 2}
-              style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}
+              style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base, lineHeight: 21 }}
             >
               {tarjeta.texto}
             </Text>
@@ -163,6 +260,18 @@ export function TarjetaMiDiaRow({
                 style={{ color: colorChip, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}
               >
                 {chip.texto}
+              </Text>
+            )}
+            {/* En una tarjeta manual el dato («Anotado · Hoy, 08:10») va como segunda línea, bajo el título y
+                alineado con los botones (Martin 15/11). Como tabla clave/valor quedaba con el valor contra el
+                borde derecho, sin relación con nada de la fila. */}
+            {esManual && chip == null && detalle.length > 0 && (
+              <Text
+                testID={`midia-tarjeta-${tarjeta.id}-dato`}
+                numberOfLines={1}
+                style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}
+              >
+                {detalle.map((f) => `${f.clave} ${f.valor.charAt(0).toLowerCase()}${f.valor.slice(1)}`).join(' · ')}
               </Text>
             )}
             {expandida && prosa != null && (
@@ -188,7 +297,7 @@ export function TarjetaMiDiaRow({
                 accessibilityLabel={accion.texto}
                 // Un destino que la app no sabe rutear (o sin handler) deja la píldora como rótulo: un botón
                 // que no hace nada es peor que un rótulo (DEVICE15 H5).
-                disabled={accionAlChat ? avisoDeAccion == null : rutaAccion == null || onAccion == null}
+                disabled={!accionViva}
                 onPress={() => {
                   if (accionAlChat) {
                     if (avisoDeAccion != null) onAviso?.(avisoDeAccion);
@@ -197,9 +306,14 @@ export function TarjetaMiDiaRow({
                   if (rutaAccion != null) onAccion?.(rutaAccion);
                 }}
                 hitSlop={10}
-                style={pressableStyle([styles.accionFila, { borderColor: tema.color.texto, borderRadius: tema.radio.completo }])}
+                style={pressableStyle([
+                  styles.accionFila,
+                  accionViva
+                    ? { backgroundColor: tema.color.acentoSuperficie, borderColor: tema.color.acentoSuperficie, borderRadius: tema.radio.completo }
+                    : { borderColor: tema.color.textoTenue, borderRadius: tema.radio.completo },
+                ])}
               >
-                <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+                <Text style={{ color: accionViva ? tema.color.acentoTexto : tema.color.textoTenue, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
                   {accion.texto}
                 </Text>
               </Pressable>
@@ -211,23 +325,72 @@ export function TarjetaMiDiaRow({
                 accessibilityLabel={tarjeta.verbo}
                 onPress={() => onAviso?.(aviso)}
                 hitSlop={10}
-                style={pressableStyle([styles.accionFila, { borderColor: tema.color.texto, borderRadius: tema.radio.completo }])}
+                style={pressableStyle([
+                  styles.accionFila,
+                  { backgroundColor: tema.color.acentoSuperficie, borderColor: tema.color.acentoSuperficie, borderRadius: tema.radio.completo },
+                ])}
               >
-                <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+                <Text style={{ color: tema.color.acentoTexto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
                   {tarjeta.verbo}
                 </Text>
               </Pressable>
             )}
-            {expandida && accion == null && tarjeta.verbo != null && aviso == null && tarjeta.regla == null && onBorrar != null && (
+            {expandida && esManual && !editando && (
+              <View testID={`midia-tarjeta-${tarjeta.id}-manual`} style={styles.accionesManual}>
+                {manual.onRealizado != null && (
+                <Pressable
+                  testID={`midia-tarjeta-${tarjeta.id}-realizado`}
+                  accessibilityRole="button"
+                  accessibilityLabel="Realizado"
+                  onPress={manual.onRealizado}
+                  hitSlop={8}
+                  style={pressableStyle([
+                    styles.accionFila,
+                    styles.accionManual,
+                    { backgroundColor: tema.color.acentoSuperficie, borderColor: tema.color.acentoSuperficie, borderRadius: tema.radio.completo },
+                  ])}
+                >
+                  <Text style={{ color: tema.color.acentoTexto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>Realizado</Text>
+                </Pressable>
+                )}
+                <Pressable
+                  testID={`midia-tarjeta-${tarjeta.id}-editar`}
+                  accessibilityRole="button"
+                  accessibilityLabel="Editar"
+                  onPress={() => setEditando(true)}
+                  hitSlop={12}
+                  style={pressableStyle(styles.accionTexto)}
+                >
+                  <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>Editar</Text>
+                </Pressable>
+                <Pressable
+                  testID={`midia-tarjeta-${tarjeta.id}-borrar-manual`}
+                  accessibilityRole="button"
+                  accessibilityLabel="Borrar"
+                  onPress={manual.onBorrar}
+                  hitSlop={12}
+                  style={pressableStyle(styles.accionTexto)}
+                >
+                  <Text style={{ color: tema.color.peligro, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>Borrar</Text>
+                </Pressable>
+              </View>
+            )}
+            {expandida && esManual && editando && (
+              <EdicionManual tarjeta={tarjeta} onCancelar={() => setEditando(false)} />
+            )}
+            {expandida && !esManual && accion == null && tarjeta.verbo != null && aviso == null && tarjeta.regla == null && onBorrar != null && (
               <Pressable
                 testID={`midia-tarjeta-${tarjeta.id}-verbo`}
                 accessibilityRole="button"
                 accessibilityLabel={tarjeta.verbo}
                 onPress={onBorrar}
                 hitSlop={10}
-                style={pressableStyle([styles.accionFila, { borderColor: tema.color.texto, borderRadius: tema.radio.completo }])}
+                style={pressableStyle([
+                  styles.accionFila,
+                  { backgroundColor: tema.color.acentoSuperficie, borderColor: tema.color.acentoSuperficie, borderRadius: tema.radio.completo },
+                ])}
               >
-                <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+                <Text style={{ color: tema.color.acentoTexto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
                   {tarjeta.verbo}
                 </Text>
               </Pressable>
@@ -240,7 +403,7 @@ export function TarjetaMiDiaRow({
                 {tarjeta.verbo}
               </Text>
             )}
-            {expandida && detalle.length > 0 && (
+            {expandida && detalle.length > 0 && !(esManual && chip == null) && (
               <View testID={`midia-tarjeta-${tarjeta.id}-detalle`} style={styles.detalleKv}>
                 {detalle.map((f) => (
                   <View key={f.clave} style={styles.filaKv}>
@@ -254,14 +417,14 @@ export function TarjetaMiDiaRow({
             )}
           </View>
           {/* La flecha es la afordancia de «se abre para ver el detalle»: baja cerrada, sube abierta. */}
-          <Text
+          <View
             testID={`midia-tarjeta-${tarjeta.id}-flecha`}
             accessible={false}
             importantForAccessibility="no"
-            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, lineHeight: 22 }}
+            style={[styles.flecha, { transform: [{ rotate: expandida ? '-90deg' : '90deg' }] }]}
           >
-            {expandida ? '⌃' : '⌄'}
-          </Text>
+            <Glifo nombre="caret-right" size={14} color={tema.color.textoTenue} />
+          </View>
         </View>
       </Row>
   );
@@ -287,11 +450,22 @@ export function TarjetaMiDiaRow({
 }
 
 const styles = StyleSheet.create({
-  cabTarjeta: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  cabTarjeta: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   tarjeta: { flex: 1, gap: 4 },
   detalleKv: { gap: 4, paddingTop: 4 },
   chipPresentacion: { alignSelf: 'flex-start', borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },
-  accionFila: { alignSelf: 'flex-start', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6 },
+  accionFila: { alignSelf: 'flex-start', borderWidth: 1, paddingHorizontal: 14, paddingVertical: 7, marginTop: 6 },
+  flecha: { height: 21, justifyContent: 'center' },
+  // Las acciones de una tarjeta manual: la principal llena a la izquierda y las otras dos como texto, al lado.
+  accionesManual: { flexDirection: 'row', alignItems: 'center', gap: 20, paddingTop: 8 },
+  // `accionFila` se ancla arriba (`alignSelf: flex-start`): acá va centrada con los textos de al lado.
+  accionManual: { marginTop: 0, alignSelf: 'center' },
+  // Mismo alto que la pastilla (7 + borde de 1), para que los tres compartan la línea de base.
+  accionTexto: { paddingVertical: 8 },
+  edicionManual: { gap: 12, paddingTop: 8 },
+  grupoCampo: { gap: 4 },
+  campoManual: { borderBottomWidth: 1, paddingVertical: 6, paddingHorizontal: 0 },
+  apagado: { opacity: 0.4 },
   filaKv: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   accionesSwipe: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingRight: 4 },
   botonSwipe: {

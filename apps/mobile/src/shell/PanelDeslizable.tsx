@@ -22,8 +22,9 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useHayCapturaEnCurso } from '../navegacion/capturaEnCurso';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Dimensions, Keyboard, StyleSheet, TextInput, View } from 'react-native';
+import { Dimensions, Keyboard, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -40,6 +41,7 @@ import Animated, {
 import { useInerteAlPerderFoco } from '../navegacion/inerteAlPerderFoco';
 import { ArrastreCuerpoContext } from './arrastreCuerpo';
 import { useTema } from '../theme/ThemeProvider';
+import { elevacion } from '../theme/BloqueCifra';
 import { CristalVidrio } from '../theme/glass/CristalVidrio';
 import { FondoIluminado } from '../theme/glass/FondoIluminado';
 import { ScrimDock } from '../theme/glass/ScrimDock';
@@ -57,6 +59,21 @@ export const ALTO_HANDLE = 13;
  * confundía con el gesto de la sombra del sistema. Va fijo, nunca animado (ver `estiloSpacer`).
  */
 export const MARGEN_TIRADOR = 12;
+
+/**
+ * Aire bajo la línea con la conversación arriba (Martin 15/11): la línea deja de flotar sobre el hilo y vive en
+ * una pestaña propia —otra superficie, borde de abajo redondeado— como la de «Bajá para tus funciones» en Mi día.
+ * Va en el flujo y es fijo: abajo no se ve (el contenido está apagado y el campo de Mi día es absoluto), así que
+ * no toca la tira ni el recorrido.
+ *
+ * La pestaña es de VIDRIO (prueba, Martin 15/11): la conversación ocupa el panel entero y pasa desenfocada por
+ * detrás. Por eso el contenido sube con margen negativo hasta el borde y el chat recibe ese alto como
+ * `margenSuperior`; la pestaña y la línea van por encima (`zIndex`).
+ */
+export const AIRE_PESTANA = 44;
+
+/** Cuánto baja la línea dentro de la pestaña al subir la conversación. Transform, no layout. */
+const BAJADA_LINEA = 20;
 
 /** Alto de la zona que agarra el arrastre del tirador de abajo: el mismo blanco de 44 dp que `PanelFunciones` (SM-N38). */
 export const ALTO_ZONA_ARRASTRE = 44;
@@ -287,6 +304,62 @@ export function opacidadRotuloAbajo(panelY: number, recorrido: number): number {
   'worklet';
   if (recorrido <= 0) return 0;
   return Math.min(Math.max((panelY / recorrido - 0.4) / 0.2, 0), 1);
+}
+
+/**
+ * 🔴 **El campo de Mi día NO viaja con la conversación (Martin 14/11/2026).** Hasta acá el campo y el micrófono
+ * de Mi día (`pieAbajo`) subían pegados al asa y se iban desvaneciendo a mitad de camino. No tiene sentido que
+ * se muevan: la conversación trae su PROPIO campo, en el mismo lugar. Ahora el de Mi día se queda quieto en el
+ * borde de abajo mientras la hoja sube, y recién se apaga al final, cuando llega el del chat.
+ *
+ * El campo sigue viviendo DENTRO del panel (no se tocó el árbol ni los gestos: el arrastre desde la franja del
+ * campo y el levantarse con el teclado dependen de eso). Lo que cambia es que se le resta el desplazamiento
+ * del panel: `compensacionPie` es exactamente lo que el panel se movió desde su reposo de abajo. No compensa el
+ * teclado (ahí el campo SÍ tiene que subir con el panel) ni la tira que se esconde al abrir las funciones
+ * (en reposo la compensación es 0, así que el campo se va con la tira como siempre).
+ */
+export function compensacionPie(panelY: number, recorrido: number, ocultarTira: number, altoTira: number): number {
+  'worklet';
+  if (recorrido <= 0) return 0;
+  return translacionPanel(recorrido, recorrido, ocultarTira, altoTira) - translacionPanel(panelY, recorrido, ocultarTira, altoTira);
+}
+
+/**
+ * Cuánto se ve la conversación (su superficie y su contenido) mientras la hoja sube.
+ *
+ * 🔴 **Casi al instante (Martin 14/11/2026).** Antes aparecía recién entre el 60 % y el 40 % del recorrido
+ * (`1 - opacidadRotuloAbajo`): durante la primera mitad del gesto subía una barra sola sobre Mi día y la hoja
+ * «se materializaba» a mitad de camino. Ahora está entera a los 28 px de haber salido del reposo, así que lo
+ * que el dedo levanta es una hoja desde el primer momento.
+ *
+ * En reposo abajo sigue en 0: ahí no puede quedar ninguna tarjeta detrás del campo (SM-N38). Arriba o sin
+ * medir, 1: manda el chat (SM-I6).
+ */
+export function opacidadConversacion(panelY: number, recorrido: number): number {
+  'worklet';
+  if (recorrido <= 0) return 1;
+  return Math.min(Math.max((recorrido - panelY) / 28, 0), 1);
+}
+
+/**
+ * Cuánto se ve la pestaña de la línea: sólo con la conversación desplegada del todo (Martin 15/11). En el viaje
+ * sube la línea sola; la pestaña aparece en los últimos 24 px, cuando la hoja ya llegó arriba. Sin medir, 1.
+ */
+export function opacidadPestana(panelY: number, recorrido: number): number {
+  'worklet';
+  if (recorrido <= 0) return 1;
+  return Math.min(Math.max(1 - panelY / 24, 0), 1);
+}
+
+/**
+ * Cuánto se ve el campo de Mi día ahora que no viaja: entero durante todo el recorrido, y se apaga en los
+ * últimos 24 px, que es cuando el campo del chat termina de entrar desde abajo al mismo lugar. Con el panel
+ * arriba (`panelY` 0) o sin medir, no se ve: ahí manda el campo del chat (mismo contrato que SM-I6).
+ */
+export function opacidadPieFijo(panelY: number, recorrido: number): number {
+  'worklet';
+  if (recorrido <= 0) return 0;
+  return Math.min(Math.max(panelY / 24, 0), 1);
 }
 
 /**
@@ -585,6 +658,8 @@ export function PanelDeslizable({
       gestoAsa: crearPan().hitSlop({ top: holguraArrastreArriba(insetTop) }),
       // El pie lleva el MISMO Pan sin holgura: su superficie ya es toda la franja del campo.
       gestoPie: crearPan(),
+      // Martin 15/11: con la conversación arriba, TODA la pestaña de vidrio baja el panel, no sólo la línea.
+      gestoPestana: crearPan(),
       // SM-P16: el MISMO arrastre sobre el CUERPO (la conversación). Activación MANUAL: el recognizer no se activa
       // solo al pasar un umbral —eso le quitaría el scroll a la lista—, sino cuando `decidirArrastreCuerpo` lo
       // decide (panel arriba, lista en su tope, dedo hacia abajo). Mientras no se active, el dedo es de la lista o
@@ -622,7 +697,7 @@ export function PanelDeslizable({
         }),
     };
   }, [panelY, inicio, recorrido, setPanelAbajoConAviso, avisarBajada, insetTop, cuerpoY0, cuerpoActivo, enTope, refGestoCuerpo, capturaViva]);
-  const { gestoAsa, gestoPie, gestoCuerpo } = gestos;
+  const { gestoAsa, gestoPie, gestoPestana, gestoCuerpo } = gestos;
 
   // SM-P5: el techo del recorrido cambia cuando entra/sale el teclado; `panelY` lo sigue si estaba abajo. En el hilo
   // de UI (no en el `onLayout`: ahí una escritura se pierde, ver más abajo) y sin estado de React.
@@ -637,12 +712,29 @@ export function PanelDeslizable({
 
   // SM-N22: con el panel abajo se ve el campo de Mi día (`pieAbajo`) y el chat se oculta; arriba, al revés. Mismo
   // criterio que los rótulos: lo decide `panelY` en el hilo de UI, no un estado de React.
-  const estiloPieAbajo = useAnimatedStyle(() => ({ opacity: opacidadRotuloAbajo(panelY.value, recorrido.value) }));
-  const estiloContenido = useAnimatedStyle(() => ({ flex: 1, opacity: 1 - opacidadRotuloAbajo(panelY.value, recorrido.value) }));
+  // Martin 14/11: el campo de Mi día ya no se desvanece a mitad de camino ni viaja con el asa — ver `compensacionPie`.
+  // El scrim está anclado a la pantalla (no al panel): sólo necesita la opacidad.
+  const estiloScrimAbajo = useAnimatedStyle(() => ({ opacity: opacidadPieFijo(panelY.value, recorrido.value) }));
+  // En el viaje no hay pestaña, así que el aire que el hilo le reserva sería un hueco bajo la línea: el contenido
+  // sube ese tramo y vuelve a su lugar a la par que la pestaña aparece. Transform, no layout.
+  const estiloContenido = useAnimatedStyle(() => ({
+    flex: 1,
+    opacity: opacidadConversacion(panelY.value, recorrido.value),
+    transform: [{ translateY: -AIRE_PESTANA * (1 - opacidadPestana(panelY.value, recorrido.value)) }],
+  }));
 
-  const estiloSuperficie = useAnimatedStyle(() => ({ opacity: 1 - opacidadRotuloAbajo(panelY.value, recorrido.value) }));
+  const estiloSuperficie = useAnimatedStyle(() => ({ opacity: opacidadConversacion(panelY.value, recorrido.value) }));
+  // La línea baja a su lugar dentro de la pestaña a la par que la pestaña aparece.
+  const estiloLinea = useAnimatedStyle(() => ({
+    transform: [{ translateY: BAJADA_LINEA * opacidadPestana(panelY.value, recorrido.value) }],
+  }));
+  const estiloPestana = useAnimatedStyle(() => ({ opacity: opacidadPestana(panelY.value, recorrido.value) }));
 
   const altoTira = ALTO_HANDLE + espacioSuperior(insets.top) + altoPieAbajo;
+  const estiloPieAbajo = useAnimatedStyle(() => ({
+    opacity: opacidadPieFijo(panelY.value, recorrido.value),
+    transform: [{ translateY: compensacionPie(panelY.value, recorrido.value, ocultarTira?.value ?? 0, altoTira) }],
+  }));
   const estiloPanel = useAnimatedStyle(() => ({
     transform: [
       {
@@ -680,6 +772,7 @@ export function PanelDeslizable({
    * Mismo resultado visual, cero propiedades de layout animadas, cero commits durante el arrastre.
    */
   const estiloSpacer = { height: espacioSuperior(insets.top) };
+  const altoPestana = espacioSuperior(insets.top) + ALTO_HANDLE + AIRE_PESTANA;
 
   return (
     /* El lienzo es un DEGRADÉ ASCENDENTE (`CLAUDE.md` §5): arena abajo, crema arriba. No es un
@@ -759,15 +852,23 @@ export function PanelDeslizable({
         <Animated.View
           testID="panel-pie-scrim-dock"
           pointerEvents="none"
-          style={[styles.scrimAbajo, { height: altoPieAbajo }, estiloPieAbajo]}
+          style={[styles.scrimAbajo, { height: altoPieAbajo }, estiloScrimAbajo]}
         >
           <ScrimDock testID="panel-pie-scrim" />
         </Animated.View>
       )}
 
       {/* Capa 1 — conversación en cristal, deslizable. */}
-      <Animated.View style={[styles.panel, estiloPanel]}>
-        <CristalVidrio nivel="conversacion" style={styles.cristal} sinFondo={pieAbajo != null}>
+      {/* Abajo, el panel es transparente y queda encima del final de Mi día: sus capas no toman el toque
+          (`box-none`), sólo sus hijos —la línea y el campo—. Si no, el tramo vacío sobre la línea se quedaba con
+          el toque de la última tarjeta de «Para hoy» (Martin 15/11). Arriba vuelve a ser una hoja opaca. */}
+      <Animated.View testID="panel-capa" pointerEvents={panelAbajo ? 'box-none' : 'auto'} style={[styles.panel, estiloPanel]}>
+        <CristalVidrio
+          nivel="conversacion"
+          style={styles.cristal}
+          sinFondo={pieAbajo != null}
+          pointerEvents={panelAbajo ? 'box-none' : 'auto'}
+        >
           {/* SM-N38: la superficie del panel es una capa propia cuya opacidad la decide `panelY` (no animamos
               layout): con el panel abajo no queda tarjeta detrás del campo y «Para hoy» se ve entera. */}
           {pieAbajo != null && (
@@ -780,21 +881,58 @@ export function PanelDeslizable({
           {/* SM-N38: NO hay capa de fondo detrás del campo colapsado. Se probó `panel-fondo-plano` (#1487) y en
               device pintaba un bloque de esquinas redondeadas (el radio 40 del cristal) sobre «Para hoy»: un plano
               sobre un degradé muestra su canto aunque el color coincida. El chat no tiene esa capa; Mi día tampoco. */}
+          {/* La pestaña de la línea. Sólo existe con la conversación arriba del todo: en el viaje sube la línea
+              sola (`opacidadPestana`). */}
+          <Animated.View
+            testID="panel-pestana"
+            pointerEvents="none"
+            style={[styles.pestana, elevacion(tema.color.sombra), { height: altoPestana }, estiloPestana]}
+          >
+            <View style={[styles.vidrioPestana, { borderColor: tema.color.superficie }]}>
+              {Platform.OS === 'ios' && (
+                <BlurView intensity={36} tint={tema.glass.esLight ? 'light' : 'dark'} style={StyleSheet.absoluteFill} />
+              )}
+              {/* El velo: en iOS apenas tiñe el desenfoque; en Android no hay desenfoque, así que casi tapa. */}
+              <View
+                testID="panel-pestana-velo"
+                style={[StyleSheet.absoluteFill, { backgroundColor: tema.color.superficie, opacity: Platform.OS === 'ios' ? 0.38 : 0.94 }]}
+              />
+            </View>
+          </Animated.View>
           {/* Spacer de status bar (fijo) — no intercepta toques. */}
-          <Animated.View style={estiloSpacer} pointerEvents="none" />
+          <Animated.View style={[estiloSpacer, styles.sobreHilo]} pointerEvents="none" />
+          {/* La zona de agarre de la pestaña: transparente, encima del hilo y del tamaño del vidrio. Sólo con el
+              panel arriba: abajo no hay pestaña y este rectángulo taparía el final de Mi día. La línea, que va
+              después, queda por encima y conserva su propio gesto. */}
+          <GestureDetector gesture={gestoPestana}>
+            <View
+              testID="panel-pestana-agarre"
+              collapsable={false}
+              pointerEvents={panelAbajo ? 'none' : 'auto'}
+              style={[styles.agarrePestana, { height: altoPestana }]}
+            />
+          </GestureDetector>
           <GestureDetector gesture={gestoAsa}>
             <View
-              style={styles.zonaHandle}
+              style={[styles.zonaHandle, styles.sobreHilo]}
               testID="panel-handle"
               accessible
               accessibilityRole="button"
               accessibilityLabel={panelAbajo ? 'Subir la conversación' : 'Bajar a Mi día'}
             >
-              <View style={[styles.barraHandle, { backgroundColor: tema.glass.pill }]} />
+              <Animated.View style={[styles.barraHandle, { backgroundColor: tema.glass.pill }, estiloLinea]} />
             </View>
           </GestureDetector>
+          <View style={styles.airePestana} pointerEvents="none" />
           <GestureDetector gesture={gestoCuerpo}>
-            <Animated.View style={estiloContenido}>
+            {/* Abajo, la conversación no recibe toques: desde que sube hasta el borde (pestaña de vidrio) su tramo
+                de arriba cae sobre el final de Mi día, y aunque no se vea se quedaba con el toque de la última
+                tarjeta de «Para hoy» (Martin 15/11). */}
+            <Animated.View
+              testID="panel-contenido"
+              pointerEvents={panelAbajo ? 'none' : 'auto'}
+              style={[estiloContenido, { marginTop: -altoPestana }]}
+            >
               <ArrastreCuerpoContext.Provider value={arrastreCuerpo}>{children}</ArrastreCuerpoContext.Provider>
             </Animated.View>
           </GestureDetector>
@@ -829,7 +967,33 @@ const styles = StyleSheet.create({
   panel: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, zIndex: 3 },
   cristal: { flex: 1 },
   superficie: { borderTopLeftRadius: 40, borderTopRightRadius: 40, borderTopWidth: 1 },
-  pieAbajo: { position: 'absolute', left: 0, right: 0 },
+  // Arriba copia el radio de la superficie del panel; abajo, el redondeo propio de la pestaña.
+  pestana: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    zIndex: 1,
+  },
+  // Recorta el desenfoque a la forma de la pestaña; el filo claro de abajo es el canto del vidrio.
+  vidrioPestana: {
+    flex: 1,
+    overflow: 'hidden',
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  agarrePestana: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2 },
+  // Lo que va por encima del hilo, que ahora llega hasta el borde de arriba.
+  sobreHilo: { zIndex: 2 },
+  airePestana: { height: AIRE_PESTANA },
+  pieAbajo: { position: 'absolute', left: 0, right: 0, zIndex: 3 },
   pieGesto: { flex: 1 },
   scrimAbajo: { position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 2 },
   // SM-N38: sólo la línea — `.grip{padding:6px 0 2px}` del prototipo (6 + 5 + 2 = ALTO_HANDLE).

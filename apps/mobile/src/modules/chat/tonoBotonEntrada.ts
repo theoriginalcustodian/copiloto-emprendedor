@@ -7,7 +7,9 @@ import type { Tokens } from '../../theme/tokens';
  */
 export function tonoBotonEntrada(tema: Tokens, activo: boolean): { fondo: string; glifo: string } {
   return activo
-    ? { fondo: tema.glass.ub2, glifo: tema.color.acentoTexto }
+    // Terracota, el acento de la marca (Martin 13/11: «no el bordó»). Antes `glass.ub2`, el extremo oscuro
+    // del degradé de la burbuja. Blanco sobre terracota da 3,17:1: pasa el 3:1 que pide un glifo.
+    ? { fondo: tema.color.acento, glifo: tema.color.acentoTexto }
     : { fondo: tema.color.superficieAlta, glifo: tema.color.textoTenue };
 }
 

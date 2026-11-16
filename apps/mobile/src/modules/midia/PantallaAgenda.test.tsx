@@ -17,7 +17,7 @@ import { KEY_GOOGLE_CALENDAR, TEXTO_NUEVO_EVENTO, leerAgenda, leerVencimientos, 
 
 import { tomarPendiente } from '../chat/mensajePendiente';
 import { ThemeProvider } from '../../theme/ThemeProvider';
-import { PantallaAgenda } from './PantallaAgenda';
+import { PantallaAgenda, posicionAhora } from './PantallaAgenda';
 
 const mockLeer = leerAgenda as jest.MockedFunction<typeof leerAgenda>;
 const mockListarCatalogo = listarCatalogo as jest.MockedFunction<typeof listarCatalogo>;
@@ -75,7 +75,9 @@ describe('PantallaAgenda (BL-J13)', () => {
       });
       await montar();
       await waitFor(() => expect(screen.getByTestId('agenda-evento-ev1')).toBeTruthy());
-      expect(screen.getByTestId('agenda-evento-ev1')).toHaveTextContent(/Google Calendar · Oficina Centro/);
+      // La fuente («Google Calendar») ya la dice la línea de estado: el detalle es sólo lo propio del evento.
+      expect(screen.getByTestId('agenda-evento-ev1')).toHaveTextContent(/Oficina Centro/);
+      expect(screen.getByTestId('agenda-evento-ev1')).not.toHaveTextContent(/Google Calendar/);
       expect(screen.getByTestId('agenda-evento-ev2')).not.toHaveTextContent(/·\s*$/);
     });
 
@@ -117,7 +119,8 @@ describe('PantallaAgenda (BL-J13)', () => {
     expect(screen.getByTestId('agenda-grupo-manana')).toHaveTextContent(/Mañana/);
     expect(screen.getByTestId('agenda-grupo-semana')).toHaveTextContent(/Esta semana/);
     expect(screen.getByTestId('agenda-grupo-sin_hora')).toHaveTextContent(/Sin hora/);
-    expect(screen.queryByTestId('agenda-grupo-hoy-vacio')).toBeNull();
+    // Martin 15/11: «Hoy» es una lista como los demás; vacío, lo dice.
+    expect(screen.getByTestId('agenda-grupo-hoy-vacio')).toHaveTextContent('Nada agendado para hoy.');
     expect(screen.getByTestId('agenda-grupo-semana-vacio')).toBeTruthy();
     expect(screen.queryByTestId('agenda-grupo-manana-vacio')).toBeNull();
   });
@@ -207,7 +210,7 @@ describe('PantallaAgenda (BL-J13)', () => {
     expect(screen.getByText('Nuevo evento')).toBeTruthy();
   });
 
-  it('SM-N34: la línea del ahora aparece SOLO en Hoy (Mañana y Esta semana son lista) y SOLO con eventos con hora', async () => {
+  it('«Hoy» es una lista: cada evento dice cuánto falta o que ya pasó; Mañana no lleva ese dato', async () => {
     const hace = (h: number) => new Date(Date.now() + h * 3600_000).toISOString();
     mockLeer.mockResolvedValue({
       status: 'ok',
@@ -230,16 +233,29 @@ describe('PantallaAgenda (BL-J13)', () => {
     });
     await montar();
     await waitFor(() => expect(screen.getByTestId('agenda-evento-pasado')).toBeTruthy());
+    // La línea del ahora (Google Calendar) cruza la lista de hoy una sola vez, entre lo pasado y lo que viene.
     expect(screen.getAllByTestId('agenda-linea-ahora')).toHaveLength(1);
     expect(screen.getByTestId('agenda-grupo-hoy')).toContainElement(screen.getByTestId('agenda-linea-ahora'));
     expect(screen.getByTestId('agenda-grupo-manana')).not.toContainElement(screen.getByTestId('agenda-linea-ahora'));
+    expect(screen.getByTestId('agenda-dia-hoy')).toHaveTextContent(String(new Date().getDate()));
+    expect(screen.getByTestId('agenda-evento-pasado')).toHaveTextContent(/Ya pasó/);
+    expect(screen.getByTestId('agenda-evento-futuro')).toHaveTextContent(/En 3 h|En 2 h 59 min/);
+    expect(screen.getByTestId('agenda-evento-m1')).not.toHaveTextContent(/En \d/);
   });
 
-  it('Hoy vacío dibuja igual la rejilla con la línea del ahora, como el prototipo (orden 2026-11-07)', async () => {
-    await montar();
-    await waitFor(() => expect(screen.getByTestId('agenda-grupo-hoy')).toBeTruthy());
-    expect(screen.queryByTestId('agenda-grupo-hoy-vacio')).toBeNull();
-    expect(screen.getByTestId('agenda-grupo-hoy')).toContainElement(screen.getByTestId('agenda-linea-ahora'));
+  it('la línea del ahora va antes del primer evento con hora que no pasó; al final si pasaron todos; sin horas, no va', () => {
+    const ahora = new Date(2026, 10, 15, 12, 0).getTime();
+    const ev = (id: string, h: number | null) => ({
+      id,
+      titulo: id,
+      inicioCrudo: h == null ? '2026-11-15' : new Date(2026, 10, 15, h, 0).toISOString(),
+      finCrudo: null,
+      diaCompleto: h == null,
+    });
+    expect(posicionAhora([ev('dia', null), ev('a', 8), ev('b', 15)] as never, ahora)).toBe(2);
+    expect(posicionAhora([ev('a', 8), ev('b', 9)] as never, ahora)).toBe(2);
+    expect(posicionAhora([ev('b', 15)] as never, ahora)).toBe(0);
+    expect(posicionAhora([ev('dia', null)] as never, ahora)).toBeNull();
   });
 
   it('mapeo `agenda`: subtítulo del prototipo y «Google Calendar conectada» sólo con Calendar conectado', async () => {

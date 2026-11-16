@@ -20,6 +20,34 @@ export function loginWithGoogleIdToken(idToken: string): Promise<LoginResponse> 
 }
 
 /**
+ * Resultado del alta con mail y contraseña (Martin 12/11, flujo «Entrada a Odobi»). Los rechazos
+ * esperables —mail inválido, contraseña que GoTrue no acepta— vuelven como valor con un `mensaje`
+ * para mostrar; un fallo de red o un 5xx vuelve como `red`.
+ */
+export type ResultadoAlta = { ok: true } | { ok: false; motivo: 'rechazada'; mensaje: string } | { ok: false; motivo: 'red' };
+
+/**
+ * POST /auth/signup — alta self-service con mail y contraseña (sin Bearer: todavía no hay tenant).
+ * El backend NO devuelve tokens: quien llama hace el login después (`SessionProvider.registrar`).
+ * Mismo endpoint que usa la web (`copiloto-web/src/lib/api/auth.ts`).
+ *
+ * ⚠️ Hoy el alta NO verifica el mail (GoTrue sin SMTP, `MAILER_AUTOCONFIRM`): el código de 6 dígitos
+ * del flujo de diseño queda para cuando el backend tenga correo saliente.
+ */
+export async function registrarCuenta(email: string, password: string): Promise<ResultadoAlta> {
+  try {
+    await apiClient.post<unknown>('/auth/signup', { email, password }, { auth: false });
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
+      // El texto de GoTrue llega en inglés («Password should be…»): se muestra uno propio, en castellano.
+      return { ok: false, motivo: 'rechazada', mensaje: 'No pudimos crear la cuenta. Revisá el mail y que la contraseña tenga al menos 8 caracteres.' };
+    }
+    return { ok: false, motivo: 'red' };
+  }
+}
+
+/**
  * Resultado de un cambio de credenciales (K-12 / BL-J11). Los fallos ESPERABLES —contraseña actual
  * incorrecta, contraseña inválida, mail ya usado— vuelven como valor con el `mensaje` del backend
  * (es el texto que se le muestra a la persona, nunca uno inventado acá); lo inesperado sigue

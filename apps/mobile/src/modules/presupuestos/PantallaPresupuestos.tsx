@@ -18,12 +18,15 @@ import { DetallePresupuesto } from './DetallePresupuesto';
 import { FormularioPresupuesto, type ValoresInicialesPresupuesto } from './FormularioPresupuesto';
 import { TarjetaPresupuesto } from './TarjetaPresupuesto';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
-import { BloqueCifra } from '../../theme/BloqueCifra';
+import { BloqueCifra, elevacion } from '../../theme/BloqueCifra';
 import { centavosADecimal, chipResumenEspera, resumenEspera } from './resumenEspera';
+import { DIBUJO_PRESUPUESTO } from './dibujoPresupuesto';
 import { AvisoDictado, inicialesDePresupuesto, DockFuncion, useDictadoPorFuncion } from '../voz';
+import { BotonAcceso, IconoLapiz } from '../../theme/BotonAcceso';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
+import { VacioFuncion } from '../../theme/VacioFuncion';
 
 const PLACEHOLDER_DOCK = 'Un presupuesto, o hablá…';
 
@@ -190,7 +193,7 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
   const resumenParcial = listadoLlegoAlTope(presupuestos.length);
 
   return (
-    <MarcoGlass titulo="Presupuestos" icono="presupuestos" testID="pantalla-presupuestos">
+    <MarcoGlass titulo="Presupuestos" icono="presupuestos" sinIcono testID="pantalla-presupuestos">
       {estado === 'cargando' && (
         <View style={styles.centro}>
           <ActivityIndicator testID="presupuestos-cargando" color={tema.color.acento} />
@@ -219,7 +222,7 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
       {estado === 'ok' && (
         <ScrollFormulario
           testID="presupuestos-lista"
-          contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.md, paddingBottom: 120 }}
+          contentContainerStyle={{ padding: tema.espacio.md, gap: 24, paddingBottom: 120 }}
           refreshControl={
             // El tirón es el ÚNICO disparador que cubre lo que cambió afuera de esta pantalla.
             <RefreshControl
@@ -251,24 +254,6 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
             />
           ) : (
             <>
-              {/* BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`: dictar acá abre el
-                  formulario con `concepto` prellenado (K-10, `/transcribir`, sin sesión de chat),
-                  nunca una corrección. */}
-              <View style={styles.filaAlta}>
-                <FilaBotones
-                    testID="presupuestos-acciones"
-                  compacto
-                    botones={[
-                      {
-                        etiqueta: 'Nuevo presupuesto',
-                        onPress: abrirFormularioEnBlanco,
-                        variante: 'primario',
-                        testID: 'presupuestos-nuevo',
-                      },
-                    ]}
-                  />
-              </View>
-
               {/* `presu` (mapeo 2026-10-12): el resumen que el prototipo pone arriba de la lista. Derivado
                   del listado — ver `resumenEspera.ts`. Sin `estado` en ningún presupuesto no se pinta. */}
               {resumen != null && (
@@ -290,6 +275,17 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
                 </BloqueCifra>
               )}
 
+              {/* Mismo criterio que Gastos (Martin 14/11, ver `BotonAcceso`): la vía manual va callada, en tarjeta
+                  blanca, DEBAJO de la cifra; la terracota queda para el micrófono del dock. */}
+              <View testID="presupuestos-acciones">
+                <BotonAcceso
+                  testID="presupuestos-nuevo"
+                  onPress={abrirFormularioEnBlanco}
+                  icono={<IconoLapiz color={tema.color.acentoTinta} />}
+                  etiqueta="Nuevo presupuesto"
+                />
+              </View>
+
               {errorMic != null && (
                 <Text testID="presupuestos-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
                   {errorMic}
@@ -299,21 +295,35 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
               {/* 🔴 Decisión C: la lista rica de presupuestos (con estado, el toggle de historial) NO
                   se toca — la envuelve el buscador. Sin query, se muestra intacta; con query, pega a
                   `/actividad?funcion=presupuestos&q=` y muestra el card uniforme. */}
-              <BuscadorActividad funcion="presupuestos" testIDBase="presupuestos-busqueda" placeholder="Buscar un presupuesto">
-              {!hayPresupuestos && (
-                <Text
+              {/* Sin presupuestos no hay buscador (ver `VacioFuncion`). El historial vacío no es «todavía no
+                  hiciste ninguno»: ahí va una línea, sin dibujo. */}
+              {!hayPresupuestos && !verHistorial && (
+                <VacioFuncion
                   testID="presupuestos-vacio"
-                  style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}
-                >
-                  {verHistorial
-                    ? 'No hay presupuestos en el historial.'
-                    : 'Todavía no hiciste ningún presupuesto. También podés pedírselo al copiloto por chat.'}
+                  dibujo={DIBUJO_PRESUPUESTO}
+                  titulo="Todavía no hay presupuestos"
+                  cuerpo="Decime abajo para quién y qué lleva, o armalo a mano."
+                />
+              )}
+              {!hayPresupuestos && verHistorial && (
+                <Text testID="presupuestos-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
+                  No hay presupuestos en el historial.
                 </Text>
               )}
 
-              {presupuestos.map((p) => (
-                <TarjetaPresupuesto key={p.id} presupuesto={p} onPress={setDetalle} />
-              ))}
+              {hayPresupuestos && (
+              <BuscadorActividad funcion="presupuestos" testIDBase="presupuestos-busqueda" placeholder="Buscar un presupuesto" sinEtiqueta>
+              <View
+                testID="presupuestos-tarjeta"
+                style={[styles.tarjeta, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}
+              >
+                {presupuestos.map((p, i) => (
+                  <TarjetaPresupuesto key={p.id} presupuesto={p} onPress={setDetalle} conDivisor={i > 0} />
+                ))}
+              </View>
+
+              </BuscadorActividad>
+              )}
 
               {/* El historial existe porque corregir un presupuesto lo saca del listado vigente, y el
                   emprendedor puede necesitar el que ya le mandó a su cliente. */}
@@ -328,7 +338,6 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
                   },
                 ]}
               />
-              </BuscadorActividad>
             </>
           )}
         </ScrollFormulario>
@@ -371,6 +380,6 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
 }
 
 const styles = StyleSheet.create({
-  filaAlta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  tarjeta: { borderRadius: 22, paddingHorizontal: 20 },
 });

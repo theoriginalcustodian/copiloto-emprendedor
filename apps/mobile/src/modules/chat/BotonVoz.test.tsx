@@ -381,13 +381,13 @@ describe('BotonVoz -- el mic chico del dock (SM-I2, `.mic` del mapa)', () => {
 
   it('sin `disabled`, va con el fondo del acento', async () => {
     await montar();
-    expect(fondoNucleo()).toBe(SKINS.claro.glass.ub2);
+    expect(fondoNucleo()).toBe(SKINS.claro.color.acento); // terracota (Martin 13/11), antes el bordó `glass.ub2`
     expect(screen.getByTestId('boton-voz').props.accessibilityState.disabled).toBe(false);
   });
 
   it('🔴 capturando NO agrisa: es el botón que el dedo está apretando, aunque no admita otra captura', async () => {
     await montar({ capturando: true });
-    expect(fondoNucleo()).toBe(SKINS.claro.glass.ub2);
+    expect(fondoNucleo()).toBe(SKINS.claro.color.acento); // terracota (Martin 13/11), antes el bordó `glass.ub2`
     expect(screen.getByTestId('boton-voz').props.accessibilityState.disabled).toBe(true);
   });
 });

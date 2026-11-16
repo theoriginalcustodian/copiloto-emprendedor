@@ -68,20 +68,20 @@ export function PantallaTicket({ ticketId }: PantallaTicketProps) {
   const titulo = ticket != null ? `${ticket.codigo} · ${ETIQUETA_ESTADO_TICKET[ticket.estado]}` : 'Tu ticket';
 
   return (
-    <MarcoGlass titulo={titulo} icono="soporte" testID="pantalla-ticket">
+    <MarcoGlass titulo={titulo} icono="soporte" sinIcono testID="pantalla-ticket">
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.sm }}
         testID="ticket-scroll"
       >
         {estado === 'cargando' && (
-          <Text style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.mono }}>
+          <Text style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.ui }}>
             Cargando…
           </Text>
         )}
 
         {estado === 'error' && (
-          <Text style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.mono }}>
+          <Text style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.ui }}>
             No pudimos cargar tu ticket.
           </Text>
         )}
@@ -89,7 +89,7 @@ export function PantallaTicket({ ticketId }: PantallaTicketProps) {
         {estado === 'no_disponible' && (
           <Text
             testID="ticket-no-disponible"
-            style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.mono }}
+            style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.ui }}
           >
             Tu ticket todavía no está disponible acá.
           </Text>
@@ -98,7 +98,7 @@ export function PantallaTicket({ ticketId }: PantallaTicketProps) {
         {estado === 'no_encontrado' && (
           <Text
             testID="ticket-no-encontrado"
-            style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.mono }}
+            style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.ui }}
           >
             No encontramos ese ticket.
           </Text>
@@ -106,7 +106,7 @@ export function PantallaTicket({ ticketId }: PantallaTicketProps) {
 
         {estado === 'ok' && ticket != null && (
           <>
-            <Text style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.mono, fontSize: 13 }}>
+            <Text style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.ui, fontSize: 13 }}>
               {ticket.asunto}
             </Text>
             {mensajes.map((m) => (
@@ -126,7 +126,7 @@ export function PantallaTicket({ ticketId }: PantallaTicketProps) {
               >
                 <Text
                   testID={`ticket-msj-${m.id}-autor`}
-                  style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.mono, fontSize: 11 }}
+                  style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.ui, fontSize: 11 }}
                 >
                   {m.autor === 'operador' ? 'Operador' : 'Vos'} · {fechaCorta(m.created_at)}
                 </Text>

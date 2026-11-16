@@ -1,7 +1,7 @@
 import { Text, View } from 'react-native';
 
-import { Tile } from '../../theme/glass/Tile';
 import { Recibo } from './Recibo';
+import { TarjetaChat } from './TarjetaChat';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
@@ -26,6 +26,11 @@ import { useTema } from '../../theme/ThemeProvider';
  * sus propios estados terminales, fuera de esta shell.
  */
 export interface TarjetaPropuestaShellProps {
+  /**
+   * Qué se va a guardar, en sustantivo («Nuevo gasto»): un título NOMBRA, el botón actúa (`CLAUDE.md` §9,
+   * regla del destino). Opcional: las cards que todavía no pasaron al resumen siguen sólo con el aviso.
+   */
+  titulo?: string;
   /** *"Esto entendí. Revisalo y tocá X — todavía no lo Y."* — el verbo es de cada acción. */
   aviso: string;
   /**
@@ -39,13 +44,21 @@ export interface TarjetaPropuestaShellProps {
   children: React.ReactNode;
 }
 
-export function TarjetaPropuestaShell({ aviso, cita, testID, children }: TarjetaPropuestaShellProps) {
+export function TarjetaPropuestaShell({ titulo, aviso, cita, testID, children }: TarjetaPropuestaShellProps) {
   const tema = useTema();
   const citaLimpia = cita != null && cita.trim() !== '' ? cita.trim() : null;
 
   return (
-    <Tile testID={testID}>
+    <TarjetaChat testID={testID}>
       <View style={{ gap: tema.espacio.sm }}>
+        {titulo != null && (
+          <Text
+            testID={`${testID}-titulo`}
+            style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.base }}
+          >
+            {titulo}
+          </Text>
+        )}
         <Text testID={`${testID}-aviso`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
           {aviso}
         </Text>
@@ -61,7 +74,7 @@ export function TarjetaPropuestaShell({ aviso, cita, testID, children }: Tarjeta
 
         {children}
       </View>
-    </Tile>
+    </TarjetaChat>
   );
 }
 

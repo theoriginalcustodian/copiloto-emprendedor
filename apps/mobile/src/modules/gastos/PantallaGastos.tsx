@@ -14,15 +14,19 @@ import {
 } from '@copiloto/core';
 
 import { DetalleGasto } from './DetalleGasto';
+import { DIBUJO_BILLETE } from './dibujoBillete';
 import { FormularioGasto, type ValoresInicialesGasto } from './FormularioGasto';
 import { FotoFuncion } from './FotoFuncion';
 import { ResumenMes } from './ResumenMes';
 import { TarjetaGasto } from './TarjetaGasto';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
 import { AvisoDictado, DockFuncion, inicialesDeGasto, useDictadoPorFuncion, type ViaTexto } from '../voz';
-import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
+import { ScrollFormulario } from '../../theme/glass/campos';
+import { elevacion } from '../../theme/BloqueCifra';
+import { BotonAcceso, IconoLapiz } from '../../theme/BotonAcceso';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
+import { VacioFuncion } from '../../theme/VacioFuncion';
 
 /**
  * `PantallaGastos` — la función "Gastos" del escritorio: resumen del mes, listado y alta manual, todo
@@ -190,8 +194,25 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
 
   const hayGastos = gastos.length > 0;
 
+  // Las dos vías de alta que no son la voz, PAREJAS (ver `BotonAcceso`). Dictar y escribir viven en el dock del
+  // pie; leer una foto abre el formulario con la propuesta del OCR prellenada.
+  const viasDeAlta = (
+    <View style={styles.filaAlta} testID="gastos-acciones">
+      <FotoFuncion onLectura={alLeerFoto} onError={alErrorFoto} />
+      <View style={styles.mitad}>
+        <BotonAcceso
+          testID="gastos-nuevo"
+          accessibilityLabel="Anotar un gasto a mano"
+          onPress={abrirFormularioEnBlanco}
+          icono={<IconoLapiz color={tema.color.acentoTinta} />}
+          etiqueta="Anotar a mano"
+        />
+      </View>
+    </View>
+  );
+
   return (
-    <MarcoGlass titulo="Gastos" icono="gastos" testID="pantalla-gastos">
+    <MarcoGlass titulo="Gastos" icono="gastos" sinIcono testID="pantalla-gastos">
       {estado === 'cargando' && (
         <View style={styles.centro}>
           <ActivityIndicator testID="gastos-cargando" color={tema.color.acento} />
@@ -220,7 +241,8 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
       {estado === 'ok' && (
         <ScrollFormulario
           testID="gastos-lista"
-          contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.md, paddingBottom: 120 }}
+          // 20 entre bloques: la cifra, las vías de alta, el desglose y la lista se leen cada uno por separado.
+          contentContainerStyle={{ padding: tema.espacio.md, gap: 20, paddingBottom: 120 }}
           refreshControl={
             <RefreshControl
               refreshing={refrescando}
@@ -258,25 +280,9 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
             />
           ) : (
             <>
-              {resumen != null && <ResumenMes resumen={resumen} />}
-
-              {/* SM-I2: la píldora de alta manual del mockup 12, con la foto al lado. Dictar y escribir viven
-                  en el dock del pie; leer una foto abre el formulario con la propuesta del OCR prellenada. */}
-              <View style={styles.filaAlta}>
-                <FotoFuncion onLectura={alLeerFoto} onError={alErrorFoto} />
-                <FilaBotones
-                  testID="gastos-acciones"
-                  compacto
-                  botones={[
-                    {
-                      etiqueta: 'Anotar un gasto',
-                      onPress: abrirFormularioEnBlanco,
-                      variante: 'primario',
-                      testID: 'gastos-nuevo',
-                    },
-                  ]}
-                />
-              </View>
+              {/* Las vías de alta van pegadas a la cifra y ANTES del desglose: son lo que se viene a hacer. Con el
+                  resumen sin cargar igual se muestran. */}
+              {resumen != null ? <ResumenMes resumen={resumen} entre={viasDeAlta} /> : viasDeAlta}
 
               {errorMic != null && (
                 <Text testID="gastos-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
@@ -287,16 +293,26 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
               {/* 🔴 Decisión C: el buscador NO reemplaza la lista rica de gastos — la envuelve. Sin
                   query muestra las `TarjetaGasto` (con categoría) tal cual; con query pega a
                   `/actividad?funcion=gastos&q=` y muestra el card uniforme. La lista rica queda intacta. */}
-              <BuscadorActividad funcion="gastos" testIDBase="gastos-busqueda" placeholder="Buscar un gasto" rotuloLista="Últimos">
-                {!hayGastos && (
-                  <Text testID="gastos-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-                    Todavía no anotaste ningún gasto. También podés decírselo al copiloto hablando.
-                  </Text>
-                )}
+              {/* Sin gastos no hay buscador ni rótulo «Últimos»: buscar en una lista vacía no encuentra nada, y
+                  el campo ahí arriba hacía pensar que faltaba cargar algo. El vacío dice las tres vías, en la
+                  voz de Odobi. */}
+              {!hayGastos && (
+                <VacioFuncion
+                  testID="gastos-vacio"
+                  dibujo={DIBUJO_BILLETE}
+                  titulo="Todavía no hay gastos"
+                  cuerpo="Decímelo abajo, sacale una foto al ticket o anotalo a mano."
+                />
+              )}
 
-                {gastos.map((g) => (
-                  <TarjetaGasto key={g.id} gasto={g} onPress={setDetalle} />
-                ))}
+              {hayGastos && (
+              <BuscadorActividad funcion="gastos" testIDBase="gastos-busqueda" placeholder="Buscar un gasto" rotuloLista="Últimos" sinEtiqueta>
+                {/* Una sola tarjeta blanca con una fila por gasto (ver `TarjetaGasto`). */}
+                <View style={[styles.tarjetaLista, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}>
+                  {gastos.map((g, i) => (
+                    <TarjetaGasto key={g.id} gasto={g} onPress={setDetalle} conDivisor={i > 0} />
+                  ))}
+                </View>
 
                 {/* `total` es el conteo del TENANT, no el de la página: con 50 cards en pantalla y 137
                     gastos, decir "50" sería mentir por omisión. Sólo se muestra si difiere. */}
@@ -306,6 +322,7 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
                   </Text>
                 )}
               </BuscadorActividad>
+              )}
             </>
           )}
         </ScrollFormulario>
@@ -333,5 +350,7 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
 
 const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  filaAlta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  filaAlta: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  mitad: { flex: 1 },
+  tarjetaLista: { borderRadius: 22, paddingHorizontal: 20 },
 });

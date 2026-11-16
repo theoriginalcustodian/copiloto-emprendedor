@@ -55,7 +55,7 @@ import {
   listarCatalogo,
 } from '@copiloto/core';
 
-import { PantallaMiDia } from './PantallaMiDia';
+import { cuandoEs, horaCorta, PantallaMiDia } from './PantallaMiDia';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 
 const leerMock = leerTablero as jest.MockedFunction<typeof leerTablero>;
@@ -197,7 +197,7 @@ describe('PantallaMiDia — panel de calendario (CAL1 §3, fuera del Kanban)', (
       calendario: {
         conectado: true,
         eventos: [
-          { id: 'ev1', titulo: 'Reunión con proveedor', inicioCrudo: { dateTime: '2026-08-12T15:00:00-03:00' } },
+          { id: 'ev1', titulo: 'Reunión con proveedor', inicioCrudo: { dateTime: new Date(Date.now() + 40 * 60_000).toISOString() } },
           { id: 'ev2', titulo: 'Cumpleaños (todo el día)', inicioCrudo: { date: '2026-08-12' } },
         ],
       },
@@ -208,6 +208,40 @@ describe('PantallaMiDia — panel de calendario (CAL1 §3, fuera del Kanban)', (
     await waitFor(() => expect(screen.getByTestId('midia-calendario-evento-ev1')).toBeTruthy());
     expect(screen.getByText('Reunión con proveedor')).toBeTruthy();
     expect(screen.getByText('Cumpleaños (todo el día)')).toBeTruthy();
+  });
+
+it('dos columnas: la hora entera en un renglón y en 24 h; al lado el título con dos renglones y debajo cuándo es', async () => {
+    expect(horaCorta({ dateTime: new Date(2026, 10, 15, 8, 30).toISOString() })).toBe('08:30');
+    expect(horaCorta({ date: '2026-11-15' })).toBeNull();
+    const en40 = new Date(Date.now() + 40 * 60_000 + 5_000);
+    leerCalendarioMock.mockResolvedValue({
+      status: 'ok',
+      calendario: {
+        conectado: true,
+        eventos: [
+          { id: 'ev1', titulo: 'Visita', inicioCrudo: { dateTime: en40.toISOString() } },
+          { id: 'ev2', titulo: 'Feriado', inicioCrudo: { date: '2026-11-15' } },
+        ],
+      },
+    });
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-calendario-hora-ev1')).toBeTruthy());
+    expect(screen.getByTestId('midia-calendario-hora-ev1').props.numberOfLines).toBe(1);
+    expect(screen.getByText('Visita').props.numberOfLines).toBe(2);
+    expect(screen.getByTestId('midia-calendario-cuando-ev1')).toHaveTextContent('En 40 min');
+    expect(screen.getByTestId('midia-calendario-hora-ev2')).toHaveTextContent('Hoy');
+    expect(screen.getByTestId('midia-calendario-cuando-ev2')).toHaveTextContent('Todo el día');
+  });
+
+  it('la segunda línea dice cuánto falta, si está en curso o si ya pasó', () => {
+    const ahora = new Date(2026, 10, 15, 11, 0).getTime();
+    const min = 60_000;
+    expect(cuandoEs(ahora + 5 * min, ahora)).toBe('En 5 min');
+    expect(cuandoEs(ahora + 240 * min, ahora)).toBe('En 4 h');
+    expect(cuandoEs(ahora + 80 * min, ahora)).toBe('En 1 h 20 min');
+    expect(cuandoEs(ahora, ahora)).toBe('Ahora');
+    expect(cuandoEs(ahora - 20 * min, ahora)).toBe('Empezó hace 20 min');
+    expect(cuandoEs(ahora - 90 * min, ahora)).toBe('Ya pasó');
   });
 
   it('🔴 calendario `no_disponible` no rompe ni tapa el Kanban — se omite en silencio', async () => {
@@ -527,5 +561,53 @@ describe('PantallaMiDia — SM-N38: la reserva del dock va DENTRO del scroll', (
     // Mecanismo: si volviera a ser hermano del scroll, el viewport terminaría en el borde de la reserva y la
     // lista se cortaría con canto duro sobre una franja vacía (lo que el operador lee como «fondo»).
     expect(within(scroll).getByTestId('midia-pie-prueba')).toBeTruthy();
+  });
+});
+describe('PantallaMiDia — la tarjeta anotada a mano se resuelve acá (Martin 15/11)', () => {
+  async function abrirManual() {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      tablero: tableroCon([tarjetaDe('m', { regla: null, texto: 'Comprar cinta aisladora' }), tarjetaDe('d')]),
+    });
+    await montar();
+    // La primera de «Para hoy» ya nace desplegada: no hace falta tocarla.
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-m-manual')).toBeTruthy());
+  }
+
+  it('desplegada ofrece Realizado, Editar y Borrar; una del detector no', async () => {
+    await abrirManual();
+    expect(screen.getByTestId('midia-tarjeta-m-realizado')).toBeTruthy();
+    expect(screen.getByTestId('midia-tarjeta-m-editar')).toBeTruthy();
+    expect(screen.getByTestId('midia-tarjeta-m-borrar-manual')).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-d'));
+    expect(screen.queryByTestId('midia-tarjeta-d-realizado')).toBeNull();
+  });
+
+  it('«Realizado» la pasa a hecha en el servidor y vuelve a leer el tablero', async () => {
+    await abrirManual();
+    const lecturas = leerMock.mock.calls.length;
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-m-realizado'));
+    await waitFor(() => expect(cambiarEstadoMock).toHaveBeenCalledWith('m', 'hecha'));
+    await waitFor(() => expect(leerMock.mock.calls.length).toBeGreaterThan(lecturas));
+  });
+
+  it('«Borrar» la borra en el servidor', async () => {
+    await abrirManual();
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-m-borrar-manual'));
+    await waitFor(() => expect(borrarMock).toHaveBeenCalledWith('m'));
+  });
+
+  it('⚠️ «Editar» muestra texto y fecha y hora, pero todavía no guarda y lo dice', async () => {
+    await abrirManual();
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-m-editar'));
+    expect(screen.getByTestId('midia-tarjeta-m-edicion-texto').props.value).toBe('Comprar cinta aisladora');
+    expect(screen.getByTestId('midia-tarjeta-m-edicion-cuando')).toBeTruthy();
+    expect(screen.getByTestId('midia-tarjeta-m-edicion-aviso')).toHaveTextContent(/todavía no guarda/);
+    expect(screen.getByTestId('midia-tarjeta-m-edicion-guardar').props.accessibilityState).toEqual({ disabled: true });
+
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-m-edicion-cancelar'));
+    expect(screen.queryByTestId('midia-tarjeta-m-edicion')).toBeNull();
+    expect(screen.getByTestId('midia-tarjeta-m-realizado')).toBeTruthy();
   });
 });

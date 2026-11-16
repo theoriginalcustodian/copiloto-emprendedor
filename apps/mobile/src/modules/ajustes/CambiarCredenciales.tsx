@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { CampoSecreto, FilaBotones } from '../../theme/glass/campos';
-import { Row } from '../../theme/glass/Row';
+import { Chevron } from './Chevron';
+import { FilaGrupo } from './GrupoFilas';
 import { useTema } from '../../theme/ThemeProvider';
 
 /** Largo mínimo de la política de GoTrue; el backend decide (`contrasena_invalida`), esto sólo evita
@@ -76,14 +77,23 @@ export function CambiarCredenciales({ cuentaGoogle }: { cuentaGoogle: boolean })
   if (cuentaGoogle) return null;
 
   return (
-    <View testID="cuenta-credenciales" style={{ gap: tema.espacio.md }}>
+    <FilaGrupo
+      testID={abierta ? 'cuenta-credenciales' : 'cuenta-cambiar-contrasena'}
+      onPress={abierta ? undefined : () => setAbierta(true)}
+      accessibilityLabel={abierta ? undefined : 'Cambiar contraseña'}
+    >
       {abierta ? (
-        <FormularioContrasena onListo={() => setAbierta(false)} />
+        <View style={{ flex: 1 }}>
+          <FormularioContrasena onListo={() => setAbierta(false)} />
+        </View>
       ) : (
-        <Row testID="cuenta-cambiar-contrasena" onPress={() => setAbierta(true)} accessibilityLabel="Cambiar contraseña">
-          <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>Cambiar contraseña</Text>
-        </Row>
+        <>
+          <Text style={{ flex: 1, color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiMedium }}>
+            Cambiar contraseña
+          </Text>
+          <Chevron />
+        </>
       )}
-    </View>
+    </FilaGrupo>
   );
 }

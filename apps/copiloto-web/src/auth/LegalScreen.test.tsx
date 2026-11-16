@@ -36,10 +36,10 @@ describe('LegalScreen', () => {
 
   it('nombra los terceros reales verificados contra el código (BL-O6)', () => {
     render(<LegalScreen kind="tos" onVolver={vi.fn()} />);
-    expect(screen.getByText(/Composio/)).toBeInTheDocument();
-    expect(screen.getByText(/ARCA/)).toBeInTheDocument();
-    expect(screen.getByText(/Mercado Pago/)).toBeInTheDocument();
-    expect(screen.getByText(/OpenRouter/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Composio/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/ARCA/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Mercado Pago/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/OpenRouter/).length).toBeGreaterThan(0);
   });
 
   it('la clave fiscal se declara no guardada en texto plano', () => {

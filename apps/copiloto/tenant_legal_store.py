@@ -17,7 +17,7 @@ _TABLE = "uc_factory.tenants"
 # de `apps/copiloto-web`/`apps/mobile` (Python vs TS, repos-dentro-del-repo): el valor viaja por
 # CONVENCIÓN -- literal idéntico en los tres lugares -- no por código compartido. Si cambia acá,
 # cambia también en el front (Parte A, BL-O6); si no, todo tenant queda en 409 permanente.
-LEGAL_VERSION_VIGENTE = "2026-09-22"
+LEGAL_VERSION_VIGENTE = "2026-11-13"
 
 
 class TenantLegalStore:

@@ -36,7 +36,7 @@ import {
 
 import { CampoTexto, FilaBotones } from '../../../theme/glass/campos';
 import { PRESS_FADE, pressableStyle } from '../../../theme/glass/presion';
-import { Row } from '../../../theme/glass/Row';
+import { FilaGrupo, GrupoFilas } from '../GrupoFilas';
 import { useTema } from '../../../theme/ThemeProvider';
 
 type EstadoCarga = 'cargando' | 'ok' | 'no_disponible';
@@ -164,7 +164,7 @@ export function SeccionCatalogo({ testID = 'catalogo' }: SeccionCatalogoProps) {
 
   return (
     <View testID={testID} style={styles.seccion}>
-      <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiBold, fontSize: tema.tipo.grande }}>
+      <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande }}>
         Lo que vendo
       </Text>
       <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
@@ -186,9 +186,10 @@ export function SeccionCatalogo({ testID = 'catalogo' }: SeccionCatalogoProps) {
         </Text>
       )}
 
-      {carga === 'ok' &&
-        conceptos.map((c) => (
-          <Row key={c.id} testID={`${testID}-fila-${c.id}`}>
+      {carga === 'ok' && conceptos.length > 0 && (
+        <GrupoFilas>
+          {conceptos.map((c, i) => (
+          <FilaGrupo key={c.id} primera={i === 0} testID={`${testID}-fila-${c.id}`}>
             <Pressable
               testID={`${testID}-editar-${c.id}`}
               onPress={() => editar(c)}
@@ -222,8 +223,10 @@ export function SeccionCatalogo({ testID = 'catalogo' }: SeccionCatalogoProps) {
                 {c.activo ? 'Ya no lo ofrezco' : 'Volver a ofrecerlo'}
               </Text>
             </Pressable>
-          </Row>
-        ))}
+          </FilaGrupo>
+          ))}
+        </GrupoFilas>
+      )}
 
       {carga !== 'no_disponible' && (
         <>

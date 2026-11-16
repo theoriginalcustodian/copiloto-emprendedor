@@ -6,6 +6,7 @@ import {
   ForbiddenError,
   marcarSesionViva,
   MENSAJE_SESION_EXPIRADA,
+  registrarCuenta,
   UnauthorizedError,
   type MeResponse,
 } from '@copiloto/core';
@@ -134,6 +135,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [validarSesion],
   );
 
+  // Alta con mail y contraseña (Martin 12/11). El backend crea user + tenant pero no devuelve tokens:
+  // se entra con el mismo `login` de siempre, así el camino post-login (probe de `/me`, onboarding) es
+  // uno solo. Si el mail ya existía, el alta es idempotente y lo que decide es la contraseña: un
+  // `credenciales` acá significa «ese mail ya tiene cuenta con otra contraseña».
+  const registrar = useCallback(
+    async (email: string, password: string): Promise<LoginResult & { mensaje?: string }> => {
+      setAvisoSesion(undefined);
+      const alta = await registrarCuenta(email, password);
+      if (!alta.ok && alta.motivo === 'red') return { ok: false, error: 'red' };
+      // Alta rechazada: lo más común es que el mail YA tenga cuenta (reinstaló la app y cayó en «Creá tu
+      // cuenta»). Se prueba entrar con lo que escribió: si es su contraseña, entra a su cuenta de siempre;
+      // si no, `credenciales` sin mensaje = «ese mail ya tiene cuenta» en la pantalla.
+      return login(email, password);
+    },
+    [login],
+  );
+
   const loginConGoogle = useCallback(async (): Promise<LoginResult> => {
     setAvisoSesion(undefined);
     const resultado = await iniciarLoginGoogle();
@@ -186,6 +204,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     primeraVez: estado === 'anon' ? primeraVez : false,
     login,
     loginConGoogle,
+    registrar,
     logout,
   };
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

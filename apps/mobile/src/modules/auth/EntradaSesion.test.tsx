@@ -15,6 +15,7 @@ function sesion(over: Partial<UseSessionResult> = {}): UseSessionResult {
     primeraVez: false,
     login: jest.fn(),
     loginConGoogle: jest.fn(),
+    registrar: jest.fn(),
     logout: jest.fn(),
     ...over,
   };
@@ -66,13 +67,15 @@ describe('EntradaSesion', () => {
     expect(screen.getByTestId('login-email').props.value).toBe('ana@x.com');
   });
 
-  it('«Entrar con otra cuenta» va al formulario en blanco', async () => {
+  it('«Entrar con otra cuenta» va a elegir el método; con mail, al formulario de ingreso en blanco', async () => {
     await montar(sesion({ cierreVoluntario: { email: 'ana@x.com' } }));
     await fireEvent.press(screen.getByTestId('reveal-entrada-secundario'));
+    expect(screen.getByTestId('metodo-screen')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('metodo-mail'));
     expect(screen.getByTestId('login-email').props.value).toBe('');
   });
 
-  it('primer arranque (primeraVez) aterriza en el reveal con "Empecemos", sin botón secundario (mobile no tiene alta)', async () => {
+  it('primer arranque (primeraVez) aterriza en el reveal con "Empecemos", sin botón secundario', async () => {
     await montar(sesion({ primeraVez: true }));
     expect(screen.getByTestId('reveal-entrada')).toBeTruthy();
     expect(screen.getByText('Empecemos')).toBeTruthy();
@@ -80,11 +83,22 @@ describe('EntradaSesion', () => {
     expect(screen.queryByTestId('login-screen')).toBeNull();
   });
 
-  it('"Empecemos" del primer arranque va al formulario en blanco', async () => {
+  it('"Empecemos" del primer arranque va a elegir el método; con mail, directo a crear la cuenta', async () => {
     await montar(sesion({ primeraVez: true }));
     await fireEvent.press(screen.getByTestId('reveal-entrada-primario'));
-    expect(screen.getByTestId('login-screen')).toBeTruthy();
-    expect(screen.getByTestId('login-email').props.value).toBe('');
+    expect(screen.getByTestId('metodo-screen')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('metodo-mail'));
+    expect(screen.getByTestId('registro-screen')).toBeTruthy();
+    expect(screen.getByTestId('registro-email').props.value).toBe('');
+  });
+
+  it('del formulario se pasa a crear la cuenta con el mail escrito, y de ahí se puede volver', async () => {
+    await montar(sesion());
+    await fireEvent.changeText(screen.getByTestId('login-email'), 'ana@x.com');
+    await fireEvent.press(screen.getByTestId('login-crear-cuenta'));
+    expect(screen.getByTestId('registro-email').props.value).toBe('ana@x.com');
+    await fireEvent.press(screen.getByTestId('registro-volver'));
+    expect(screen.getByTestId('metodo-screen')).toBeTruthy();
   });
 
   it('control negativo: sesión caída sola (CTA5, ni primeraVez ni cierreVoluntario) va directo al formulario', async () => {

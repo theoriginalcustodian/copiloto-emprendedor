@@ -18,8 +18,10 @@
 import { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+
 import {
   completarIngreso,
+  esDecimalPositivo,
   formatearFechaCorta,
   formatearImporte,
   normalizarDecimal,
@@ -30,6 +32,16 @@ import {
 } from '@copiloto/core';
 
 import { CampoTexto, FilaBotones } from '../../theme/glass/campos';
+import {
+  AccionesResumen,
+  CifraResumen,
+  DatoTexto,
+  EnlaceAgregar,
+  FranjaDatos,
+  FranjaPrincipal,
+  ResumenTarjeta,
+  useCamposAbiertos,
+} from '../../theme/ResumenTarjeta';
 import { useTema } from '../../theme/ThemeProvider';
 import { generarId } from '../../util/id';
 
@@ -86,8 +98,16 @@ export interface FormularioIngresoProps {
    * `PantallaIngresos`) se mantiene una clave por gesto, como antes.
    */
   mensajeId?: string;
+  /**
+   * La card del chat (Martin 14/11): el MISMO formulario presentado como resumen —la cifra, una fila por dato
+   * con valor y los opcionales vacíos detrás de «Agregar…»—. Ver `theme/ResumenTarjeta`. Es presentación: el
+   * estado, la validación, el aviso de duplicado y el de «lo que faltó» son los de siempre.
+   */
+  resumido?: boolean;
   testID?: string;
 }
+
+type CampoResumen = 'monto' | 'cliente' | 'medio' | 'concepto';
 
 export function FormularioIngreso({
   iniciales,
@@ -96,6 +116,7 @@ export function FormularioIngreso({
   onCancelar,
   onListo,
   mensajeId,
+  resumido = false,
   testID = 'ingreso-form',
 }: FormularioIngresoProps) {
   const tema = useTema();
@@ -121,6 +142,10 @@ export function FormularioIngreso({
    * `mensajeId`, no caer a una clave aleatoria porque el init ya no se vuelve a evaluar.
    */
   const claveGesto = useRef<string | null>(null);
+  // Sólo en `resumido`. El monto arranca abierto si no hay uno válido que mostrar.
+  const { abiertos, abrir, cerrar } = useCamposAbiertos<CampoResumen>(
+    esDecimalPositivo(iniciales?.monto ?? '') ? [] : ['monto'],
+  );
 
   async function guardar(confirmarDuplicado = false) {
     if (enviando) return;
@@ -195,40 +220,9 @@ export function FormularioIngreso({
 
   const faltan = guardado?.falta ?? null;
 
-  return (
-    <View testID={testID} style={styles.form}>
-      <CampoTexto
-        etiqueta="Cuánto te pagaron"
-        valor={monto}
-        onChange={setMonto}
-        placeholder="ej.: 85000"
-        keyboardType="decimal-pad"
-        testID={`${testID}-monto`}
-      />
-      {/* Los tres opcionales van DEBAJO y se dicen opcionales en la etiqueta: si parecieran
-          obligatorios, el efecto sería el mismo que exigirlos. */}
-      <CampoTexto
-        etiqueta="De quién (opcional)"
-        valor={cliente}
-        onChange={setCliente}
-        placeholder="ej.: Panadería La Esquina"
-        testID={`${testID}-cliente`}
-      />
-      <CampoTexto
-        etiqueta="Cómo te pagaron (opcional)"
-        valor={medio}
-        onChange={setMedio}
-        placeholder="ej.: efectivo"
-        testID={`${testID}-medio`}
-      />
-      <CampoTexto
-        etiqueta="Por qué trabajo (opcional)"
-        valor={concepto}
-        onChange={setConcepto}
-        placeholder="ej.: pintura del local"
-        testID={`${testID}-concepto`}
-      />
-
+  // Los avisos de después de tocar guardar: los mismos en el formulario abierto y en el resumen.
+  const avisos = (
+    <>
       {/* 🔴 La pregunta del duplicado. AVISA, NO PROHÍBE: el emprendedor sabe mejor que el sistema si
           le pagaron dos veces, así que el camino de "guardalo igual" siempre está. */}
       {duplicado != null && (
@@ -298,6 +292,122 @@ export function FormularioIngreso({
           {error}
         </Text>
       )}
+    </>
+  );
+
+  if (resumido) {
+    const montoAbierto = abiertos.has('monto') || !esDecimalPositivo(monto);
+    const datos: { campo: Exclude<CampoResumen, 'monto'>; rotulo: string; etiqueta: string; nombre: string; valor: string; set: (v: string) => void; placeholder: string }[] = [
+      { campo: 'cliente', rotulo: 'De quién', etiqueta: 'De quién', nombre: 'de quién', valor: cliente, set: setCliente, placeholder: 'ej.: Panadería La Esquina' },
+      { campo: 'medio', rotulo: 'Pago', etiqueta: 'Cómo te pagaron', nombre: 'cómo te pagaron', valor: medio, set: setMedio, placeholder: 'ej.: efectivo' },
+      { campo: 'concepto', rotulo: 'Trabajo', etiqueta: 'Por qué trabajo', nombre: 'por qué trabajo', valor: concepto, set: setConcepto, placeholder: 'ej.: pintura del local' },
+    ];
+    const visibles = datos.filter((d) => d.valor.trim() !== '' || abiertos.has(d.campo));
+    const ocultos = datos.filter((d) => !visibles.includes(d));
+    const hayAvisos = duplicado != null || guardado != null || error != null;
+
+    return (
+      <ResumenTarjeta testID={testID}>
+        <FranjaPrincipal>
+          {montoAbierto ? (
+            <CampoTexto
+              etiqueta="Cuánto te pagaron"
+              valor={monto}
+              onChange={setMonto}
+              onBlur={() => cerrar('monto')}
+              placeholder="ej.: 85000"
+              keyboardType="decimal-pad"
+              testID={`${testID}-monto`}
+            />
+          ) : (
+            <CifraResumen
+              testID={`${testID}-monto-cambiar`}
+              testIDTexto={`${testID}-monto-cifra`}
+              nombre="Monto"
+              texto={formatearImporte(normalizarDecimal(monto))}
+              onCambiar={() => abrir('monto')}
+            />
+          )}
+        </FranjaPrincipal>
+
+        {visibles.length > 0 && (
+          <FranjaDatos>
+            {visibles.map((d, i) => (
+              <DatoTexto
+                key={d.campo}
+                separado={i > 0}
+                abierto={abiertos.has(d.campo)}
+                rotulo={d.rotulo}
+                etiqueta={d.etiqueta}
+                valor={d.valor}
+                onChange={d.set}
+                onAbrir={() => abrir(d.campo)}
+                onCerrar={() => cerrar(d.campo)}
+                placeholder={d.placeholder}
+                testID={`${testID}-${d.campo}`}
+              />
+            ))}
+          </FranjaDatos>
+        )}
+
+        <EnlaceAgregar
+          testID={`${testID}-mas-datos`}
+          nombres={ocultos.map((d) => d.nombre)}
+          onPress={() => abrir(...ocultos.map((d) => d.campo))}
+        />
+
+        {hayAvisos && <View style={styles.avisosResumen}>{avisos}</View>}
+
+        {guardado == null && duplicado == null && (
+          <AccionesResumen
+            testID={`${testID}-botones`}
+            testIDGuardar={`${testID}-guardar`}
+            testIDCancelar={`${testID}-cancelar`}
+            etiquetaGuardar={enviando ? 'Anotando…' : 'Anotar que me pagaron'}
+            deshabilitado={enviando}
+            onGuardar={() => void guardar()}
+            onCancelar={onCancelar}
+          />
+        )}
+      </ResumenTarjeta>
+    );
+  }
+
+  return (
+    <View testID={testID} style={styles.form}>
+      <CampoTexto
+        etiqueta="Cuánto te pagaron"
+        valor={monto}
+        onChange={setMonto}
+        placeholder="ej.: 85000"
+        keyboardType="decimal-pad"
+        testID={`${testID}-monto`}
+      />
+      {/* Los tres opcionales van DEBAJO y se dicen opcionales en la etiqueta: si parecieran
+          obligatorios, el efecto sería el mismo que exigirlos. */}
+      <CampoTexto
+        etiqueta="De quién (opcional)"
+        valor={cliente}
+        onChange={setCliente}
+        placeholder="ej.: Panadería La Esquina"
+        testID={`${testID}-cliente`}
+      />
+      <CampoTexto
+        etiqueta="Cómo te pagaron (opcional)"
+        valor={medio}
+        onChange={setMedio}
+        placeholder="ej.: efectivo"
+        testID={`${testID}-medio`}
+      />
+      <CampoTexto
+        etiqueta="Por qué trabajo (opcional)"
+        valor={concepto}
+        onChange={setConcepto}
+        placeholder="ej.: pintura del local"
+        testID={`${testID}-concepto`}
+      />
+
+      {avisos}
 
       {/* Los CTA principales desaparecen una vez guardado: desde ahí la conversación es "completar o
           listo", y dejar «Anotar que me pagaron» ahí invitaría a guardarlo dos veces. */}
@@ -323,4 +433,5 @@ export function FormularioIngreso({
 const styles = StyleSheet.create({
   form: { gap: 12 },
   aviso: { gap: 8 },
+  avisosResumen: { gap: 12, paddingBottom: 14 },
 });

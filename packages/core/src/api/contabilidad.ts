@@ -70,6 +70,19 @@ export interface TopeMonotributo {
   /** 0-100. */
   porcentaje: number;
   semaforo: 'verde' | 'amarillo' | 'rojo' | (string & {});
+  /**
+   * 🟡 PEDIDO AL BACKEND (Martin 15/11) — todavía NO lo devuelve el servidor. Dónde queda el facturado si el
+   * ritmo actual se sostiene 12 meses. `null` mientras el backend no lo mande: la app NO lo calcula por su
+   * cuenta (una proyección fiscal inventada en el cliente sería un dato falso sobre una obligación).
+   */
+  proyeccion: ProyeccionTope | null;
+}
+
+export interface ProyeccionTope {
+  /** `AAAA-MM` en que se alcanzaría el tope a este ritmo; `null` si en 12 meses no se llega. */
+  mesAlcance: string | null;
+  /** Porcentaje del tope al que se llegaría en 12 meses, a este ritmo. Puede pasar de 100. */
+  porcentaje: number;
 }
 
 export interface ResumenFacturado {
@@ -109,6 +122,7 @@ interface TopeCrudo {
   valor?: string;
   porcentaje?: number;
   semaforo?: string;
+  proyeccion?: { mes_alcance?: string | null; porcentaje?: number } | null;
 }
 
 interface FacturadoCrudo {
@@ -157,6 +171,13 @@ function tope(t: TopeCrudo | null | undefined): TopeMonotributo | null {
     valor: t.valor ?? '0.00',
     porcentaje: typeof t.porcentaje === 'number' ? t.porcentaje : 0,
     semaforo: t.semaforo ?? 'verde',
+    proyeccion:
+      t.proyeccion != null && typeof t.proyeccion.porcentaje === 'number'
+        ? {
+            mesAlcance: typeof t.proyeccion.mes_alcance === 'string' && /^\d{4}-\d{2}$/.test(t.proyeccion.mes_alcance) ? t.proyeccion.mes_alcance : null,
+            porcentaje: t.proyeccion.porcentaje,
+          }
+        : null,
   };
 }
 

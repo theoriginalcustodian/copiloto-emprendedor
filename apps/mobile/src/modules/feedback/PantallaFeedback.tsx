@@ -92,13 +92,13 @@ export function PantallaFeedback({ contexto }: PantallaFeedbackProps = {}) {
   return (
     // «Contanos qué tal»: el título del prototipo (`index.html:2192`) y el rótulo de la fila en Ajustes
     // (`PantallaAjustes.tsx:86`) y de la pantalla web — antes la pantalla se titulaba «Feedback».
-    <MarcoGlass titulo="Contanos qué tal" icono="feedback" testID="pantalla-feedback">
+    <MarcoGlass titulo="Contanos qué tal" icono="feedback" sinIcono testID="pantalla-feedback">
       <ScrollFormulario
         testID="feedback-scroll"
         contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.lg, paddingBottom: 120 }}
       >
         {/* La bajada del título (`.titulo-pag p` del prototipo): dice a quién le llega y que NO se contesta. */}
-        <Text testID="feedback-bajada" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
+        <Text testID="feedback-bajada" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, lineHeight: 22, paddingHorizontal: 4 }}>
           Lo lee el equipo que construye Odobi. No lleva respuesta: sirve para saber qué mejorar.
         </Text>
 
@@ -155,11 +155,12 @@ export function PantallaFeedback({ contexto }: PantallaFeedbackProps = {}) {
             avisar no sirve. Va DESPUÉS de «Lo pediste vos», como la `.nota-sub` del prototipo
             (`index.html:2210`), y no como card antes del formulario; sigue siendo tocable. */}
         <Row
+          plana
           testID="feedback-a-soporte"
           accessibilityLabel="Ir a Soporte técnico"
           onPress={() => router.push({ pathname: '/ajustes-soporte', params: { funcion: 'soporte_tecnico' } })}
         >
-          <Text style={{ flex: 1, color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+          <Text style={{ flex: 1, color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
             <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold }}>
               Si algo no funciona, mandalo por Soporte técnico
             </Text>

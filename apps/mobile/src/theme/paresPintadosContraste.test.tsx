@@ -83,12 +83,14 @@ import {
   type ServicioCatalogo,
 } from '@copiloto/core';
 
-import { COLOR_PALABRA_MARCA } from './identidadPalette';
+import { COLOR_PALABRA_MARCA, PORTADA } from './identidadPalette';
 import { SKINS, type NombreSkin, type Tokens } from './tokens';
 import { ThemeProvider, useTema } from './ThemeProvider';
 import { PantallaTicket } from '../modules/soporte/PantallaTicket';
 import { DetallePresupuesto } from '../modules/presupuestos/DetallePresupuesto';
 import { PantallaLogin } from '../modules/auth/PantallaLogin';
+import { PantallaMetodo } from '../modules/auth/PantallaMetodo';
+import { PantallaRegistro } from '../modules/auth/PantallaRegistro';
 import { SessionProvider } from '../modules/auth/SessionProvider';
 import { PantallaCuenta } from '../modules/ajustes/PantallaCuenta';
 import { PantallaApps } from '../modules/apps/PantallaApps';
@@ -168,13 +170,20 @@ function aplanarHexAlpha(hex6: string, alphaHex2: string, hexFondo: string): str
  */
 /**
  * SM-Z4 (2026-11-03, operador): 'logotipo' es un <Text> que ES el logotipo (el wordmark «Odobi»), no texto de UI. Se decide
- * estructuralmente en ecorrer() y SÓLO si se cumplen las DOS: el color es exactamente COLOR_PALABRA_MARCA Y el 	estID está
+ * estructuralmente en 
+ecorrer() y SÓLO si se cumplen las DOS: el color es exactamente COLOR_PALABRA_MARCA Y el 	estID está
  * ENUMERADO en LOGOTIPOS_TEXTO (declarado acá, a mano). Cualquier otro <Text> con el mismo hex sigue siendo 'texto'.
  */
 type OrigenPar = 'texto' | 'grafico' | 'logotipo';
 
 /** Los únicos <Text> exentos como logotipo. Agregar uno es una decisión de marca, no un arreglo de contraste. */
-const LOGOTIPOS_TEXTO: readonly string[] = ['login-wordmark'];
+// testID → el ÚNICO color con el que ese <Text> cuenta como logotipo. 12/11 (Martin, flujo «Entrada a Odobi»):
+// el wordmark de «Creá tu cuenta» (terracota, como el login) y el de la portada (blanco sobre terracota, `PORTADA`).
+const LOGOTIPOS_TEXTO: Readonly<Record<string, string>> = {
+  'login-wordmark': COLOR_PALABRA_MARCA,
+  'registro-wordmark': COLOR_PALABRA_MARCA,
+  'metodo-wordmark': PORTADA.marca,
+};
 
 interface ParPintado {
   ruta: string;
@@ -337,7 +346,8 @@ function recorrer(
   const style = StyleSheet.flatten((props.style as never) ?? {}) as Record<string, unknown>;
   if (typeof style.color === 'string') {
     const c = colorEfectivo(style.color, base);
-    const esLogotipo = c != null && c.toLowerCase() === COLOR_PALABRA_MARCA.toLowerCase() && typeof props.testID === 'string' && LOGOTIPOS_TEXTO.includes(props.testID);
+    const colorLogotipo = typeof props.testID === 'string' ? LOGOTIPOS_TEXTO[props.testID] : undefined;
+    const esLogotipo = c != null && colorLogotipo != null && c.toLowerCase() === colorLogotipo.toLowerCase();
     if (c) for (const bg of candidatosTexto) pares.push({ ruta, color: c, bg, origen: esLogotipo ? 'logotipo' : 'texto' });
   }
   if (typeof props.placeholderTextColor === 'string') {
@@ -514,7 +524,31 @@ async function montarPantallaLogin(piel: NombreSkin) {
       </SessionProvider>
     </ThemeProvider>,
   );
-  await waitFor(() => inst.getByTestId('login-google'));
+  await waitFor(() => inst.getByTestId('login-screen'));
+  return inst.toJSON();
+}
+
+async function montarPantallaMetodo(piel: NombreSkin) {
+  const inst = await render(
+    <ThemeProvider skinForzado={piel}>
+      <SessionProvider>
+        <PantallaMetodo onMail={() => {}} />
+      </SessionProvider>
+    </ThemeProvider>,
+  );
+  await waitFor(() => inst.getByTestId('metodo-screen'));
+  return inst.toJSON();
+}
+
+async function montarPantallaRegistro(piel: NombreSkin) {
+  const inst = await render(
+    <ThemeProvider skinForzado={piel}>
+      <SessionProvider>
+        <PantallaRegistro onIrAIngreso={() => {}} onVolver={() => {}} />
+      </SessionProvider>
+    </ThemeProvider>,
+  );
+  await waitFor(() => inst.getByTestId('registro-screen'));
   return inst.toJSON();
 }
 
@@ -712,6 +746,8 @@ const PRODUCTORES: Productor[] = [
   { nombre: 'PantallaTicket', montar: montarPantallaTicket },
   { nombre: 'DetallePresupuesto', montar: montarDetallePresupuesto },
   { nombre: 'PantallaLogin', montar: montarPantallaLogin },
+  { nombre: 'PantallaMetodo', montar: montarPantallaMetodo },
+  { nombre: 'PantallaRegistro', montar: montarPantallaRegistro },
   { nombre: 'PantallaCuenta', montar: montarPantallaCuenta },
   { nombre: 'PantallaApps', montar: montarPantallaApps },
   { nombre: 'PasoResumen(dev)', montar: (p) => montarPasoResumen(p, 'dev') },
@@ -929,7 +965,11 @@ describe('BL-Q4 — pares color/fondo PINTADOS de verdad en mobile (árbol rende
     const boton = fs.readFileSync(path.join(__dirname, '..', 'modules', 'chat', 'BotonVoz.tsx'), 'utf8');
     const tono = fs.readFileSync(path.join(__dirname, '..', 'modules', 'chat', 'tonoBotonEntrada.ts'), 'utf8');
     expect(boton).toMatch(/backgroundColor: tonoBotonEntrada\(tema, !disabled\)\.fondo/);
-    expect(tono).toMatch(/fondo: tema\.glass\.ub2/);
+    // Martin 13/11/2026: el mic va en TERRACOTA (`color.acento`), no en el bordó `glass.ub2`. Blanco sobre
+    // terracota da 3,17:1, por encima del 3:1 de un glifo (lo mide `tonoBotonEntrada.test.ts`). Lo que este
+    // control protege sigue en pie: nunca `accent2`, que era el relleno de 1,26:1.
+    expect(tono).toMatch(/fondo: tema\.color\.acento\b/);
+    expect(tono).not.toMatch(/accent2/);
     expect(tono).toMatch(/fondo: tema\.color\.superficieAlta/);
     expect(boton).not.toMatch(/accent2|tema\.color\.acento\b/);
   });

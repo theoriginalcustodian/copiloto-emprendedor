@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 // 🔴 `RefreshControl` de RNGH, no el de `react-native`: el scroll de RNGH espera a ESE handler
 // (`waitFor`). Con el de RN, `onRefresh` se disparaba a mitad del arrastre (DEVICE15 H4).
 import { RefreshControl } from 'react-native-gesture-handler';
+import Svg, { Path } from 'react-native-svg';
 
 import {
   borrarIngreso,
@@ -16,15 +17,21 @@ import {
   type ResumenIngresos as ResumenIngresosDato,
 } from '@copiloto/core';
 
+import { DIBUJO_MONEDAS } from './dibujoMonedas';
 import { FormularioIngreso, type ValoresInicialesIngreso } from './FormularioIngreso';
 import { ResumenIngresos } from './ResumenIngresos';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
+import { GLIFO_MERCADO_PAGO } from '../apps/logosMarca';
 import { AvisoDictado, DockFuncion, inicialesDeIngreso, useDictadoPorFuncion, type ViaTexto } from '../voz';
-import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
+import { elevacion } from '../../theme/BloqueCifra';
+import { BotonAcceso, IconoLapiz } from '../../theme/BotonAcceso';
+import { ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
+import { conAlfa } from '../../theme/glass/conAlfa';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
-import { Row } from '../../theme/glass/Row';
+import { Glifo } from '../../theme/glass/Glifo';
 import { useTema } from '../../theme/ThemeProvider';
+import { VacioFuncion } from '../../theme/VacioFuncion';
 
 const PLACEHOLDER_DOCK = 'Anotá un cobro, o hablá…';
 
@@ -58,6 +65,14 @@ const ETIQUETA_ORIGEN: Record<OrigenIngreso, string> = {
   mercadopago: 'por MercadoPago',
   manual: 'lo anotaste vos',
   voz: 'lo dictaste por voz',
+};
+
+/** Glifo del tile según de dónde salió el cobro. Mercado Pago no usa éste: lleva su logo (`GLIFO_MERCADO_PAGO`). */
+const GLIFO_ORIGEN: Record<OrigenIngreso, string> = {
+  factura: 'file-text',
+  mercadopago: 'wallet',
+  manual: 'pen',
+  voz: 'microphone',
 };
 
 export function PantallaIngresos() {
@@ -144,6 +159,7 @@ export function PantallaIngresos() {
     <MarcoGlass
       titulo="Ingresos"
       icono="ingresos"
+      sinIcono
       etiqueta={resumen != null ? formatearMesDePeriodo(resumen.periodo) : undefined}
       testID="pantalla-ingresos"
     >
@@ -167,7 +183,7 @@ export function PantallaIngresos() {
       {estado === 'ok' && (
         <ScrollFormulario
           testID="ingresos-lista"
-          contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.md, paddingBottom: 120 }}
+          contentContainerStyle={{ padding: tema.espacio.md, gap: 20, paddingBottom: 120 }}
           refreshControl={
             <RefreshControl
               refreshing={refrescando}
@@ -205,18 +221,15 @@ export function PantallaIngresos() {
 
               {/* BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`: dictar acá abre el
                   formulario con `concepto` prellenado (K-10, `/transcribir`, sin sesión de chat). */}
-              <View style={styles.filaAlta}>
-                <FilaBotones
-                  testID="ingresos-acciones"
-                  compacto
-                  botones={[
-                    {
-                      etiqueta: 'Anotar que me pagaron',
-                      onPress: () => { setInicialesDictado(undefined); setOrigenAlta(undefined); setVista('formulario'); },
-                      variante: 'primario',
-                      testID: 'ingresos-nuevo',
-                    },
-                  ]}
+              {/* Mismo criterio que Gastos (Martin 14/11, ver `BotonAcceso`): la vía manual va callada, en
+                  tarjeta blanca; la terracota queda para el micrófono del dock. Acá no hay foto, así que es UNA
+                  sola vía y ocupa el ancho. El verbo es el del repo: «Anotar que me pagaron». */}
+              <View testID="ingresos-acciones">
+                <BotonAcceso
+                  testID="ingresos-nuevo"
+                  onPress={() => { setInicialesDictado(undefined); setOrigenAlta(undefined); setVista('formulario'); }}
+                  icono={<IconoLapiz color={tema.color.acentoTinta} />}
+                  etiqueta="Anotar que me pagaron"
                 />
               </View>
 
@@ -229,58 +242,93 @@ export function PantallaIngresos() {
               {/* 🔴 Decisión C: la lista rica de ingresos (con `origen`, `borrable`) NO se toca — la
                   envuelve el buscador. Sin query, se muestra intacta; con query, pega a
                   `/actividad?funcion=ingresos&q=` y muestra el card uniforme. */}
+              {/* Sin ingresos no hay buscador ni rótulo «Últimos» (ver `VacioFuncion`). */}
+              {ingresos.length === 0 && (
+                <VacioFuncion
+                  testID="ingresos-vacio"
+                  dibujo={DIBUJO_MONEDAS}
+                  titulo="Todavía no hay ingresos"
+                  cuerpo="Cuando te paguen, decímelo abajo o anotalo a mano."
+                />
+              )}
+
+              {ingresos.length > 0 && (
               <BuscadorActividad
                 funcion="ingresos"
                 testIDBase="ingresos-busqueda"
                 placeholder="Buscar un ingreso"
                 rotuloLista="Últimos"
+                sinEtiqueta
               >
-              {ingresos.length === 0 && (
-                <Text testID="ingresos-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-                  Todavía no entró nada. Cuando cobres, anotalo acá — o decíselo al copiloto hablando.
-                </Text>
-              )}
 
-              {ingresos.map((i) => (
-                <Row key={i.id} testID={`ingresos-fila-${i.id}`}>
-                  <View style={styles.textos}>
-                    <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
-                      {i.monto != null ? formatearImporte(i.monto) : 'Sin monto'}
-                    </Text>
-                    <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-                      {[
-                        i.clienteNombre,
-                        i.concepto,
-                        i.comprobanteNro != null ? `Factura N° ${i.comprobanteNro}` : null,
-                        i.medio,
-                        // H-A4-6: `i.fecha` llega "YYYY-MM-DD" (sin hora) del backend — ISO crudo si
-                        // se pinta tal cual. `null` (backend sin fecha) queda `null` y se filtra abajo.
-                        i.fecha != null ? formatearFechaCorta(i.fecha) : null,
-                        // La procedencia va SIEMPRE, incluso en las que el emprendedor anotó: es lo
-                        // que permite, meses después, separar el dato duro del de memoria.
-                        ETIQUETA_ORIGEN[i.origen],
-                      ]
-                        .filter((x): x is string => x != null && x !== '')
-                        .join(' · ')}
-                    </Text>
-                  </View>
-                  {/* 🔴 Sólo si el backend dijo que se puede. `null` es "no sé" y ahí NO se ofrece:
-                      borrar el rastro de un cobro que el sistema vio sería inventar que esa factura
-                      no se cobró — y el backend contestaría 404 sobre algo que está en pantalla. */}
-                  {i.borrable === true && (
-                    <Pressable
-                      testID={`ingresos-borrar-${i.id}`}
-                      onPress={() => void borrar(i)}
-                      hitSlop={10}
-                      style={pressableStyle(undefined, PRESS_FADE)}
+              {/* Rediseño (Martin 15/11): una sola tarjeta blanca con una fila por cobro, el mismo molde que
+                  Gastos. Antes cada ingreso era una fila de vidrio con el monto arriba y todo lo demás en una
+                  sola línea gris. */}
+              <View style={[styles.tarjetaLista, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}>
+                {ingresos.map((i, n) => {
+                  // El título es de QUIÉN vino la plata; sin cliente, por qué; sin nada, «Cobro».
+                  const titulo = i.clienteNombre ?? i.concepto ?? 'Cobro';
+                  const t = tema.color.tileFuncion;
+                  return (
+                    <View
+                      key={i.id}
+                      testID={`ingresos-fila-${i.id}`}
+                      style={[styles.fila, n > 0 && { borderTopWidth: 1, borderTopColor: conAlfa(tema.color.texto, 0.12) }]}
                     >
-                      <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
-                        Borrar
+                      <View accessible={false} style={[styles.tile, { backgroundColor: t.arena }]}>
+                        {i.origen === 'mercadopago' ? (
+                          // El logo de Mercado Pago, en línea y de un color como el resto de los íconos.
+                          <Svg testID={`ingresos-fila-${i.id}-mp`} width={26} height={19} viewBox={GLIFO_MERCADO_PAGO.viewBox} fill="none">
+                            <Path d={GLIFO_MERCADO_PAGO.ovalo} fill="none" stroke={t.tinta} strokeWidth={GLIFO_MERCADO_PAGO.anchoOvalo} />
+                            <Path d={GLIFO_MERCADO_PAGO.lineas} fill={t.tinta} stroke="none" />
+                          </Svg>
+                        ) : (
+                          <Glifo nombre={GLIFO_ORIGEN[i.origen]} size={20} color={t.tinta} />
+                        )}
+                      </View>
+                      <View style={styles.textos}>
+                        <Text numberOfLines={2} style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base, lineHeight: 21 }}>
+                          {titulo}
+                        </Text>
+                        <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
+                          {[
+                            i.clienteNombre != null ? i.concepto : null,
+                            i.comprobanteNro != null ? `Factura N° ${i.comprobanteNro}` : null,
+                            i.medio,
+                            // H-A4-6: `i.fecha` llega "YYYY-MM-DD" (sin hora) del backend — ISO crudo si
+                            // se pinta tal cual. `null` (backend sin fecha) queda `null` y se filtra abajo.
+                            i.fecha != null ? formatearFechaCorta(i.fecha) : null,
+                            // La procedencia va SIEMPRE, incluso en las que el emprendedor anotó: es lo
+                            // que permite, meses después, separar el dato duro del de memoria.
+                            ETIQUETA_ORIGEN[i.origen],
+                          ]
+                            .filter((x): x is string => x != null && x !== '')
+                            .join(' · ')}
+                        </Text>
+                        {/* 🔴 Sólo si el backend dijo que se puede. `null` es "no sé" y ahí NO se ofrece:
+                            borrar el rastro de un cobro que el sistema vio sería inventar que esa factura
+                            no se cobró — y el backend contestaría 404 sobre algo que está en pantalla. */}
+                        {i.borrable === true && (
+                          <Pressable
+                            testID={`ingresos-borrar-${i.id}`}
+                            accessibilityRole="button"
+                            onPress={() => void borrar(i)}
+                            hitSlop={10}
+                            style={pressableStyle(styles.borrar, PRESS_FADE)}
+                          >
+                            <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+                              Borrar
+                            </Text>
+                          </Pressable>
+                        )}
+                      </View>
+                      <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.base, lineHeight: 21 }}>
+                        {i.monto != null ? formatearImporte(i.monto) : 'Sin monto'}
                       </Text>
-                    </Pressable>
-                  )}
-                </Row>
-              ))}
+                    </View>
+                  );
+                })}
+              </View>
 
               {error != null && (
                 <Text testID="ingresos-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
@@ -288,6 +336,15 @@ export function PantallaIngresos() {
                 </Text>
               )}
               </BuscadorActividad>
+              )}
+
+              {/* El error de borrar vive dentro de la lista; éste cubre el caso de que al borrar el último la
+                  lista quede vacía y el aviso no tenga dónde mostrarse. */}
+              {ingresos.length === 0 && error != null && (
+                <Text testID="ingresos-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+                  {error}
+                </Text>
+              )}
             </>
           )}
         </ScrollFormulario>
@@ -310,5 +367,8 @@ export function PantallaIngresos() {
 const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   textos: { flex: 1, gap: 2 },
-  filaAlta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  tarjetaLista: { borderRadius: 22, paddingHorizontal: 20 },
+  fila: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, paddingVertical: 16 },
+  tile: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  borrar: { alignSelf: 'flex-start', paddingTop: 6 },
 });

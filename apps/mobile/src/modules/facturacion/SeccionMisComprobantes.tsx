@@ -3,6 +3,8 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 
 import {
+  formatearFechaCorta,
+  formatearImporte,
   anularComprobante,
   confirmarAnulacion,
   estadoAnulacion,
@@ -14,10 +16,13 @@ import {
 } from '@copiloto/core';
 
 import { useTema } from '../../theme/ThemeProvider';
-import { tituloComprobanteConTotal } from './etiquetasComprobante';
+import { DIBUJO_FACTURA } from './dibujoFactura';
+import { tituloComprobante } from './etiquetasComprobante';
 import { FilaBotones } from '../../theme/glass/campos';
 import { pressableStyle } from '../../theme/glass/presion';
-import { Row } from '../../theme/glass/Row';
+import { elevacion } from '../../theme/BloqueCifra';
+import { conAlfa } from '../../theme/glass/conAlfa';
+import { VacioFuncion } from '../../theme/VacioFuncion';
 
 const INTERVALO_POLL_ANULACION_MS = 1500;
 
@@ -79,6 +84,8 @@ export interface SeccionMisComprobantesProps {
    * —lo probé con un log— y en pantalla no pasaba nada.
    */
   onVerDetalle: (comprobante: Comprobante) => void;
+  /** Avisa si la lista cargó vacía, para que la pantalla saque el buscador (Martin 14/11). */
+  onVacio?: (vacio: boolean) => void;
   testID?: string;
 }
 
@@ -92,7 +99,7 @@ export interface SeccionMisComprobantesHandle {
 }
 
 export const SeccionMisComprobantes = forwardRef<SeccionMisComprobantesHandle, SeccionMisComprobantesProps>(
-function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-comprobantes' }, ref) {
+function SeccionMisComprobantes({ cuit, onVerDetalle, onVacio, testID = 'facturacion-mis-comprobantes' }, ref) {
   const tema = useTema();
   const [estadoLista, setEstadoLista] = useState<EstadoLista>('cargando');
   const [comprobantes, setComprobantes] = useState<Comprobante[]>([]);
@@ -244,11 +251,19 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
     void cargar(true);
   }
 
+  const vacio = estadoLista === 'ok' && comprobantes.length === 0;
+  useEffect(() => {
+    if (estadoLista === 'ok') onVacio?.(vacio);
+  }, [estadoLista, vacio, onVacio]);
+
   return (
     <View testID={testID} style={[styles.contenedor, { gap: tema.espacio.md }]}>
-      <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.grande }}>
-        Mis comprobantes
-      </Text>
+      {/* Sin comprobantes el rótulo no encabeza nada: se va con la lista y queda el dibujo. */}
+      {!vacio && (
+        <Text accessibilityRole="header" style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande, paddingHorizontal: 4 }}>
+          Mis comprobantes
+        </Text>
+      )}
 
       {estadoLista === 'cargando' && <ActivityIndicator testID={`${testID}-cargando`} color={tema.color.acento} />}
 
@@ -264,66 +279,86 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
         </Text>
       )}
 
-      {estadoLista === 'ok' && comprobantes.length === 0 && (
-        <Text testID={`${testID}-vacio`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-          Todavía no emitiste ningún comprobante.
-        </Text>
+      {vacio && (
+        <VacioFuncion
+          testID={`${testID}-vacio`}
+          dibujo={DIBUJO_FACTURA}
+          titulo="Todavía no hay facturas"
+          cuerpo="Decime abajo a quién y por cuánto, o armala a mano."
+        />
       )}
 
-      {estadoLista === 'ok' &&
-        comprobantes.map((c) => {
+      {/* Rediseño (Martin 15/11): una sola tarjeta blanca con una fila por comprobante, sin íconos. El cliente
+          es el título —es lo que se busca al barrer la lista—; debajo el comprobante y su fecha, y el CAE; a la
+          derecha el total. «Anular» dejó de ser un botón rojo en cada fila: es un enlace bajo el detalle. */}
+      {estadoLista === 'ok' && comprobantes.length > 0 && (
+        <View style={[styles.tarjeta, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}>
+        {comprobantes.map((c, n) => {
           const clave = claveDe(c);
           const esteEsElObjetivo = objetivoAnulacion != null && claveDe(objetivoAnulacion) === clave;
+          const conCliente = c.receptorNombre != null && c.receptorNombre !== '';
+          const fecha = c.fechaEmision != null ? formatearFechaCorta(c.fechaEmision) : null;
           return (
-            <View key={clave} style={{ gap: tema.espacio.sm }}>
-              <Row testID={`${testID}-fila-${clave}`}>
-                <View style={styles.filaComprobante}>
-                  {/* Los textos son el área tocable; el botón "Anular" queda FUERA de ella. Envolver
+            <View
+              key={clave}
+              style={[styles.bloqueFila, n > 0 && { borderTopWidth: 1, borderTopColor: conAlfa(tema.color.texto, 0.12) }]}
+            >
+              <View testID={`${testID}-fila-${clave}`} style={styles.filaComprobante}>
+                  {/* Los textos son el área tocable; «Anular» queda FUERA de ella. Envolver
                       la fila entera haría que un toque para anular abriera también el detalle —
                       dos acciones distintas disputándose el mismo dedo. `Pressable` de RNGH y no de
                       `react-native`: la lista vive dentro del scroll de gestos ("las dos mitades"). */}
+                <View style={styles.filaTextos}>
                   <Pressable
                     testID={`${testID}-detalle-${clave}`}
                     onPress={() => onVerDetalle(c)}
                     accessibilityRole="button"
                     accessibilityLabel={`Ver el detalle del comprobante N° ${c.nro}`}
-                    style={pressableStyle(styles.filaTextos)}
+                    style={pressableStyle(styles.textos)}
                   >
-                    <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
-                      {tituloComprobanteConTotal(c)}
+                    {/* Quién es el cliente es lo primero que alguien busca al barrer su lista de facturas.
+                        Los comprobantes viejos no lo tienen: ahí el título es el comprobante. */}
+                    <Text
+                      testID={conCliente ? `${testID}-receptor-${clave}` : undefined}
+                      numberOfLines={2}
+                      style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base, lineHeight: 21 }}
+                    >
+                      {conCliente ? c.receptorNombre : tituloComprobante(c)}
                     </Text>
-                    <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-                      CAE {c.cae} · {c.estado}
-                    </Text>
-                    {/* Quién es el cliente estaba sólo en el detalle, y es lo primero que alguien
-                        busca al barrer su lista de facturas. Los comprobantes viejos no lo tienen. */}
-                    {c.receptorNombre != null && c.receptorNombre !== '' && (
-                      <Text
-                        testID={`${testID}-receptor-${clave}`}
-                        style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
-                      >
-                        {c.receptorNombre}
+                    {(conCliente || fecha != null) && (
+                      <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
+                        {[conCliente ? tituloComprobante(c) : null, fecha].filter((x): x is string => x != null).join(' · ')}
                       </Text>
                     )}
+                    <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
+                      CAE {c.cae} · {c.estado}
+                    </Text>
                   </Pressable>
                   {esAnulable(c) && !esteEsElObjetivo && (
-                    <FilaBotones
-                      // Compacto: si el botón se estira, se come los datos del comprobante y queda un
-                      // "Anular" sin sujeto. Visto en device el 2026-07-21.
-                      compacto
-                      testID={`${testID}-anular-${clave}-botones`}
-                      botones={[
-                        { etiqueta: 'Anular', onPress: () => pedirAnulacion(c), variante: 'peligro', testID: `${testID}-anular-${clave}` },
-                      ]}
-                    />
+                    <Pressable
+                      testID={`${testID}-anular-${clave}`}
+                      accessibilityRole="button"
+                      accessibilityLabel="Anular"
+                      onPress={() => pedirAnulacion(c)}
+                      hitSlop={10}
+                      style={pressableStyle(styles.anular)}
+                    >
+                      <Text style={{ color: tema.color.peligro, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>Anular</Text>
+                    </Pressable>
                   )}
                 </View>
-              </Row>
+                <Text
+                  testID={`${testID}-total-${clave}`}
+                  style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.base, lineHeight: 21 }}
+                >
+                  {formatearImporte(c.total)}
+                </Text>
+              </View>
 
               {esteEsElObjetivo && (
                 <View
                   testID={`${testID}-anulacion-${clave}`}
-                  style={[styles.panelAnulacion, { backgroundColor: tema.color.superficieAlta, borderRadius: tema.radio.md, padding: tema.espacio.sm, gap: tema.espacio.sm }]}
+                  style={[styles.panelAnulacion, { backgroundColor: conAlfa(tema.color.texto, 0.04), borderRadius: tema.radio.md, padding: tema.espacio.md, gap: tema.espacio.sm }]}
                 >
                   {anulacionId == null && (
                     <>
@@ -406,13 +441,19 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
             </View>
           );
         })}
+        </View>
+      )}
     </View>
   );
 });
 
 const styles = StyleSheet.create({
   contenedor: {},
-  filaComprobante: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1, gap: 8 },
-  filaTextos: { flexShrink: 1, gap: 2 },
+  tarjeta: { borderRadius: 22, paddingHorizontal: 20 },
+  bloqueFila: { paddingVertical: 16, gap: 12 },
+  filaComprobante: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  filaTextos: { flex: 1, gap: 6 },
+  textos: { gap: 2 },
+  anular: { alignSelf: 'flex-start' },
   panelAnulacion: {},
 });

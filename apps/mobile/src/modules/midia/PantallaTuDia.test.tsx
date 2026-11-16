@@ -301,7 +301,6 @@ describe('PantallaTuDia — BL-J5 (categoría / criticidad / verbo del backend)'
     expect(screen.getByTestId('midia-alerta-c')).toBeTruthy();
     expect(screen.queryByTestId('midia-alerta-p')).toBeNull();
     expect(screen.getByText('Renovarlo')).toBeTruthy();
-    expect(screen.getByTestId('midia-contador')).toHaveTextContent('2 para hoy · 0 en curso · 1 crítico');
   });
 
   it('🔴 DEVICE15 H5: la píldora del banner es un botón y lleva a Ajustes (antes era un rótulo inerte)', async () => {
@@ -402,7 +401,6 @@ describe('PantallaTuDia — BL-J5 (categoría / criticidad / verbo del backend)'
     await montar();
     await waitFor(() => expect(screen.getByTestId('midia-scroll')).toBeTruthy());
     const scroll = within(screen.getByTestId('midia-scroll'));
-    expect(scroll.getByTestId('midia-contador')).toBeTruthy();
     expect(scroll.getByTestId('midia-alerta')).toBeTruthy();
     expect(scroll.getByTestId('midia-solapas')).toBeTruthy();
     expect(scroll.getByTestId('midia-lista')).toBeTruthy();
@@ -687,7 +685,9 @@ describe('PantallaTuDia — hitl (a): el verbo lleva el aviso al chat', () => {
     const onAvisoAlChat = jest.fn();
     await expandirVerbo({ regla: null, verbo: 'Borrar', categoria: 'tuyas', cliente: null }, { onAvisoAlChat });
 
-    await fireEvent.press(screen.getByTestId('midia-tarjeta-p-verbo'));
+    // Martin 15/11: la manual desplegada ofrece Realizado · Editar · Borrar; ninguno es un pedido al agente.
+    expect(screen.queryByTestId('midia-tarjeta-p-verbo')).toBeNull();
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-p-borrar-manual'));
     expect(onAvisoAlChat).not.toHaveBeenCalled();
     expect(borrarMock).toHaveBeenCalledWith('p');
   });
@@ -799,6 +799,12 @@ describe('PantallaTuDia — caida: «Se cayó» lo trae el backend en `presentac
   });
 });
 
+/** El alta nace cerrada, como un botón (Martin 15/11): se abre antes de escribir. */
+async function abrirAlta() {
+  await waitFor(() => expect(screen.getByTestId('midia-alta-abrir')).toBeTruthy());
+  await fireEvent.press(screen.getByTestId('midia-alta-abrir'));
+}
+
 describe('PantallaTuDia — anotar una tarjeta a mano (SM-E3)', () => {
   // ⚠️ El `TextInput` real de `CampoTexto` es `${testID}-input` (`CampoTexto.tsx:84`): el testID pelado
   // es el View contenedor. La primera versión de estos casos tocaba el contenedor, así que `changeText`
@@ -806,6 +812,7 @@ describe('PantallaTuDia — anotar una tarjeta a mano (SM-E3)', () => {
   // silencio del instrumento, no la pantalla.
   it('con el campo vacío no manda nada, y los espacios no cuentan como texto', async () => {
     await montar();
+    await abrirAlta();
     await waitFor(() => expect(screen.getByTestId('midia-alta-enviar')).toBeTruthy());
 
     await fireEvent.press(screen.getByTestId('midia-alta-enviar'));
@@ -818,6 +825,7 @@ describe('PantallaTuDia — anotar una tarjeta a mano (SM-E3)', () => {
 
   it('agrega la tarjeta con el texto sin blancos de borde y vuelve a leer el tablero', async () => {
     await montar();
+    await abrirAlta();
     await waitFor(() => expect(screen.getByTestId('midia-alta-texto-input')).toBeTruthy());
     const lecturasAntes = leerMock.mock.calls.length;
 
@@ -832,6 +840,7 @@ describe('PantallaTuDia — anotar una tarjeta a mano (SM-E3)', () => {
 
   it('🔴 anotar parado en «Haciendo» vuelve a «Para hoy»: la tarjeta manual nace ahí', async () => {
     await montar();
+    await abrirAlta();
     await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
     await fireEvent.press(screen.getByTestId('midia-solapa-haciendo'));
     expect(screen.queryByTestId('midia-tarjeta-t1')).toBeNull();
@@ -848,6 +857,7 @@ describe('PantallaTuDia — anotar una tarjeta a mano (SM-E3)', () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
     crearMock.mockResolvedValue({ status: 'texto_vacio', motivo: 'texto vacío' });
     await montar();
+    await abrirAlta();
     await waitFor(() => expect(screen.getByTestId('midia-alta-texto-input')).toBeTruthy());
 
     await fireEvent.changeText(screen.getByTestId('midia-alta-texto-input'), 'algo');
@@ -861,6 +871,7 @@ describe('PantallaTuDia — anotar una tarjeta a mano (SM-E3)', () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
     crearMock.mockResolvedValue({ status: 'no_disponible' });
     await montar();
+    await abrirAlta();
     await waitFor(() => expect(screen.getByTestId('midia-alta-texto-input')).toBeTruthy());
 
     await fireEvent.changeText(screen.getByTestId('midia-alta-texto-input'), 'Llamar al proveedor');
@@ -901,6 +912,7 @@ describe('PantallaTuDia — SM-I1: la pantalla propia del tablero', () => {
     });
     await montar();
     await waitFor(() => expect(screen.getByTestId('midia-chips')).toBeTruthy());
+    await abrirAlta();
     expect(screen.getByTestId('midia-alta-texto-input')).toBeTruthy();
     expect(screen.getByTestId('midia-solapas')).toBeTruthy();
   });
@@ -915,8 +927,11 @@ describe('PantallaTuDia — SM-I1: la pantalla propia del tablero', () => {
     await montar();
     await waitFor(() => expect(screen.getByTestId('midia-tarjeta-anotada')).toBeTruthy());
     await fireEvent.press(screen.getByTestId('midia-tarjeta-anotada'));
-    await fireEvent.press(screen.getByTestId('midia-tarjeta-anotada-verbo'));
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-anotada-borrar-manual'));
     expect(borrarMock).toHaveBeenCalledWith('anotada');
+    // «Realizado» la manda derecho a «Hechas», sin pasar por «Haciendo».
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-anotada-realizado'));
+    await waitFor(() => expect(cambiarEstadoMock).toHaveBeenCalledWith('anotada', 'hecha'));
   });
 
   it('lo que resume Mi día no está acá: ni portada ni calendario', async () => {

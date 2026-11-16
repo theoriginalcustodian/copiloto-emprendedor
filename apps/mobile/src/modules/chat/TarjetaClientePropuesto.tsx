@@ -6,8 +6,8 @@ import type { ChatMessage, Cliente, DatosCliente, DuplicadoCliente } from '@copi
 import { FormularioCliente } from '../clientes/FormularioCliente';
 import { empujarUnaVez } from '../../navegacion/empujarUnaVez';
 import { FilaBotones } from '../../theme/glass/campos';
-import { Tile } from '../../theme/glass/Tile';
 import { useTema } from '../../theme/ThemeProvider';
+import { TarjetaChat } from './TarjetaChat';
 import { TarjetaPropuestaShell, TarjetaPropuestaTerminal } from './TarjetaPropuestaShell';
 
 /**
@@ -113,7 +113,7 @@ export function TarjetaClientePropuesto({
   if (estado.fase === 'ya_existe') {
     const dueno = estado.duplicado.dueno;
     return (
-      <Tile testID={`${testID}-ya-existe`}>
+      <TarjetaChat testID={`${testID}-ya-existe`}>
         <View style={{ gap: tema.espacio.sm }}>
           {/* 🔴 En tenue, no en rojo: "ya lo tenés" es un resultado útil, no un fallo. Y no se nombra
               el documento si no vino el dueño — explicar mal algo que sí pasó manda al emprendedor a
@@ -142,7 +142,7 @@ export function TarjetaClientePropuesto({
             />
           )}
         </View>
-      </Tile>
+      </TarjetaChat>
     );
   }
 
@@ -155,7 +155,7 @@ export function TarjetaClientePropuesto({
     // «comillas» —tiene sentido para "lo que el usuario dictó" (gasto)—, pero acá es la EXPLICACIÓN
     // del copiloto (ej. "dijiste CUIT pero el número tiene 7 dígitos"), que se lee mal entre comillas.
     // Se queda como texto propio, igual que antes de esta shell.
-    <TarjetaPropuestaShell testID={testID} aviso="Esto entendí. Revisalo y tocá Guardar el cliente — todavía no lo agregué.">
+    <TarjetaPropuestaShell testID={testID} titulo="Nuevo cliente" aviso="Todavía no se guardó nada.">
       {texto != null && texto.trim() !== '' && (
         <Text
           testID={`${testID}-texto`}
@@ -167,6 +167,7 @@ export function TarjetaClientePropuesto({
 
       <FormularioCliente
         iniciales={propuesta}
+        resumido
         mensajeId={mensajeId}
         onGuardado={(cliente) => {
           setEstado({ fase: 'guardado', cliente });

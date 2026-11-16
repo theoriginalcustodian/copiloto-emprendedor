@@ -137,11 +137,12 @@ describe('EscritorioFunciones — el escritorio del copiloto', () => {
     expect(keys).not.toContain('contabilidad');
   });
 
-  it('🔴 el grid entra COMPLETO: 6 tiles en 2 filas de 3, sin scroll horizontal', async () => {
+  it('🔴 el grid entra COMPLETO: 6 tiles en 3 filas de 2, sin scroll horizontal', async () => {
     await envolver();
     expect(screen.getByTestId('fila-escritorio-0')).toBeTruthy();
     expect(screen.getByTestId('fila-escritorio-1')).toBeTruthy();
-    expect(screen.queryByTestId('fila-escritorio-2')).toBeNull();
+    expect(screen.getByTestId('fila-escritorio-2')).toBeTruthy();
+    expect(screen.queryByTestId('fila-escritorio-3')).toBeNull();
     // La afordancia de «hay más a la derecha» ya no existe: no hay nada a la derecha.
     expect(screen.queryByTestId('escritorio-scroll-funciones')).toBeNull();
     expect(screen.queryByTestId('escritorio-fade-mas-funciones')).toBeNull();
@@ -159,6 +160,31 @@ describe('EscritorioFunciones — el escritorio del copiloto', () => {
     await envolver();
     const prohibidas = /paciente|clínic|consulta médica/i;
     TILES.forEach((t) => expect(t.label).not.toMatch(prohibidas));
+  });
+});
+
+describe('EscritorioFunciones — el dibujo de cada función (14/11)', () => {
+  it('en la piel clara cada casilla lleva su dibujo, no el glifo sobre chip', async () => {
+    await envolver();
+    KEYS_ESPERADAS.forEach((key) => expect(screen.getByTestId(`dibujo-${key}`)).toBeTruthy());
+    expect(screen.queryByTestId('glass-icon-gastos')).toBeNull();
+  });
+
+  it('las casillas miden lo mismo aunque el rótulo ocupe dos renglones', async () => {
+    await envolver();
+    const alto = (key: string) => StyleSheet.flatten(screen.getByTestId(`tile-${key}`).props.style).height;
+    expect(alto('inteligencia')).toBe(alto('gastos'));
+    expect(alto('gastos')).toEqual(expect.any(Number));
+  });
+
+  it('🔴 en piel oscura sigue el glifo: los dibujos de prueba traen fondo blanco', async () => {
+    await render(
+      <ThemeProvider skinForzado="oscuro">
+        <EscritorioFunciones />
+      </ThemeProvider>,
+    );
+    expect(screen.queryByTestId('dibujo-gastos')).toBeNull();
+    expect(screen.getByTestId('glass-icon-gastos')).toBeTruthy();
   });
 });
 

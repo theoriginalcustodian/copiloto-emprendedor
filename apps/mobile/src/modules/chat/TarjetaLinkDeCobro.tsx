@@ -2,10 +2,11 @@ import { Alert, Linking, Text, View } from 'react-native';
 
 import { formatearImporte, type LinkDeCobro } from '@copiloto/core';
 
+import { BotonWhatsApp } from '../../theme/BotonWhatsApp';
 import { FilaBotones } from '../../theme/glass/campos';
-import { Tile } from '../../theme/glass/Tile';
 import { useTema } from '../../theme/ThemeProvider';
 import { abrirLink, compartirLink } from '../../util/abrirYCompartir';
+import { TarjetaChat } from './TarjetaChat';
 
 /**
  * `TarjetaLinkDeCobro` — el link de cobro de MercadoPago que el copiloto generó (BL-F2, hilo
@@ -62,7 +63,7 @@ export interface TarjetaLinkDeCobroProps {
 export function TarjetaLinkDeCobro({ link, testID = 'tarjeta-link-cobro' }: TarjetaLinkDeCobroProps) {
   const tema = useTema();
   return (
-    <Tile testID={testID}>
+    <TarjetaChat testID={testID}>
       <View style={{ gap: tema.espacio.sm }}>
         <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Link de cobro listo</Text>
         {link.monto != null && (
@@ -82,15 +83,12 @@ export function TarjetaLinkDeCobro({ link, testID = 'tarjeta-link-cobro' }: Tarj
         <Text testID={`${testID}-nota`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
           {NOTA_ANOTA_AL_APROBAR}
         </Text>
+        {/* WhatsApp con su color y su glifo (Martin 14/11), arriba y a lo ancho: es la salida principal de un link
+            de cobro. Las otras dos siguen como píldoras. */}
+        <BotonWhatsApp testID={`${testID}-compartir`} onPress={() => void compartirLink(link.url, 'el link de cobro')} />
         <FilaBotones
           testID={`${testID}-botones`}
           botones={[
-            {
-              etiqueta: 'Compartilo por WhatsApp',
-              onPress: () => void compartirLink(link.url, 'el link de cobro'),
-              variante: 'primario',
-              testID: `${testID}-compartir`,
-            },
             {
               etiqueta: 'Mandalo por mail',
               onPress: () => void abrirCorreo(link),
@@ -106,6 +104,6 @@ export function TarjetaLinkDeCobro({ link, testID = 'tarjeta-link-cobro' }: Tarj
           ]}
         />
       </View>
-    </Tile>
+    </TarjetaChat>
   );
 }

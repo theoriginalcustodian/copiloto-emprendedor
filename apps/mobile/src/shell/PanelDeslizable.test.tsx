@@ -10,6 +10,8 @@ import * as Reanimated from 'react-native-reanimated';
 
 import { ThemeProvider } from '../theme/ThemeProvider';
 import {
+  AIRE_PESTANA,
+  opacidadPestana,
   ALTO_HANDLE,
   ALTO_ZONA_ARRASTRE,
   espacioSuperior,
@@ -19,6 +21,9 @@ import {
   MARGEN_TIRADOR,
   RECONCILIAR_TECLADO_MS,
   reconciliarTeclado,
+  compensacionPie,
+  opacidadConversacion,
+  opacidadPieFijo,
   opacidadRotuloAbajo,
   PanelDeslizable,
   panelYAlCambiarRecorrido,
@@ -89,6 +94,45 @@ describe('PanelDeslizable (Tarea 2.4)', () => {
     expect(StyleSheet.flatten(asa.props.style).height).toBe(ALTO_HANDLE);
     expect(within(asa).queryByText(/./)).toBeNull();
     expect(screen.queryByTestId('panel-hint', { includeHiddenElements: true })).toBeNull();
+  });
+
+  // Martin 15/11: con la conversación arriba la línea vive en una pestaña propia, como la de Mi día.
+  it('la línea tiene su pestaña: de vidrio, borde de abajo redondeado, y cubre spacer + asa + aire', async () => {
+    await envolver();
+    const estilo = StyleSheet.flatten(screen.getByTestId('panel-pestana').props.style);
+    expect(estilo.height).toBe(espacioSuperior(0) + ALTO_HANDLE + AIRE_PESTANA);
+    expect(estilo.borderBottomLeftRadius).toBeGreaterThan(0);
+    expect(estilo.borderBottomRightRadius).toBe(estilo.borderBottomLeftRadius);
+    // De vidrio: el color no va en la pestaña sino en un velo translúcido sobre el desenfoque.
+    expect(estilo.backgroundColor).toBeUndefined();
+    expect(StyleSheet.flatten(screen.getByTestId('panel-pestana-velo').props.style).opacity).toBeLessThan(1);
+    expect(screen.getByTestId('panel-pestana').props.pointerEvents).toBe('none');
+  });
+
+  it('la pestaña sólo aparece con la conversación desplegada del todo: en el viaje no existe', () => {
+    expect(opacidadPestana(0, 800)).toBe(1);
+    expect(opacidadPestana(24, 800)).toBe(0);
+    expect(opacidadPestana(400, 800)).toBe(0);
+    expect(opacidadPestana(800, 800)).toBe(0);
+    expect(opacidadPestana(0, 0)).toBe(1);
+  });
+
+  it('con el panel arriba toda la pestaña de vidrio es zona de agarre; abajo no existe', async () => {
+    await envolver();
+    const agarre = screen.getByTestId('panel-pestana-agarre');
+    expect(agarre.props.pointerEvents).toBe('auto');
+    expect(StyleSheet.flatten(agarre.props.style).height).toBe(StyleSheet.flatten(screen.getByTestId('panel-pestana').props.style).height);
+  });
+
+  it('con el panel abajo la zona de agarre de la pestaña no toma toques', async () => {
+    await envolver({ arrancaAbajo: true });
+    expect(screen.getByTestId('panel-pestana-agarre', { includeHiddenElements: true }).props.pointerEvents).toBe('none');
+  });
+
+  it('con el panel abajo la conversación no se queda con los toques de Mi día', async () => {
+    await envolver({ arrancaAbajo: true });
+    expect(screen.getByTestId('panel-contenido', { includeHiddenElements: true }).props.pointerEvents).toBe('none');
+    expect(screen.getByTestId('panel-capa', { includeHiddenElements: true }).props.pointerEvents).toBe('box-none');
   });
 
   it('🔴 SM-N38: sin texto, el asa conserva su nombre accesible y dice qué hace según dónde está el panel', async () => {
@@ -195,6 +239,49 @@ describe('PanelDeslizable — senalBajar', () => {
  * SM-I4 (D1): con el escritorio abierto la tira del chat sale por abajo y queda una sola solapa. La cuenta es
  * una función pura porque el mock de Reanimated no calcula estilos animados.
  */
+// Martin 14/11/2026: al subir la conversación, el campo y el micrófono de Mi día no viajan con el asa ni se
+// desvanecen a mitad de camino. Se quedan abajo y se apagan al final, cuando llega el campo del chat.
+describe('el campo de Mi día no viaja con la conversación', () => {
+  const recorrido = 700;
+  const altoTira = 120;
+
+  it('🔴 la compensación deshace EXACTAMENTE lo que el panel se movió: el campo queda donde estaba', () => {
+    for (const panelY of [700, 560, 350, 100, 0]) {
+      const reposo = translacionPanel(recorrido, recorrido, 0, altoTira);
+      const ahora = translacionPanel(panelY, recorrido, 0, altoTira);
+      // posición del campo en pantalla = la del panel + la compensación; tiene que ser siempre la del reposo
+      expect(ahora + compensacionPie(panelY, recorrido, 0, altoTira)).toBeCloseTo(reposo);
+    }
+  });
+
+  it('en reposo no compensa nada, tampoco con las funciones abiertas: el campo se va con la tira como siempre', () => {
+    expect(compensacionPie(recorrido, recorrido, 0, altoTira)).toBe(0);
+    expect(compensacionPie(recorrido, recorrido, 1, altoTira)).toBe(0);
+  });
+
+  it('se ve entero durante el recorrido y se apaga sólo al final', () => {
+    expect(opacidadPieFijo(700, recorrido)).toBe(1);
+    expect(opacidadPieFijo(350, recorrido)).toBe(1); // a mitad de camino antes ya estaba desvanecido
+    expect(opacidadPieFijo(24, recorrido)).toBe(1);
+    expect(opacidadPieFijo(12, recorrido)).toBeCloseTo(0.5);
+    expect(opacidadPieFijo(0, recorrido)).toBe(0); // arriba manda el campo del chat
+  });
+
+  it('🔴 la conversación aparece casi al instante, no a mitad de camino', () => {
+    expect(opacidadConversacion(700, recorrido)).toBe(0); // en reposo: ninguna tarjeta detrás del campo (SM-N38)
+    expect(opacidadConversacion(686, recorrido)).toBeCloseTo(0.5);
+    expect(opacidadConversacion(672, recorrido)).toBe(1); // a 28 px del reposo ya está entera
+    expect(opacidadConversacion(560, recorrido)).toBe(1); // al 80 % del recorrido antes todavía era invisible
+    expect(opacidadConversacion(0, recorrido)).toBe(1);
+    expect(opacidadConversacion(0, 0)).toBe(1); // sin medir, el panel está arriba: manda el chat
+  });
+
+  it('sin medir no hay campo de Mi día (ni compensación que inventar)', () => {
+    expect(opacidadPieFijo(0, 0)).toBe(0);
+    expect(compensacionPie(0, 0, 0, altoTira)).toBe(0);
+  });
+});
+
 describe('translacionPanel — la tira se va sólo con el chat abajo', () => {
   const recorrido = 700;
   const altoTira = 80;

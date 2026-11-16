@@ -58,13 +58,47 @@ describe('TarjetaGastoPropuesto', () => {
     // pierde creyendo los dos que estaba hecho.
     await montar();
 
-    expect(screen.getByTestId('gasto-propuesto-aviso')).toHaveTextContent('Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté.');
+    // 14/11: la card pasó a resumen. El título nombra el registro y el aviso es el contrato, textual.
+    expect(screen.getByTestId('gasto-propuesto-titulo')).toHaveTextContent('Nuevo gasto');
+    expect(screen.getByTestId('gasto-propuesto-aviso')).toHaveTextContent('Todavía no se guardó nada.');
   });
 
-  it('muestra lo que se dictó, textual, para poder contrastarlo', async () => {
+  it('muestra lo que entendió como RESUMEN: la cifra y una fila por dato, sin la cita de lo dictado', async () => {
+    // 14/11 (Martin): la cita repetía por tercera vez lo que ya está en la burbuja del usuario y en «Detalle».
     await montar();
 
-    expect(screen.getByTestId('gasto-propuesto-dicho')).toHaveTextContent('«pagué quince mil de mercadería»');
+    expect(screen.queryByTestId('gasto-propuesto-dicho')).toBeNull();
+    expect(screen.getByTestId('gasto-monto-cifra')).toHaveTextContent('$50.000,00');
+    expect(screen.getByTestId('gasto-categoria-cambiar')).toBeTruthy();
+    // Lo dictado sigue a la vista, como dato editable.
+    expect(screen.getByTestId('gasto-descripcion-cambiar')).toHaveTextContent(/pagué quince mil de mercadería/);
+    // Los campos no están abiertos de entrada: ni el monto ni los ocho chips de categoría.
+    expect(screen.queryByTestId('gasto-monto-input')).toBeNull();
+    expect(screen.queryByTestId('gasto-categoria')).toBeNull();
+  });
+
+  it('los opcionales vacíos quedan detrás de «Agregar…» y se abren al tocarlo', async () => {
+    await montar();
+
+    expect(screen.queryByTestId('gasto-medio-pago-input')).toBeNull();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('gasto-mas-datos'));
+    });
+    expect(screen.getByTestId('gasto-medio-pago-input')).toBeTruthy();
+  });
+
+  it('tocar la categoría abre los chips ahí mismo y elegir uno la cierra', async () => {
+    await montar();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('gasto-categoria-cambiar'));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('gasto-categoria-opcion-transporte'));
+    });
+
+    expect(screen.queryByTestId('gasto-categoria')).toBeNull();
+    expect(screen.getByTestId('gasto-categoria-cambiar')).toHaveTextContent(/Transporte/);
   });
 
   it('🔴 permite CORREGIR el monto mal transcripto antes de guardar', async () => {
@@ -74,6 +108,10 @@ describe('TarjetaGastoPropuesto', () => {
     mockCrear.mockResolvedValue({ status: 'ok', gasto: gastoGuardado('15000.00') });
     await montar();
 
+    // En el resumen el monto es una cifra; tocarla abre el campo ahí mismo.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('gasto-monto-cambiar'));
+    });
     await act(async () => {
       fireEvent.changeText(screen.getByTestId('gasto-monto-input'), '15000');
     });
@@ -187,7 +225,7 @@ describe('TarjetaGastoPropuesto', () => {
       await montar(propuesta(), { resuelto: { estado: 'guardado', monto: '50000.00' } });
 
       expect(screen.getByTestId('gasto-propuesto-guardado')).toHaveTextContent('Gasto anotado: $50.000,00');
-      expect(screen.queryByTestId('gasto-monto-input')).toBeNull();
+      expect(screen.queryByTestId('gasto-guardar')).toBeNull();
       expect(mockCrear).not.toHaveBeenCalled();
     });
 
@@ -195,13 +233,15 @@ describe('TarjetaGastoPropuesto', () => {
       await montar(propuesta(), { resuelto: { estado: 'descartado' } });
 
       expect(screen.getByTestId('gasto-propuesto-descartado')).toBeTruthy();
-      expect(screen.queryByTestId('gasto-monto-input')).toBeNull();
+      expect(screen.queryByTestId('gasto-guardar')).toBeNull();
     });
 
     it('control negativo: sin `resuelto` sigue arrancando editable, como antes', async () => {
       await montar();
 
-      expect(screen.getByTestId('gasto-monto-input')).toBeTruthy();
+      // «Editable» = sigue ofreciendo guardar y cambiar; el campo del monto ya no está abierto de entrada.
+      expect(screen.getByTestId('gasto-guardar')).toBeTruthy();
+      expect(screen.getByTestId('gasto-monto-cambiar')).toBeTruthy();
       expect(screen.queryByTestId('gasto-propuesto-guardado')).toBeNull();
     });
 

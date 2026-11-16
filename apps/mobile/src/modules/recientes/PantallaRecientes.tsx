@@ -32,7 +32,7 @@ import { MarcoGlass } from '../../theme/glass/MarcoGlass';
  */
 export function PantallaRecientes() {
   return (
-    <MarcoGlass titulo="Recientes" icono="actividadReciente" testID="pantalla-recientes">
+    <MarcoGlass titulo="Recientes" icono="actividadReciente" sinIcono testID="pantalla-recientes">
       <ListaActividad
         fuente={listarActividad}
         testIDBase="recientes"

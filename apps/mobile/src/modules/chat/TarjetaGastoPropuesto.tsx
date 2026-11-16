@@ -80,10 +80,12 @@ export function TarjetaGastoPropuesto({
   return (
     <TarjetaPropuestaShell
       testID={testID}
-      aviso="Esto entendí. Revisalo y tocá Guardar el gasto — todavía no lo anoté."
-      // Lo que dictó, textual: es contra ESTO que contrasta lo que la card entendió. Sin la cita, para
-      // verificar el monto habría que acordarse de lo que uno mismo dijo.
-      cita={propuesta.descripcion}
+      // Martin 14/11: la card es un RESUMEN (ver `FormularioGasto.resumido`). El título nombra el registro y el
+      // aviso es el contrato de siempre, textual: nada se guardó todavía.
+      // Sin la cita de lo dictado: el mensaje del emprendedor está en la burbuja de arriba y, además, se repetía
+      // una tercera vez en «Detalle».
+      titulo="Nuevo gasto"
+      aviso="Todavía no se guardó nada."
     >
       <FormularioGasto
         origen={propuesta.origen}
@@ -100,6 +102,7 @@ export function TarjetaGastoPropuesto({
           onResolver?.({ estado: 'descartado' });
         }}
         mensajeId={mensajeId}
+        resumido
         testID={`${testID}-formulario`}
       />
     </TarjetaPropuestaShell>

@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import {
   agruparCapacidadesPorRotulo,
@@ -13,8 +13,8 @@ import { dejarPendiente } from '../chat/mensajePendiente';
 import { DockFuncion } from '../voz';
 import { ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
-import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
-import { Row } from '../../theme/glass/Row';
+import { Chevron } from './Chevron';
+import { FilaGrupo, GrupoFilas } from './GrupoFilas';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
@@ -97,61 +97,47 @@ export function PantallaComoUsarLaApp() {
   const sinCapacidades = estado === 'ok' && (guia?.capacidades.length ?? 0) === 0;
 
   return (
-    <MarcoGlass titulo="Cómo usar la app" icono="comoHablarle" testID="pantalla-como-usar">
+    <MarcoGlass titulo="Cómo usar la app" icono="comoHablarle" sinIcono testID="pantalla-como-usar">
       <ScrollFormulario
         testID="como-usar-contenido"
-        contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.md, paddingBottom: 120 }}
+        contentContainerStyle={{ padding: tema.espacio.md, gap: 24, paddingBottom: 120 }}
       >
-        <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
+        <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, lineHeight: 22, paddingHorizontal: 4 }}>
           Lo que más se pregunta, contestado en dos minutos.
         </Text>
 
-        <Text style={rotulo(tema)}>EMPEZÁ POR ACÁ</Text>
-        {/* SM-N42 punto 4 -- los cinco temas viven en UNA tarjeta (`.grupo` del prototipo, `s-comousar`),
-            separados por un filete, no en cinco tarjetas sueltas. El contenedor es una `Row` sin onPress;
-            cada tema es su propio Pressable. El prototipo manda sobre el DoD de pieles (ver `tokens.ts`). */}
-        <Row style={styles.grupo}>
+        {/* SM-N42 punto 4 -- los cinco temas viven en UNA tarjeta, separados por una línea fina. Rediseño (Martin
+            15/11): el molde de las demás funciones — título afuera en display, tarjeta blanca de filas. */}
+        <GrupoFilas
+          rotulo="Empezá por acá"
+          notaTestID="como-usar-pie"
+          nota="Cada tema te lo explico en el chat, con tus propios datos. Si no está lo que buscás, preguntame ahí mismo."
+        >
           {TEMAS_AYUDA.map((t, i) => (
-          <Pressable
-            key={t.titulo}
-            testID={`como-usar-tema-${i}`}
-            accessibilityRole="button"
-            accessibilityLabel={t.titulo}
-            onPress={() => preguntar(t.pregunta)}
-            style={pressableStyle(
-              [
-                styles.filaTema,
-                i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: tema.glass.chip },
-              ],
-              PRESS_FADE,
-            )}
-          >
-            <View style={styles.tema}>
-              {/* Círculo tintado con el número (mapa `comousar`, SM-K7). */}
-              <View style={[styles.numero, { backgroundColor: tema.color.superficieAlta }]}>
-                <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+            <FilaGrupo
+              key={t.titulo}
+              primera={i === 0}
+              testID={`como-usar-tema-${i}`}
+              accessibilityLabel={t.titulo}
+              onPress={() => preguntar(t.pregunta)}
+            >
+              <View style={[styles.numero, { backgroundColor: tema.color.tileFuncion.arena }]}>
+                <Text style={{ color: tema.color.tileFuncion.tinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
                   {i + 1}
                 </Text>
               </View>
               <View style={styles.bloque}>
-                <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
+                <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
                   {t.titulo}
                 </Text>
-                <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{t.detalle}</Text>
+                <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>{t.detalle}</Text>
               </View>
-              {/* Cada tema se toca y lleva al chat: el `›` es la afordancia (ver EncabezadoListado). */}
-              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.titulo }}>›</Text>
-            </View>
-          </Pressable>
+              <Chevron />
+            </FilaGrupo>
           ))}
-        </Row>
+        </GrupoFilas>
 
-        <Text testID="como-usar-pie" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-          Cada tema te lo explico en el chat, con tus propios datos. Si no está lo que buscás,
-          preguntame ahí mismo.
-        </Text>
-
-        <Text style={rotulo(tema)}>LO QUE LE PODÉS PEDIR</Text>
+        <Text accessibilityRole="header" style={[rotulo(tema), { marginBottom: -6 }]}>Lo que le podés pedir</Text>
 
         {estado === 'cargando' && <ActivityIndicator testID="como-usar-cargando" color={tema.color.acento} />}
 
@@ -167,7 +153,7 @@ export function PantallaComoUsarLaApp() {
             {/* 🔴 El encabezado desactiva la lectura equivocada ANTES de mostrar la lista. Una tabla
                 de frases invita a leerse como comandos; si el emprendedor cree que tiene que decirlas
                 exactas, la guía lo empeoró. */}
-            <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
+            <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, lineHeight: 24, paddingHorizontal: 4 }}>
               Hablale como le hablarías a alguien que te ayuda. Estos son ejemplos, no fórmulas: si te
               falta un dato, te lo pide; si entendió mal, lo corregís en la tarjeta.
             </Text>
@@ -178,29 +164,31 @@ export function PantallaComoUsarLaApp() {
               </Text>
             )}
 
-            {agruparCapacidadesPorRotulo(guia.capacidades).map((grupo, i) => (
-              <Row key={grupo.rotulo} testID={`como-usar-grupo-${i}`}>
-                <View style={styles.bloque}>
-                  <Text style={rotulo(tema)}>{grupo.rotulo}</Text>
-                  {grupo.ejemplos.map((e) => (
-                    <Text
-                      key={e}
-                      style={{ color: tema.color.texto, fontFamily: tema.fuente.ui, fontSize: tema.tipo.base }}
-                    >
-                      «{e}»
-                    </Text>
-                  ))}
-                </View>
-              </Row>
-            ))}
+            {!sinCapacidades && (
+              <GrupoFilas>
+                {agruparCapacidadesPorRotulo(guia.capacidades).map((grupo, i) => (
+                  <FilaGrupo key={grupo.rotulo} primera={i === 0} testID={`como-usar-grupo-${i}`}>
+                    <View style={styles.bloque}>
+                      <Text style={subrotulo(tema)}>{grupo.rotulo}</Text>
+                      {grupo.ejemplos.map((e) => (
+                        <Text key={e} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, lineHeight: 22 }}>
+                          «{e}»
+                        </Text>
+                      ))}
+                    </View>
+                  </FilaGrupo>
+                ))}
+              </GrupoFilas>
+            )}
 
             {/* Las fechas van aparte porque no son una capacidad: son un modificador de todas. Y
                 salen de la MISMA tabla medida contra el resolvedor que usa el backend — no de una
                 lista paralela que podría decir otra cosa. */}
             {guia.fechas.entiendo.length > 0 && (
-              <Row testID="como-usar-fechas">
+              <GrupoFilas>
+                <FilaGrupo primera testID="como-usar-fechas">
                 <View style={styles.bloque}>
-                  <Text style={rotulo(tema)}>Fechas</Text>
+                  <Text style={subrotulo(tema)}>Fechas</Text>
                   <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
                     {guia.fechas.entiendo.map((f) => `«${f}»`).join(' · ')}
                   </Text>
@@ -213,7 +201,8 @@ export function PantallaComoUsarLaApp() {
                     </Text>
                   )}
                 </View>
-              </Row>
+                </FilaGrupo>
+              </GrupoFilas>
             )}
           </>
         )}
@@ -227,18 +216,20 @@ export function PantallaComoUsarLaApp() {
 }
 
 const rotulo = (tema: ReturnType<typeof useTema>) => ({
-  color: tema.color.acentoTinta,
-  fontFamily: tema.fuente.mono,
-  fontSize: tema.tipo.chico,
-  letterSpacing: 1.2,
-  textTransform: 'uppercase' as const,
+  color: tema.color.texto,
+  fontFamily: tema.fuente.display,
+  fontSize: tema.tipo.grande,
+  paddingHorizontal: 4,
+});
+
+const subrotulo = (tema: ReturnType<typeof useTema>) => ({
+  color: tema.color.texto,
+  fontFamily: tema.fuente.uiSemibold,
+  fontSize: tema.tipo.base,
 });
 
 const styles = StyleSheet.create({
   // Contenedor de la tarjeta única: pisa el padding/dirección de `Row` (que es una fila de lista).
-  grupo: { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 4, paddingHorizontal: 16 },
-  filaTema: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
-  tema: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   bloque: { flex: 1, gap: 4 },
-  numero: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  numero: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
 });

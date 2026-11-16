@@ -1,17 +1,16 @@
 import Svg, { Path } from 'react-native-svg';
 
+import { Glifo } from '../../theme/glass/Glifo';
+
 /**
  * Los íconos del composer de voz tal como los dibuja el prototipo ODOBI (`ICO_VOZ`,
  * `Prototipo frontend/odobi-ui/prototipo/index.html:2846-2855`): Phosphor, `viewBox` 256, relleno.
- * Trazos 1:1 — no se redibujan: el operador pidió que la app refleje el prototipo, no una variante.
+ * Desde el 15/11 Martin eligió otro dibujo para el tacho y la pausa (salen de `glifos.ts`); reproducir y enviar
+ * siguen siendo los Phosphor del prototipo, trazo 1:1.
  *
  * Son decorativos: el control que los contiene lleva el `accessibilityLabel`, así que el SVG se oculta
  * a los lectores de pantalla (un nombre duplicado sería ruido).
  */
-const TRAZO_TACHO =
-  'M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z';
-const TRAZO_PAUSA =
-  'M200,32H168a16,16,0,0,0-16,16V208a16,16,0,0,0,16,16h32a16,16,0,0,0,16-16V48A16,16,0,0,0,200,32Zm0,176H168V48h32ZM88,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16H88a16,16,0,0,0,16-16V48A16,16,0,0,0,88,32Zm0,176H56V48H88Z';
 const TRAZO_PLAY =
   'M232.4,114.49,88.32,26.35a16,16,0,0,0-16.2-.3A15.86,15.86,0,0,0,64,39.87V216.13A15.94,15.94,0,0,0,80,232a16.07,16.07,0,0,0,8.36-2.35L232.4,141.51a15.81,15.81,0,0,0,0-27ZM80,215.94V40.05l143.83,88Z';
 const TRAZO_ENVIAR =
@@ -38,11 +37,11 @@ function IconoVoz({ trazo, color, tamano }: IconoVozProps & { trazo: string }) {
 }
 
 export function IconoTachoVoz({ color, tamano = 19 }: IconoVozProps) {
-  return <IconoVoz trazo={TRAZO_TACHO} color={color} tamano={tamano} />;
+  return <Glifo nombre="voz-tacho" size={tamano} color={color} decorativo />;
 }
 
 export function IconoPausaVoz({ color, tamano = 19 }: IconoVozProps) {
-  return <IconoVoz trazo={TRAZO_PAUSA} color={color} tamano={tamano} />;
+  return <Glifo nombre="voz-pausa" size={tamano} color={color} decorativo />;
 }
 
 export function IconoPlayVoz({ color, tamano = 19 }: IconoVozProps) {

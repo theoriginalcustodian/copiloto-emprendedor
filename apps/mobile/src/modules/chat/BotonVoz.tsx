@@ -2,16 +2,11 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, type FlatList } from 'react-native-gesture-handler';
 import { scheduleOnRN } from 'react-native-worklets';
-import Svg, { Path } from 'react-native-svg';
 
 import { sombraNivel } from '../../theme/glass/relieve';
+import { Glifo } from '../../theme/glass/Glifo';
 import { useTema } from '../../theme/ThemeProvider';
 import { tonoBotonEntrada } from './tonoBotonEntrada';
-
-/** El micrófono del mapa (Phosphor, viewBox 256; el mismo trazo que `.mic`, `index.html:1862`). Es el glifo
- *  que decide SM-I2: un botón de 52 tiene que decir «hablá», y a ese tamaño el isotipo no lo dice. */
-const TRAZO_MIC =
-  'M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z';
 
 /** Cuánto hay que deslizar hacia arriba (px) antes de "fijar" la grabación — mismo umbral y misma
  *  razón que documed (`modules/captura/BotonVoz.tsx`, fuente canónica del gesto): un temblor
@@ -354,9 +349,12 @@ export function BotonVoz({
             capturando && styles.botonGrabando,
           ]}
         >
-          <Svg testID="boton-voz-glifo" width={TAMANO_GLIFO} height={TAMANO_GLIFO} viewBox="0 0 256 256">
-            <Path d={TRAZO_MIC} fill={tonoBotonEntrada(tema, !disabled).glifo} />
-          </Svg>
+          <Glifo
+            testID="boton-voz-glifo"
+            nombre="microphone"
+            size={TAMANO_GLIFO}
+            color={tonoBotonEntrada(tema, !disabled).glifo}
+          />
         </View>
       </View>
     </GestureDetector>

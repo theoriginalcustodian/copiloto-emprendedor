@@ -129,9 +129,9 @@ describe('TarjetaFacturaPropuesta', () => {
   it('dice explícitamente que TODAVÍA no la mandó', async () => {
     await montar();
 
-    expect(screen.getByTestId('factura-propuesta-aviso')).toHaveTextContent(
-      'Esto entendí. Revisalo y tocá Emitir la factura — todavía no la mandé.',
-    );
+    // 14/11: mismo lenguaje que las otras cards. El título nombra y el aviso es el contrato, textual.
+    expect(screen.getByTestId('factura-propuesta-titulo')).toHaveTextContent('Nueva factura');
+    expect(screen.getByTestId('factura-propuesta-aviso')).toHaveTextContent('Todavía no se emitió nada.');
   });
 
   it('🔴 avisa ANTES de emitir que se anula con nota de crédito, no se borra (H-23)', async () => {
@@ -144,8 +144,9 @@ describe('TarjetaFacturaPropuesta', () => {
     await montar();
 
     expect(screen.getByTestId('factura-propuesta-cliente')).toHaveTextContent(/ClienteJuan Pérez · 20304050607/);
-    expect(screen.getByTestId('factura-propuesta-item-0')).toHaveTextContent('Service de aire1 × 50000');
-    expect(screen.getByTestId('factura-propuesta-total')).toHaveTextContent('Total: 50000');
+    // 14/11: los importes se muestran como plata, y el total va grande, sin el rótulo «Total:».
+    expect(screen.getByTestId('factura-propuesta-item-0')).toHaveTextContent('Ítem 1Service de aire1 × $50.000');
+    expect(screen.getByTestId('factura-propuesta-total')).toHaveTextContent('$50.000');
   });
 
   it('`fact-hitl`: el encabezado dice el tipo de comprobante que manda el backend, no uno fijo', async () => {
@@ -224,15 +225,17 @@ describe('TarjetaFacturaPropuesta', () => {
       await fireEvent.press(screen.getByTestId(testID));
     }
 
-    it('los tres botones van en ese orden', async () => {
+    it('los tres botones van en ese orden: la acción que sigue, primera', async () => {
+      // 14/11 (Martin): «Emitir» lleno y primero a la izquierda; «Editar» y «Cancelar» como texto. Antes:
+      // Editar · Cancelar · Emitir.
       await montar();
 
       const fila = screen.getByTestId('factura-propuesta-botones');
       const orden = fila.children.map((b) => (b as unknown as { props: { testID: string } }).props.testID);
       expect(orden).toEqual([
+        'factura-propuesta-emitir',
         'factura-propuesta-editar',
         'factura-propuesta-cancelar',
-        'factura-propuesta-emitir',
       ]);
     });
 
@@ -468,7 +471,7 @@ describe('TarjetaFacturaPropuesta', () => {
         expect(mockEco.mock.calls[1]![1]).toBe(conLosDos);
 
         await tocar('factura-propuesta-editar-items-volver');
-        expect(textoDe('factura-propuesta-total')).toHaveTextContent('Total: 70000');
+        expect(textoDe('factura-propuesta-total')).toHaveTextContent('$70.000');
       });
 
       it('si guardar falla lo dice y no vuelve a la card como si hubiera andado', async () => {
@@ -498,7 +501,7 @@ describe('TarjetaFacturaPropuesta', () => {
 
       await waitFor(() => expect(textoDe('factura-propuesta-error')).toHaveTextContent(/cambió/));
       expect(mockConfirmar).not.toHaveBeenCalled();
-      expect(textoDe('factura-propuesta-total')).toHaveTextContent('Total: 99');
+      expect(textoDe('factura-propuesta-total')).toHaveTextContent('$99');
     });
   });
 

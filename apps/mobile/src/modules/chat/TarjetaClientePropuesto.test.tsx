@@ -89,20 +89,28 @@ describe('TarjetaClientePropuesto', () => {
     // emprendedor lee el "listo" del copiloto, no toca nada, y el cliente no existe.
     await montar();
 
-    expect(screen.getByTestId('cliente-propuesto-aviso')).toHaveTextContent(
-      'Esto entendí. Revisalo y tocá Guardar el cliente — todavía no lo agregué.',
-    );
+    // 14/11: la card pasó a resumen. El título nombra el registro y el aviso es el contrato, textual.
+    expect(screen.getByTestId('cliente-propuesto-titulo')).toHaveTextContent('Nuevo cliente');
+    expect(screen.getByTestId('cliente-propuesto-aviso')).toHaveTextContent('Todavía no se guardó nada.');
   });
 
   it('llega con lo dictado ya cargado — no hay que re-tipear nada', async () => {
     await montar();
 
-    expect(screen.getByTestId('cliente-propuesto-formulario-nombre-input').props.value).toBe(
-      'Ferretería El Tornillo',
-    );
-    expect(screen.getByTestId('cliente-propuesto-formulario-doc-nro-input').props.value).toBe(
-      '30712345678',
-    );
+    // 14/11: como RESUMEN — el nombre grande y el documento en una fila—, no como campos abiertos.
+    expect(screen.getByTestId('cliente-propuesto-formulario-nombre-texto')).toHaveTextContent('Ferretería El Tornillo');
+    expect(screen.getByTestId('cliente-propuesto-formulario-doc-cambiar')).toHaveTextContent(/CUIT 30712345678/);
+    expect(screen.queryByTestId('cliente-propuesto-formulario-nombre-input')).toBeNull();
+  });
+
+  it('tocar el documento abre su tipo y su número ahí mismo, con lo dictado', async () => {
+    await montar();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('cliente-propuesto-formulario-doc-cambiar'));
+    });
+
+    expect(screen.getByTestId('cliente-propuesto-formulario-doc-nro-input').props.value).toBe('30712345678');
   });
 
   it('🔴 permite CORREGIR el nombre que el LLM entendió mal, y manda `origen: voz`', async () => {
@@ -111,6 +119,10 @@ describe('TarjetaClientePropuesto', () => {
     mockCrear.mockResolvedValue({ status: 'ok', cliente: clienteGuardado('Ferretería El Tornillo') });
     await montar();
 
+    // En el resumen el nombre es un texto; tocarlo abre el campo ahí mismo.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('cliente-propuesto-formulario-nombre-cambiar'));
+    });
     await act(async () => {
       fireEvent.changeText(
         screen.getByTestId('cliente-propuesto-formulario-nombre-input'),
@@ -235,9 +247,7 @@ describe('TarjetaClientePropuesto', () => {
       expect(screen.getByTestId('cliente-propuesto-formulario-homonimo')).toBeTruthy(),
     );
     expect(screen.queryByTestId('cliente-propuesto-ya-existe')).toBeNull();
-    expect(screen.getByTestId('cliente-propuesto-formulario-nombre-input').props.value).toBe(
-      'Ferretería El Tornillo',
-    );
+    expect(screen.getByTestId('cliente-propuesto-formulario-nombre-texto')).toHaveTextContent('Ferretería El Tornillo');
   });
 
   it('🔴 forzar el homónimo reenvía lo MISMO, con `forzar`', async () => {

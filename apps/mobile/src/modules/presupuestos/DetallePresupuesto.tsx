@@ -1,5 +1,8 @@
 /**
- * `DetallePresupuesto` — el glass chico que se abre al tocar una card, con las acciones.
+ * `DetallePresupuesto` — lo que se abre al tocar un presupuesto. Rediseño (Martin 15/11): pantalla completa con
+ * scroll. Arriba quién y qué; una tarjeta con el total, el estado y los ítems; las acciones de cada tanto en una
+ * tarjeta de filas; y abajo la hoja, el presupuesto como documento. Las dos acciones que importan quedan fijas al
+ * pie: «Enviar al cliente» (la única llena) y «Facturar».
  *
  * Clonado del patrón de `facturacion/DetalleComprobante.tsx`, que ya pagó los errores de esta forma:
  *
@@ -16,7 +19,8 @@
  * un estado de carga: mostrar el detalle sin ítems sería mostrar un presupuesto sin lo presupuestado.
  */
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   cambiarEstadoPresupuesto,
@@ -29,10 +33,14 @@ import {
   type Presupuesto,
 } from '@copiloto/core';
 
+import { elevacion } from '../../theme/BloqueCifra';
 import { compartirLink } from '../../util/abrirYCompartir';
+import { AVISO_CONECTAR_GOOGLE, CLAVE_AVISO_CONECTAR_GOOGLE, useAvisoUnaVez } from '../../util/avisoUnaVez';
+import { compartirPresupuesto } from './compartirPresupuesto';
 import { useTema } from '../../theme/ThemeProvider';
-import { CristalVidrio } from '../../theme/glass/CristalVidrio';
-import { FilaBotones } from '../../theme/glass/campos';
+import { Glifo } from '../../theme/glass/Glifo';
+import { conAlfa } from '../../theme/glass/conAlfa';
+import { useNombreComercial } from '../ajustes/negocio/useNombreComercial';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 
 const ETIQUETA_DOC: Record<number, string> = {
@@ -58,37 +66,6 @@ export interface DetallePresupuestoProps {
    */
   sugerenciaMandarPorMail?: { docLink: string } | null;
   testID?: string;
-}
-
-function Dato({
-  etiqueta,
-  valor,
-  testID,
-  destacado = false,
-}: {
-  etiqueta: string;
-  valor: string;
-  testID?: string;
-  destacado?: boolean;
-}) {
-  const tema = useTema();
-  return (
-    <View style={styles.dato}>
-      <Text style={[styles.etiqueta, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}>
-        {etiqueta}
-      </Text>
-      <Text
-        testID={testID}
-        style={{
-          color: destacado ? tema.color.acento : tema.color.texto,
-          fontFamily: destacado ? tema.fuente.uiBold : tema.fuente.ui,
-          fontSize: destacado ? tema.tipo.grande : tema.tipo.base,
-        }}
-      >
-        {valor}
-      </Text>
-    </View>
-  );
 }
 
 type EstadoFacturar =
@@ -128,6 +105,7 @@ export function DetallePresupuesto({
   // vez de en blanco, y se completa cuando llega el detalle. Sin esto habría un salto visual sobre
   // datos que ya estaban en memoria.
   const [p, setP] = useState<Presupuesto>(inicial);
+  const avisarGoogle = useAvisoUnaVez(CLAVE_AVISO_CONECTAR_GOOGLE, p.docLink == null);
   const [cargandoItems, setCargandoItems] = useState(true);
   const [estadoFacturar, setEstadoFacturar] = useState<EstadoFacturar>('idle');
   const [facturaIdPrevia, setFacturaIdPrevia] = useState<string | null>(null);
@@ -272,181 +250,261 @@ export function DetallePresupuesto({
    */
   const hayBorradorPendiente = p.facturaId != null && !p.facturado;
 
-  const acciones = [];
+  const insets = useSafeAreaInsets();
+  const nombreComercial = useNombreComercial();
+  const linea = conAlfa(tema.color.texto, 0.12);
+  const tenue = { color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 };
+  const fechaLarga = formatearFechaLarga(p.fecha);
+  const conCliente = p.receptor.nombre !== '';
+  const documento =
+    p.receptor.docTipo != null && p.receptor.docNro !== ''
+      ? `${ETIQUETA_DOC[p.receptor.docTipo] ?? `Tipo ${p.receptor.docTipo}`} ${p.receptor.docNro}`
+      : null;
+  const contacto = p.receptor.contacto !== '' ? p.receptor.contacto : null;
+
+  /** Con documento de Google sale su link; sin él, el presupuesto como texto. Las dos abren la hoja de compartir. */
+  function enviarAlCliente() {
+    if (p.docLink != null) void compartir();
+    else void compartirPresupuesto(p);
+  }
+
+  // La segunda acción, al lado de «Enviar al cliente»: convertirlo en factura (o seguir la que ya se empezó).
+  let segunda: { etiqueta: string; onPress: () => void; deshabilitado?: boolean; testID: string } | null = null;
   if (hayBorradorPendiente && p.facturaId != null) {
     const idBorrador = p.facturaId;
-    acciones.push({
-      etiqueta: 'Continuar la factura',
-      onPress: () => onFacturar(idBorrador),
-      variante: 'primario' as const,
-      testID: `${testID}-continuar-factura`,
-    });
+    segunda = { etiqueta: 'Continuar la factura', onPress: () => onFacturar(idBorrador), testID: `${testID}-continuar-factura` };
   } else if (!p.facturado && estadoFacturar !== 'ya_facturado') {
-    acciones.push({
+    segunda = {
       etiqueta: estadoFacturar === 'enviando' ? 'Preparando…' : 'Facturar',
       onPress: () => void facturar(),
-      variante: 'primario' as const,
       deshabilitado: estadoFacturar === 'enviando',
       testID: `${testID}-facturar`,
-    });
+    };
   }
-  acciones.push({
-    etiqueta: 'Corregir',
-    onPress: () => onCorregir(p),
-    variante: 'secundario' as const,
-    testID: `${testID}-corregir`,
-  });
-  // Sobre uno ya desestimado no se vuelve a ofrecer: el backend no acepta volver atrás, y un botón
-  // que sólo puede fallar es peor que ninguno.
+
+  // Lo demás va callado, en una tarjeta de filas: son cosas que se hacen cada tanto.
+  const otras: { etiqueta: string; onPress: () => void; deshabilitado?: boolean; testID: string }[] = [];
+  if (p.docLink != null && sugerenciaMandarPorMail != null) {
+    otras.push({ etiqueta: 'Mandalo por mail', onPress: () => void mandarPorMail(), testID: `${testID}-mandar-por-mail` });
+  }
+  if (p.docLink != null) {
+    // «Ver en Google Docs», no «Ver» a secas: manda al navegador, y un «Ver» pelado hace esperar que abra adentro.
+    otras.push({ etiqueta: 'Ver en Google Docs', onPress: () => void abrirDoc(), testID: `${testID}-ver-doc` });
+  }
+  otras.push({ etiqueta: 'Corregir', onPress: () => onCorregir(p), testID: `${testID}-corregir` });
   if (p.estado !== 'desestimado') {
-    acciones.push({
+    otras.push({
       etiqueta: marcando ? 'Marcando…' : 'No me lo tomaron',
       onPress: () => void marcarDesestimado(),
-      variante: 'secundario' as const,
       deshabilitado: marcando,
       testID: `${testID}-desestimar`,
     });
   }
 
   return (
-    <Pressable
-      testID={`${testID}-scrim`}
-      onPress={onCerrar}
-      style={[styles.scrim, { backgroundColor: tema.color.superficieAlta }]}
-    >
-      {/* `onPress` vacío: sin esto, un toque DENTRO del panel burbujea al scrim y cierra la hoja
-          justo cuando el usuario está leyéndola. */}
-      <Pressable testID={testID} onPress={() => {}} style={styles.contenedorPanel}>
-        <CristalVidrio nivel="informe" style={styles.panel} />
-        <View style={{ padding: tema.espacio.lg, gap: tema.espacio.md }}>
-          <View style={styles.encabezado}>
-            <Text
-              testID={`${testID}-titulo`}
-              style={{ color: tema.color.texto, fontFamily: tema.fuente.uiBold, fontSize: tema.tipo.titulo }}
-            >
-              Presupuesto N° {p.numero}
+    <View testID={`${testID}-scrim`} style={[styles.pantalla, { backgroundColor: tema.color.fondo }]}>
+      <View testID={testID} style={styles.columna}>
+        <View style={[styles.barra, { paddingTop: insets.top + 8 }]}>
+          <Pressable
+            testID={`${testID}-cerrar`}
+            onPress={onCerrar}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Volver a Presupuestos"
+            style={pressableStyle(styles.volver, PRESS_FADE)}
+          >
+            <Glifo nombre="arrow-left" size={20} color={tema.color.acentoTinta} decorativo />
+            <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
+              Presupuestos
             </Text>
-            <Pressable
-              testID={`${testID}-cerrar`}
-              onPress={onCerrar}
-              hitSlop={12}
-              style={pressableStyle(undefined, PRESS_FADE)}
+          </Pressable>
+        </View>
+
+        <ScrollView
+          testID={`${testID}-scroll`}
+          contentContainerStyle={{ paddingHorizontal: tema.espacio.md, paddingTop: 8, paddingBottom: 32, gap: 24 }}
+        >
+          {/* Quién y qué, antes que cualquier dato: es lo que el emprendedor reconoce de un vistazo. */}
+          <View style={styles.cabecera}>
+            <Text style={tenue}>
+              <Text testID={`${testID}-titulo`}>Presupuesto N° {p.numero}</Text>
+              {fechaLarga !== '' && (
+                <>
+                  {' · '}
+                  <Text testID={`${testID}-fecha`}>{fechaLarga}</Text>
+                </>
+              )}
+            </Text>
+            <Text
+              testID={conCliente ? `${testID}-receptor` : `${testID}-concepto`}
+              style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: 28, lineHeight: 34 }}
             >
-              <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold }}>Cerrar</Text>
-            </Pressable>
+              {conCliente ? p.receptor.nombre : p.concepto}
+            </Text>
+            {conCliente && (
+              <Text
+                testID={`${testID}-concepto`}
+                style={{ color: tema.color.texto, fontSize: tema.tipo.base, lineHeight: 22 }}
+              >
+                {p.concepto}
+              </Text>
+            )}
           </View>
 
-          <Dato etiqueta="Concepto" valor={p.concepto} testID={`${testID}-concepto`} />
-          {p.receptor.nombre !== '' && (
-            <Dato etiqueta="Cliente" valor={p.receptor.nombre} testID={`${testID}-receptor`} />
-          )}
-          {p.receptor.docTipo != null && p.receptor.docNro !== '' && (
-            <Dato
-              etiqueta="Documento"
-              valor={`${ETIQUETA_DOC[p.receptor.docTipo] ?? `Tipo ${p.receptor.docTipo}`} ${p.receptor.docNro}`}
-            />
-          )}
-          {p.receptor.contacto !== '' && <Dato etiqueta="Contacto" valor={p.receptor.contacto} />}
-          {formatearFechaLarga(p.fecha) !== '' && (
-            <Dato etiqueta="Fecha" valor={formatearFechaLarga(p.fecha)} testID={`${testID}-fecha`} />
-          )}
-
-          <View style={{ gap: tema.espacio.sm }}>
-            <Text style={[styles.etiqueta, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}>
-              Ítems
-            </Text>
-            {cargandoItems && p.items.length === 0 && (
-              <ActivityIndicator testID={`${testID}-items-cargando`} color={tema.color.acento} />
-            )}
-            {p.items.map((item) => (
-              <View key={item.orden} style={styles.filaItem} testID={`${testID}-item-${item.orden}`}>
+          <View style={[styles.tarjeta, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}>
+            <View style={styles.filaTotal}>
+              <View style={styles.total}>
+                <Text style={tenue}>Total</Text>
+                {/* 🔴 El total sale del backend TAL CUAL, sin recomputarlo desde los ítems. Recalcularlo acá
+                    sería una segunda aritmética del dinero, con float, y el día que difiera del backend el
+                    usuario vería un número distinto del que se va a facturar. */}
                 <Text
-                  numberOfLines={2}
-                  style={{ color: tema.color.texto, fontSize: tema.tipo.base, flexShrink: 1 }}
+                  testID={`${testID}-total`}
+                  style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: 30, lineHeight: 36 }}
                 >
-                  {item.descripcion}
-                </Text>
-                <Text style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.mono, fontSize: tema.tipo.chico }}>
-                  {item.cantidad} × {formatearImporte(item.precioUnitario)}
+                  {formatearImporte(p.total)}
                 </Text>
               </View>
-            ))}
+              {/* 🔴 El estado se ve SIEMPRE, no sólo cuando alguien lo tocó. Un presupuesto sin marca es
+                  «todavía sin respuesta», que es información. `null` es otra cosa: el backend no lo mandó,
+                  y ahí no se inventa un «pendiente» que nadie declaró. */}
+              {p.estado != null && (
+                <View style={[styles.pastilla, { backgroundColor: conAlfa(tema.color.texto, 0.06) }]}>
+                  {p.estado === 'aprobado' && <Glifo nombre="check" size={14} color={tema.color.exito} decorativo />}
+                  <Text
+                    testID={`${testID}-estado`}
+                    style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}
+                  >
+                    {ETIQUETA_ESTADO[p.estado]}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <View style={[styles.bloque, { borderTopColor: linea }]}>
+              {cargandoItems && p.items.length === 0 && (
+                <ActivityIndicator testID={`${testID}-items-cargando`} color={tema.color.acento} />
+              )}
+              {p.items.map((item) => (
+                <View key={item.orden} style={styles.filaItem} testID={`${testID}-item-${item.orden}`}>
+                  <Text numberOfLines={2} style={{ color: tema.color.texto, fontSize: tema.tipo.base, lineHeight: 21, flex: 1 }}>
+                    {item.descripcion}
+                  </Text>
+                  <Text style={[tenue, styles.cifras]}>
+                    {item.cantidad} × {formatearImporte(item.precioUnitario)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {(documento != null || contacto != null) && (
+              <View style={[styles.bloque, { borderTopColor: linea }]}>
+                {documento != null && (
+                  <View style={styles.filaItem}>
+                    <Text style={tenue}>Documento</Text>
+                    <Text style={{ color: tema.color.texto, fontSize: tema.tipo.chico, lineHeight: 18 }}>{documento}</Text>
+                  </View>
+                )}
+                {contacto != null && (
+                  <View style={styles.filaItem}>
+                    <Text style={tenue}>Contacto</Text>
+                    <Text style={{ color: tema.color.texto, fontSize: tema.tipo.chico, lineHeight: 18 }}>{contacto}</Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
 
-          {/* 🔴 El total sale del backend TAL CUAL, sin recomputarlo desde los ítems. Recalcularlo acá
-              sería una segunda aritmética del dinero, con float, y el día que difiera del backend el
-              usuario vería un número distinto del que se va a facturar. */}
-          <Dato etiqueta="Total" valor={formatearImporte(p.total)} destacado testID={`${testID}-total`} />
-
-          {/* 🔴 El estado se ve SIEMPRE, no sólo cuando alguien lo tocó. Un presupuesto sin marca es
-              «todavía sin respuesta», que es información — y esconderlo dejaría al emprendedor sin
-              saber cuáles quedaron colgados. `null` es otra cosa: el backend no lo mandó, y ahí no se
-              inventa un «pendiente» que nadie declaró. */}
-          {p.estado != null ? (
-            <Dato etiqueta="Estado" valor={ETIQUETA_ESTADO[p.estado]} testID={`${testID}-estado`} />
-          ) : (
-            <Text testID={`${testID}-estado-desconocido`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              No pudimos leer el estado de este presupuesto.
-            </Text>
-          )}
-          {/* «Hace mucho que nadie contesta» es un MATIZ de pendiente, no una cuarta categoría: va como
-              renglón aparte para que la suma de las tres siga dando el total. */}
-          {p.sinRespuesta === true && (
-            <Text testID={`${testID}-sin-respuesta`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              Hace más de un mes que no tenés respuesta. Quizá valga la pena preguntar.
-            </Text>
-          )}
-          {motivoEstado != null && (
-            <Text testID={`${testID}-motivo-estado`} style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
-              {motivoEstado}
-            </Text>
-          )}
-
-          {p.reemplazaA != null && (
-            <Text testID={`${testID}-reemplaza-a`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              Reemplaza al presupuesto anterior (N° {p.reemplazaA}).
-            </Text>
-          )}
-          {p.reemplazadoPor != null && (
-            <Text
-              testID={`${testID}-reemplazado-por`}
-              style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
-            >
-              Este presupuesto fue reemplazado por otro más nuevo (N° {p.reemplazadoPor}). Ya no es el
-              vigente.
-            </Text>
-          )}
-          {p.facturado && (
-            <Text testID={`${testID}-facturado`} style={{ color: tema.color.exito, fontSize: tema.tipo.chico }}>
-              Ya se emitió la factura de este presupuesto.
-            </Text>
+          {/* Lo que hay que saber de este presupuesto y no es un dato de la tarjeta. */}
+          {(p.estado == null || p.sinRespuesta === true || motivoEstado != null || p.reemplazaA != null || p.reemplazadoPor != null || p.facturado) && (
+            <View style={styles.notas}>
+              {p.estado == null && (
+                <Text testID={`${testID}-estado-desconocido`} style={tenue}>
+                  No pudimos leer el estado de este presupuesto.
+                </Text>
+              )}
+              {/* «Hace mucho que nadie contesta» es un MATIZ de pendiente, no una cuarta categoría. */}
+              {p.sinRespuesta === true && (
+                <View style={[styles.aviso, { backgroundColor: conAlfa(tema.color.texto, 0.05) }]}>
+                  <Glifo nombre="clock" size={18} color={tema.color.texto} decorativo />
+                  <Text
+                    testID={`${testID}-sin-respuesta`}
+                    style={{ color: tema.color.texto, fontSize: tema.tipo.chico, lineHeight: 18, flex: 1 }}
+                  >
+                    Hace más de un mes que no tenés respuesta. Quizá valga la pena preguntar.
+                  </Text>
+                </View>
+              )}
+              {motivoEstado != null && estadoFacturar !== 'estado_incompatible' && (
+                <Text testID={`${testID}-motivo-estado`} style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+                  {motivoEstado}
+                </Text>
+              )}
+              {p.reemplazaA != null && (
+                <Text testID={`${testID}-reemplaza-a`} style={tenue}>
+                  Reemplaza al presupuesto anterior (N° {p.reemplazaA}).
+                </Text>
+              )}
+              {p.reemplazadoPor != null && (
+                <Text testID={`${testID}-reemplazado-por`} style={tenue}>
+                  Este presupuesto fue reemplazado por otro más nuevo (N° {p.reemplazadoPor}). Ya no es el vigente.
+                </Text>
+              )}
+              {p.facturado && (
+                <View style={styles.notaConGlifo}>
+                  {/* En tinta, no en verde: el verde sobre el fondo crema no llega al contraste que pide el control. */}
+                  <Glifo nombre="check" size={16} color={tema.color.texto} decorativo />
+                  <Text testID={`${testID}-facturado`} style={{ color: tema.color.texto, fontSize: tema.tipo.chico, lineHeight: 18, flex: 1 }}>
+                    Ya se emitió la factura de este presupuesto.
+                  </Text>
+                </View>
+              )}
+            </View>
           )}
 
-          {/* 🔴 "Ver en Google Docs", no "Ver" a secas: manda al navegador, y un "Ver" pelado hace
-              esperar que abra adentro. Sólo si hay link — puede no haberlo y NO es un error: el
-              presupuesto se crea igual si el emprendedor no tiene Google Docs conectado. */}
-          {p.docLink != null ? (
-            <FilaBotones
-              testID={`${testID}-botones-doc`}
-              botones={[
-                { etiqueta: 'Ver en Google Docs', onPress: () => void abrirDoc(), variante: 'secundario', testID: `${testID}-ver-doc` },
-                { etiqueta: 'Compartir', onPress: () => void compartir(), variante: 'secundario', testID: `${testID}-compartir` },
-                ...(sugerenciaMandarPorMail != null
-                  ? [{ etiqueta: 'Mandalo por mail', onPress: () => void mandarPorMail(), variante: 'primario' as const, testID: `${testID}-mandar-por-mail` }]
-                  : []),
-              ]}
-            />
-          ) : (
-            <Text testID={`${testID}-sin-doc`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              Este presupuesto no tiene documento de Google. Conectá Google Docs desde Apps para que
-              los próximos se generen solos — el presupuesto funciona igual sin él.
+          <View
+            testID={`${testID}-botones`}
+            style={[styles.tarjeta, styles.tarjetaFilas, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}
+          >
+            {otras.map((o, i) => (
+              <Pressable
+                key={o.testID}
+                testID={o.testID}
+                onPress={o.onPress}
+                disabled={o.deshabilitado}
+                accessibilityRole="button"
+                style={pressableStyle([styles.filaAccion, i > 0 && { borderTopWidth: 1, borderTopColor: linea }])}
+              >
+                <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base, flex: 1 }}>
+                  {o.etiqueta}
+                </Text>
+                <Glifo nombre="caret-right" size={14} color={tema.color.textoTenue} decorativo />
+              </Pressable>
+            ))}
+          </View>
+          {p.docLink == null && avisarGoogle && (
+            <Text testID={`${testID}-sin-doc`} style={tenue}>
+              {AVISO_CONECTAR_GOOGLE}
             </Text>
           )}
 
-          <FilaBotones testID={`${testID}-botones`} botones={acciones} />
+          {/* La hoja: el presupuesto como documento, con los mismos datos de arriba. No calcula nada. */}
+          <View style={styles.vistaPrevia}>
+            <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande }}>
+              Vista previa
+            </Text>
+            <HojaPresupuesto presupuesto={p} nombreComercial={nombreComercial} documento={documento} testID={`${testID}-hoja`} />
+          </View>
+        </ScrollView>
 
+        <View
+          style={[
+            styles.pie,
+            { paddingBottom: insets.bottom + 12, backgroundColor: tema.color.fondo, borderTopColor: linea },
+          ]}
+        >
           {estadoFacturar === 'ya_facturado' && (
-            <Text testID={`${testID}-ya-facturado`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+            <Text testID={`${testID}-ya-facturado`} style={tenue}>
               Este presupuesto ya se facturó
               {facturaIdPrevia != null ? ' (la factura ya existe).' : '.'}
             </Text>
@@ -468,22 +526,153 @@ export function DetallePresupuesto({
             </Text>
           )}
           {estadoFacturar === 'no_disponible' && (
-            <Text testID={`${testID}-no-disponible`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+            <Text testID={`${testID}-no-disponible`} style={tenue}>
               Facturar desde un presupuesto todavía no está disponible.
             </Text>
           )}
+          <View style={styles.botonesPie}>
+            {segunda != null && (
+              <Pressable
+                testID={segunda.testID}
+                onPress={segunda.onPress}
+                disabled={segunda.deshabilitado}
+                accessibilityRole="button"
+                style={pressableStyle([styles.boton, styles.botonSegundo, { backgroundColor: tema.color.superficie, borderColor: linea }])}
+              >
+                <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
+                  {segunda.etiqueta}
+                </Text>
+              </Pressable>
+            )}
+            <Pressable
+              testID={`${testID}-compartir`}
+              onPress={enviarAlCliente}
+              accessibilityRole="button"
+              style={pressableStyle([styles.boton, styles.botonPrincipal, { backgroundColor: tema.color.acentoSuperficie }])}
+            >
+              <Text style={{ color: tema.color.acentoTexto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
+                Enviar al cliente
+              </Text>
+            </Pressable>
+          </View>
         </View>
-      </Pressable>
-    </Pressable>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * El presupuesto como hoja (Martin 15/11): lo que se le manda al cliente, dibujado con los datos guardados.
+ * 🔴 No calcula nada: cantidad y precio van como vinieron y el total es el del backend.
+ * Del cliente lleva sólo el nombre y el documento (Martin 15/11): el teléfono o el mail no van en el presupuesto.
+ */
+function HojaPresupuesto({
+  presupuesto: p,
+  nombreComercial,
+  documento,
+  testID,
+}: {
+  presupuesto: Presupuesto;
+  nombreComercial: string | undefined;
+  documento: string | null;
+  testID: string;
+}) {
+  const tema = useTema();
+  const linea = conAlfa(tema.color.texto, 0.14);
+  const rotulo = { color: tema.color.textoTenue, fontFamily: tema.fuente.uiMedium, fontSize: 9, letterSpacing: 0.8 };
+  const chico = { color: tema.color.textoTenue, fontSize: 11, lineHeight: 15 };
+  const fecha = formatearFechaLarga(p.fecha);
+  return (
+    <View
+      testID={testID}
+      accessible
+      accessibilityLabel={`Vista previa del presupuesto N° ${p.numero}`}
+      style={[styles.hoja, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie, borderTopColor: tema.color.acento }]}
+    >
+      <View style={styles.hojaCabecera}>
+        <Text numberOfLines={2} style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: 17, lineHeight: 21, flex: 1 }}>
+          {nombreComercial ?? ''}
+        </Text>
+        <View style={styles.hojaNumero}>
+          <Text style={rotulo}>PRESUPUESTO</Text>
+          <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: 15, lineHeight: 19 }}>N° {p.numero}</Text>
+          {fecha !== '' && <Text style={chico}>{fecha}</Text>}
+        </View>
+      </View>
+
+      <View style={[styles.hojaBloque, { borderTopColor: linea }]}>
+        <Text style={rotulo}>PARA</Text>
+        <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: 13, lineHeight: 18 }}>
+          {p.receptor.nombre !== '' ? p.receptor.nombre : '—'}
+        </Text>
+        {documento != null && <Text style={chico}>{documento}</Text>}
+      </View>
+
+      <View style={[styles.hojaBloque, { borderTopColor: linea }]}>
+        <Text style={rotulo}>TRABAJO</Text>
+        <Text style={{ color: tema.color.texto, fontSize: 13, lineHeight: 18 }}>{p.concepto}</Text>
+      </View>
+
+      {p.items.length > 0 && (
+        <View style={[styles.hojaBloque, { borderTopColor: linea }]}>
+          <View style={styles.hojaFila}>
+            <Text style={[rotulo, styles.hojaDescripcion]}>DETALLE</Text>
+            <Text style={[rotulo, styles.hojaCantidad]}>CANT.</Text>
+            <Text style={[rotulo, styles.hojaPrecio]}>PRECIO</Text>
+          </View>
+          {p.items.map((item) => (
+            <View key={item.orden} style={styles.hojaFila}>
+              <Text style={[styles.hojaDescripcion, { color: tema.color.texto, fontSize: 12, lineHeight: 17 }]}>{item.descripcion}</Text>
+              <Text style={[styles.hojaCantidad, styles.cifras, { color: tema.color.texto, fontSize: 12, lineHeight: 17 }]}>{item.cantidad}</Text>
+              <Text style={[styles.hojaPrecio, styles.cifras, { color: tema.color.texto, fontSize: 12, lineHeight: 17 }]}>
+                {formatearImporte(item.precioUnitario)}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      <View style={[styles.hojaTotal, { borderTopColor: tema.color.texto }]}>
+        <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: 13 }}>Total</Text>
+        <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: 20, lineHeight: 26 }}>
+          {formatearImporte(p.total)}
+        </Text>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scrim: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', padding: 20 },
-  contenedorPanel: { width: '100%', maxWidth: 460 },
-  panel: { ...StyleSheet.absoluteFill },
-  encabezado: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  dato: { gap: 2 },
-  etiqueta: { fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase' },
-  filaItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  pantalla: { ...StyleSheet.absoluteFill },
+  columna: { flex: 1 },
+  barra: { paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row' },
+  volver: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  cabecera: { gap: 4 },
+  tarjeta: { borderRadius: 22, paddingHorizontal: 20, paddingVertical: 4 },
+  tarjetaFilas: { paddingVertical: 0 },
+  filaTotal: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, paddingVertical: 16 },
+  total: { gap: 2, flexShrink: 1 },
+  pastilla: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, marginBottom: 4 },
+  notaConGlifo: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  bloque: { borderTopWidth: 1, paddingVertical: 14, gap: 10 },
+  filaItem: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
+  cifras: { fontVariant: ['tabular-nums'], textAlign: 'right' },
+  notas: { gap: 8 },
+  aviso: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderRadius: 14, padding: 12 },
+  filaAccion: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16 },
+  vistaPrevia: { gap: 12 },
+  pie: { borderTopWidth: 1, paddingHorizontal: 16, paddingTop: 12, gap: 8 },
+  botonesPie: { flexDirection: 'row', gap: 10 },
+  boton: { height: 52, borderRadius: 999, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  botonSegundo: { flex: 1, borderWidth: 1 },
+  botonPrincipal: { flex: 1.4 },
+  hoja: { borderRadius: 6, borderTopWidth: 4, paddingHorizontal: 22, paddingTop: 22, paddingBottom: 20 },
+  hojaCabecera: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingBottom: 18 },
+  hojaNumero: { alignItems: 'flex-end', gap: 1 },
+  hojaBloque: { borderTopWidth: 1, paddingVertical: 12, gap: 3 },
+  hojaFila: { flexDirection: 'row', gap: 8, paddingVertical: 2 },
+  hojaDescripcion: { flex: 1 },
+  hojaCantidad: { width: 38, textAlign: 'right' },
+  hojaPrecio: { width: 92, textAlign: 'right' },
+  hojaTotal: { borderTopWidth: 1.5, marginTop: 4, paddingTop: 12, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
 });

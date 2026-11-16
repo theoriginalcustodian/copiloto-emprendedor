@@ -53,6 +53,11 @@ export interface UseSessionResult {
   primeraVez: boolean;
   login: (email: string, password: string) => Promise<LoginResult>;
   loginConGoogle: () => Promise<LoginResult>;
+  /**
+   * Alta con mail y contraseña + login inmediato (flujo «Entrada a Odobi», Martin 12/11). Si el alta
+   * la rechaza el backend, `mensaje` trae el texto para mostrar.
+   */
+  registrar: (email: string, password: string) => Promise<LoginResult & { mensaje?: string }>;
   logout: () => void;
 }
 

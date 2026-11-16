@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 import { listarActividad, type ActividadItem } from '@copiloto/core';
 
 import { FilaActividad } from './FilaActividad';
+import { elevacion } from '../../theme/BloqueCifra';
 import { CampoTexto } from '../../theme/glass/campos';
 import { useTema } from '../../theme/ThemeProvider';
 
@@ -49,6 +51,28 @@ export interface BuscadorActividadProps {
   rotuloLista?: string;
   /** Tocar un resultado. Ausente = las filas no son tocables (ver `FilaActividad`). */
   onAbrirItem?: (item: ActividadItem) => void;
+  /**
+   * Sin la etiqueta «BUSCAR» encima y con la lupa adentro (Martin 14/11, Gastos): la etiqueta de formulario
+   * hacía que el buscador pareciera un dato a completar. El placeholder ya dice qué es y la lupa lo confirma.
+   */
+  sinEtiqueta?: boolean;
+  /**
+   * Esconde el campo y el rótulo pero deja la lista montada. Para cuando la lista carga sola y recién ella
+   * sabe si está vacía (Facturación): desmontarla para sacar el buscador la haría cargar dos veces.
+   */
+  ocultarCampo?: boolean;
+}
+
+/** No está en el set de glifos portado; es una hoja de dos trazos, igual que la cámara de `FotoFuncion`. */
+export function IconoLupa({ color }: { color: string }) {
+  return (
+    <View style={styles.lupa} pointerEvents="none">
+      <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+        <Circle cx={11} cy={11} r={6.5} stroke={color} strokeWidth={1.8} />
+        <Path d="M16 16l4.5 4.5" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      </Svg>
+    </View>
+  );
 }
 
 /** Primera página de resultados; un `cursor` no nulo significa que hay más y conviene refinar. */
@@ -61,6 +85,8 @@ export function BuscadorActividad({
   placeholder = 'Buscar en tus operaciones',
   rotuloLista,
   onAbrirItem,
+  sinEtiqueta = false,
+  ocultarCampo = false,
 }: BuscadorActividadProps) {
   const tema = useTema();
   const [texto, setTexto] = useState('');
@@ -106,19 +132,25 @@ export function BuscadorActividad({
 
   return (
     <View style={styles.contenedor}>
+      {!ocultarCampo && (
       <CampoTexto
         etiqueta="Buscar"
         valor={texto}
         onChange={setTexto}
         placeholder={placeholder}
         autoCapitalize="none"
+        etiquetaOculta={sinEtiqueta}
+        accesorioDerecha={sinEtiqueta ? <IconoLupa color={tema.color.textoTenue} /> : undefined}
         testID={testIDBase}
       />
+      )}
 
-      {!buscando && rotuloLista != null && (
+      {!ocultarCampo && !buscando && rotuloLista != null && (
         <Text
           testID={`${testIDBase}-rotulo`}
-          style={[styles.rotulo, { color: tema.color.textoTenue, fontFamily: tema.fuente.uiSemibold }]}
+          accessibilityRole="header"
+          // Martin 15/11: en display, como los demás rótulos de sección (antes caja alta de 10 px).
+          style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande, paddingHorizontal: 4, marginTop: 12 }}
         >
           {rotuloLista}
         </Text>
@@ -150,13 +182,17 @@ export function BuscadorActividad({
 
       {buscando && estado === 'ok' && items.length > 0 && (
         <View style={{ gap: tema.espacio.sm }} testID={`${testIDBase}-resultados`}>
-          {items.map((it) => (
-            <FilaActividad key={it.id} item={it} onPress={onAbrirItem} />
-          ))}
+          {/* Rediseño (Martin 15/11): los resultados van en UNA tarjeta blanca de filas, como las listas de
+              cada función; antes eran filas de vidrio sueltas, cada una con su borde. */}
+          <View style={[styles.tarjeta, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}>
+            {items.map((it, i) => (
+              <FilaActividad key={it.id} item={it} onPress={onAbrirItem} enTarjeta primera={i === 0} />
+            ))}
+          </View>
           {/* Primera página nada más: si el backend dice que hay más (`cursor` no nulo), se pide
               refinar en vez de paginar — una búsqueda se estrecha, no se scrollea. */}
           {hayMas && (
-            <Text testID={`${testIDBase}-hay-mas`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+            <Text testID={`${testIDBase}-hay-mas`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, paddingHorizontal: 4 }}>
               Hay más resultados. Escribí un poco más para afinar la búsqueda.
             </Text>
           )}
@@ -168,6 +204,6 @@ export function BuscadorActividad({
 
 const styles = StyleSheet.create({
   contenedor: { gap: 12 },
-  // Mismo patrón de rótulo que `CampoTexto.etiqueta` (el «BUSCAR» de arriba): una sola gramática.
-  rotulo: { fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase' },
+  lupa: { paddingRight: 14 },
+  tarjeta: { borderRadius: 22, paddingLeft: 16 },
 });

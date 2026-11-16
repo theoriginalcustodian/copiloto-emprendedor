@@ -22,7 +22,8 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { formatearImporte, listarImpagos, type ComprobanteImpago } from '@copiloto/core';
 
 import { useTema } from '../../theme/ThemeProvider';
-import { Row } from '../../theme/glass/Row';
+import { elevacion } from '../../theme/BloqueCifra';
+import { conAlfa } from '../../theme/glass/conAlfa';
 
 type EstadoLista = 'cargando' | 'ok' | 'no_disponible';
 
@@ -85,11 +86,18 @@ export const SeccionMeDeben = forwardRef<SeccionMeDebenHandle, SeccionMeDebenPro
 
     return (
       <View testID={testID} style={styles.seccion}>
-        <Text
-          style={{ color: tema.color.texto, fontFamily: tema.fuente.uiBold, fontSize: tema.tipo.grande }}
-        >
-          Te deben
-        </Text>
+        {/* El total va en el mismo renglón que el rótulo, a la derecha y en tinta: es un dato, no un botón
+            (antes iba en terracota, que en Odobi marca lo que se toca). */}
+        <View style={styles.rotulo}>
+          <Text accessibilityRole="header" style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande }}>
+            Te deben
+          </Text>
+          {estado === 'ok' && filas.length > 0 && total != null && (
+            <Text testID={`${testID}-total`} style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande }}>
+              {formatearImporte(total)}
+            </Text>
+          )}
+        </View>
 
         {estado === 'cargando' && <ActivityIndicator testID={`${testID}-cargando`} color={tema.color.acento} />}
 
@@ -111,44 +119,41 @@ export const SeccionMeDeben = forwardRef<SeccionMeDebenHandle, SeccionMeDebenPro
 
         {estado === 'ok' && filas.length > 0 && (
           <>
-            {total != null && (
-              <Text
-                testID={`${testID}-total`}
-                style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiBold, fontSize: tema.tipo.titulo }}
-              >
-                {formatearImporte(total)}
-              </Text>
-            )}
-            {filas.map((f) => {
-              const bajo = [f.nro != null && f.receptorNombre != null ? `N° ${f.nro}` : null, antiguedad(f.dias)]
-                .filter((x): x is string => x != null)
-                .join(' · ');
-              return (
-                <Row key={f.id} testID={`${testID}-fila-${f.id}`}>
-                  <View style={styles.textos}>
-                    <Text
-                      style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}
-                    >
-                      {/* Sin nombre de receptor no se inventa «Cliente»: los comprobantes anteriores
-                          al 2026-07-21 no lo tienen, y el número identifica igual. */}
-                      {f.receptorNombre ?? (f.nro != null ? `N° ${f.nro}` : 'Sin datos del cliente')}
-                    </Text>
-                    {bajo !== '' && (
-                      <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{bajo}</Text>
+            {/* Una tarjeta blanca con una fila por factura impaga, como el resto de las listas (Martin 15/11). */}
+            <View style={[styles.tarjeta, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}>
+              {filas.map((f, n) => {
+                const bajo = [f.nro != null && f.receptorNombre != null ? `N° ${f.nro}` : null, antiguedad(f.dias)]
+                  .filter((x): x is string => x != null)
+                  .join(' · ');
+                return (
+                  <View
+                    key={f.id}
+                    testID={`${testID}-fila-${f.id}`}
+                    style={[styles.fila, n > 0 && { borderTopWidth: 1, borderTopColor: conAlfa(tema.color.texto, 0.12) }]}
+                  >
+                    <View style={styles.textos}>
+                      <Text numberOfLines={2} style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base, lineHeight: 21 }}>
+                        {/* Sin nombre de receptor no se inventa «Cliente»: los comprobantes anteriores
+                            al 2026-07-21 no lo tienen, y el número identifica igual. */}
+                        {f.receptorNombre ?? (f.nro != null ? `N° ${f.nro}` : 'Sin datos del cliente')}
+                      </Text>
+                      {bajo !== '' && (
+                        <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>{bajo}</Text>
+                      )}
+                    </View>
+                    {/* El SALDO, no el total: si le pagaron la mitad, lo que le deben es la otra mitad. */}
+                    {f.saldo != null && (
+                      <Text
+                        testID={`${testID}-saldo-${f.id}`}
+                        style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.base, lineHeight: 21 }}
+                      >
+                        {formatearImporte(f.saldo)}
+                      </Text>
                     )}
                   </View>
-                  {/* El SALDO, no el total: si le pagaron la mitad, lo que le deben es la otra mitad. */}
-                  {f.saldo != null && (
-                    <Text
-                      testID={`${testID}-saldo-${f.id}`}
-                      style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}
-                    >
-                      {formatearImporte(f.saldo)}
-                    </Text>
-                  )}
-                </Row>
-              );
-            })}
+                );
+              })}
+            </View>
           </>
         )}
       </View>
@@ -157,7 +162,10 @@ export const SeccionMeDeben = forwardRef<SeccionMeDebenHandle, SeccionMeDebenPro
 );
 
 const styles = StyleSheet.create({
-  seccion: { gap: 8, marginTop: 24 },
+  seccion: { gap: 12 },
+  rotulo: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, paddingHorizontal: 4 },
+  tarjeta: { borderRadius: 22, paddingHorizontal: 20 },
+  fila: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, paddingVertical: 16 },
   // `flex: 1` para que el saldo quede pegado al borde derecho y los textos cedan ancho, no al revés:
   // el importe empujado fuera de la fila es justo el dato que la sección existe para mostrar.
   textos: { flex: 1, gap: 2 },

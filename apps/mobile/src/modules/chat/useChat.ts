@@ -121,6 +121,15 @@ async function leerMensajesPersistidos(clienteId: string, sessionId: string): Pr
   }
 }
 
+/**
+ * ⚠️ MODO DEMO, sólo en desarrollo (ver `demo/modoDemo.ts`): deja un hilo ya escrito para `clienteId`, bajo las
+ * mismas claves que usa la hidratación. Pisa el hilo local que ese cliente tuviera.
+ */
+export async function sembrarHiloLocal(clienteId: string, sessionId: string, messages: ChatMessage[]): Promise<void> {
+  await almacenClave.guardar(claveSession(clienteId), sessionId);
+  await almacenClave.guardar(claveMensajes(clienteId, sessionId), JSON.stringify(messages));
+}
+
 function persistirMensajes(clienteId: string, sessionId: string, messages: ChatMessage[]): void {
   if (clienteId === '') return; // sin identidad resuelta todavía -- nunca a una clave compartida.
   void almacenClave.guardar(claveMensajes(clienteId, sessionId), JSON.stringify(messages));

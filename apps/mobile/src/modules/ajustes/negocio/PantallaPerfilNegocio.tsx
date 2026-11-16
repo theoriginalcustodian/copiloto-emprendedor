@@ -25,8 +25,9 @@ import {
   ScrollFormulario,
   type OpcionSelect,
 } from '../../../theme/glass/campos';
+import { Chevron } from '../Chevron';
+import { FilaGrupo, GrupoFilas } from '../GrupoFilas';
 import { MarcoGlass } from '../../../theme/glass/MarcoGlass';
-import { Row } from '../../../theme/glass/Row';
 import { OPCIONES_FORMALIDAD, OPCIONES_LARGO, PantallaTono } from './PantallaTono';
 import { SeccionCatalogo } from './SeccionCatalogo';
 import { useTema } from '../../../theme/ThemeProvider';
@@ -127,34 +128,21 @@ type Seccion = 'negocio' | 'modo';
 interface SeccionProps {
   /** Sin título: la pantalla ya se llama igual (mapa `negocio`, SM-K7) — repetirlo era ruido. */
   titulo?: string;
-  /** Rótulo chico en versalitas (`CÓMO TE HABLA` del mapa) en vez del encabezado grande. */
-  rotulo?: boolean;
   testID: string;
   children: React.ReactNode;
 }
 
-function Seccion({ titulo, rotulo = false, testID, children }: SeccionProps) {
+function Seccion({ titulo, testID, children }: SeccionProps) {
   const tema = useTema();
   return (
     <View testID={testID} style={{ gap: tema.espacio.sm }}>
-      {titulo != null &&
-        (rotulo ? (
-          <Text
-            style={{
-              color: tema.color.textoTenue,
-              fontFamily: tema.fuente.uiSemibold,
-              fontSize: tema.tipo.chico,
-              letterSpacing: 1,
-              textTransform: 'uppercase',
-            }}
-          >
-            {titulo}
-          </Text>
-        ) : (
-          <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.grande }}>
-            {titulo}
-          </Text>
-        ))}
+      {/* Rediseño (Martin 15/11): todos los títulos de sección en display, como en el resto de la app. Antes
+          «Cómo te habla» iba en caja alta chica y los demás en la letra de interfaz. */}
+      {titulo != null && (
+        <Text accessibilityRole="header" style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande }}>
+          {titulo}
+        </Text>
+      )}
       {children}
     </View>
   );
@@ -337,7 +325,7 @@ export function PantallaPerfilNegocio() {
   // `icono="miNegocio"`: el set de 21 tiene un glifo propio con este mismo nombre (local/vidriera),
   // así que ya no hace falta pedir prestado `chat` del catálogo viejo.
   return (
-    <MarcoGlass titulo="Mi negocio" icono="miNegocio" testID="pantalla-perfil-negocio">
+    <MarcoGlass titulo="Mi negocio" icono="miNegocio" sinIcono testID="pantalla-perfil-negocio">
       {estadoCarga === 'cargando' && (
         <View style={styles.centro}>
           <ActivityIndicator testID="perfil-negocio-cargando" color={tema.color.acento} />
@@ -497,12 +485,15 @@ export function PantallaPerfilNegocio() {
               prototipo («Escribí al menos 10 caracteres…») NO se porta: el backend no la exige y
               bloquear Guardar sobre perfiles ya guardados es un cambio de contrato (MAYOR), que se
               pide a planificación; (3) Guardar es explícito por sección y no edición inline. */}
-          <Seccion titulo="Cómo te habla" rotulo testID="perfil-negocio-seccion-personalidad">
-            <Row testID="perfil-negocio-tono-fila" onPress={() => setVerTono(true)} accessibilityLabel="Tono y forma">
-              <Text testID="perfil-negocio-tono-resumen" style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
-                {resumenDeTono(campos)} ›
-              </Text>
-            </Row>
+          <Seccion titulo="Cómo te habla" testID="perfil-negocio-seccion-personalidad">
+            <GrupoFilas>
+              <FilaGrupo primera testID="perfil-negocio-tono-fila" onPress={() => setVerTono(true)} accessibilityLabel="Tono y forma">
+                <Text testID="perfil-negocio-tono-resumen" style={{ flex: 1, color: tema.color.texto, fontSize: tema.tipo.base }}>
+                  {resumenDeTono(campos)}
+                </Text>
+                <Chevron />
+              </FilaGrupo>
+            </GrupoFilas>
           </Seccion>
 
           {estadoGuardado === 'ok' && (

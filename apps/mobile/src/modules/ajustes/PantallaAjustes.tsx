@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 
-import { leerPerfilNegocio } from '@copiloto/core';
 
+import { cambiarModoDemo, demoActivo, HAY_MODO_DEMO } from '../../demo/modoDemo';
+import { elevacion } from '../../theme/BloqueCifra';
+import { conAlfa } from '../../theme/glass/conAlfa';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { GlassIcon } from '../../theme/glass/GlassIcon';
 import type { NombreIconoGlass } from '../../theme/glass/icons';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
 import { Chevron } from './Chevron';
+import { useNombreComercial } from './negocio/useNombreComercial';
 
 /**
  * Las entradas de Ajustes. Nació como port 1:1 del rediseño de vidrio de documed y creció a 8; el
@@ -114,32 +117,6 @@ export interface PantallaAjustesProps {
   onAjuste?: (key: AjusteKey) => void;
 }
 
-/**
- * El nombre comercial para el encabezado (SM-N9). Es una lectura aparte (`perfilNegocio`), pero el dato
- * EXISTE: el motivo para no pintarlo era de costo, no de imposibilidad. Sin nombre cargado
- * (`nombreComercial === ''`, el emprendedor nuevo), ausente o con la lectura caída devuelve `undefined`:
- * `MarcoGlass` no dibuja la etiqueta y el encabezado queda como antes, sin hueco ni texto de relleno.
- */
-function useNombreComercial(): string | undefined {
-  const [nombre, setNombre] = useState<string | undefined>(undefined);
-  useEffect(() => {
-    let vivo = true;
-    void leerPerfilNegocio()
-      .then((res) => {
-        if (!vivo || res.status !== 'ok' || !res.perfil) return;
-        const n = res.perfil.nombreComercial.trim();
-        if (n !== '') setNombre(n);
-      })
-      .catch(() => {
-        // Secundario: un error de red no pinta cartel; el encabezado queda sin etiqueta.
-      });
-    return () => {
-      vivo = false;
-    };
-  }, []);
-  return nombre;
-}
-
 /** `.aj-fila .ic{width:38px;height:38px}` y el svg de 18-21 px adentro (`index.html:1512`, 2115-2131). */
 const LADO_ICONO = 38;
 const TAMANO_ICONO = 22;
@@ -148,17 +125,55 @@ const TAMANO_ICONO = 22;
  * Pantalla Ajustes -- lista de filas agrupadas por rótulo. Esta pantalla sólo cablea la navegación
  * (identifica QUÉ fila se tocó), nunca decide a dónde va cada una.
  */
+/**
+ * ⚠️ MODO DEMO — sólo en desarrollo, SACAR ANTES DEL PR (ver `demo/modoDemo.ts`). Prende y apaga los datos de
+ * ejemplo; cambiarlo recarga la app.
+ */
+function InterruptorDemo() {
+  const tema = useTema();
+  const [activo, setActivo] = useState<boolean | null>(null);
+  useEffect(() => {
+    void demoActivo().then(setActivo);
+  }, []);
+  return (
+    <View style={styles.grupo}>
+      <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiMedium, paddingHorizontal: 4 }}>
+        Sólo en desarrollo
+      </Text>
+      <View style={[styles.demo, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}>
+        <View style={styles.textos}>
+          <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiMedium }}>Datos de ejemplo</Text>
+          <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
+            Un electricista con Mercado Pago y Google conectados. No toca tu cuenta ni guarda nada.
+          </Text>
+        </View>
+        <Switch
+          testID="ajustes-modo-demo"
+          value={activo === true}
+          disabled={activo == null}
+          onValueChange={(v) => {
+            setActivo(v);
+            void cambiarModoDemo(v);
+          }}
+          trackColor={{ true: tema.color.acento }}
+        />
+      </View>
+    </View>
+  );
+}
+
 export function PantallaAjustes({ onAjuste }: PantallaAjustesProps) {
   const tema = useTema();
   const nombreComercial = useNombreComercial();
-  const g = tema.glass;
+  // `g.chip` casi no se veía como separador: la línea sale de la tinta, al 10 %.
+  const linea = conAlfa(tema.color.texto, 0.1);
 
   return (
-    <MarcoGlass titulo="Ajustes" icono="ajustes" etiqueta={nombreComercial} testID="pantalla-ajustes">
+    <MarcoGlass titulo="Ajustes" icono="ajustes" sinIcono etiqueta={nombreComercial} testID="pantalla-ajustes">
       {/* `flex:1` en el ScrollView MISMO (ver PantallaApps): con los rótulos de grupo la pantalla ya no
           entra en un teléfono chico y sin scroll lo que sobra se recorta sin aviso. */}
-      <ScrollView style={styles.contenedor} contentContainerStyle={{ padding: tema.espacio.md }}>
-        <Text testID="ajustes-intro" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, marginBottom: tema.espacio.sm }}>
+      <ScrollView style={styles.contenedor} contentContainerStyle={{ padding: tema.espacio.md, paddingBottom: tema.espacio.xl + tema.espacio.md }}>
+        <Text testID="ajustes-intro" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, lineHeight: 22, paddingHorizontal: 4, marginBottom: tema.espacio.lg }}>
           Los datos de tu negocio, tus apps y cómo se comporta Odobi.
         </Text>
         <View style={styles.lista}>
@@ -166,18 +181,16 @@ export function PantallaAjustes({ onAjuste }: PantallaAjustesProps) {
             <View key={grupo.id} style={styles.grupo}>
               <Text
                 testID={`ajustes-grupo-${grupo.id}`}
-                // `.lista-lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase}` (`index.html:448`).
-                style={{
-                  color: tema.color.textoTenue,
-                  fontSize: 11,
-                  letterSpacing: 0.14 * 11,
-                  textTransform: 'uppercase',
-                  fontFamily: tema.fuente.uiSemibold,
-                }}
+                accessibilityRole="header"
+                // Rediseño (Martin 15/11): rótulo en display, como en las demás pantallas (antes caja alta de 11 px).
+                style={{ color: tema.color.texto, fontSize: tema.tipo.grande, fontFamily: tema.fuente.display, paddingHorizontal: 4 }}
               >
                 {grupo.rotulo}
               </Text>
-              <View style={[styles.tarjeta, { backgroundColor: g.s1, borderColor: g.chip }]}>
+              {/* Martin 14/11: la misma tarjeta que el resto de la app —blanca, sin borde, con la elevación suave—
+                  en vez del vidrio con borde. El ícono va en su tile arena (`CLAUDE.md` §4) y la línea entre filas
+                  arranca donde arranca el texto: así separa los renglones sin cortar la columna de íconos. */}
+              <View style={[styles.tarjeta, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}>
                 {grupo.filas.map((f, i) => (
                   <Pressable
                     key={f.key}
@@ -186,29 +199,28 @@ export function PantallaAjustes({ onAjuste }: PantallaAjustesProps) {
                     accessibilityLabel={f.label}
                     accessibilityHint={f.subtitulo}
                     onPress={() => onAjuste?.(f.key)}
-                    // `.aj-fila + .aj-fila{border-top}` (`index.html:1511`): la línea separa, no enmarca.
-                    style={pressableStyle(
-                      [styles.fila, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: g.chip }],
-                      PRESS_FADE,
-                    )}
+                    style={pressableStyle(styles.fila, PRESS_FADE)}
                   >
-                    <View style={[styles.icono, { backgroundColor: g.chip }]}>
-                      <GlassIcon name={f.icono} size={TAMANO_ICONO} />
+                    <View style={[styles.icono, { backgroundColor: tema.color.tileFuncion.arena }]}>
+                      <GlassIcon name={f.icono} size={TAMANO_ICONO} color={tema.color.tileFuncion.tinta} />
                     </View>
-                    <View style={styles.textos}>
-                      <Text numberOfLines={1} style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>
-                        {f.label}
-                      </Text>
-                      <Text numberOfLines={2} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, marginTop: 2 }}>
-                        {f.subtitulo}
-                      </Text>
+                    <View style={[styles.cuerpoFila, i > 0 && { borderTopWidth: 1, borderTopColor: linea }]}>
+                      <View style={styles.textos}>
+                        <Text numberOfLines={1} style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiMedium }}>
+                          {f.label}
+                        </Text>
+                        <Text numberOfLines={2} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
+                          {f.subtitulo}
+                        </Text>
+                      </View>
+                      <Chevron />
                     </View>
-                    <Chevron />
                   </Pressable>
                 ))}
               </View>
             </View>
           ))}
+          {HAY_MODO_DEMO && <InterruptorDemo />}
         </View>
       </ScrollView>
     </MarcoGlass>
@@ -217,12 +229,23 @@ export function PantallaAjustes({ onAjuste }: PantallaAjustesProps) {
 
 const styles = StyleSheet.create({
   contenedor: { flex: 1 },
-  lista: { gap: 16 },
-  grupo: { gap: 8 },
-  // `.grupo{border-radius;padding:4px var(--s2)}` (`index.html:949`): una tarjeta por rótulo.
-  tarjeta: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 4, overflow: 'hidden' },
-  // `.aj-fila{gap:12px;padding:13px 0;min-height:64px}` (`index.html:1510`).
-  fila: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, minHeight: 64 },
-  icono: { width: LADO_ICONO, height: LADO_ICONO, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  textos: { flex: 1, minWidth: 0 },
+  // 28 entre grupos y 10 entre rótulo y tarjeta: el rótulo tiene que leerse pegado a SU tarjeta, no flotando
+  // a mitad de camino entre dos (antes 16 y 8 — casi lo mismo, y no se sabía a cuál pertenecía).
+  lista: { gap: 28 },
+  grupo: { gap: 10 },
+  demo: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 22, paddingVertical: 14, paddingHorizontal: 16 },
+  tarjeta: { borderRadius: 22, paddingLeft: 16 },
+  fila: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  icono: { width: LADO_ICONO, height: LADO_ICONO, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  cuerpoFila: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 68,
+    paddingVertical: 14,
+    paddingRight: 16,
+  },
+  textos: { flex: 1, minWidth: 0, gap: 3 },
 });

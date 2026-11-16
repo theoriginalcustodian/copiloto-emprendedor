@@ -2,8 +2,8 @@ import { Text, View } from 'react-native';
 
 import type { DatosNegocio } from '@copiloto/core';
 
-import { Tile } from '../../theme/glass/Tile';
 import { useTema } from '../../theme/ThemeProvider';
+import { TarjetaChat } from './TarjetaChat';
 
 /**
  * `TarjetaDatosNegocio` — la respuesta de LECTURA a «¿cuánto entró este mes?», «¿quién me debe?»
@@ -30,7 +30,7 @@ export interface TarjetaDatosNegocioProps {
 export function TarjetaDatosNegocio({ datos }: TarjetaDatosNegocioProps) {
   const tema = useTema();
   return (
-    <Tile testID="datos-negocio">
+    <TarjetaChat testID="datos-negocio">
       <View style={{ gap: tema.espacio.sm }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: tema.espacio.sm }}>
           <Text
@@ -84,6 +84,6 @@ export function TarjetaDatosNegocio({ datos }: TarjetaDatosNegocioProps) {
           </Text>
         )}
       </View>
-    </Tile>
+    </TarjetaChat>
   );
 }

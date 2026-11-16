@@ -47,6 +47,20 @@ export interface EstadoVacioProps {
   testID?: string;
 }
 
+/**
+ * 🔴 **Sin esto la taza no se ve** (device, Martin 13/11/2026: sólo aparecían las dos elipses terracota).
+ * En `taza.svg` el trazo negro vive dentro de `<g transform="translate(0,300) scale(0.1,-0.1)">` —es la salida
+ * de un vectorizador, con coordenadas de 0 a 3000 y el eje vertical invertido—. `TAZA` de core trae los
+ * `d` de esos paths pero NO esa transformación, así que se dibujaban diez veces más grandes y fuera del
+ * `viewBox`. Las piezas de color (`acento`, `lienzo`) están en coordenadas normales y no la llevan.
+ * La web (`apps/copiloto-web/.../EstadoVacio.tsx`) tiene el mismo defecto; el arreglo de fondo es que el
+ * generador de `ilustracionTaza.ts` exporte la transformación junto con los paths.
+ */
+const TRANSFORMACION_TRAZO = 'translate(0, 300) scale(0.1, -0.1)';
+
+/** Lado de la taza. 168 → 144 (Martin 14/11: «apenas más chica»). La usan Mi día y Tu día. */
+const LADO_TAZA = 144;
+
 export function EstadoVacio({ titulo, cuerpo, ilustracion = false, testID }: EstadoVacioProps) {
   const tema = useTema();
   const [mostrarCuerpo, setMostrarCuerpo] = useState(true);
@@ -79,10 +93,10 @@ export function EstadoVacio({ titulo, cuerpo, ilustracion = false, testID }: Est
   return (
     <View style={styles.raiz} testID={testID}>
       {ilustracion && (
-        <Svg width={168} height={168} viewBox={VIEWBOX_TAZA} testID={testID ? `${testID}-taza` : undefined}>
+        <Svg width={LADO_TAZA} height={LADO_TAZA} viewBox={VIEWBOX_TAZA} testID={testID ? `${testID}-taza` : undefined}>
           {TAZA.map((el, i) =>
             el.tipo === 'path' ? (
-              <Path key={i} d={el.d} fill={color(el.rol)} />
+              <Path key={i} d={el.d} fill={color(el.rol)} transform={el.rol === 'estructura' ? TRANSFORMACION_TRAZO : undefined} />
             ) : (
               <Ellipse key={i} cx={el.cx} cy={el.cy} rx={el.rx} ry={el.ry} fill={color(el.rol)} />
             ),

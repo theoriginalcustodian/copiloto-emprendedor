@@ -11,7 +11,7 @@
  * fuera de "terceros": es infraestructura propia self-hosted, no un proveedor externo.
  */
 
-export const LEGAL_VERSION = '2026-09-22';
+export const LEGAL_VERSION = '2026-11-13';
 
 /**
  * Aviso de plantilla que las dos apps muestran sobre el texto legal. Vive acá y no copiado en cada app:
@@ -43,44 +43,98 @@ export interface LegalParrafo {
   cuerpo: string;
 }
 
+/**
+ * Términos de Odobi (2026-11-13): mismo texto que `web/terminos.html` de la landing, en prosa porque
+ * `LegalParrafo` no tiene listas. Reemplaza la plantilla genérica del 2026-09-22. Redactados para el
+ * producto real (encargo + confirmación, factura a nombre del usuario, la plata no pasa por Odobi,
+ * prueba de 30 días); siguen SIN revisión de un abogado matriculado, por eso `LEGAL_AVISO_PLANTILLA`
+ * y `LEGAL_DESCARGO` no se tocan. El titular pasa a la SAS cuando exista.
+ */
 export const TOS_PARRAFOS: readonly LegalParrafo[] = [
   {
-    titulo: '1. Aceptación.',
+    titulo: '1. Quién presta el servicio.',
     cuerpo:
-      'Al crear una cuenta y usar Odobi ("el Servicio"), aceptás estos términos. Si no estás de acuerdo, no uses el Servicio.',
+      'Odobi es un servicio de Martin Cairo, con domicilio en Rosario, Santa Fe, Argentina («Odobi», «nosotros»). Estos términos son el contrato entre vos y nosotros por el uso de la app y del sitio odobi.com.ar. Al crear tu cuenta o entrar con Google los aceptás. Si no estás de acuerdo, no uses Odobi. Qué datos guardamos y para qué está explicado en la Política de Privacidad, que forma parte de este acuerdo.',
   },
   {
-    titulo: '2. El Servicio.',
+    titulo: '2. Qué es Odobi y qué no es.',
     cuerpo:
-      'Odobi es un asistente conversacional que ayuda a emprendedores a gestionar tareas de su negocio (facturación, gastos, ingresos, clientes, presupuestos e integraciones con terceros). Está en etapa beta: puede tener cambios frecuentes, interrupciones y funcionalidad incompleta.',
+      'Odobi es una herramienta de gestión para personas que trabajan por su cuenta. Le hablás o le escribís y te ayuda a emitir facturas en ARCA, crear links de cobro en Mercado Pago, armar presupuestos, anotar gastos e ingresos y consultar tus números. Odobi no es un estudio contable ni un asesor: lo que te muestra (totales, resúmenes, avisos, cálculos) es información para que decidas vos. No reemplaza a un contador ni a la consulta en ARCA u otros organismos, y no constituye asesoramiento contable, impositivo, legal ni financiero. Odobi está en etapa de lanzamiento: puede cambiar seguido, tener funciones incompletas o interrumpirse por momentos.',
   },
   {
-    titulo: '3. Cuenta y uso aceptable.',
+    titulo: '3. Tu cuenta.',
     cuerpo:
-      'Sos responsable de mantener la confidencialidad de tus credenciales y de toda actividad bajo tu cuenta. No uses el Servicio para fines ilegales, para vulnerar la seguridad del sistema, ni para cargar contenido que infrinja derechos de terceros.',
+      'Tenés que ser mayor de 18 años. Los datos que cargás, en especial los fiscales, tienen que ser verdaderos y tuyos: si cargás el CUIT de un negocio, declarás que sos el titular o que estás autorizado a facturar a su nombre. La cuenta es personal. Cuidá tu contraseña y avisanos si creés que alguien más entró: lo que se haga desde tu cuenta se considera hecho por vos.',
   },
   {
-    titulo: '4. Integraciones y proveedores externos.',
+    titulo: '4. Lo que Odobi hace a tu nombre.',
     cuerpo:
-      'Con tu autorización explícita, el Servicio conecta con Composio (para operar Gmail, Drive, Sheets y Docs), ARCA (para emitir comprobantes fiscales cuando activás facturación) y Mercado Pago (para gestionar cobros cuando conectás tu cuenta). Además, el Servicio usa proveedores de inteligencia artificial para funcionar: OpenRouter (el chat), OpenAI (lectura de fotos de comprobantes) y Groq (transcripción de notas de voz). El uso de estos servicios se rige además por los términos de cada proveedor.',
+      'Cuando le pedís una factura, un cobro o un mail, Odobi actúa por encargo tuyo y con los accesos que vos le diste. Antes de emitir una factura o generar un cobro te muestra el detalle y espera que lo confirmes: leé el cliente, el importe, el concepto y el tipo de comprobante. La factura se emite en ARCA con el certificado que generaste y a tu nombre: frente a ARCA y frente a tu cliente, quien factura sos vos. Una factura emitida no se borra: se anula con una nota de crédito. Recategorizarte, pagar el monotributo, presentar declaraciones y cumplir con cualquier otra obligación fiscal sigue a tu cargo, aunque Odobi te avise o te muestre números relacionados.',
   },
   {
-    titulo: '5. Limitación de responsabilidad.',
+    titulo: '5. Inteligencia artificial.',
     cuerpo:
-      'El Servicio se ofrece "tal cual", sin garantías de disponibilidad continua o ausencia de errores. En la medida permitida por la ley, no somos responsables por daños indirectos derivados del uso del Servicio.',
+      'Odobi entiende lo que le decís usando modelos de inteligencia artificial de otros proveedores: OpenRouter (la conversación), OpenAI (la lectura de las fotos que mandás) y Groq (la transcripción de tu voz). Esos modelos se pueden equivocar: escuchar mal un nombre, leer mal un importe o entender otra cosa. Por eso existe la confirmación del punto 4. Si algo no coincide con lo que pediste, corregilo antes de confirmar.',
   },
   {
-    titulo: '6. Cancelación.',
+    titulo: '6. Las cuentas que conectás.',
     cuerpo:
-      'Podés dejar de usar el Servicio y solicitar la baja de tu cuenta en cualquier momento. Podemos suspender cuentas que incumplan estos términos.',
+      'Odobi trabaja con servicios de otras empresas que vos decidís conectar: ARCA, Mercado Pago y Google (Gmail, Calendar, Drive, Docs y Sheets, a través de Composio). Tu plata no pasa por Odobi: los cobros entran directo a tu cuenta de Mercado Pago. Odobi crea el link y registra el pago; no recibe, retiene ni administra tu dinero, y las comisiones y los plazos de acreditación son los de Mercado Pago. Cada servicio tiene sus propios términos, que también aceptaste al abrir tu cuenta con ellos. Si alguno no responde, cambia sus reglas o suspende tu cuenta, hay funciones de Odobi que pueden dejar de andar, y eso no depende de nosotros. Podés desconectar cualquier cuenta cuando quieras.',
   },
   {
-    titulo: '7. Cambios.',
-    cuerpo: 'Podemos actualizar estos términos; los cambios relevantes se van a comunicar dentro del Servicio.',
+    titulo: '7. Precio y prueba gratis.',
+    cuerpo:
+      'Podés probar Odobi gratis durante 30 días, sin cargar una tarjeta. Durante la prueba no te cobramos nada. Si después Odobi pasa a tener un precio, te lo vamos a informar antes, con el importe total y la forma de pago, y no te vamos a cobrar nada que no hayas aceptado expresamente: si no aceptás, tu cuenta no genera ninguna deuda. Cuando contrates un plan pago por internet vas a tener derecho a arrepentirte dentro de los 10 días corridos desde que lo contrataste, sin dar motivos y sin costo, y a darte de baja por el mismo medio por el que te suscribiste.',
   },
   {
-    titulo: '8. Ley aplicable.',
-    cuerpo: 'Estos términos se rigen por las leyes de la República Argentina.',
+    titulo: '8. Uso permitido.',
+    cuerpo:
+      'Odobi es para administrar tu propio trabajo o negocio. No lo uses para emitir comprobantes por operaciones que no existieron o a nombre de alguien que no te autorizó; para actividades ilegales o que perjudiquen a otras personas; para intentar entrar a datos de otros usuarios, saltear las medidas de seguridad o sobrecargar el servicio; ni para copiar, revender o desarmar la app.',
+  },
+  {
+    titulo: '9. Tus datos son tuyos.',
+    cuerpo:
+      'Todo lo que cargás o generás en Odobi (clientes, facturas, presupuestos, gastos, tu logo) es tuyo. Nos das permiso para guardarlo y procesarlo sólo en la medida necesaria para prestarte el servicio, como explica la Política de Privacidad. Podés pedirnos una copia de tus datos cuando quieras. Los datos de tus clientes los cargás vos: sos responsable de tener derecho a usarlos.',
+  },
+  {
+    titulo: '10. Lo que es de Odobi.',
+    cuerpo:
+      'La app, la marca Odobi, el diseño y el software son nuestros o de quienes nos los licencian. Te damos un permiso personal, no exclusivo y no transferible para usar la app mientras tengas tu cuenta. Ese permiso no te da ningún otro derecho sobre el software ni sobre la marca.',
+  },
+  {
+    titulo: '11. Disponibilidad y cambios en el servicio.',
+    cuerpo:
+      'Trabajamos para que Odobi esté disponible, pero no podemos prometer que funcione sin interrupciones ni sin errores. Podemos sumar, cambiar o quitar funciones. Si quitamos algo importante, te lo avisamos antes.',
+  },
+  {
+    titulo: '12. Responsabilidad.',
+    cuerpo:
+      'Respondemos por prestar el servicio con cuidado y por lo que hagamos mal. No respondemos por datos que cargaste mal o comprobantes que confirmaste sin revisar; por decisiones impositivas, contables o comerciales que tomes a partir de lo que Odobi te muestra; por fallas, demoras o cambios de ARCA, Mercado Pago, Google u otros servicios que no manejamos; ni por el uso de tu cuenta por alguien a quien le diste o le dejaste tu contraseña. En la medida en que la ley lo permite, no respondemos por lucro cesante ni por daños indirectos. Nada de este punto limita la responsabilidad por dolo o culpa grave, ni los derechos que la ley te reconoce si usás Odobi como consumidor, que no se pueden renunciar.',
+  },
+  {
+    titulo: '13. Baja y suspensión.',
+    cuerpo:
+      'Podés irte cuando quieras. Para borrar tu cuenta escribinos a martin.acairo@gmail.com desde el correo con el que te registraste. Eliminamos tus datos dentro de los 30 días, salvo lo que la ley nos obligue a conservar. Las facturas que emitiste siguen registradas en ARCA, porque son tuyas y del organismo. Podemos suspender o cerrar una cuenta que incumpla estos términos: salvo que haya una urgencia (un fraude, un riesgo de seguridad o una orden de autoridad), te avisamos antes y te damos la posibilidad de corregirlo y de llevarte tus datos.',
+  },
+  {
+    titulo: '14. Cambios en estos términos.',
+    cuerpo:
+      'Si cambiamos algo importante, te lo avisamos en la app o por correo antes de que empiece a regir. Si no estás de acuerdo con el cambio, podés darte de baja sin costo.',
+  },
+  {
+    titulo: '15. Ley aplicable y reclamos.',
+    cuerpo:
+      'Estos términos se rigen por las leyes de la República Argentina. Ante cualquier problema escribinos primero: casi todo se resuelve hablando. Si hace falta ir a la justicia, son competentes los tribunales ordinarios de la ciudad de Rosario. Si usás Odobi como consumidor, podés reclamar además ante los tribunales de tu domicilio y ante la autoridad de defensa del consumidor de tu provincia.',
+  },
+  {
+    titulo: '16. Si bajaste Odobi del App Store.',
+    cuerpo:
+      'Este acuerdo es entre vos y Odobi, no con Apple. Apple no presta el servicio, no da soporte ni garantía sobre la app y no responde por reclamos vinculados a ella. El permiso de uso del punto 10 vale para los dispositivos Apple que sean tuyos o que controles, según las reglas del App Store. Apple puede hacer valer estos términos frente a vos como tercero beneficiario.',
+  },
+  {
+    titulo: '17. Contacto.',
+    cuerpo:
+      'Por cualquier consulta sobre estos términos escribinos a martin.acairo@gmail.com.',
   },
 ];
 

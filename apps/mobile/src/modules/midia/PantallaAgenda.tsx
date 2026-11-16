@@ -1,14 +1,12 @@
 import { router } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
-import { Pressable } from 'react-native-gesture-handler';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import {
   TEXTO_NUEVO_EVENTO,
   estadoDeServicio,
-  franjaDeEvento,
-  horaDeEvento,
+  instanteDeEvento,
   KEY_GOOGLE_CALENDAR,
   leerAgenda,
   leerVencimientos,
@@ -22,52 +20,106 @@ import {
 } from '@copiloto/core';
 
 import { dejarPendiente } from '../chat/mensajePendiente';
+import { elevacion } from '../../theme/BloqueCifra';
+import { BotonAcceso } from '../../theme/BotonAcceso';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
-import { pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
-import type { Tokens } from '../../theme/tokens';
-import { armarRejilla, PX_POR_HORA, rotuloHora } from './rejillaAgenda';
+import { FilaAgenda } from './FilaAgenda';
+import { cuandoEs, horaCorta, yaPaso } from './tiempoEvento';
 
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 /** `martes 18` (prototipo: `Hoy martes 18`, `Mañana miércoles 19`). */
 const fechaCorta = (d: Date): string => `${DIAS[d.getDay()]} ${d.getDate()}`;
 
-/** La columna izquierda de la fila: hora en Mañana, día del mes en Esta semana, «—» en Sin hora. */
-function columnaHora(grupo: string, ev: EventoAgenda): string {
-  if (grupo === 'sin_hora') return '—';
-  if (grupo === 'semana') {
-    const t = ev.diaCompleto || typeof ev.inicioCrudo !== 'string' ? null : new Date(ev.inicioCrudo);
-    if (t != null && !Number.isNaN(t.getTime())) return String(t.getDate());
-    if (typeof ev.inicioCrudo === 'string' && /^\d{4}-\d{2}-(\d{2})/.test(ev.inicioCrudo)) return String(Number(ev.inicioCrudo.slice(8, 10)));
-    return '—';
-  }
-  return horaDeEvento(ev.inicioCrudo) ?? '—';
+const DIAS_CORTOS = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
+
+/** «mar» + «17»: el día de un evento de «Esta semana». `null` si no se puede leer la fecha (no se inventa). */
+function diaCorto(ev: EventoAgenda): { dia: string; numero: string } | null {
+  if (typeof ev.inicioCrudo !== 'string') return null;
+  // Un evento de todo el día llega como `YYYY-MM-DD`: leído como fecha local, no UTC, para no correrlo un día.
+  const soloFecha = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ev.inicioCrudo);
+  const d = soloFecha != null ? new Date(Number(soloFecha[1]), Number(soloFecha[2]) - 1, Number(soloFecha[3])) : new Date(ev.inicioCrudo);
+  return Number.isNaN(d.getTime()) ? null : { dia: DIAS_CORTOS[d.getDay()] ?? '', numero: String(d.getDate()) };
 }
 
-/** SM-P20: «detalle · Oficina Centro». Sin ubicación (null/ausente) no se agrega nada: no se inventa. */
-const conUbicacion = (base: string, ev: Pick<EventoAgenda, 'ubicacion'>): string =>
-  ev.ubicacion != null && ev.ubicacion !== '' ? `${base} · ${ev.ubicacion}` : base;
+/** Junta lo que haya con « · »: sin ubicación (o sin hora) no queda un separador colgando. */
+const unir = (...partes: (string | null | undefined)[]): string | null => {
+  const hay = partes.filter((p): p is string => p != null && p !== '');
+  return hay.length > 0 ? hay.join(' · ') : null;
+};
 
-/** `.lista`: la tarjeta blanca de filas (prototipo 1273). */
-const estiloLista = (tema: Tokens) => ({
-  backgroundColor: tema.color.superficieAlta,
-  borderRadius: 16,
-  paddingHorizontal: tema.espacio.md,
-});
+/** Marca y detalle de una fila según su grupo. La fuente («Google Calendar») ya la dice la línea de estado. */
+function filaDe(
+  grupo: string,
+  ev: EventoAgenda,
+  ahora: number,
+): { marca: string | null; marcaSobre?: string; detalle: string | null; apagada: boolean } {
+  const hora = ev.diaCompleto ? null : horaCorta(ev.inicioCrudo);
+  if (grupo === 'hoy') {
+    const instante = ev.diaCompleto ? null : instanteDeEvento(ev.inicioCrudo);
+    return {
+      marca: hora ?? 'Hoy',
+      detalle: unir(instante != null ? cuandoEs(instante, ahora) : 'Todo el día', ev.ubicacion),
+      apagada: !ev.diaCompleto && yaPaso(ev.inicioCrudo, ahora),
+    };
+  }
+  if (grupo === 'semana') {
+    const dia = diaCorto(ev);
+    return { marca: dia?.numero ?? '—', marcaSobre: dia?.dia, detalle: unir(hora ?? (ev.diaCompleto ? 'Todo el día' : null), ev.ubicacion), apagada: false };
+  }
+  if (grupo === 'sin_hora') return { marca: null, detalle: unir(ev.diaCompleto ? 'Todo el día' : null, ev.ubicacion), apagada: false };
+  return { marca: hora ?? '—', detalle: unir(ev.diaCompleto ? 'Todo el día' : null, ev.ubicacion), apagada: false };
+}
 
-/** `.ev`: hora | título + origen. */
-function FilaEvento({ hora, titulo, detalle }: { hora: string; titulo: string; detalle: string }) {
+/** El rótulo de un grupo, como las secciones de Mi día: nombre en la tipografía de marca y su dato al lado. */
+function Encabezado({ titulo, dato, diaDeHoy }: { titulo: string; dato?: string | null; diaDeHoy?: number }) {
   const tema = useTema();
   return (
-    <View style={{ flexDirection: 'row', gap: 13, alignItems: 'flex-start', paddingVertical: 13 }}>
-      <Text style={{ width: 42, color: tema.color.textoTenue, fontSize: tema.tipo.chico, paddingTop: 2 }}>{hora}</Text>
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>{titulo}</Text>
-        <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, marginTop: 1 }}>{detalle}</Text>
-      </View>
+    <View style={estilos.encabezado}>
+      <Text accessibilityRole="header" style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande }}>
+        {titulo}
+      </Text>
+      {dato != null && <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{dato}</Text>}
+      {/* El día de hoy en su círculo lleno, la marca de «hoy» de Google Calendar; acá en la tinta de Odobi. */}
+      {diaDeHoy != null && (
+        <View testID="agenda-dia-hoy" style={[estilos.diaHoy, { backgroundColor: tema.color.texto }]}>
+          <Text style={{ color: tema.color.fondo, fontFamily: tema.fuente.display, fontSize: tema.tipo.chico }}>{diaDeHoy}</Text>
+        </View>
+      )}
     </View>
   );
+}
+
+/**
+ * La línea del ahora de Google Calendar: un punto y una raya que cruzan la lista de hoy justo donde va la hora
+ * actual, entre lo que ya pasó y lo que viene. Ocupa el lugar del divisor de esa fila.
+ */
+function LineaAhora({ hora }: { hora: string }) {
+  const tema = useTema();
+  return (
+    <View testID="agenda-linea-ahora" accessibilityLabel={`Ahora, ${hora}`} style={estilos.lineaAhora}>
+      <View style={[estilos.puntoAhora, { backgroundColor: tema.color.acento }]} />
+      <View style={[estilos.rayaAhora, { backgroundColor: tema.color.acento }]} />
+    </View>
+  );
+}
+
+/**
+ * Antes de qué evento de hoy cae la línea del ahora: el primero con hora que todavía no pasó. Si ya pasaron
+ * todos, va al final (`eventos.length`). Sin ningún evento con hora no hay dónde ubicarla: `null`.
+ */
+export function posicionAhora(eventos: readonly EventoAgenda[], ahora: number): number | null {
+  const conHora = eventos.map((ev, i) => ({ i, ev })).filter(({ ev }) => !ev.diaCompleto && instanteDeEvento(ev.inicioCrudo) != null);
+  if (conHora.length === 0) return null;
+  const proximo = conHora.find(({ ev }) => !yaPaso(ev.inicioCrudo, ahora));
+  return proximo != null ? proximo.i : eventos.length;
+}
+
+/** La tarjeta blanca que agrupa las filas de un grupo. */
+function Tarjeta({ children }: { children: ReactNode }) {
+  const tema = useTema();
+  return <View style={[estilos.tarjeta, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}>{children}</View>;
 }
 
 /**
@@ -153,44 +205,57 @@ export function PantallaAgenda() {
     router.back();
   }
 
-  const tenue = { color: tema.color.textoTenue, fontSize: tema.tipo.base } as const;
+  const tenue = { color: tema.color.textoTenue, fontSize: tema.tipo.base, lineHeight: 22 } as const;
   // La hora se lee al renderizar: la pantalla se recarga al entrar, no necesita reloj propio.
   const ahora = new Date();
+  const conectada = estado === 'ok' && agenda != null && agenda.conectado;
+  const horaAhora = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
 
   return (
-    <MarcoGlass titulo="Agenda" icono="miDia" testID="pantalla-agenda">
-      <ScrollFormulario
-        testID="agenda-contenido"
-        contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.lg, paddingBottom: 120 }}
-      >
-        {/* Mapeo `agenda` (prototipo index.html?ver=agenda): subtítulo, estado de la conexión, Hoy como
-            rejilla horaria (`rejillaAgenda.ts`) y el resto como listas. */}
-        <Text testID="agenda-intro" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-          Tus eventos y lo que vence, en la misma línea.
-        </Text>
-        {estado === 'ok' && agenda != null && agenda.conectado && (
-          // SM-N34: punto + texto (igual que el mapa y que el punto de conexión del avatar). El punto es
-          // decorativo (el estado lo dice el texto: no depende sólo del color, WCAG 1.4.1).
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View
-              testID="agenda-estado-punto"
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-              style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tema.color.acento }}
-            />
-            <Text
-              testID="agenda-estado"
-              style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}
-            >
-              Google Calendar conectada
-            </Text>
-          </View>
+    <MarcoGlass titulo="Agenda" icono="miDia" sinIcono testID="pantalla-agenda">
+      <ScrollFormulario testID="agenda-contenido" contentContainerStyle={estilos.contenido}>
+        {/* Rediseño (Martin 15/11): el mismo lenguaje de Mi día. Cada grupo es un rótulo y UNA tarjeta blanca de
+            filas —marca en negrita, título, detalle—, con 32 entre grupos. «Hoy» dejó de ser una rejilla por
+            horas: en el celular la lista se lee de un vistazo y dice lo que importa, cuánto falta. */}
+        <View style={estilos.cabeza}>
+          <Text testID="agenda-intro" style={tenue}>
+            Tus eventos y lo que vence, en la misma línea.
+          </Text>
+          {conectada && (
+            // SM-N34: punto + texto. El punto es decorativo (el estado lo dice el texto, WCAG 1.4.1).
+            <View style={estilos.estado}>
+              <View
+                testID="agenda-estado-punto"
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                style={[estilos.punto, { backgroundColor: tema.color.acento }]}
+              />
+              <Text testID="agenda-estado" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}>
+                Google Calendar conectada
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Agendar va arriba y parejo con las otras vías de alta que no son la voz (ver `BotonAcceso`). */}
+        {conectada && (
+          <BotonAcceso
+            testID="agenda-nuevo-evento"
+            accessibilityLabel="Nuevo evento"
+            icono={
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={tema.color.acentoTinta} strokeWidth={2} strokeLinecap="round">
+                <Path d="M12 5v14M5 12h14" />
+              </Svg>
+            }
+            etiqueta="Nuevo evento"
+            onPress={nuevoEvento}
+          />
         )}
 
         {estado === 'cargando' && <ActivityIndicator testID="agenda-cargando" color={tema.color.acento} />}
 
         {estado === 'no_disponible' && (
-          <View style={{ gap: tema.espacio.sm }} testID="agenda-no-disponible">
+          <View style={{ gap: tema.espacio.md }} testID="agenda-no-disponible">
             <Text style={tenue}>No pudimos cargar tu agenda. Probá de nuevo en un momento.</Text>
             <FilaBotones
               testID="agenda-reintentar-fila"
@@ -212,133 +277,42 @@ export function PantallaAgenda() {
           </Text>
         )}
 
-        {estado === 'ok' && agenda != null && agenda.conectado &&
+        {conectada &&
           agenda.grupos.map((g) => {
-            const esHoy = g.id === 'hoy';
-            const rejilla = esHoy ? armarRejilla(g.eventos, ahora) : null;
-            // `Hoy martes 18` / `Mañana miércoles 19` (prototipo 2512, 2527); los otros grupos llevan su cuenta.
-            const complemento =
-              g.id === 'hoy' ? fechaCorta(ahora) : g.id === 'manana' ? fechaCorta(new Date(ahora.getTime() + 86_400_000)) : g.eventos.length > 0 ? String(g.eventos.length) : null;
+            // `Hoy domingo 15` / `Mañana lunes 16`; los otros grupos llevan su cuenta.
+            const dato =
+              g.id === 'hoy' ? (DIAS[ahora.getDay()] ?? null) : g.id === 'manana' ? fechaCorta(new Date(ahora.getTime() + 86_400_000)) : g.eventos.length > 0 ? String(g.eventos.length) : null;
+            const lineaEn = g.id === 'hoy' ? posicionAhora(g.eventos, ahora.getTime()) : null;
             return (
-              <View key={g.id} testID={`agenda-grupo-${g.id}`} style={{ gap: tema.espacio.sm }}>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, flexShrink: 1 }}>
-                    <Text
-                      accessibilityRole="header"
-                      style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}
-                    >
-                      {g.titulo}
-                    </Text>
-                    {complemento != null && (
-                      <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{complemento}</Text>
-                    )}
-                  </View>
-                  {esHoy && (
-                    <Pressable
-                      testID="agenda-nuevo-evento"
-                      accessibilityRole="button"
-                      accessibilityLabel="Nuevo evento"
-                      onPress={nuevoEvento}
-                      hitSlop={8}
-                      style={pressableStyle([
-                        { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: tema.radio.completo, backgroundColor: tema.color.superficieAlta },
-                      ])}
-                    >
-                      <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={tema.color.acentoTinta} strokeWidth={2} strokeLinecap="round">
-                        <Path d="M12 5v14M5 12h14" />
-                      </Svg>
-                      <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
-                        Nuevo evento
-                      </Text>
-                    </Pressable>
-                  )}
-                </View>
-                {g.eventos.length === 0 && !esHoy ? (
-                  <Text testID={`agenda-grupo-${g.id}-vacio`} style={tenue}>
-                    Nada por acá.
+              <View key={g.id} testID={`agenda-grupo-${g.id}`} style={estilos.grupo}>
+                <Encabezado titulo={g.titulo} dato={dato} diaDeHoy={g.id === 'hoy' ? ahora.getDate() : undefined} />
+                {g.eventos.length === 0 ? (
+                  <Text testID={`agenda-grupo-${g.id}-vacio`} style={[tenue, estilos.vacio]}>
+                    {g.id === 'hoy' ? 'Nada agendado para hoy.' : 'Nada por acá.'}
                   </Text>
-                ) : esHoy && rejilla != null ? (
-                  <>
-                    {rejilla.sinHora.map((ev) => (
-                      <View key={ev.id} testID={`agenda-evento-${ev.id}`} style={estiloLista(tema)}>
-                        <FilaEvento hora="—" titulo={ev.titulo} detalle={conUbicacion(`${franjaDeEvento(ev) ?? 'Sin hora'} · Google Calendar`, ev)} />
-                      </View>
-                    ))}
-                    {rejilla.horas.length > 0 && (
-                      // `.cal`: tarjeta con las horas a la izquierda (44 px + 8) y los bloques a todo el ancho restante.
-                      <View style={{ backgroundColor: tema.color.superficieAlta, borderRadius: 16, paddingTop: 26, paddingBottom: 18, paddingRight: tema.espacio.md, paddingLeft: 52 }}>
-                        <View style={{ height: rejilla.alto }}>
-                          {rejilla.horas.map((h, i) => (
-                            <View key={h} pointerEvents="none" style={{ position: 'absolute', left: -52, right: 0, top: i * PX_POR_HORA }}>
-                              <Text style={{ position: 'absolute', left: 0, width: 44, textAlign: 'right', top: -7, color: tema.color.textoTenue, fontSize: 11 }}>
-                                {rotuloHora(h)}
-                              </Text>
-                              <View style={{ marginLeft: 52, height: 1, backgroundColor: tema.color.textoTenue, opacity: 0.22 }} />
-                            </View>
-                          ))}
-                          {rejilla.bloques.map((b) => {
-                            const ev = g.eventos.find((e) => e.id === b.id);
-                            return (
-                              <View
-                                key={b.id}
-                                testID={`agenda-evento-${b.id}`}
-                                style={{
-                                  position: 'absolute',
-                                  left: 0,
-                                  right: 0,
-                                  top: b.top,
-                                  height: b.alto - 2,
-                                  borderRadius: 10,
-                                  borderLeftWidth: 3,
-                                  borderLeftColor: tema.color.acento,
-                                  backgroundColor: tema.color.superficie,
-                                  paddingHorizontal: 12,
-                                  justifyContent: 'center',
-                                  overflow: 'hidden',
-                                }}
-                              >
-                                <Text numberOfLines={1} style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.chico }}>
-                                  {b.titulo}
-                                </Text>
-                                {!b.corto && ev != null && (
-                                  <Text numberOfLines={1} style={{ color: tema.color.textoTenue, fontSize: 11, marginTop: 2 }}>
-                                    {conUbicacion(`${franjaDeEvento(ev) ?? ''} · Google Calendar`, ev)}
-                                  </Text>
-                                )}
-                              </View>
-                            );
-                          })}
-                          {rejilla.ahoraTop != null && (
-                            <View
-                              testID="agenda-linea-ahora"
-                              accessibilityLabel={`Ahora, ${ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`}
-                              pointerEvents="none"
-                              style={{ position: 'absolute', left: -14, right: 0, top: rejilla.ahoraTop - 1, height: 2, backgroundColor: tema.color.acento }}
-                            >
-                              <View style={{ position: 'absolute', left: -5, top: -4, width: 10, height: 10, borderRadius: 5, backgroundColor: tema.color.acento }} />
-                            </View>
-                          )}
-                        </View>
-                      </View>
-                    )}
-                  </>
                 ) : (
-                  // Mañana · Esta semana · Sin hora: `.lista` de filas hora | título + origen (prototipo 2528-2542).
-                  <View style={estiloLista(tema)}>
-                    {g.eventos.map((ev, i) => (
-                      <View
-                        key={ev.id}
-                        testID={`agenda-evento-${ev.id}`}
-                        style={i > 0 ? { borderTopWidth: 1, borderTopColor: tema.color.fondo } : undefined}
-                      >
-                        <FilaEvento
-                          hora={columnaHora(g.id, ev)}
-                          titulo={ev.titulo}
-                          detalle={conUbicacion(`${ev.diaCompleto ? 'Todo el día' : g.id === 'semana' ? (horaDeEvento(ev.inicioCrudo) ?? '') : ''}${ev.diaCompleto || (g.id === 'semana' && horaDeEvento(ev.inicioCrudo) != null) ? ' · ' : ''}Google Calendar`, ev)}
-                        />
-                      </View>
-                    ))}
-                  </View>
+                  <Tarjeta>
+                    {g.eventos.map((ev, i) => {
+                      const f = filaDe(g.id, ev, ahora.getTime());
+                      const ahoraAca = lineaEn === i;
+                      return (
+                        <View key={ev.id}>
+                          {ahoraAca && <LineaAhora hora={horaAhora} />}
+                          <FilaAgenda
+                            testID={`agenda-evento-${ev.id}`}
+                            marca={f.marca}
+                            marcaSobre={f.marcaSobre}
+                            titulo={ev.titulo}
+                            detalle={f.detalle}
+                            apagada={f.apagada}
+                            // La línea del ahora ya separa: esa fila no lleva además su divisor.
+                            conDivisor={i > 0 && !ahoraAca}
+                          />
+                        </View>
+                      );
+                    })}
+                    {lineaEn === g.eventos.length && <LineaAhora hora={horaAhora} />}
+                  </Tarjeta>
                 )}
               </View>
             );
@@ -349,31 +323,43 @@ export function PantallaAgenda() {
             backend ya ordena) y se marca; un certificado ilegible se dice, no se esconde. Sin vencimientos
             o con el endpoint caído la sección no se muestra (ausente ≠ «todo en orden» inventado). */}
         {vencimientos != null && vencimientos.length > 0 && (
-          <View testID="agenda-vencimientos" style={{ gap: tema.espacio.sm }}>
-            <Text
-              accessibilityRole="header"
-              style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}
-            >
-              Vencen esta semana
-            </Text>
-            <View style={estiloLista(tema)}>
+          <View testID="agenda-vencimientos" style={estilos.grupo}>
+            <Encabezado titulo="Vencen esta semana" dato={String(vencimientos.length)} />
+            <Tarjeta>
               {vencimientos.map((v, i) => (
-                <View
+                <FilaAgenda
                   key={`${v.tipo}-${v.id}`}
                   testID={`agenda-vencimiento-${v.tipo}-${v.id}`}
-                  style={i > 0 ? { borderTopWidth: 1, borderTopColor: tema.color.fondo } : undefined}
-                >
-                  <FilaEvento
-                    hora={v.tipo === 'cae' ? 'CAE' : 'ARCA'}
-                    titulo={v.titulo}
-                    detalle={v.fecha != null ? `${plazoVencimiento(v)} · ${v.fecha}` : plazoVencimiento(v)}
-                  />
-                </View>
+                  marca={v.tipo === 'cae' ? 'CAE' : 'ARCA'}
+                  titulo={v.titulo}
+                  detalle={v.fecha != null ? `${plazoVencimiento(v)} · ${v.fecha}` : plazoVencimiento(v)}
+                  // Lo vencido o que vence hoy/mañana se dice en el color de la urgencia, como en «Para hoy».
+                  colorDetalle={v.vencido || (v.dias != null && v.dias <= 1) ? tema.color.peligro : undefined}
+                  conDivisor={i > 0}
+                />
               ))}
-            </View>
+            </Tarjeta>
           </View>
         )}
       </ScrollFormulario>
     </MarcoGlass>
   );
 }
+
+const estilos = StyleSheet.create({
+  // 32 entre grupos: cada uno se lee como un bloque propio; 120 abajo para que el final pase el borde.
+  contenido: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 120, gap: 32 },
+  cabeza: { gap: 10, paddingHorizontal: 4 },
+  estado: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  punto: { width: 8, height: 8, borderRadius: 4 },
+  grupo: { gap: 12 },
+  encabezado: { flexDirection: 'row', alignItems: 'baseline', gap: 8, paddingHorizontal: 4 },
+  // Las filas traen su aire vertical (16); la tarjeta sólo suma los lados.
+  tarjeta: { borderRadius: 22, paddingHorizontal: 20 },
+  vacio: { paddingHorizontal: 4 },
+  diaHoy: { minWidth: 26, height: 26, borderRadius: 13, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
+  // Sale 6 hacia la izquierda de la tarjeta para que el punto quede sobre el borde, como en Google Calendar.
+  lineaAhora: { flexDirection: 'row', alignItems: 'center', marginLeft: -6, height: 10 },
+  puntoAhora: { width: 10, height: 10, borderRadius: 5 },
+  rayaAhora: { flex: 1, height: 2, marginLeft: -1 },
+});

@@ -4,6 +4,7 @@ import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } f
 import { type ActividadItem, type ActividadResult } from '@copiloto/core';
 
 import { FilaActividad } from './FilaActividad';
+import { elevacion } from '../../theme/BloqueCifra';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
@@ -163,13 +164,33 @@ export function ListaActividad({
     );
   }
 
+  const dias = agruparPorDia(items);
+
   return (
     <FlatList
       testID={`${testIDBase}-lista`}
-      data={items}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item }) => <FilaActividad item={item} onPress={onAbrirItem} />}
-      contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.sm, paddingBottom: 120 }}
+      data={dias}
+      keyExtractor={(dia) => dia.clave}
+      // Rediseño (Martin 16/11): los movimientos van agrupados por día —«Hoy», «Ayer», «14 de noviembre»— y cada
+      // día es UNA tarjeta blanca de filas, como las listas de las funciones. Antes era una fila de vidrio suelta
+      // por movimiento, sin nada que dijera de cuándo era cada uno.
+      renderItem={({ item: dia }) => (
+        <View style={styles.dia}>
+          <Text
+            testID={`${testIDBase}-dia-${dia.clave}`}
+            accessibilityRole="header"
+            style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande, paddingHorizontal: 4 }}
+          >
+            {dia.rotulo}
+          </Text>
+          <View style={[styles.tarjeta, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}>
+            {dia.items.map((it, i) => (
+              <FilaActividad key={it.id} item={it} onPress={onAbrirItem} enTarjeta primera={i === 0} />
+            ))}
+          </View>
+        </View>
+      )}
+      contentContainerStyle={{ padding: tema.espacio.md, gap: 24, paddingBottom: 120 }}
       onEndReached={cargarMas}
       // 0.5 y no 0.1: en un teléfono lento, pedir recién al borde deja al usuario mirando el final de
       // la lista mientras llega la página. Media pantalla antes es imperceptible.
@@ -184,7 +205,7 @@ export function ListaActividad({
         />
       }
       ListEmptyComponent={
-        <Text testID={`${testIDBase}-vacio`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
+        <Text testID={`${testIDBase}-vacio`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, lineHeight: 22 }}>
           {textoVacio}
         </Text>
       }
@@ -197,6 +218,51 @@ export function ListaActividad({
   );
 }
 
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+function claveLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export interface DiaActividad {
+  /** `AAAA-MM-DD` en hora local, o `sin-fecha`. */
+  clave: string;
+  rotulo: string;
+  items: ActividadItem[];
+}
+
+/**
+ * Parte la lista en días, RESPETANDO el orden en que llegó (el backend ya la manda de lo más nuevo a lo más
+ * viejo; acá no se reordena nada). El día sale de la fecha en hora LOCAL del teléfono: un cobro de las 23 hs no
+ * puede caer en «mañana» por el huso. Una fecha ilegible no se descarta: va a un grupo «Sin fecha».
+ */
+export function agruparPorDia(items: readonly ActividadItem[], ahora: Date = new Date()): DiaActividad[] {
+  const hoy = claveLocal(ahora);
+  const ayer = claveLocal(new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - 1));
+  const dias: DiaActividad[] = [];
+  for (const it of items) {
+    const d = new Date(it.fecha);
+    const legible = !Number.isNaN(d.getTime());
+    const clave = legible ? claveLocal(d) : 'sin-fecha';
+    let dia = dias.find((x) => x.clave === clave);
+    if (dia == null) {
+      const rotulo = !legible
+        ? 'Sin fecha'
+        : clave === hoy
+          ? 'Hoy'
+          : clave === ayer
+            ? 'Ayer'
+            : `${d.getDate()} de ${MESES[d.getMonth()]}${d.getFullYear() !== ahora.getFullYear() ? ` de ${d.getFullYear()}` : ''}`;
+      dia = { clave, rotulo, items: [] };
+      dias.push(dia);
+    }
+    dia.items.push(it);
+  }
+  return dias;
+}
+
 const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  dia: { gap: 10 },
+  tarjeta: { borderRadius: 22, paddingLeft: 16 },
 });

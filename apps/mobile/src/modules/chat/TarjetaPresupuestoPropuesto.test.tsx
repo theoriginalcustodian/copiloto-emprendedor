@@ -82,30 +82,47 @@ describe('TarjetaPresupuestoPropuesto', () => {
   it('dice explícitamente que TODAVÍA no se guardó', async () => {
     await montar();
 
+    // 14/11: la card pasó a resumen. El título nombra el registro; el aviso conserva las dos promesas.
+    expect(screen.getByTestId('presupuesto-propuesto-titulo')).toHaveTextContent('Nuevo presupuesto');
     expect(screen.getByTestId('presupuesto-propuesto-aviso')).toHaveTextContent(
-      'Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar el presupuesto — todavía no lo anoté. Al guardar, a tu cliente no le llega nada: se lo mandás vos.',
+      'Todavía no se guardó nada. Al guardar, a tu cliente no le llega nada: se lo mandás vos.',
     );
   });
 
-  it('precarga el concepto, el receptor y CADA fila de ítems — editables', async () => {
+  it('muestra el concepto, el receptor y CADA ítem como resumen, con el total', async () => {
+    // 14/11: filas con «Cambiar», no campos abiertos.
     await montar();
 
-    expect(screen.getByTestId('presupuesto-propuesto-formulario-concepto-input').props.value).toBe(
-      'Instalación eléctrica',
-    );
-    expect(screen.getByTestId('presupuesto-propuesto-formulario-nombre-input').props.value).toBe('Juan Pérez');
-    expect(screen.getByTestId('presupuesto-propuesto-formulario-item-0-descripcion-input').props.value).toBe(
-      'Mano de obra',
-    );
-    expect(screen.getByTestId('presupuesto-propuesto-formulario-item-1-descripcion-input').props.value).toBe(
-      'Materiales',
-    );
+    expect(screen.getByTestId('presupuesto-propuesto-formulario-total-cifra')).toHaveTextContent('$45.000');
+    expect(screen.getByTestId('presupuesto-propuesto-formulario-concepto-cambiar')).toHaveTextContent(/Instalación eléctrica/);
+    expect(screen.getByTestId('presupuesto-propuesto-formulario-nombre-cambiar')).toHaveTextContent(/Juan Pérez/);
+    expect(screen.getByTestId('presupuesto-propuesto-formulario-item-0-cambiar')).toHaveTextContent(/Mano de obra/);
+    expect(screen.getByTestId('presupuesto-propuesto-formulario-item-1-cambiar')).toHaveTextContent(/Materiales/);
+    expect(screen.queryByTestId('presupuesto-propuesto-formulario-concepto-input')).toBeNull();
+  });
+
+  it('tocar un ítem abre sus tres campos ahí mismo, con lo dictado, y «Listo» lo vuelve a cerrar', async () => {
+    await montar();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-item-1-cambiar'));
+    });
+    expect(screen.getByTestId('presupuesto-propuesto-formulario-item-1-descripcion-input').props.value).toBe('Materiales');
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-item-1-listo'));
+    });
+    expect(screen.queryByTestId('presupuesto-propuesto-formulario-item-1-descripcion-input')).toBeNull();
   });
 
   it('🔴 permite CORREGIR el monto mal transcripto de un ítem antes de guardar', async () => {
     mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuestoGuardado(7) });
     await montar();
 
+    // En el resumen el ítem es una fila; tocarla abre sus campos ahí mismo.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-item-0-cambiar'));
+    });
     await act(async () => {
       fireEvent.changeText(screen.getByTestId('presupuesto-propuesto-formulario-item-0-precio-input'), '35000');
     });

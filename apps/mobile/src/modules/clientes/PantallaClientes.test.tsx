@@ -159,8 +159,8 @@ describe('PantallaClientes', () => {
 
     await waitFor(() => expect(screen.getByTestId('clientes-vacio')).toBeTruthy());
     expect(screen.getByTestId('clientes-vacio')).toHaveTextContent(
-      // El texto ahora ofrece el alta a mano: la cartera vacia del dia 1 no puede ser solo un aviso.
-      'Tu cartera se va a armar sola con lo que factures y presupuestes — y mientras tanto podés cargar el primero a mano.',
+      // El texto ofrece el alta a mano: la cartera vacia del dia 1 no puede ser solo un aviso. (Copy del 14/11.)
+      /Tu cartera se arma sola con lo que factures y presupuestes\. Mientras tanto, cargá el primero a mano\./,
     );
   });
 
@@ -237,8 +237,8 @@ describe('PantallaClientes', () => {
         fireEvent.press(screen.getByTestId('cliente-12'));
       });
 
-      await waitFor(() => expect(screen.getByTestId('ficha-presupuestos-vacio')).toBeTruthy());
-      expect(screen.getByTestId('ficha-facturas-vacio')).toBeTruthy();
+      // Un solo historial (Martin 15/11): sin operaciones hay UN aviso, no uno por sección.
+      await waitFor(() => expect(screen.getByTestId('ficha-historial-vacio')).toBeTruthy());
     });
 
     it('un 404 dice "no encontramos", no "no disponible"', async () => {

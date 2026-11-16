@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 
 import {
   estadoFacturacionCliente,
@@ -8,11 +9,14 @@ import {
   type Cliente,
 } from '@copiloto/core';
 
-import { Tile } from '../../theme/glass/Tile';
+import { Glifo } from '../../theme/glass/Glifo';
+import { conAlfa } from '../../theme/glass/conAlfa';
+import { pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
- * `TarjetaCliente` — una línea de la cartera.
+ * `TarjetaCliente` — una fila de la cartera. Rediseño (Martin 15/11): casilla arena con las iniciales, nombre,
+ * subtítulo, y a la derecha lo facturado en dos renglones (importe arriba, comprobantes abajo).
  *
  * 🔴 **El documento se muestra sólo si existe**, y nunca se inventa una etiqueta para su ausencia.
  * Un cliente sin documento es el caso NORMAL de esta cartera —se derivó de un presupuesto, donde el
@@ -55,9 +59,11 @@ import { useTema } from '../../theme/ThemeProvider';
 export interface TarjetaClienteProps {
   cliente: Cliente;
   onPress?: (cliente: Cliente) => void;
+  /** Línea arriba: todas las filas menos la primera. Las filas van juntas en una tarjeta que pone la pantalla. */
+  conDivisor?: boolean;
 }
 
-export function TarjetaCliente({ cliente, onPress }: TarjetaClienteProps) {
+export function TarjetaCliente({ cliente, onPress, conDivisor = false }: TarjetaClienteProps) {
   const tema = useTema();
   // El subtítulo y el slot de facturación son reglas del CORE (una sola para web y mobile).
   const subtitulo = subtituloDeCliente(cliente);
@@ -70,63 +76,98 @@ export function TarjetaCliente({ cliente, onPress }: TarjetaClienteProps) {
   const medido = estadoFacturacionCliente(facturacionDeCliente(cliente), true);
   const estado = medido != null && !medido.auto ? medido : null;
 
-  return (
-    <Tile
-      onPress={onPress != null ? () => onPress(cliente) : undefined}
-      testID={`cliente-${cliente.id}`}
-    >
-      <View style={styles.fila}>
-        <View style={styles.izquierda}>
+  // «$importe · N comprobantes» viene armado del core; acá sólo se reparte en dos renglones.
+  const corte = montoTexto.indexOf(' · ');
+  const importe = corte >= 0 ? montoTexto.slice(0, corte) : montoTexto;
+  const comprobantes = corte >= 0 ? montoTexto.slice(corte + 3) : null;
+  const tenue = { color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 };
+  const t = tema.color.tileFuncion;
+
+  const fila = (
+    <>
+      {/* La inicial en la casilla arena: en una lista de nombres es lo que el ojo usa para ubicarse. */}
+      <View accessible={false} style={[styles.casilla, { backgroundColor: t.arena }]}>
+        <Text style={{ color: t.tinta, fontFamily: tema.fuente.display, fontSize: tema.tipo.base }}>
+          {inicialesDe(cliente.nombre)}
+        </Text>
+      </View>
+      <View style={styles.izquierda}>
+        <View style={styles.nombre}>
           <Text
             numberOfLines={1}
-            style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontWeight: '600' }}
+            style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base, lineHeight: 21, flexShrink: 1 }}
             testID={`cliente-${cliente.id}-nombre`}
           >
             {cliente.nombre}
           </Text>
-          {subtitulo != null && (
-            <Text
-              numberOfLines={1}
-              style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
-              testID={`cliente-${cliente.id}-sub`}
-            >
-              {subtitulo}
-            </Text>
+          {cliente.origen !== 'derivado' && (
+            <View testID={`cliente-${cliente.id}-origen`} accessible accessibilityLabel={cliente.origen === 'voz' ? 'Cargado por voz' : 'Cargado a mano'}>
+              <Glifo nombre={cliente.origen === 'voz' ? 'microphone' : 'pen'} size={13} color={tema.color.textoTenue} decorativo />
+            </View>
           )}
         </View>
-        <View style={styles.derecha}>
-          <Text
-            numberOfLines={1}
-            style={{ color: tema.color.texto, fontSize: tema.tipo.chico, fontWeight: '600' }}
-            testID={`cliente-${cliente.id}-monto`}
-          >
-            {montoTexto}
-          </Text>
-          {estado != null && (
-            <Text
-              numberOfLines={1}
-              style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
-              testID={`cliente-${cliente.id}-estado`}
-            >
-              {estado.texto}
-            </Text>
-          )}
-        </View>
-        {cliente.origen !== 'derivado' && (
-          <Text
-            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
-            testID={`cliente-${cliente.id}-origen`}
-          >
-            {cliente.origen === 'voz' ? '🎙' : '✎'}
+        {subtitulo != null && (
+          <Text numberOfLines={1} style={tenue} testID={`cliente-${cliente.id}-sub`}>
+            {subtitulo}
           </Text>
         )}
       </View>
-    </Tile>
+      <View style={styles.derecha}>
+        <Text
+          numberOfLines={1}
+          style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.base, lineHeight: 21 }}
+          testID={`cliente-${cliente.id}-monto`}
+        >
+          {importe}
+        </Text>
+        {comprobantes != null && (
+          <Text numberOfLines={1} style={tenue} testID={`cliente-${cliente.id}-comprobantes`}>
+            {comprobantes}
+          </Text>
+        )}
+        {estado != null && (
+          <Text numberOfLines={1} style={tenue} testID={`cliente-${cliente.id}-estado`}>
+            {estado.texto}
+          </Text>
+        )}
+      </View>
+    </>
+  );
+
+  const estilo = [styles.fila, conDivisor && { borderTopWidth: 1, borderTopColor: conAlfa(tema.color.texto, 0.12) }];
+  if (onPress == null) {
+    return (
+      <View testID={`cliente-${cliente.id}`} style={estilo}>
+        {fila}
+      </View>
+    );
+  }
+  return (
+    <Pressable
+      testID={`cliente-${cliente.id}`}
+      onPress={() => onPress(cliente)}
+      accessibilityRole="button"
+      accessibilityLabel={`Ver la ficha de ${cliente.nombre}`}
+      style={pressableStyle(estilo)}
+    >
+      {fila}
+    </Pressable>
   );
 }
 
+/** Hasta dos iniciales: la primera palabra y la última («Tomás Ledesma» → «TL», «Panadería La Espiga» → «PE»). */
+export function inicialesDe(nombre: string): string {
+  const palabras = nombre.trim().split(/\s+/).filter((x) => x !== '');
+  if (palabras.length === 0) return '';
+  const primera = palabras[0]!.slice(0, 1);
+  const ultima = palabras.length > 1 ? palabras[palabras.length - 1]!.slice(0, 1) : '';
+  return (primera + ultima).toUpperCase();
+}
+
 const styles = StyleSheet.create({
-  fila: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  fila: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
+  casilla: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   izquierda: { flex: 1, gap: 2 },
-  derecha: { alignItems: 'flex-end', gap: 2, maxWidth: '50%' },
+  nombre: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  derecha: { alignItems: 'flex-end', gap: 2, maxWidth: '45%' },
 });

@@ -76,5 +76,5 @@ export type NombreIconoGlass =
   | 'cuenta';
 
 /* El catálogo de glifos dibujados a mano se retiró el 18/09: los íconos salen del set del
-   sistema (`phosphor.ts`) y qué glifo le toca a cada pantalla vive en `mapaIconos.ts`. Este
+   sistema (`glifos.ts`) y qué glifo le toca a cada pantalla vive en `mapaIconos.ts`. Este
    archivo conserva sólo el tipo `NombreIconoGlass`, que es el vocabulario de la app. */

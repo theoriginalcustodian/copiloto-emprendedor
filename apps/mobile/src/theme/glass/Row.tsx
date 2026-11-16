@@ -13,6 +13,7 @@ import { Pressable as PressableGH } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTema } from '../ThemeProvider';
+import { elevacion } from '../BloqueCifra';
 import { PRESS_FADE } from './presion';
 import { sombraVidrio } from './relieve';
 
@@ -28,9 +29,13 @@ export interface RowProps extends PropsWithChildren {
    * toque, y los dos disparan (skill `swmansion-rn-gestures`: «nunca mezclar»). Por defecto sigue siendo RN.
    */
   gestual?: boolean;
+  /** Tarjeta blanca con la elevación suave del sistema, sin vidrio ni borde: la de las pantallas rediseñadas. */
+  plana?: boolean;
+  /** Fila sin superficie propia: va dentro de una tarjeta que agrupa varias (la lista de «Para hoy»). */
+  desnuda?: boolean;
 }
 
-export function Row({ onPress, style, testID, accessibilityLabel, children, gestual = false }: RowProps) {
+export function Row({ onPress, style, testID, accessibilityLabel, children, gestual = false, plana = false, desnuda = false }: RowProps) {
   const tema = useTema();
   const g = tema.glass;
   const Pressable = gestual ? PressableGH : PressableRN;
@@ -44,28 +49,38 @@ export function Row({ onPress, style, testID, accessibilityLabel, children, gest
       style={({ pressed }) => [
         styles.raiz,
         // SIN `backgroundColor` — misma razón que en `Tile`: la fila es de vidrio. Ver `relieve.ts`.
-        { borderColor: g.chip },
+        desnuda
+          ? styles.desnuda
+          : plana
+            ? [styles.plana, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]
+            : { borderColor: g.chip },
         // Nivel 1 · Superficie en reposo (DoD §2.4: "cards, burbujas, paneles" — una fila de lista es
         // más card que chip). `boxShadow`, por lo mismo que `Tile`: ver `sombraVidrio`.
-        sombraVidrio(tema.glass.relieve.nivel1),
+        plana || desnuda ? null : sombraVidrio(tema.glass.relieve.nivel1),
         // Opacidad y no escala: una fila ancha que encoge arrastra el layout de al lado. Ver `presion.ts`.
         pressed && onPress ? PRESS_FADE : null,
         style,
       ]}
     >
-      <LinearGradient
-        colors={[g.s1, g.s2]}
-        start={{ x: 0.15, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={[styles.luzSuperior, { backgroundColor: g.chip }]} pointerEvents="none" />
+      {!plana && !desnuda && (
+        <>
+          <LinearGradient
+            colors={[g.s1, g.s2]}
+            start={{ x: 0.15, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={[styles.luzSuperior, { backgroundColor: g.chip }]} pointerEvents="none" />
+        </>
+      )}
       {children}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  desnuda: { borderWidth: 0, borderRadius: 0, overflow: 'visible', paddingVertical: 18, paddingHorizontal: 0 },
+  plana: { borderWidth: 0, borderRadius: 22, overflow: 'visible', paddingVertical: 16, paddingHorizontal: 16 },
   raiz: {
     borderRadius: 16,
     borderWidth: 1,

@@ -20,40 +20,55 @@ import { elevacion } from './BloqueCifra';
 import { useTema } from './ThemeProvider';
 
 export interface TarjetaProps extends PropsWithChildren {
-  /** El `h4` del prototipo: 11 px, tracking .14em, caja alta. Sin rótulo, la card no lo dibuja. */
+  /**
+   * El título de la lectura. Rediseño (Martin 15/11): va AFUERA y arriba de la card, en display, como en el
+   * resto de las funciones. Antes iba adentro, en caja alta de 11 px. Sin rótulo, no se dibuja.
+   */
   rotulo?: string;
+  /** El rótulo va DENTRO de la card, chico y tenue: para cuando la sección ya trae su título afuera. */
+  rotuloAdentro?: boolean;
   style?: ViewStyle | ViewStyle[];
   testID?: string;
 }
 
-export function Tarjeta({ rotulo, children, style, testID }: TarjetaProps) {
+export function Tarjeta({ rotulo, rotuloAdentro = false, children, style, testID }: TarjetaProps) {
   const tema = useTema();
+  const idRotulo = testID ? `${testID}-rotulo` : undefined;
 
-  return (
+  const card = (
     <View
       testID={testID}
       style={[
         styles.raiz,
-        { backgroundColor: tema.color.superficie, borderRadius: tema.radio.md, padding: tema.espacio.md },
+        { backgroundColor: tema.color.superficie, borderRadius: tema.radio.md, padding: 20 },
         elevacion(tema.color.sombra),
         style,
       ]}
     >
-      {rotulo != null && (
-        <Text
-          testID={testID ? `${testID}-rotulo` : undefined}
-          style={[styles.rotulo, { color: tema.color.textoTenue, fontFamily: tema.fuente.ui }]}
-        >
+      {rotulo != null && rotuloAdentro && (
+        <Text testID={idRotulo} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
           {rotulo}
         </Text>
       )}
       {children}
     </View>
   );
+  if (rotulo == null || rotuloAdentro) return card;
+  return (
+    <View style={styles.seccion}>
+      <Text
+        testID={idRotulo}
+        accessibilityRole="header"
+        style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande }}
+      >
+        {rotulo}
+      </Text>
+      {card}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  seccion: { gap: 10 },
   raiz: { gap: 6 },
-  // 11 px × .14em ≈ 1.5 de tracking (prototipo `.bloque h4`).
-  rotulo: { fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 },
 });

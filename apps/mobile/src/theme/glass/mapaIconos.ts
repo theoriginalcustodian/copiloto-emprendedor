@@ -1,8 +1,8 @@
 /**
  * De qué ícono del sistema se dibuja cada cosa de la app.
  *
- * Los nombres de la izquierda son los de la app (`NombreIconoGlass`); los de la derecha, archivos
- * de `odobi-ui/assets/iconos/` portados en `phosphor.ts`.
+ * Los nombres de la izquierda son los de la app (`NombreIconoGlass`); los de la derecha,
+ * claves de `glifos.ts` (heredan el nombre que tenían en Phosphor; el dibujo puede venir de otro set).
  *
  * 🔴 **El mapeo no se inventó: se extrajo del prototipo**, comparando el primer `path` de cada
  * `<svg>` inline contra los archivos del set. Donde el prototipo asigna un ícono a una pantalla,

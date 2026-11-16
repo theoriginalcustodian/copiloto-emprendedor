@@ -5,9 +5,8 @@
  * versión no conoce— NO lleva tile: un cuadrado genérico diría una categoría que nadie decidió.
  */
 import { View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 
-import { PHOSPHOR, VIEWBOX_PHOSPHOR } from '../../theme/glass/phosphor';
+import { Glifo } from '../../theme/glass/Glifo';
 import { useTema } from '../../theme/ThemeProvider';
 
 /** Glifo del set del sistema por categoría; las claves son las de `Tokens.color.tileFuncion`. */
@@ -42,11 +41,7 @@ export function TileCategoria({ categoria, testID }: { categoria: string | null 
         backgroundColor: t[cat],
       }}
     >
-      <Svg width={18} height={18} viewBox={VIEWBOX_PHOSPHOR} fill="none">
-        {(PHOSPHOR[GLIFO[cat]] ?? []).map((d, i) => (
-          <Path key={i} d={d} fill={t.tinta} stroke="none" />
-        ))}
-      </Svg>
+      <Glifo nombre={GLIFO[cat]} size={18} color={t.tinta} />
     </View>
   );
 }

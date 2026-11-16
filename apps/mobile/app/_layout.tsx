@@ -14,7 +14,7 @@ import { debeMostrarOnboarding } from '@copiloto/core';
 import { Inter_400Regular, Inter_500Medium, useFonts } from '@expo-google-fonts/inter';
 import { Stack, usePathname } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -24,6 +24,7 @@ import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-c
 import '../src/adapters/plataforma';
 import { EntradaSesion, SessionProvider, useSession } from '../src/modules/auth';
 import { PantallaOnboarding } from '../src/modules/onboarding';
+import { pedirTutorial } from '../src/shell/tutorialPendiente';
 import { LimiteDeError } from '../src/shell/LimiteDeError';
 import { EntradaDiaria } from '../src/modules/splash/EntradaDiaria';
 import { BarraEstado } from '../src/theme/BarraEstado';
@@ -85,6 +86,13 @@ function sinOp() {}
  * `App.tsx` en web: un flag local `onboardingCerrado` evita que, tras «Entrar»/«Después», un
  * `me` todavía no refrescado por el backend vuelva a mostrar el hilo en el mismo arranque.
  */
+/**
+ * ⚠️ SÓLO DESARROLLO, SACAR ANTES DEL PR. Muestra el onboarding en CADA arranque aunque la cuenta ya lo
+ * haya completado, para que Martin pueda revisar su diseño en el teléfono. Nunca en tests ni en producción.
+ */
+// En el navegador no: ahí se sacan las capturas de revisión y el onboarding taparía cada pantalla.
+const REVISAR_ONBOARDING = __DEV__ && process.env.NODE_ENV !== 'test' && Platform.OS !== 'web';
+
 export function Guard({ children }: { children: React.ReactNode }) {
   const { estado, me } = useSession();
   const ruta = usePathname();
@@ -95,8 +103,16 @@ export function Guard({ children }: { children: React.ReactNode }) {
   // `/me`, no la extiende (`EntradaDiaria` no gatea nada por sí sola).
   if (estado === 'verificando') return <EntradaDiaria onFin={sinOp} />;
   if (estado === 'autenticado') {
-    if (!onboardingCerrado && debeMostrarOnboarding(me)) {
-      return <PantallaOnboarding onTerminar={() => setOnboardingCerrado(true)} />;
+    if (!onboardingCerrado && (REVISAR_ONBOARDING || debeMostrarOnboarding(me))) {
+      return (
+        <PantallaOnboarding
+          onTerminar={() => {
+            // Recién terminó la configuración: la app lo recibe con el tutorial (Martin 13/11).
+            pedirTutorial();
+            setOnboardingCerrado(true);
+          }}
+        />
+      );
     }
     return <>{children}</>;
   }
@@ -177,6 +193,8 @@ export default function LayoutRaiz() {
                     // se abren SOBRE Ajustes, que queda visible detrás.
                     'ajustes-afip', 'ajustes-skins', 'ajustes-cuenta',
                     'ajustes-negocio',
+                    // La lista completa de trabajos: se abre sobre Inteligencia (Martin 15/11).
+                    'inteligencia-trabajos',
                     // Ayuda (Ola 5). `ajustes-soporte` y `ajustes-feedback` ya existían como
                     // pantallas y se entraba desde Mi cuenta; lo que cambió es la puerta.
                     'ajustes-como-usar', 'ajustes-soporte', 'ajustes-feedback', 'soporte-ticket',

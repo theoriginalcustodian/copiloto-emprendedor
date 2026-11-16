@@ -1,7 +1,7 @@
 import { forwardRef, memo, useCallback, useContext, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import type { ReactElement } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { FlatList, Pressable } from 'react-native-gesture-handler';
+import { FlatList } from 'react-native-gesture-handler';
 import type { ListRenderItemInfo, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 
 import { ArrastreCuerpoContext, TOLERANCIA_TOPE } from '../../shell/arrastreCuerpo';
@@ -31,13 +31,13 @@ import {
   type SendStatus,
 } from '@copiloto/core';
 
-import { CristalVidrio } from '../../theme/glass/CristalVidrio';
-import { pressableStyle } from '../../theme/glass/presion';
 import { Marca } from '../../theme/Marca';
 import { LogoMarca, hayLogoDe } from '../apps/LogoMarca';
 import { RodilloEjemplos } from './RodilloEjemplos';
+import { BotonLleno, BotonTexto, FranjaAcciones } from '../../theme/ResumenTarjeta';
 import { useTema } from '../../theme/ThemeProvider';
 import { Burbuja } from './Burbuja';
+import { TarjetaChat } from './TarjetaChat';
 import { ChipArmarFactura } from './ChipArmarFactura';
 import { ChipsDesambiguacion } from './ChipsDesambiguacion';
 import { Recibo } from './Recibo';
@@ -102,6 +102,8 @@ export interface ListaMensajesProps {
    * pueda scrollear hasta quedar libre del campo. Ausente = 0 (Soporte y los demás montajes no cambian).
    */
   margenInferior?: number;
+  /** Lo que tapa por arriba la pestaña de vidrio del panel: el hilo arranca debajo y al scrollear pasa por detrás. */
+  margenSuperior?: number;
   /**
    * El estado del ÚLTIMO envío (`useChat().estado.sendStatus`). Decide si el último mensaje propio ya se
    * puede rotular «✓✓ recibido» (fact-voz d): en `sending`/`error` el servidor no lo aceptó. Ausente = se
@@ -236,12 +238,10 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel }: TarjetaConfirmacionP
     );
   }
 
-  // Mismo nivel de vidrio que el gate de DocuMed ("informe"): flota DENTRO de la conversación, con su
-  // propio ocluyente -- sin esto el chat de atrás se leería A TRAVÉS de la superficie donde el
-  // usuario confirma lo que se va a ejecutar.
+  // Martin 14/11: la misma superficie que el resto de las cards del hilo (`TarjetaChat`, blanca y opaca) en vez
+  // del vidrio "informe". Sigue siendo ocluyente: el chat de atrás no se lee a través de donde se confirma.
   return (
-    <CristalVidrio
-      nivel="informe"
+    <TarjetaChat
       testID="tarjeta-confirmacion"
       style={
         gate.riesgo?.irreversible
@@ -249,7 +249,7 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel }: TarjetaConfirmacionP
           : styles.tarjetaGate
       }
     >
-      <View style={[styles.contenidoGate, { padding: tema.espacio.md, gap: tema.espacio.sm }]}>
+      <View style={[styles.contenidoGate, { gap: tema.espacio.sm }]}>
         <View style={styles.encabezadoGate}>
           {gate.service != null && hayLogoDe(gate.service) ? (
             <LogoMarca servicio={gate.service} tamano={20} testID="tarjeta-confirmacion-logo" />
@@ -308,34 +308,14 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel }: TarjetaConfirmacionP
             No se puede deshacer · queda público
           </Text>
         )}
-        <View style={[styles.accionesGate, { gap: tema.espacio.sm }]}>
-          <Pressable
-            testID="tarjeta-confirmacion-confirmar"
-            onPress={onConfirm}
-            style={pressableStyle([
-              styles.botonGate,
-              { backgroundColor: tema.color.acentoSuperficie, borderRadius: tema.radio.md },
-            ])}
-          >
-            <Text style={{ color: tema.color.acentoTexto, fontSize: tema.tipo.base, fontWeight: '700' }}>
-              {gate.confirmLabel}
-            </Text>
-          </Pressable>
-          <Pressable
-            testID="tarjeta-confirmacion-cancelar"
-            onPress={onCancel}
-            style={pressableStyle([
-              styles.botonGate,
-              { backgroundColor: tema.color.superficieAlta, borderRadius: tema.radio.md },
-            ])}
-          >
-            <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontWeight: '600' }}>
-              {gate.cancelLabel}
-            </Text>
-          </Pressable>
-        </View>
+        {/* Martin 14/11: como en las otras cards — la acción que confirma LLENA y primera a la izquierda, cancelar
+            como texto al lado. Antes eran dos botones parejos a lo ancho. */}
+        <FranjaAcciones testID="tarjeta-confirmacion-acciones">
+          <BotonLleno testID="tarjeta-confirmacion-confirmar" etiqueta={gate.confirmLabel} onPress={onConfirm} />
+          <BotonTexto testID="tarjeta-confirmacion-cancelar" etiqueta={gate.cancelLabel} onPress={onCancel} />
+        </FranjaAcciones>
       </View>
-    </CristalVidrio>
+    </TarjetaChat>
   );
 }
 
@@ -602,18 +582,40 @@ const FilaMensaje = memo(function FilaMensaje({
  * recibe apunta DIRECTO al `FlatList` nativo de RNGH, el mismo que ya usa para su propio
  * `scrollToEnd` interno, no un objeto envoltorio.
  */
+/** A cuánto del fondo se sigue considerando que el usuario está mirando lo último. */
+const MARGEN_PEGADO_AL_FONDO = 120;
+
 export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProps>(
   function ListaMensajes(
-    { messages, onChoice, onResolverTarjeta, ejemplos, vacio = 'completo', pie, margenInferior = 0, sendStatus, onVolverDelRecibo, volverDesdeIndice },
+    { messages, onChoice, onResolverTarjeta, ejemplos, vacio = 'completo', pie, margenInferior = 0, margenSuperior = 0, sendStatus, onVolverDelRecibo, volverDesdeIndice },
     refExterno,
   ) {
     const tema = useTema();
     const listRef = useRef<FlatList<ChatMessage>>(null);
     useImperativeHandle(refExterno, () => listRef.current as FlatList<ChatMessage>, []);
 
-    useEffect(() => {
+    /**
+     * 🔴 **El último mensaje SIEMPRE queda a la vista, abajo** (Martin 14/11, device: llegaba la respuesta de
+     * Odobi y el hilo no subía).
+     *
+     * Bajar sólo cuando cambia `messages.length` no alcanzaba, por dos motivos: (1) el efecto corre ANTES de que
+     * la lista mida la fila nueva, así que `scrollToEnd` iba al fondo viejo y la respuesta quedaba debajo del
+     * dock; (2) hay cambios de alto que no agregan mensajes —una card que pasa de formulario a recibo, un campo
+     * que se abre, el pie de «escribiendo»— y ahí no se bajaba nunca.
+     *
+     * Ahora se baja cuando la lista AVISA que su contenido cambió de alto (`onContentSizeChange`), que es
+     * después de medir. `pegadoAlFondo` evita el tirón a quien subió a leer algo viejo: mientras esté lejos del
+     * fondo, un cambio de alto no lo mueve. Un mensaje NUEVO sí lo trae siempre de vuelta.
+     */
+    const pegadoAlFondo = useRef(true);
+    const irAlFondo = useCallback(() => {
       listRef.current?.scrollToEnd?.({ animated: true });
-    }, [messages.length]);
+    }, []);
+
+    useEffect(() => {
+      pegadoAlFondo.current = true;
+      irAlFondo();
+    }, [messages.length, irAlFondo]);
 
     // BL-C3: un divisor por cambio de día (hora de Buenos Aires) sobre el primer mensaje del día.
     const separadores = useMemo(() => separadoresDeDia(messages, Date.now()), [messages]);
@@ -635,8 +637,10 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
     );
 
     const renderItem = useCallback(
-      ({ item }: ListRenderItemInfo<ChatMessage>) => (
-        <View>
+      ({ item, index }: ListRenderItemInfo<ChatMessage>) => (
+        // El RITMO del hilo (Martin 14/11): lo que dice el mismo que habló recién va pegado (6); cuando cambia
+        // quién habla, aire (22). Antes todo iba a 8 y el hilo era una columna pareja, sin turnos.
+        <View style={{ marginTop: index === 0 ? 0 : messages[index - 1]?.role === item.role ? 6 : 22 }}>
           {separadores.has(item.id) && (
             <Text
               testID="separador-dia"
@@ -646,7 +650,8 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
                 color: tema.color.textoTenue,
                 fontSize: tema.tipo.chico,
                 fontWeight: '600',
-                paddingVertical: tema.espacio.sm,
+                paddingTop: tema.espacio.xs,
+                paddingBottom: tema.espacio.md,
               }}
             >
               {separadores.get(item.id)}
@@ -662,7 +667,7 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
           />
         </View>
       ),
-      [onChoice, onResolverTarjeta, separadores, tema, idSinConfirmar, idsConSalida, onVolverDelRecibo, idUltimo],
+      [onChoice, onResolverTarjeta, separadores, tema, idSinConfirmar, idsConSalida, onVolverDelRecibo, idUltimo, messages],
     );
     const keyExtractor = useCallback((item: ChatMessage) => item.id, []);
 
@@ -670,25 +675,39 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
     const arrastre = useContext(ArrastreCuerpoContext);
     const alScrollear = useCallback(
       (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-        if (arrastre != null) arrastre.enTope.value = e.nativeEvent.contentOffset.y <= TOLERANCIA_TOPE;
+        const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+        if (arrastre != null) arrastre.enTope.value = contentOffset.y <= TOLERANCIA_TOPE;
+        // «Cerca del fondo» y no «en el fondo exacto»: con el rebote de iOS y medio renglón de diferencia igual
+        // cuenta como estar leyendo lo último.
+        pegadoAlFondo.current = contentOffset.y + layoutMeasurement.height >= contentSize.height - MARGEN_PEGADO_AL_FONDO;
       },
       [arrastre],
     );
+    const alCambiarAlto = useCallback(() => {
+      if (pegadoAlFondo.current) irAlFondo();
+    }, [irAlFondo]);
 
     return (
       <FlatList
         testID="lista-mensajes"
         ref={listRef}
-        onScroll={arrastre != null ? alScrollear : undefined}
+        onScroll={alScrollear}
+        onContentSizeChange={alCambiarAlto}
+        // El teclado o el dock achican la lista: si estaba en el fondo, sigue en el fondo.
+        onLayout={alCambiarAlto}
         // SM-P16: el scroll de la lista y el Pan del panel corren a la vez (ver `ArrastreCuerpo.refGestoCuerpo`).
         simultaneousHandlers={arrastre?.refGestoCuerpo as never}
         scrollEventThrottle={16}
+        // El hilo ahora llega hasta el borde de arriba, bajo la barra de estado: su margen lo da `margenSuperior`,
+        // no un inset que iOS sume por su cuenta.
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
         data={messages}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         contentContainerStyle={[
           styles.contenido,
-          { padding: tema.espacio.md, gap: tema.espacio.sm, paddingBottom: tema.espacio.md + margenInferior },
+          { padding: tema.espacio.md, paddingTop: tema.espacio.md + margenSuperior, paddingBottom: tema.espacio.md + margenInferior },
         ]}
         removeClippedSubviews
         initialNumToRender={15}
@@ -736,10 +755,8 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
 const styles = StyleSheet.create({
   contenido: { flexGrow: 1 },
   vacio: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  // El borde/sombra/radio los pone `CristalVidrio` (nivel informe); acá sólo el ancho del cristal.
+  // El fondo, la sombra y el radio los pone `TarjetaChat`; acá sólo el ancho.
   tarjetaGate: { alignSelf: 'stretch' },
   contenidoGate: { alignSelf: 'stretch' },
   encabezadoGate: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  accionesGate: { flexDirection: 'row' },
-  botonGate: { flex: 1, height: 48, alignItems: 'center', justifyContent: 'center' },
 });

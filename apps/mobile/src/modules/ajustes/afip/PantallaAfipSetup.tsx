@@ -30,6 +30,8 @@ import {
   ScrollFormulario,
   type OpcionSelect,
 } from '../../../theme/glass/campos';
+import { elevacion } from '../../../theme/BloqueCifra';
+import { Glifo } from '../../../theme/glass/Glifo';
 import { MarcoGlass } from '../../../theme/glass/MarcoGlass';
 
 // Subtítulo del mapa (index.html:2306, §afip). El test lo lee de ahí y lo compara: no copia el literal.
@@ -101,7 +103,9 @@ export function opcionesCondicionIva(actual: string): OpcionSelect[] {
 /** SM-N35 — `''` = «Sin definir»: el fail-soft es el estado por defecto. */
 export const OPCIONES_CATEGORIA_MONOTRIBUTO: OpcionSelect[] = [
   { valor: '', etiqueta: 'Sin definir' },
-  ...CATEGORIAS_MONOTRIBUTO.map((c) => ({ valor: c, etiqueta: `Categoría ${c}` })),
+  // Sólo la letra (Martin 15/11): el rótulo de arriba ya dice «Categoría de monotributo», y once veces
+  // «Categoría X» llenaban cuatro renglones de pantalla.
+  ...CATEGORIAS_MONOTRIBUTO.map((c) => ({ valor: c, etiqueta: c })),
 ];
 
 const COPY_PASO_ONBOARDING: Record<string, string> = {
@@ -172,8 +176,11 @@ interface SeccionProps {
 function Seccion({ titulo, testID, children }: SeccionProps) {
   const tema = useTema();
   return (
-    <View testID={testID} style={{ gap: tema.espacio.sm }}>
-      <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.grande }}>
+    <View testID={testID} style={{ gap: 12 }}>
+      {/* Rediseño (Martin 15/11): título en display, como en el resto de la app, y SIN número. La numeración
+          «1. 2. 3. 4.» prometía cuatro pasos en orden, y sólo los dos primeros lo son: Ambiente y la copia en
+          Drive son ajustes que se tocan cuando se quiere. */}
+      <Text accessibilityRole="header" style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande }}>
         {titulo}
       </Text>
       {children}
@@ -618,6 +625,7 @@ export function PantallaAfipSetup() {
     <MarcoGlass
       titulo="Facturación ARCA"
       icono="perfilFiscal"
+      sinIcono
       testID="pantalla-afip-setup"
       // SM-L4 entrada 46: el mapa lleva subtítulo bajo el título (index.html:2306). Fijo, fuera del scroll.
       encabezadoExtra={
@@ -625,8 +633,9 @@ export function PantallaAfipSetup() {
           style={{
             color: tema.color.textoTenue,
             fontSize: tema.tipo.base,
-            paddingHorizontal: tema.espacio.lg,
-            paddingBottom: tema.espacio.sm,
+            lineHeight: 22,
+            paddingHorizontal: tema.espacio.md,
+            paddingBottom: 12,
           }}
         >
           {SUBTITULO_AFIP}
@@ -636,7 +645,7 @@ export function PantallaAfipSetup() {
       <ScrollFormulario
         style={styles.scroll}
         testID="afip-setup-scroll"
-        contentContainerStyle={[styles.contenido, { padding: tema.espacio.lg, gap: tema.espacio.xl }]}
+        contentContainerStyle={[styles.contenido, { padding: tema.espacio.md, gap: 36, paddingBottom: tema.espacio.xl }]}
       >
         {/* Mapeo `afip` (index.html:2310): «ARCA vinculada · CUIT …» arriba, el estado del vínculo antes
             de los campos. Sale de `conectado` (existe la credencial) y del CUIT compartido — sin
@@ -646,16 +655,16 @@ export function PantallaAfipSetup() {
             por campo · los bloques «2. Alta ARCA» y «3. Ambiente» son funciones reales de la beta que
             el prototipo no modela. */}
         {conectado && cuit !== '' && (
-          <Text
-            testID="afip-estado-vinculo"
-            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}
-          >
-            ARCA vinculada · CUIT {formatearCuit(cuit)}
-          </Text>
+          <View style={[styles.vinculo, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}>
+            <Glifo nombre="plugs-connected" size={22} color={tema.color.texto} decorativo />
+            <Text testID="afip-estado-vinculo" style={{ flex: 1, color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>
+              ARCA vinculada · CUIT {formatearCuit(cuit)}
+            </Text>
+          </View>
         )}
 
         {/* ---------------------------- Bloque 1 -- Perfil fiscal ---------------------------- */}
-        <Seccion titulo="1. Perfil fiscal" testID="afip-bloque-perfil">
+        <Seccion titulo="Tus datos fiscales" testID="afip-bloque-perfil">
           <View style={{ gap: tema.espacio.md }}>
             {cuitBloqueado ? (
               <View style={{ gap: 4 }}>
@@ -808,7 +817,7 @@ export function PantallaAfipSetup() {
             Peor todavía: lo empuja a reintentar un alta que no necesita, y cada intento fallido
             gasta uno de los que ARCA tolera antes de bloquear la clave.
             El fallo no se esconde: baja a aviso secundario, que es su jerarquía real. */}
-        <Seccion titulo="2. Conectar con ARCA" testID="afip-bloque-arca">
+        <Seccion titulo="Conectar con ARCA" testID="afip-bloque-arca">
           <View style={{ gap: tema.espacio.md }}>
             {poleando ||
             pollTardando ||
@@ -1031,16 +1040,16 @@ export function PantallaAfipSetup() {
         </Seccion>
 
         {/* ---------------------------------- Bloque 3 -- Ambiente ---------------------------- */}
-        <Seccion titulo="3. Ambiente" testID="afip-bloque-ambiente">
+        <Seccion titulo="Ambiente" testID="afip-bloque-ambiente">
           <View style={{ gap: tema.espacio.sm }}>
-            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, lineHeight: 22 }}>
               {esAdmin
                 ? 'Homologación — facturas de prueba, sin efecto fiscal. Producción — comprobantes fiscales reales.'
                 : 'Producción — comprobantes fiscales reales.'}
             </Text>
 
             {ambientesVinculados == null ? (
-              <Text testID="afip-ambiente-no-disponible" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
+              <Text testID="afip-ambiente-no-disponible" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, lineHeight: 22 }}>
                 {estadoGeneralNoDisponible
                   ? // Distinto del caso general de abajo: acá `GET /afip/estado` respondió 404/501 --
                     // la app de AFIP no está desplegada, no que el campo todavía no exista.
@@ -1074,7 +1083,8 @@ export function PantallaAfipSetup() {
                       onPress={() => (accion === 'usar' ? void usarAmbiente(env) : iniciarAltaPara(env))}
                       style={pressableStyle([
                         styles.chipAmbiente,
-                        { borderColor: activo ? tema.color.acento : tema.color.borde },
+                        elevacion(tema.color.sombra),
+                        { backgroundColor: tema.color.superficie, borderColor: activo ? tema.color.acento : 'transparent' },
                       ])}
                     >
                       <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium }}>
@@ -1082,7 +1092,8 @@ export function PantallaAfipSetup() {
                       </Text>
                       <Text
                         style={{
-                          color: tema.color.acentoTinta,
+                          // Terracota sólo cuando se puede tocar; «Activo» es un estado, va en tinta.
+                          color: accion === null ? tema.color.texto : tema.color.acentoTinta,
                           fontFamily: tema.fuente.uiSemibold,
                           fontSize: tema.tipo.chico,
                         }}
@@ -1109,9 +1120,9 @@ export function PantallaAfipSetup() {
             si el CUIT no tiene perfil, pintar el toggle prendido dejaría al usuario creyendo que sus
             facturas se archivan mientras la base no guardó nada. Por eso `guardarAjustesAfip`
             devuelve el valor del servidor y ESE es el que se pinta. */}
-        <Seccion titulo="4. Copia en tu Drive" testID="afip-bloque-drive">
+        <Seccion titulo="Copia en tu Drive" testID="afip-bloque-drive">
           <View style={{ gap: tema.espacio.md }}>
-            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
+            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, lineHeight: 22 }}>
               Guardá una copia de cada factura en tu Google Drive. El link de ARCA vence a las 24
               horas; el de tu Drive no.
             </Text>
@@ -1129,20 +1140,20 @@ export function PantallaAfipSetup() {
             />
 
             {guardandoAjuste && (
-              <Text testID="afip-drive-guardando" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+              <Text testID="afip-drive-guardando" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
                 Guardando…
               </Text>
             )}
 
             {/* El 409 es una INSTRUCCIÓN, no una falla: falta un paso que sólo el usuario puede dar. */}
             {errorAjuste === 'sin_perfil' && (
-              <Text testID="afip-drive-sin-perfil" style={{ color: tema.color.texto, fontSize: tema.tipo.chico }}>
+              <Text testID="afip-drive-sin-perfil" style={{ color: tema.color.texto, fontSize: tema.tipo.chico, lineHeight: 18 }}>
                 Primero completá tus datos fiscales acá arriba y guardá el perfil. Después vas a poder
                 activar la copia en Drive.
               </Text>
             )}
             {errorAjuste === 'error' && (
-              <Text testID="afip-drive-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+              <Text testID="afip-drive-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico, lineHeight: 18 }}>
                 No pudimos guardar el ajuste. Probá de nuevo.
               </Text>
             )}
@@ -1162,24 +1173,24 @@ export function PantallaAfipSetup() {
             {/* SM-K3: el toggle apagado dice POR QUÉ. Sin esto, con la copia en «no» y sin Drive no había
                 ningún texto (los de abajo exigen `guardarEnDrive`) y sólo la opacidad avisaba. */}
             {!guardarEnDrive && estadoGeneral != null && estadoGeneral.driveConectado !== true && (
-              <Text testID="afip-drive-apagado-motivo" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+              <Text testID="afip-drive-apagado-motivo" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
                 {estadoGeneral.driveConectado === false
                   ? 'Apagado: tu Google Drive no está conectado, así que no hay dónde guardar la copia.'
                   : 'Apagado: no pudimos verificar tu Google Drive. Se activa cuando podamos.'}
               </Text>
             )}
             {guardarEnDrive && estadoGeneral?.driveConectado === true && (
-              <Text testID="afip-drive-conectado" style={{ color: tema.color.exito, fontSize: tema.tipo.chico }}>
+              <Text testID="afip-drive-conectado" style={{ color: tema.color.texto, fontSize: tema.tipo.chico, lineHeight: 18 }}>
                 Google Drive está conectado. Cada factura nueva va a quedar guardada ahí.
               </Text>
             )}
             {guardarEnDrive && estadoGeneral?.driveConectado === false && (
-              <Text testID="afip-drive-desconectado" style={{ color: tema.color.texto, fontSize: tema.tipo.chico }}>
+              <Text testID="afip-drive-desconectado" style={{ color: tema.color.texto, fontSize: tema.tipo.chico, lineHeight: 18 }}>
                 La copia en Drive no está disponible por ahora. Las facturas se emiten igual, sin copia.
               </Text>
             )}
             {guardarEnDrive && estadoGeneral?.driveConectado == null && (
-              <Text testID="afip-drive-requiere-conexion" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+              <Text testID="afip-drive-requiere-conexion" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
                 No pudimos verificar tu Google Drive. La factura se emite igual, y si no queda copia
                 te avisamos.
               </Text>
@@ -1197,11 +1208,12 @@ const styles = StyleSheet.create({
   etiquetaCuit: { fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase' },
   filaCuitBloqueado: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   chipsAmbiente: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  vinculo: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 22, paddingVertical: 16, paddingHorizontal: 16 },
   chipAmbiente: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    borderWidth: 2,
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     gap: 4,
     minWidth: 140,
   },

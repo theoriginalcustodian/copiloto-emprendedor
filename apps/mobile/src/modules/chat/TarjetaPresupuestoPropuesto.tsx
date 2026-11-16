@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Linking } from 'react-native';
+import { Linking, Text, View } from 'react-native';
 
 import {
   formatearImporteSinCentavosCero,
@@ -11,7 +11,11 @@ import {
   type SugerenciasPresupuesto,
 } from '@copiloto/core';
 
+import { BotonWhatsApp } from '../../theme/BotonWhatsApp';
 import { FilaBotones } from '../../theme/glass/campos';
+import { useTema } from '../../theme/ThemeProvider';
+import { AVISO_CONECTAR_GOOGLE, CLAVE_AVISO_CONECTAR_GOOGLE, useAvisoUnaVez } from '../../util/avisoUnaVez';
+import { compartirPresupuesto } from '../presupuestos/compartirPresupuesto';
 import { FormularioPresupuesto } from '../presupuestos/FormularioPresupuesto';
 import { inicialesDePresupuesto } from '../voz/inicialesDePropuesta';
 import { Recibo } from './Recibo';
@@ -68,6 +72,7 @@ export function TarjetaPresupuestoPropuesto({
 }: TarjetaPresupuestoPropuestoProps) {
   // Patrón B: `resuelto` ya está disponible SINCRÓNICAMENTE (vive en el mensaje, no en un storage
   // async) — sin `useEffect` de lectura ni estado `leido` que gatee el primer render.
+  const tema = useTema();
   const [estado, setEstado] = useState<Estado>(resuelto?.estado ?? 'editando');
   const [numero, setNumero] = useState<number | null>(resuelto?.estado === 'guardado' ? resuelto.numero : null);
   // Sólo de sesión viva: es lo que devolvió el alta, con su estado y su enlace «Doc».
@@ -92,9 +97,15 @@ export function TarjetaPresupuestoPropuesto({
     };
   }, [idPorReleer]);
 
+  // Sin documento de Google el recibo ofrece compartir el texto; por qué no hay documento se dice UNA vez.
+  const datos = creado ?? releido;
+  const avisarGoogle = useAvisoUnaVez(
+    CLAVE_AVISO_CONECTAR_GOOGLE,
+    estado === 'guardado' && datos != null && datos.docLink == null,
+  );
+
   if (estado === 'guardado') {
     const detalle: string[] = [];
-    const datos = creado ?? releido;
     if (datos != null) {
       detalle.push(
         [formatearImporteSinCentavosCero(datos.total), datos.receptor.nombre]
@@ -121,26 +132,37 @@ export function TarjetaPresupuestoPropuesto({
         detalle={detalle}
         enlace={docLink != null ? { texto: 'Doc', onPress: () => void Linking.openURL(docLink) } : undefined}
       >
-        {/* El chip `Mandalo por mail` del `pres-ciclo` del prototipo: misma acción que el detalle
-            (`DetallePresupuesto.tsx`) — abre el `mailto:` con el link del Doc; no manda nada solo. */}
-        {creado != null && mandarPorMail != null && (
-          <FilaBotones
-            testID={`${testID}-guardado-botones`}
-            botones={[
-              {
-                etiqueta: 'Mandalo por mail',
-                onPress: () =>
-                  void Linking.openURL(
-                    mailtoMandarPresupuesto(
-                      { numero: creado.numero, contacto: creado.receptor.contacto },
-                      mandarPorMail.docLink,
-                    ),
-                  ).catch(() => undefined),
-                variante: 'secundario',
-                testID: `${testID}-guardado-mandar-por-mail`,
-              },
-            ]}
-          />
+        {avisarGoogle && (
+          <Text testID={`${testID}-guardado-aviso-google`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+            {AVISO_CONECTAR_GOOGLE}
+          </Text>
+        )}
+        {/* Compartir SIEMPRE (Martin 14/11): con documento va su link, sin él el presupuesto como texto — antes,
+            sin Google conectado, un presupuesto guardado no tenía cómo salir del teléfono. «Mandalo por mail» es
+            el chip del `pres-ciclo` del prototipo y sólo existe con documento: abre el `mailto:` con su link. */}
+        {datos != null && (
+          <View testID={`${testID}-guardado-botones`} style={{ gap: tema.espacio.sm }}>
+            <BotonWhatsApp testID={`${testID}-guardado-compartir`} onPress={() => void compartirPresupuesto(datos)} />
+            {creado != null && mandarPorMail != null && (
+              <FilaBotones
+                testID={`${testID}-guardado-botones-mail`}
+                botones={[
+                  {
+                    etiqueta: 'Mandalo por mail',
+                    onPress: () =>
+                      void Linking.openURL(
+                        mailtoMandarPresupuesto(
+                          { numero: creado.numero, contacto: creado.receptor.contacto },
+                          mandarPorMail.docLink,
+                        ),
+                      ).catch(() => undefined),
+                    variante: 'secundario',
+                    testID: `${testID}-guardado-mandar-por-mail`,
+                  },
+                ]}
+              />
+            )}
+          </View>
         )}
       </Recibo>
     );
@@ -151,9 +173,16 @@ export function TarjetaPresupuestoPropuesto({
   }
 
   return (
-    <TarjetaPropuestaShell testID={testID} aviso="Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar el presupuesto — todavía no lo anoté. Al guardar, a tu cliente no le llega nada: se lo mandás vos.">
+    <TarjetaPropuestaShell
+      testID={testID}
+      // Martin 14/11: resumen, igual que la de gasto. Se conserva lo que este aviso tenía de propio: guardar
+      // no le manda nada al cliente.
+      titulo="Nuevo presupuesto"
+      aviso="Todavía no se guardó nada. Al guardar, a tu cliente no le llega nada: se lo mandás vos."
+    >
       <FormularioPresupuesto
         mensajeId={mensajeId}
+        resumido
         iniciales={inicialesDePresupuesto(propuesta)}
         onCreado={(p, sug) => {
           setNumero(p.numero);

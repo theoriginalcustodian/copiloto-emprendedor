@@ -11,6 +11,7 @@ import {
 
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
+import { elevacion } from '../../theme/BloqueCifra';
 import { ETIQUETA_ESTADO_TICKET } from './etiquetasTicket';
 
 export interface TarjetaTicketSoporteProps {
@@ -54,7 +55,7 @@ export function TarjetaTicketSoporte({
           accessibilityLabel={`Abrir el ticket ${vigente.codigo}`}
           onPress={() => onAbrirTicket(vigente.id)}
           style={pressableStyle(
-            [styles.card, { backgroundColor: tema.color.superficie, borderColor: tema.color.borde }],
+            [styles.card, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }],
             PRESS_FADE,
           )}
         >
@@ -64,7 +65,8 @@ export function TarjetaTicketSoporte({
             </Text>
             <Text
               testID="soporte-ticket-estado"
-              style={{ color: tema.color.acento, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}
+              // El estado informa, no se toca: va en tinta (la terracota queda para lo tocable).
+              style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}
             >
               {ETIQUETA_ESTADO_TICKET[vigente.estado]}
             </Text>
@@ -105,7 +107,7 @@ export function TarjetaTicketSoporte({
           onPress={() => setDesplegado((d) => !d)}
           style={pressableStyle(undefined, PRESS_FADE)}
         >
-          <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.chico }}>
+          <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base, paddingHorizontal: 4 }}>
             {soporteVerTicketsAnteriores(cantidadAnteriores)} {desplegado ? '⌃' : '›'}
           </Text>
         </Pressable>
@@ -119,7 +121,7 @@ export function TarjetaTicketSoporte({
             accessibilityRole="button"
             accessibilityLabel={`Abrir el ticket ${t.codigo}`}
             onPress={() => onAbrirTicket(t.id)}
-            style={pressableStyle([styles.anterior, { borderColor: tema.color.borde }], PRESS_FADE)}
+            style={pressableStyle([styles.anterior, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }], PRESS_FADE)}
           >
             <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.chico }}>
               {t.codigo} · {ETIQUETA_ESTADO_TICKET[t.estado]}
@@ -134,8 +136,8 @@ export function TarjetaTicketSoporte({
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: 1, borderRadius: 14, padding: 12, gap: 8 },
+  card: { borderRadius: 22, padding: 16, gap: 10 },
   fila: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 },
   valor: { flexShrink: 1, textAlign: 'right' },
-  anterior: { borderWidth: 1, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, gap: 2 },
+  anterior: { borderRadius: 18, paddingVertical: 12, paddingHorizontal: 16, gap: 2 },
 });

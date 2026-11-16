@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react-native';
 
 import { ThemeProvider } from '../ThemeProvider';
 import type { NombreIconoGlass } from './icons';
+import { GLIFOS } from './glifos';
 import { ICONO_DEL_SISTEMA } from './mapaIconos';
 import { GlassIcon } from './GlassIcon';
 
@@ -46,7 +47,7 @@ describe('GlassIcon -- el catálogo de íconos Odobi', () => {
     );
   });
 
-  it.each(NOMBRES)('renderiza "%s" sin crashear, con el viewBox de Phosphor', async (nombre) => {
+  it.each(NOMBRES)('renderiza "%s" sin crashear, con el viewBox de su glifo', async (nombre) => {
     await render(
       <ThemeProvider>
         <GlassIcon name={nombre} />
@@ -57,7 +58,8 @@ describe('GlassIcon -- el catálogo de íconos Odobi', () => {
     // real es pesado y no asienta en el render de arbol completo de `shell.test`), así que el `<Svg>`
     // expone `viewBox` tal cual se lo pasamos, sin la descomposición minX/vbWidth del host real.
     const svg = screen.getByTestId(`glass-icon-${nombre}`);
-    expect(svg.props.viewBox).toBe('0 0 256 256');
+    expect(svg.props.viewBox).toBe(GLIFOS[ICONO_DEL_SISTEMA[nombre]]?.viewBox);
+    expect(GLIFOS[ICONO_DEL_SISTEMA[nombre]]?.capas.length).toBeGreaterThan(0);
   });
 
   it('respeta el `size` recibido (width/height del <Svg>)', async () => {

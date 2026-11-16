@@ -3,13 +3,15 @@ import { Pressable } from 'react-native-gesture-handler';
 
 import { formatearFechaCorta, formatearImporte, type Presupuesto } from '@copiloto/core';
 
-import { Row } from '../../theme/glass/Row';
+import { conAlfa } from '../../theme/glass/conAlfa';
 import { pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
 import { etiquetaEstado } from './resumenEspera';
 
 /**
- * `TarjetaPresupuesto` — una card del listado.
+ * `TarjetaPresupuesto` — una fila del listado. Rediseño (Martin 15/11): las filas van juntas en UNA tarjeta
+ * blanca que pone la pantalla, separadas por un divisor; el total, a la derecha y en tinta (la terracota es de lo
+ * que se toca).
  *
  * 🔴 **El resumen es DERIVADO, no un texto guardado.** No existe campo `resumen` y no va a haberlo:
  * un resumen redactado envejece — cambia el total y sigue diciendo el viejo. Se compone en el momento
@@ -30,18 +32,25 @@ import { etiquetaEstado } from './resumenEspera';
 export interface TarjetaPresupuestoProps {
   presupuesto: Presupuesto;
   onPress: (presupuesto: Presupuesto) => void;
+  /** Línea arriba: todas las filas menos la primera. */
+  conDivisor?: boolean;
   testID?: string;
 }
 
-export function TarjetaPresupuesto({ presupuesto: p, onPress, testID }: TarjetaPresupuestoProps) {
+export function TarjetaPresupuesto({ presupuesto: p, onPress, conDivisor = false, testID }: TarjetaPresupuestoProps) {
   const tema = useTema();
   const id = testID ?? `presupuesto-card-${p.id}`;
   const fecha = formatearFechaCorta(p.fecha);
   const estado = etiquetaEstado(p);
   const itemsTexto = p.cantidadItems === 1 ? '1 ítem' : `${p.cantidadItems} ítems`;
 
+  const tenue = { color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 };
+
   return (
-    <Row testID={id}>
+    <View
+      testID={id}
+      style={[styles.fila, conDivisor && { borderTopWidth: 1, borderTopColor: conAlfa(tema.color.texto, 0.12) }]}
+    >
       <Pressable
         testID={`${id}-abrir`}
         onPress={() => onPress(p)}
@@ -49,71 +58,73 @@ export function TarjetaPresupuesto({ presupuesto: p, onPress, testID }: TarjetaP
         accessibilityLabel={`Ver el presupuesto N° ${p.numero} de ${p.receptor.nombre}`}
         style={pressableStyle(styles.cuerpo)}
       >
-        <View style={styles.filaSuperior}>
+        <View style={styles.textos}>
           <Text
             testID={`${id}-encabezado`}
-            numberOfLines={1}
-            style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base, flexShrink: 1 }}
+            numberOfLines={2}
+            style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base, lineHeight: 21 }}
           >
             {/* El nombre primero: es por lo que el emprendedor busca al barrer la lista. */}
             {p.receptor.nombre !== '' ? p.receptor.nombre : `Presupuesto N° ${p.numero}`}
           </Text>
-          <Text
-            testID={`${id}-total`}
-            style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiBold, fontSize: tema.tipo.base }}
-          >
-            {formatearImporte(p.total)}
-          </Text>
+          {/* Qué se presupuestó en su propio renglón; el número, los ítems y la fecha, debajo. */}
+          <View testID={`${id}-detalle`}>
+            <Text numberOfLines={1} style={tenue}>
+              {p.concepto}
+            </Text>
+            <Text numberOfLines={1} style={tenue}>
+              N° {p.numero} · {itemsTexto}
+              {fecha !== '' ? ` · ${fecha}` : ''}
+            </Text>
+          </View>
+          {(estado != null || p.facturado || p.reemplazadoPor != null) && (
+            <View style={styles.filaEstado}>
+              {estado != null && (
+                <Text
+                  testID={`${id}-estado`}
+                  style={{
+                    // Martin 15/11: «Aceptado» en tinta, no en verde. El tono lo da el peso, no el color.
+                    color: estado.tono === 'exito' ? tema.color.texto : tema.color.textoTenue,
+                    fontFamily: tema.fuente.uiMedium,
+                    fontSize: tema.tipo.chico,
+                    lineHeight: 18,
+                  }}
+                >
+                  {estado.texto}
+                </Text>
+              )}
+              {p.facturado && (
+                <Text
+                  testID={`${id}-badge-facturado`}
+                  style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.chico, lineHeight: 18 }}
+                >
+                  Facturado
+                </Text>
+              )}
+              {/* Sólo se ve si alguien llegó acá desde el historial: el listado por default ya no trae
+                  los reemplazados. Sin esto, un presupuesto viejo se vería idéntico a uno vigente. */}
+              {p.reemplazadoPor != null && (
+                <Text testID={`${id}-badge-reemplazado`} style={tenue}>
+                  Reemplazado
+                </Text>
+              )}
+            </View>
+          )}
         </View>
-
         <Text
-          testID={`${id}-detalle`}
-          numberOfLines={1}
-          style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.mono, fontSize: tema.tipo.chico }}
+          testID={`${id}-total`}
+          style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.base, lineHeight: 21 }}
         >
-          N° {p.numero} · {p.concepto} · {itemsTexto}
-          {fecha !== '' ? ` · ${fecha}` : ''}
+          {formatearImporte(p.total)}
         </Text>
-
-        <View style={styles.filaBadges}>
-          {estado != null && (
-            <Text
-              testID={`${id}-estado`}
-              style={{
-                color: estado.tono === 'exito' ? tema.color.exito : tema.color.textoTenue,
-                fontSize: tema.tipo.chico,
-              }}
-            >
-              {estado.texto}
-            </Text>
-          )}
-          {p.facturado && (
-            <Text
-              testID={`${id}-badge-facturado`}
-              style={[styles.badge, { color: tema.color.exito, fontFamily: tema.fuente.mono }]}
-            >
-              FACTURADO
-            </Text>
-          )}
-          {/* Sólo se ve si alguien llegó acá desde el historial: el listado por default ya no trae
-              los reemplazados. Sin esto, un presupuesto viejo se vería idéntico a uno vigente. */}
-          {p.reemplazadoPor != null && (
-            <Text
-              testID={`${id}-badge-reemplazado`}
-              style={[styles.badge, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}
-            >
-              REEMPLAZADO
-            </Text>
-          )}
-        </View>
       </Pressable>
-    </Row>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  cuerpo: { flex: 1, gap: 4 },
-  filaSuperior: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  filaBadges: { flexDirection: 'row', gap: 8 },
-  badge: { fontSize: 9, letterSpacing: 1.2 },
+  fila: { paddingVertical: 16 },
+  cuerpo: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  textos: { flex: 1, gap: 2 },
+  filaEstado: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 12, marginTop: 4 },
 });

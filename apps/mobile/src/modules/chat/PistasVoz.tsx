@@ -1,8 +1,8 @@
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 
 import { formatearDuracion } from '@copiloto/core';
 
+import { Glifo } from '../../theme/glass/Glifo';
 import { useTema } from '../../theme/ThemeProvider';
 import { AvisoCancelar } from './AvisoCancelar';
 
@@ -22,14 +22,6 @@ import { AvisoCancelar } from './AvisoCancelar';
  * Presentacional puro: lo comparten `DockEntrada` y `MicFuncion` (el mismo gesto en contexto de
  * formulario), que son quienes saben `cancelando`/`cerca` por `BotonVoz`.
  */
-
-// Los trazos de Phosphor (viewBox 256) que dibuja el prototipo (`ICO_VOZ.lock`/`.caret`/`.chev`).
-const TRAZO_CANDADO =
-  'M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96Zm112,152H48V96H208V208Z';
-const TRAZO_FLECHA_ARRIBA =
-  'M213.66,165.66a8,8,0,0,1-11.32,0L128,91.31,53.66,165.66a8,8,0,0,1-11.32-11.32l80-80a8,8,0,0,1,11.32,0l80,80A8,8,0,0,1,213.66,165.66Z';
-const TRAZO_CHEVRON_IZQ =
-  'M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z';
 
 export interface PistasGestoVozProps {
   /** El dedo ya pasó el umbral a la izquierda: el candado deja de tener sentido (la barra dice «Soltá para cancelar»). */
@@ -61,12 +53,8 @@ export function PistasGestoVoz({ cancelando, cerca }: PistasGestoVozProps) {
           },
         ]}
       >
-        <Svg width={17} height={17} viewBox="0 0 256 256">
-          <Path d={TRAZO_CANDADO} fill={colorIcono} />
-        </Svg>
-        <Svg width={15} height={15} viewBox="0 0 256 256">
-          <Path d={TRAZO_FLECHA_ARRIBA} fill={colorIcono} />
-        </Svg>
+        <Glifo nombre="voz-candado" size={17} color={colorIcono} />
+        <Glifo nombre="voz-flecha-arriba" size={15} color={colorIcono} />
       </View>
     </View>
   );
@@ -115,9 +103,7 @@ export function BarraSostenida({ segundos, cancelando, style }: BarraSostenidaPr
           <AvisoCancelar />
         ) : (
           <View testID="voz-pista-cancelar" style={[estilos.grupo, estilos.grupoQueSeAchica]}>
-            <Svg width={13} height={13} viewBox="0 0 256 256" accessibilityElementsHidden>
-              <Path d={TRAZO_CHEVRON_IZQ} fill={tema.color.textoTenue} />
-            </Svg>
+            <Glifo nombre="voz-flecha-izquierda" size={13} color={tema.color.textoTenue} decorativo />
             {/* `flexShrink: 1`: en una ranura angosta el texto se PARTE en dos líneas en vez de empujar al
                 chevron encima del reloj (N8, medido en device: «0:01‹ Deslizá para / cancelar»). */}
             <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base - 2, flexShrink: 1 }}>
