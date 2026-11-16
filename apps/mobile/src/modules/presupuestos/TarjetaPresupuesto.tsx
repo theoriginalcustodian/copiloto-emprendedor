@@ -84,8 +84,10 @@ export function TarjetaPresupuesto({ presupuesto: p, onPress, conDivisor = false
                   testID={`${id}-estado`}
                   style={{
                     // Martin 15/11: «Aceptado» en tinta, no en verde. El tono lo da el peso, no el color.
-                    color: estado.tono === 'exito' ? tema.color.texto : tema.color.textoTenue,
-                    fontFamily: tema.fuente.uiMedium,
+                    // «Se enfría» en negro y negrita (Martin 16/11): es el presupuesto que conviene mirar, y se
+                    // distingue de «Esperando respuesta» sin sumar un color.
+                    color: estado.tono === 'tenue' ? tema.color.textoTenue : tema.color.texto,
+                    fontFamily: estado.tono === 'aviso' ? tema.fuente.uiBold : tema.fuente.uiMedium,
                     fontSize: tema.tipo.chico,
                     lineHeight: 18,
                   }}

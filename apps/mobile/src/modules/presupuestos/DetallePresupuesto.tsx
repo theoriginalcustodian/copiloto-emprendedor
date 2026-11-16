@@ -260,7 +260,8 @@ export function DetallePresupuesto({
     p.receptor.docTipo != null && p.receptor.docNro !== ''
       ? `${ETIQUETA_DOC[p.receptor.docTipo] ?? `Tipo ${p.receptor.docTipo}`} ${p.receptor.docNro}`
       : null;
-  const contacto = p.receptor.contacto !== '' ? p.receptor.contacto : null;
+  // El rótulo dice qué documento es («DNI», «CUIT») y el valor es sólo el número.
+  const rotuloDocumento = (p.receptor.docTipo != null ? ETIQUETA_DOC[p.receptor.docTipo] : undefined) ?? 'Documento';
 
   /** Con documento de Google sale su link; sin él, el presupuesto como texto. Las dos abren la hoja de compartir. */
   function enviarAlCliente() {
@@ -399,20 +400,16 @@ export function DetallePresupuesto({
               ))}
             </View>
 
-            {(documento != null || contacto != null) && (
+            {/* Sólo el documento (Martin 16/11): el contacto salió de esta tarjeta, igual que del documento que
+                recibe el cliente. Sigue en el presupuesto y se usa para mandarlo. */}
+            {documento != null && (
               <View style={[styles.bloque, { borderTopColor: linea }]}>
-                {documento != null && (
-                  <View style={styles.filaItem}>
-                    <Text style={tenue}>Documento</Text>
-                    <Text style={{ color: tema.color.texto, fontSize: tema.tipo.chico, lineHeight: 18 }}>{documento}</Text>
-                  </View>
-                )}
-                {contacto != null && (
-                  <View style={styles.filaItem}>
-                    <Text style={tenue}>Contacto</Text>
-                    <Text style={{ color: tema.color.texto, fontSize: tema.tipo.chico, lineHeight: 18 }}>{contacto}</Text>
-                  </View>
-                )}
+                <View style={styles.filaItem}>
+                  <Text style={tenue}>{rotuloDocumento}</Text>
+                  <Text testID={`${testID}-documento`} selectable style={{ color: tema.color.texto, fontSize: tema.tipo.chico, lineHeight: 18 }}>
+                    {p.receptor.docNro}
+                  </Text>
+                </View>
               </View>
             )}
           </View>

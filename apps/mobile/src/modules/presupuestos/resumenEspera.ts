@@ -88,13 +88,13 @@ function textoDias(dias: number): string {
 export function etiquetaEstado(
   p: Presupuesto,
   ahora: Date = new Date(),
-): { texto: string; tono: 'exito' | 'tenue' } | null {
+): { texto: string; tono: 'exito' | 'aviso' | 'tenue' } | null {
   if (p.reemplazadoPor != null || p.estado == null) return null;
   if (p.estado === 'aprobado') return { texto: 'Aceptado', tono: 'exito' };
   if (p.estado === 'pendiente') {
     const dias = diasDesde(p.fecha, ahora);
     if (p.sinRespuesta === true) {
-      return { texto: dias != null ? `Se enfría · ${textoDias(dias)}` : 'Sin respuesta hace más de un mes', tono: 'tenue' };
+      return { texto: dias != null ? `Se enfría · ${textoDias(dias)}` : 'Sin respuesta hace más de un mes', tono: 'aviso' };
     }
     return { texto: dias != null ? `Esperando respuesta · ${textoDias(dias)}` : 'Esperando respuesta', tono: 'tenue' };
   }
