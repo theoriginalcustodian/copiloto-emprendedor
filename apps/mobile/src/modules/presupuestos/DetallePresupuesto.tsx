@@ -352,33 +352,35 @@ export function DetallePresupuesto({
           </View>
 
           <View style={[styles.tarjeta, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}>
-            <View style={styles.filaTotal}>
-              <View style={styles.total}>
+            <View style={styles.total}>
+              {/* El estado va en el renglón del rótulo y la cifra abajo, a todo el ancho: lado a lado, un total de
+                  seis cifras se partía en dos renglones contra la pastilla. */}
+              <View style={styles.filaTotal}>
                 <Text style={tenue}>Total</Text>
-                {/* 🔴 El total sale del backend TAL CUAL, sin recomputarlo desde los ítems. Recalcularlo acá
-                    sería una segunda aritmética del dinero, con float, y el día que difiera del backend el
-                    usuario vería un número distinto del que se va a facturar. */}
-                <Text
-                  testID={`${testID}-total`}
-                  style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: 30, lineHeight: 36 }}
-                >
-                  {formatearImporte(p.total)}
-                </Text>
+                {/* 🔴 El estado se ve SIEMPRE, no sólo cuando alguien lo tocó. Un presupuesto sin marca es
+                    «todavía sin respuesta», que es información. `null` es otra cosa: el backend no lo mandó,
+                    y ahí no se inventa un «pendiente» que nadie declaró. */}
+                {p.estado != null && (
+                  <View style={[styles.pastilla, { backgroundColor: conAlfa(tema.color.texto, 0.06) }]}>
+                    {p.estado === 'aprobado' && <Glifo nombre="check" size={14} color={tema.color.exito} decorativo />}
+                    <Text
+                      testID={`${testID}-estado`}
+                      style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}
+                    >
+                      {ETIQUETA_ESTADO[p.estado]}
+                    </Text>
+                  </View>
+                )}
               </View>
-              {/* 🔴 El estado se ve SIEMPRE, no sólo cuando alguien lo tocó. Un presupuesto sin marca es
-                  «todavía sin respuesta», que es información. `null` es otra cosa: el backend no lo mandó,
-                  y ahí no se inventa un «pendiente» que nadie declaró. */}
-              {p.estado != null && (
-                <View style={[styles.pastilla, { backgroundColor: conAlfa(tema.color.texto, 0.06) }]}>
-                  {p.estado === 'aprobado' && <Glifo nombre="check" size={14} color={tema.color.exito} decorativo />}
-                  <Text
-                    testID={`${testID}-estado`}
-                    style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}
-                  >
-                    {ETIQUETA_ESTADO[p.estado]}
-                  </Text>
-                </View>
-              )}
+              {/* 🔴 El total sale del backend TAL CUAL, sin recomputarlo desde los ítems. Recalcularlo acá
+                  sería una segunda aritmética del dinero, con float, y el día que difiera del backend el
+                  usuario vería un número distinto del que se va a facturar. */}
+              <Text
+                testID={`${testID}-total`}
+                style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: 30, lineHeight: 36 }}
+              >
+                {formatearImporte(p.total)}
+              </Text>
             </View>
 
             <View style={[styles.bloque, { borderTopColor: linea }]}>
@@ -650,8 +652,8 @@ const styles = StyleSheet.create({
   cabecera: { gap: 4 },
   tarjeta: { borderRadius: 22, paddingHorizontal: 20, paddingVertical: 4 },
   tarjetaFilas: { paddingVertical: 0 },
-  filaTotal: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, paddingVertical: 16 },
-  total: { gap: 2, flexShrink: 1 },
+  filaTotal: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  total: { gap: 6, paddingVertical: 16 },
   pastilla: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, marginBottom: 4 },
   notaConGlifo: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   bloque: { borderTopWidth: 1, paddingVertical: 14, gap: 10 },
