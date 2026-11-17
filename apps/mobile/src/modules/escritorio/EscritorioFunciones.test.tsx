@@ -177,14 +177,14 @@ describe('EscritorioFunciones — el dibujo de cada función (14/11)', () => {
     expect(alto('gastos')).toEqual(expect.any(Number));
   });
 
-  it('🔴 en piel oscura sigue el glifo: los dibujos de prueba traen fondo blanco', async () => {
+  it('🔴 en piel oscura van los MISMOS dibujos, en vector: nunca el glifo sobre chip', async () => {
     await render(
       <ThemeProvider skinForzado="oscuro">
         <EscritorioFunciones />
       </ThemeProvider>,
     );
-    expect(screen.queryByTestId('dibujo-gastos')).toBeNull();
-    expect(screen.getByTestId('glass-icon-gastos')).toBeTruthy();
+    KEYS_ESPERADAS.forEach((key) => expect(screen.getByTestId(`dibujo-${key}`)).toBeTruthy());
+    expect(screen.queryByTestId('glass-icon-gastos')).toBeNull();
   });
 });
 

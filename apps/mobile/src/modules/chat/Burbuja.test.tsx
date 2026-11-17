@@ -100,7 +100,9 @@ describe('Burbuja — SM-N43: colores del prototipo', () => {
     expect(claro.mio1).not.toBe(claro.ub1);
     expect(claro.mio2).not.toBe(claro.ub2);
     expect(claro.ub1).toBe('#B04A2E');
-    expect(oscuro.mio1).toBe(oscuro.ub1); // oscuro: sin cambio de comportamiento
+    // Oscuro (Martin 17/11): tampoco es el acento. Terracota apagada, plana.
+    expect(oscuro.mio1).not.toBe(oscuro.ub1);
+    expect(oscuro.mio1).toBe(oscuro.mio2);
   });
 
   it('🔴 la tinta de la propia se pinta en el texto renderizado (no sólo se declara)', async () => {

@@ -68,6 +68,16 @@ const OPCIONES_SOLAPA: readonly { valor: IdSolapa; etiqueta: string }[] = [
 ];
 
 /**
+ * El fondo de la opción ELEGIDA en las solapas y los chips. En claro es la pastilla blanca apoyada sobre la
+ * pista. En oscuro la superficie de tarjeta es casi el tono de la pista y la elegida no se distinguía
+ * (Martin 17/11): ahí se levanta con un velo crema más alto, que sí se separa.
+ */
+function useRealceSeleccion(): string {
+  const tema = useTema();
+  return tema.glass.esLight ? tema.color.superficie : conAlfa(tema.color.texto, 0.18);
+}
+
+/**
  * Las solapas como **control segmentado** (Martin 15/11): una pista gris a todo el ancho con los tres tramos
  * iguales, y el activo como una pastilla blanca apoyada encima. Antes eran tres cajas con borde, la activa en
  * terracota: se leían como tres botones sueltos y no como «una de tres vistas».
@@ -85,6 +95,7 @@ function Solapas({
   conteos?: Partial<Record<IdSolapa, number>>;
 }) {
   const tema = useTema();
+  const realce = useRealceSeleccion();
   return (
     <View style={[styles.solapas, { backgroundColor: conAlfa(tema.color.texto, 0.06) }]} testID="midia-solapas">
       {OPCIONES_SOLAPA.map((o) => {
@@ -103,7 +114,7 @@ function Solapas({
             <View
               style={[
                 styles.solapa,
-                seleccionada ? [elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }] : null,
+                seleccionada ? [elevacion(tema.color.sombra), { backgroundColor: realce }] : null,
               ]}
             >
               <Text
@@ -143,6 +154,7 @@ function ChipsCategoria({
   tablero: TableroMiDia | null;
 }) {
   const tema = useTema();
+  const realce = useRealceSeleccion();
   if (!hayCategorias(tablero)) return null;
   return (
     <ScrollView
@@ -170,7 +182,7 @@ function ChipsCategoria({
               style={[
                 styles.chip,
                 seleccionada
-                  ? [elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie, borderColor: tema.color.superficie }]
+                  ? [elevacion(tema.color.sombra), { backgroundColor: realce, borderColor: realce }]
                   : { borderColor: conAlfa(tema.color.texto, 0.12) },
               ]}
             >

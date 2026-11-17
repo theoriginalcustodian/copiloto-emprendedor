@@ -22,7 +22,8 @@
  * y el bloque negro con el encabezado TAPEABLE "Actividad reciente" (→ `/recientes`) y su lista, que scrollea
  * adentro. El negro va abajo, en lo que ya pasó: en Mi día va arriba, en lo que hay que hacer.
  */
-import { Image, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import Svg, { G, Path } from 'react-native-svg';
 /**
  * 🔴 **`ScrollView` sale de Gesture Handler, NO de `react-native`, y no es preferencia de estilo.**
  *
@@ -47,10 +48,10 @@ import type { ActividadItem } from '@copiloto/core';
 import { FilaActividad } from '../actividad/FilaActividad';
 import { AvatarCuenta } from '../midia/AvatarCuenta';
 import { EncabezadoListado } from '../../theme/glass/EncabezadoListado';
-import { GlassIcon } from '../../theme/glass/GlassIcon';
 import type { NombreIconoGlass } from '../../theme/glass/icons';
 import { Tile } from '../../theme/glass/Tile';
-import { useSkin, useTema } from '../../theme/ThemeProvider';
+import { useTema } from '../../theme/ThemeProvider';
+import { DIBUJOS_CASILLA, DIBUJO_CASILLA_TRANSFORMACION, DIBUJO_CASILLA_VIEWBOX } from './dibujosCasilla';
 
 /** Las funciones del escritorio del copiloto. Ver `TILES` para la regla que fija su ORDEN. */
 export type FuncionKey =
@@ -121,21 +122,29 @@ export const TILES: readonly DefinicionTile[] = [
 
 
 /**
- * El DIBUJO de cada función (Martin 14/11): trazo negro a mano + una mancha arena, en la familia de la taza de
- * Mi día. Reemplaza al glifo sobre chip rosa, que se leía frío. ⚠️ Son PNG de PRUEBA con fondo blanco: sólo
- * empalman con la casilla en la piel clara, así que las pieles oscuras siguen con el glifo. Cuando Martin
- * cierre el trazo pasan a SVG y esta salvedad se va.
+ * El DIBUJO de cada función (Martin 14/11): trazo a mano + una mancha arena, en la familia de la taza de Mi día.
+ * Reemplaza al glifo sobre chip rosa, que se leía frío.
+ *
+ * Es UN solo dibujo para las dos pieles (Martin 17/11: «deberían ser los mismos en oscuro»): el boceto está
+ * vectorizado en `dibujosCasilla.ts` con el trazo y la mancha por separado, así el trazo toma la tinta de la
+ * piel —negro tostado en claro, crema en oscuro— y la mancha queda arena en las dos. Antes eran PNG con el
+ * fondo blanco pintado, que no empalmaban con la casilla oscura, y la piel oscura mostraba otro ícono.
  */
-/* eslint-disable @typescript-eslint/no-require-imports -- Metro resuelve los PNG con `require`, igual que la fuente en `app/_layout.tsx`. */
-const DIBUJOS: Record<FuncionKey, ImageSourcePropType> = {
-  gastos: require('../../../assets/funciones/gastos.png'),
-  ingresos: require('../../../assets/funciones/ingresos.png'),
-  facturacion: require('../../../assets/funciones/facturacion.png'),
-  presupuestos: require('../../../assets/funciones/presupuestos.png'),
-  clientes: require('../../../assets/funciones/clientes.png'),
-  inteligencia: require('../../../assets/funciones/inteligencia.png'),
-};
-/* eslint-enable @typescript-eslint/no-require-imports */
+function DibujoCasilla({ funcion, testID }: { funcion: FuncionKey; testID: string }) {
+  const tema = useTema();
+  const d = DIBUJOS_CASILLA[funcion];
+  return (
+    // Decorativo: el nombre de la función ya lo dice el rótulo y el `accessibilityLabel` de la casilla.
+    <Svg testID={testID} width={LADO_DIBUJO} height={LADO_DIBUJO} viewBox={DIBUJO_CASILLA_VIEWBOX} accessible={false}>
+      <G transform={DIBUJO_CASILLA_TRANSFORMACION}>
+        <Path d={d.mancha} fill={tema.color.apoyo} />
+        <Path d={d.trazos} fill={tema.color.texto} />
+      </G>
+    </Svg>
+  );
+}
+
+const LADO_DIBUJO = 44;
 
 /**
  * Las funciones OPERATIVAS, en orden. Es lo que el DoD del contrato exige que se vea sin scrollear, y
@@ -230,8 +239,6 @@ export function EscritorioFunciones({
   sinActividad = false,
 }: EscritorioFuncionesProps) {
   const tema = useTema();
-  const [skin] = useSkin();
-  const conDibujo = skin === 'claro';
 
   return (
     <View style={styles.contenedor}>
@@ -260,21 +267,7 @@ export function EscritorioFunciones({
                 // oscuro en device. En claro los dos son iguales: sin cambio.
                 style={[styles.tile, { backgroundColor: tema.color.superficie }]}
               >
-                {conDibujo ? (
-                  // Decorativo: el nombre de la función ya lo dice el rótulo y el `accessibilityLabel` de la casilla.
-                  <Image
-                    testID={`dibujo-${t.key}`}
-                    source={DIBUJOS[t.key]}
-                    style={styles.dibujo}
-                    resizeMode="contain"
-                    accessible={false}
-                  />
-                ) : (
-                  // El chip es pastel fijo en las pieles oscuras, y por eso el glifo también va fijo.
-                  <View style={[styles.chipIcono, { backgroundColor: tema.color.tileFuncion.arena }]}>
-                    <GlassIcon name={t.icono} size={22} color={tema.color.tileFuncion.tinta} />
-                  </View>
-                )}
+                <DibujoCasilla funcion={t.key} testID={`dibujo-${t.key}`} />
                 {/* `numberOfLines={2}` acota el peor caso: una etiqueta más larga que las actuales
                     no puede volver a romper la grilla creciendo a 3 líneas — se recorta con "…". */}
                 <Text
@@ -362,8 +355,6 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 0,
   },
-  dibujo: { width: 44, height: 44 },
-  chipIcono: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   labelTile: { fontSize: 15, lineHeight: 19 },
   // `flexShrink`: con muchas operaciones el bloque termina en el borde y la lista scrollea adentro. Con pocas,
   // mide lo que mide su contenido y no se estira hasta la pestaña.

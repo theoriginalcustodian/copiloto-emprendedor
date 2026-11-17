@@ -526,6 +526,7 @@ const UB2 = '#722717';
 // Burbujas del chat, tema claro — del prototipo, no derivadas. `.mio` (`prototipo/index.html:385-387`):
 // fill `--arena-30` #F8E2DB, tinta `--negro` #1A1512 (14,56:1). `.msg` (`:330-331`): fill `--blanco` #FFFFFF
 // con sombra `0 4px 18px rgba(26,21,18,.07)`. Ninguna lleva borde: el borde se pinta del propio fill.
+const MIO_OSCURO = '#452920';
 const MIO_CLARO = '#F8E2DB';
 const TINTA_MIO_CLARO = '#1A1512';
 const ASISTENTE_CLARO = '#FFFFFF';
@@ -611,17 +612,20 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
   oscuro: {
     accent: ACCENT, accentTinta: ACCENT_TINTA_OSCURO, accentSuperficie: ACCENT_TINTA_CLARO, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
     ub1: UB1, ub2: UB2,
-    // Oscuro FUERA del alcance de SM-N43 (el prototipo no tiene tema oscuro: no hay fuente contra la
-    // cual alinearlo). Conserva EXACTO lo que pintaba antes: usuario = acento, asistente = vidrio `s1/s2`.
-    mio1: UB1, mio2: UB2, tintaMio: '#F7F3EC', bordeMio: 'rgba(247,243,236,.14)',
+    // La burbuja propia en oscuro (Martin 17/11): terracota APAGADA —la terracota al 22 % sobre el lienzo—, plana.
+    // La terracota profunda llena chocaba contra el negro tostado y competía con el micrófono, que es lo único
+    // que ejecuta. Texto crema: 12:1.
+    mio1: MIO_OSCURO, mio2: MIO_OSCURO, tintaMio: '#F7F3EC', bordeMio: MIO_OSCURO,
     asistente1: VIDRIO_OSCURO_CALIDO, asistente2: VIDRIO_OSCURO_CALIDO, bordeAsistente: VIDRIO_OSCURO_CALIDO,
-    // `tokens/odobi.css` §oscuro, exacto: `--text` es el crema de marca y `--text-secondary` `#B8AFA6`
-    // (8.38:1 sobre el lienzo). Antes pintaba un crema amarillento y un secundario más apagado que no
-    // estaban en el sistema.
+    // `--text` es el crema de marca de `tokens/odobi.css` §oscuro. El secundario se aclara respecto del
+    // `--text-secondary` de ahí (Martin 17/11): el texto chico gris se perdía sobre las tarjetas.
     tx: '#F7F3EC',
-    dim: '#B8AFA6',
+    dim: '#CFC7BE',
     tint: TINT, tint2: TINT2,
-    superficie: '#261F1A', superficieAlta: '#211B16', // `--surface` y `--bg-alt` de `tokens/odobi.css` §oscuro
+    // Martin 17/11, sobre capturas de Mi día: con el `--surface` de la spec (un tono apenas arriba del lienzo)
+    // las tarjetas no se separaban del fondo y todo se leía como un solo plano. Se sube un escalón.
+    // `superficieAlta` sigue siendo el `--bg-alt` de `tokens/odobi.css` §oscuro.
+    superficie: '#33291F', superficieAlta: '#211B16',
     // El lienzo oscuro del sistema es el negro tostado `#1A1512` (`tokens/odobi.css` §oscuro:
     // `--bg: var(--odobi-negro)`), no el `#1E1610` que traía el código. El degradé usa el lienzo
     // alterno declarado ahí mismo (`--bg-alt: #211B16`) como pie.
