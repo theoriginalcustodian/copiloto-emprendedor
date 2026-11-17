@@ -316,6 +316,9 @@ const BASE_OSCURO: VidrioCrudo = {
   chip: 'rgba(255,255,255,.1)',
 };
 
+/** Velo crema parejo de la piel oscura — ver `PALETAS.oscuro`. */
+const VIDRIO_OSCURO_CALIDO = 'rgba(247,243,236,.05)';
+
 interface PaletaCruda extends Partial<VidrioCrudo> {
   accent: string;
   accentTinta: string;
@@ -610,13 +613,15 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
     ub1: UB1, ub2: UB2,
     // Oscuro FUERA del alcance de SM-N43 (el prototipo no tiene tema oscuro: no hay fuente contra la
     // cual alinearlo). Conserva EXACTO lo que pintaba antes: usuario = acento, asistente = vidrio `s1/s2`.
-    mio1: UB1, mio2: UB2, tintaMio: '#F1E4CC', bordeMio: 'rgba(241,228,204,.14)',
-    asistente1: BASE_OSCURO.s1, asistente2: BASE_OSCURO.s2, bordeAsistente: BASE_OSCURO.s1,
-    tx: '#F1E4CC',
-    // Texto secundario declarado (`rgba(241,228,204,.55)`) ya pasa AA (5.07:1) — sin ajustar.
-    dim: '#928777',
+    mio1: UB1, mio2: UB2, tintaMio: '#F7F3EC', bordeMio: 'rgba(247,243,236,.14)',
+    asistente1: VIDRIO_OSCURO_CALIDO, asistente2: VIDRIO_OSCURO_CALIDO, bordeAsistente: VIDRIO_OSCURO_CALIDO,
+    // `tokens/odobi.css` §oscuro, exacto: `--text` es el crema de marca y `--text-secondary` `#B8AFA6`
+    // (8.38:1 sobre el lienzo). Antes pintaba un crema amarillento y un secundario más apagado que no
+    // estaban en el sistema.
+    tx: '#F7F3EC',
+    dim: '#B8AFA6',
     tint: TINT, tint2: TINT2,
-    superficie: '#251B11', superficieAlta: '#1B120B', // §2.3: superficie / campo aplanados
+    superficie: '#261F1A', superficieAlta: '#211B16', // `--surface` y `--bg-alt` de `tokens/odobi.css` §oscuro
     // El lienzo oscuro del sistema es el negro tostado `#1A1512` (`tokens/odobi.css` §oscuro:
     // `--bg: var(--odobi-negro)`), no el `#1E1610` que traía el código. El degradé usa el lienzo
     // alterno declarado ahí mismo (`--bg-alt: #211B16`) como pie.
@@ -625,9 +630,13 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
     // Ni éxito ni peligro tienen valor propio en el DoD para oscuro — se reusa el par de
     // `SEMANTICOS_OSCURO` (ya validado, ≥8:1 contra este fondo — más margen del que exige AA).
     ...SEMANTICOS_OSCURO,
-    bd: 'rgba(241,228,204,.14)', // §2.2, exacto
-    s1: BASE_OSCURO.s1, s2: BASE_OSCURO.s2, hi: BASE_OSCURO.hi,
-    pill: BASE_OSCURO.pill, chip: BASE_OSCURO.chip,
+    // Aplanado sobre el lienzo da el `--border` del sistema (`#3A322B`), con un punto de diferencia.
+    bd: 'rgba(247,243,236,.14)',
+    // Campos, pastillas y tarjetas de vidrio: un velo crema PAREJO (sin degradé) en vez del vidrio blanco
+    // heredado, que se leía gris frío al lado de las tarjetas tostadas. Mismo criterio que en claro,
+    // donde el campo es un blanco liso.
+    s1: VIDRIO_OSCURO_CALIDO, s2: VIDRIO_OSCURO_CALIDO, hi: 'rgba(247,243,236,.16)',
+    pill: 'rgba(247,243,236,.5)', chip: 'rgba(247,243,236,.06)',
     fondoLuz: [],
     // §2.4: nivel 1 oscuro es NEGRO (no cálido) — geometría 12px/28px, distinta de claro (10px/26px).
     relieve: {
@@ -663,7 +672,9 @@ function construirTokens(p: PaletaCruda): Tokens {
       // Invierte con la piel: el bloque es lo contrario del lienzo, no un color fijo.
       bloque: p.esLight ? NEGRO_TOSTADO : CREMA,
       bloqueTexto: p.esLight ? CREMA : NEGRO_TOSTADO,
-      bloqueApoyo: p.esLight ? APOYO : p.dim,
+      // En oscuro el bloque es crema: su texto secundario es el del tema claro, no el del lienzo oscuro
+      // (que sobre crema queda lavado).
+      bloqueApoyo: p.esLight ? APOYO : PALETAS.claro.dim,
       bloqueChip: p.esLight ? 'rgba(247,243,236,.10)' : 'rgba(26,21,18,.08)',
       sombra: NEGRO_TOSTADO,
       superficie: p.superficie ?? mezclarHex(fondo, p.tx, 0.06),

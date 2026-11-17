@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   ApiError,
@@ -25,11 +25,14 @@ import {
   ScrollFormulario,
   type OpcionSelect,
 } from '../../../theme/glass/campos';
+import { elevacion } from '../../../theme/BloqueCifra';
+import { CifraResumen, FilaResumen, FranjaDatos, FranjaPrincipal, ResumenTarjeta } from '../../../theme/ResumenTarjeta';
 import { Chevron } from '../Chevron';
 import { FilaGrupo, GrupoFilas } from '../GrupoFilas';
 import { MarcoGlass } from '../../../theme/glass/MarcoGlass';
 import { OPCIONES_FORMALIDAD, OPCIONES_LARGO, PantallaTono } from './PantallaTono';
 import { SeccionCatalogo } from './SeccionCatalogo';
+import { PRESS_FADE, pressableStyle } from '../../../theme/glass/presion';
 import { useTema } from '../../../theme/ThemeProvider';
 
 /**
@@ -167,6 +170,98 @@ function Seccion({ titulo, testID, children }: SeccionProps) {
  * servidor con campos opcionales vacíos**: los dos estados conviven en la misma pantalla. En un alta
  * no hay valor guardado que confundir.
  */
+/** Cómo se LEE «a quién le vendés» en la ficha (en el formulario son tres pastillas). */
+const A_QUIEN_LEIDO: Record<AQuienVende, string> = {
+  empresas: 'Empresas',
+  consumidor_final: 'Consumidor final',
+  ambos: 'Empresas y consumidor final',
+};
+
+/** Sin ningún dato del negocio cargado no hay ficha que leer: se entra directo al formulario. */
+function sinDatosDeNegocio(c: Campos): boolean {
+  return [c.queVende, c.nombreComercial, c.horarioAtencion, c.telefono, c.email].every((v) => v.trim() === '');
+}
+
+interface DatoProps {
+  rotulo: string;
+  valor: string;
+  testID: string;
+  primera?: boolean;
+  /** Cuántos renglones del valor se muestran antes de cortar. */
+  renglones?: number;
+}
+
+/** Un renglón de la ficha: el rótulo chico y gris arriba, el dato debajo en la letra normal. */
+function Dato({ rotulo, valor, testID, primera, renglones = 1 }: DatoProps) {
+  const tema = useTema();
+  const vacio = valor.trim() === '';
+  return (
+    <FilaGrupo primera={primera}>
+      <View style={styles.dato}>
+        <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{rotulo}</Text>
+        <Text
+          testID={testID}
+          numberOfLines={renglones}
+          style={{ color: vacio ? tema.color.textoTenue : tema.color.texto, fontSize: tema.tipo.base, lineHeight: 22 }}
+        >
+          {vacio ? 'Sin cargar' : valor}
+        </Text>
+      </View>
+    </FilaGrupo>
+  );
+}
+
+/**
+ * El ejemplo de «Antes de guardar»: lo que se le dice y la tarjeta que devuelve, armada con las MISMAS piezas
+ * que la tarjeta real del chat (`ResumenTarjeta`), para que no pueda parecerse a otra cosa. Es una lámina:
+ * no se toca (`pointerEvents="none"`) y el lector de pantalla la lee como una sola imagen descrita.
+ */
+function EjemploTarjeta() {
+  const tema = useTema();
+  const nada = () => {};
+  return (
+    <View
+      testID="perfil-negocio-modo-ejemplo"
+      pointerEvents="none"
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel="Ejemplo. Le decís: Cargué nafta, 42.000. Odobi te muestra una tarjeta de gasto con monto, categoría, detalle y fecha, y los botones Guardar y Descartar."
+      style={{ gap: tema.espacio.sm }}
+    >
+      <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Por ejemplo, le decís:</Text>
+      <View style={[styles.burbuja, { backgroundColor: tema.glass.mio1 }]}>
+        <Text style={{ color: tema.glass.tintaMio, fontSize: tema.tipo.base }}>Cargué nafta, 42.000</Text>
+      </View>
+      <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Y te muestra esto:</Text>
+      <View style={[styles.tarjetaEjemplo, elevacion(tema.color.sombra), { backgroundColor: tema.color.superficie }]}>
+        <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base, paddingBottom: 12 }}>
+          Gasto
+        </Text>
+        <ResumenTarjeta>
+          <FranjaPrincipal>
+            <CifraResumen texto="$42.000,00" nombre="Monto" onCambiar={nada} testID="perfil-negocio-modo-ejemplo-monto" testIDTexto="perfil-negocio-modo-ejemplo-monto-texto" />
+          </FranjaPrincipal>
+          <FranjaDatos>
+            <FilaResumen rotulo="Categoría" valor="Transporte" onCambiar={nada} testID="perfil-negocio-modo-ejemplo-categoria" />
+            <FilaResumen separada rotulo="Detalle" valor="Nafta" onCambiar={nada} testID="perfil-negocio-modo-ejemplo-detalle" />
+            <FilaResumen separada rotulo="Fecha" valor="Hoy" onCambiar={nada} testID="perfil-negocio-modo-ejemplo-fecha" />
+          </FranjaDatos>
+        </ResumenTarjeta>
+        <FilaBotones
+          testID="perfil-negocio-modo-ejemplo-botones"
+          botones={[
+            { etiqueta: 'Guardar', onPress: nada, variante: 'primario', testID: 'perfil-negocio-modo-ejemplo-guardar' },
+            { etiqueta: 'Descartar', onPress: nada, testID: 'perfil-negocio-modo-ejemplo-descartar' },
+          ]}
+        />
+      </View>
+      <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
+        Nada se guarda hasta que tocás «Guardar». Si entendió mal un dato, lo cambiás ahí mismo.
+      </Text>
+    </View>
+  );
+}
+
 /** Resumen de la fila que lleva a «Cómo hablarle»: «Cercano · Breve · Copi». */
 function resumenDeTono(c: { formalidad: FormalidadCopiloto; largoRespuesta: LargoRespuesta; nombreCopiloto: string }): string {
   const f = OPCIONES_FORMALIDAD.find((o) => o.valor === c.formalidad)?.etiqueta ?? '';
@@ -180,6 +275,13 @@ export function PantallaPerfilNegocio() {
   // K-15: «Cómo hablarle» es una vista de esta misma ruta (no una ruta nueva: registrarla exigiría
   // tocar `app/_layout.tsx`, de FE1).
   const [verTono, setVerTono] = useState(false);
+  // Rediseño (Martin 17/11): los datos del negocio se LEEN como ficha y «Editar» abre el formulario. Antes
+  // la pantalla era un formulario abierto permanente —seis cajas con su rótulo— para datos que se cargan una vez.
+  const [editando, setEditando] = useState(false);
+  /** Lo último que se sabe guardado: a eso vuelve «Cancelar». */
+  const [guardados, setGuardados] = useState<Campos>(CAMPOS_VACIOS);
+  // El modo y su explicación viven en una vista aparte de esta misma ruta, como «Cómo hablarle».
+  const [verModo, setVerModo] = useState(false);
   const [estadoCarga, setEstadoCarga] = useState<EstadoCarga>('cargando');
   const [estadoGuardado, setEstadoGuardado] = useState<EstadoGuardado>('idle');
   const [seccionEnCurso, setSeccionEnCurso] = useState<Seccion | null>(null);
@@ -216,7 +318,11 @@ export function PantallaPerfilNegocio() {
           return;
         }
         // `perfil: null` → los campos quedan vacíos y la pantalla es un formulario, no un error.
-        if (res.perfil) setCampos(aCampos(res.perfil));
+        if (res.perfil) {
+          setCampos(aCampos(res.perfil));
+          setGuardados(aCampos(res.perfil));
+        }
+        setEditando(res.perfil == null || sinDatosDeNegocio(aCampos(res.perfil)));
         setEstadoCarga('ok');
       } catch {
         if (vivo) setEstadoCarga('error');
@@ -271,7 +377,9 @@ export function PantallaPerfilNegocio() {
       // respuesta en vez de dar por hecho que quedó lo que había en pantalla. Si otro dispositivo
       // cambió la otra sección, este es el momento en que aparece.
       setCampos(aCampos(res.perfil));
+      setGuardados(aCampos(res.perfil));
       setEstadoGuardado('ok');
+      setEditando(false);
     } catch (e) {
       // El 400 del backend nombra el campo o la regla que falló — mostrarlo es más útil que un
       // "no se pudo guardar" genérico, que deja al usuario adivinando cuál de los siete campos toca.
@@ -307,6 +415,7 @@ export function PantallaPerfilNegocio() {
         return;
       }
       setCampos(aCampos(res.perfil));
+      setGuardados(aCampos(res.perfil));
       setEstadoGuardado('ok');
     } catch (e) {
       setErrorGuardado(e instanceof ApiError ? (e.detail ?? e.message) : null);
@@ -319,7 +428,78 @@ export function PantallaPerfilNegocio() {
   const enviando = estadoGuardado === 'enviando';
 
   if (verTono) {
-    return <PantallaTono onVolver={() => setVerTono(false)} onGuardado={(perfil) => setCampos(aCampos(perfil))} />;
+    return (
+      <PantallaTono
+        onVolver={() => setVerTono(false)}
+        onGuardado={(perfil) => {
+          setCampos(aCampos(perfil));
+          setGuardados(aCampos(perfil));
+        }}
+      />
+    );
+  }
+
+  const automatico = campos.modoCeremonia === 'automatico';
+  const mensajes = (
+    <>
+      {estadoGuardado === 'ok' && (
+        <Text testID="perfil-negocio-guardado" style={{ color: tema.color.exito, fontSize: tema.tipo.base }}>
+          Listo, lo guardamos.
+        </Text>
+      )}
+      {estadoGuardado === 'error' && (
+        <Text testID="perfil-negocio-error-guardado" style={{ color: tema.color.peligro, fontSize: tema.tipo.base }}>
+          {errorGuardado ?? 'No pudimos guardar los cambios. Probá de nuevo.'}
+        </Text>
+      )}
+    </>
+  );
+
+  // 🔴 **Cómo TRABAJA Odobi — sólo el modo vigente, sin una segunda opción.** Decisión B
+  // (`respuesta_..._va-B-la-opcion-nace-ofrecida-no-encendida`): el automático **no se muestra gris** ni se
+  // elige de una lista; cuando exista de verdad aparece como OFERTA del copiloto. Esto no reemplaza al
+  // candado: el backend rechaza `automatico` aunque acá ni se ofrezca. Lo único que la app dicta es VOLVER
+  // a confirmación, y sólo estando en automático.
+  if (verModo) {
+    return (
+      <MarcoGlass titulo="Antes de guardar" icono="miNegocio" sinIcono testID="pantalla-modo">
+        <ScrollFormulario contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.lg }}>
+          <View testID="perfil-negocio-seccion-modo" style={{ gap: tema.espacio.sm }}>
+            <Text
+              testID="perfil-negocio-modo"
+              accessibilityRole="header"
+              style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande }}
+            >
+              {automatico ? 'Automático' : 'Pedir confirmación'}
+            </Text>
+            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, lineHeight: 22 }}>
+              {automatico
+                ? 'Lo que sale de tu teléfono —facturar, mandar algo a un cliente, cobrar de verdad— te lo sigue preguntando siempre.'
+                : 'Cuando le dictás algo, te muestra una tarjeta para que la revises antes de guardarla.'}
+            </Text>
+          </View>
+          {!automatico && <EjemploTarjeta />}
+          <FilaBotones
+            testID="perfil-negocio-modo-acciones"
+            botones={[
+              ...(automatico
+                ? [
+                    {
+                      etiqueta: seccionEnCurso === 'modo' && enviando ? 'Volviendo…' : 'Volver a pedir confirmación',
+                      onPress: () => void volverAConfirmacion(),
+                      variante: 'primario' as const,
+                      deshabilitado: enviando,
+                      testID: 'perfil-negocio-volver-confirmacion',
+                    },
+                  ]
+                : []),
+              { etiqueta: 'Volver a Mi negocio', onPress: () => setVerModo(false), testID: 'perfil-negocio-modo-volver' },
+            ]}
+          />
+          {mensajes}
+        </ScrollFormulario>
+      </MarcoGlass>
+    );
   }
 
   // `icono="miNegocio"`: el set de 21 tiene un glifo propio con este mismo nombre (local/vidriera),
@@ -353,21 +533,8 @@ export function PantallaPerfilNegocio() {
 
       {estadoCarga === 'ok' && (
         <ScrollFormulario contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.lg }}>
-          {/* Mapeo `negocio` (index.html:2280): el estado del modo arriba, como el `estado-pag` del
-              prototipo — «Te pide confirmación antes de ejecutar». Sale de `campos.modoCeremonia`, el
-              mismo dato que el bloque «Cómo trabaja tu copiloto» de abajo; nunca un texto fijo. */}
-          <Text
-            testID="perfil-negocio-estado-modo"
-            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontFamily: tema.fuente.uiSemibold }}
-          >
-            {campos.modoCeremonia === 'automatico'
-              ? 'Anota lo que le dictás y te avisa después'
-              : 'Te pide confirmación antes de ejecutar'}
-          </Text>
-          <Seccion testID="perfil-negocio-seccion-negocio">
-            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              Con esto el copiloto entiende de qué se trata tu trabajo y puede responderte mejor.
-            </Text>
+          {editando ? (
+          <Seccion titulo="Tu negocio" testID="perfil-negocio-seccion-negocio">
             <CampoTexto
               testID="perfil-negocio-que-vende"
               etiqueta="Qué vendés"
@@ -433,80 +600,88 @@ export function PantallaPerfilNegocio() {
                   deshabilitado: enviando,
                   testID: 'perfil-negocio-guardar-negocio',
                 },
+                // Sin nada guardado no hay ficha a la que volver.
+                ...(sinDatosDeNegocio(guardados)
+                  ? []
+                  : [
+                      {
+                        etiqueta: 'Cancelar',
+                        onPress: () => {
+                          setCampos(guardados);
+                          setErroresContacto({ telefono: null, email: null });
+                          setAvisoQueVende(null);
+                          setEstadoGuardado('idle');
+                          setErrorGuardado(null);
+                          setEditando(false);
+                        },
+                        testID: 'perfil-negocio-cancelar',
+                      },
+                    ]),
               ]}
             />
+            {mensajes}
           </Seccion>
+          ) : (
+          <>
+          <View style={{ gap: 10 }}>
+            <View style={styles.cabecera}>
+              <Text
+                accessibilityRole="header"
+                style={{ flex: 1, color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.grande }}
+              >
+                Tu negocio
+              </Text>
+              <Pressable
+                testID="perfil-negocio-editar"
+                accessibilityRole="button"
+                accessibilityLabel="Editar los datos de tu negocio"
+                hitSlop={12}
+                onPress={() => {
+                  setEstadoGuardado('idle');
+                  setErrorGuardado(null);
+                  setEditando(true);
+                }}
+                style={pressableStyle(null, PRESS_FADE)}
+              >
+                <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>Editar</Text>
+              </Pressable>
+            </View>
+            <GrupoFilas testID="perfil-negocio-ficha">
+              <Dato primera rotulo="Qué vendés" valor={campos.queVende} renglones={2} testID="perfil-negocio-ficha-que-vende" />
+              <Dato rotulo="A quién le vendés" valor={A_QUIEN_LEIDO[campos.aQuien]} testID="perfil-negocio-ficha-a-quien" />
+              <Dato rotulo="Nombre comercial" valor={campos.nombreComercial} testID="perfil-negocio-ficha-nombre-comercial" />
+              <Dato rotulo="Horario de atención" valor={campos.horarioAtencion} testID="perfil-negocio-ficha-horario" />
+              <Dato rotulo="Teléfono" valor={campos.telefono} testID="perfil-negocio-ficha-telefono" />
+              <Dato rotulo="Mail" valor={campos.email} testID="perfil-negocio-ficha-email" />
+            </GrupoFilas>
+          </View>
 
-          {/* 🔴 **Cómo TRABAJA el copiloto — sólo el modo vigente, sin una segunda opción.**
-              Decisión B (`respuesta_..._va-B-la-opcion-nace-ofrecida-no-encendida`): el modo
-              automático **no se muestra gris**. Una puerta que no se puede abrir le enseña al
-              emprendedor que la app tiene cosas apagadas, y eso es caro en un producto que recién
-              conoce. Cuando exista de verdad, aparece como OFERTA, no como opción encendida.
+          {mensajes}
 
-              ⚠️ Esto **no reemplaza** al candado: el backend rechaza `automatico` aunque acá ni se
-              ofrezca. Si el bloqueo viviera sólo en la UI, un `POST` alcanzaría para saltearlo.
-
-              Y es de sólo lectura a propósito: el contrato de modos §4 pide que se sepa **en qué modo
-              estás**, no que se puedan ver las dos opciones. */}
-          <Seccion titulo="Cómo trabaja tu copiloto" testID="perfil-negocio-seccion-modo">
-            <Text
-              testID="perfil-negocio-modo"
-              style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}
-            >
-              {campos.modoCeremonia === 'automatico' ? 'Automático' : 'Pedir confirmación'}
-            </Text>
-            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              {campos.modoCeremonia === 'automatico'
-                ? 'Lo que sale de tu teléfono —facturar, mandar algo a un cliente, cobrar de verdad— te lo sigue preguntando siempre.'
-                : 'Cuando le dictás algo, te muestra una tarjeta para que la revises antes de guardarla. Así ves qué entendió y lo corregís ahí mismo.'}
-            </Text>
-            {/* 🔴 Sólo en automático, y en UNA dirección: apagar. Encender es una oferta del copiloto
-                (va-B), no un toggle de acá — por eso no hay botón simétrico. */}
-            {campos.modoCeremonia === 'automatico' && (
-              <FilaBotones
-                testID="perfil-negocio-modo-acciones"
-                botones={[
-                  {
-                    etiqueta: seccionEnCurso === 'modo' && enviando ? 'Volviendo…' : 'Volver a pedir confirmación',
-                    onPress: () => void volverAConfirmacion(),
-                    variante: 'secundario',
-                    deshabilitado: enviando,
-                    testID: 'perfil-negocio-volver-confirmacion',
-                  },
-                ]}
-              />
-            )}
-          </Seccion>
-
-          {/* K-15 / BL-X7: el editor de tono vive en «Cómo hablarle» (PantallaTono); acá sólo el resumen.
-              Mapeo `negocio` (2026-10-13): rótulos y placeholders del prototipo (index.html:2276-2300).
-              ENMIENDAS FUNDADAS: (1) «A quién le vendés» es un select de 3 valores porque el backend lo
-              guarda como enum — texto libre rompería el contrato; (2) la validación de largo mínimo del
-              prototipo («Escribí al menos 10 caracteres…») NO se porta: el backend no la exige y
-              bloquear Guardar sobre perfiles ya guardados es un cambio de contrato (MAYOR), que se
-              pide a planificación; (3) Guardar es explícito por sección y no edición inline. */}
-          <Seccion titulo="Cómo te habla" testID="perfil-negocio-seccion-personalidad">
-            <GrupoFilas>
-              <FilaGrupo primera testID="perfil-negocio-tono-fila" onPress={() => setVerTono(true)} accessibilityLabel="Tono y forma">
-                <Text testID="perfil-negocio-tono-resumen" style={{ flex: 1, color: tema.color.texto, fontSize: tema.tipo.base }}>
+          {/* K-15 / BL-X7: el editor de tono vive en «Cómo hablarle» (PantallaTono) y el modo en su propia
+              vista; acá, una fila por cada uno con su estado. ENMIENDAS FUNDADAS que siguen valiendo:
+              «A quién le vendés» es un select de 3 valores porque el backend lo guarda como enum, y la
+              validación de largo mínimo del prototipo NO se porta (el backend no la exige). */}
+          <GrupoFilas rotulo="Cómo trabaja Odobi">
+            <FilaGrupo primera testID="perfil-negocio-modo-fila" onPress={() => setVerModo(true)} accessibilityLabel="Antes de guardar">
+              <View style={styles.dato}>
+                <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Antes de guardar</Text>
+                <Text testID="perfil-negocio-estado-modo" style={{ color: tema.color.texto, fontSize: tema.tipo.base, lineHeight: 22 }}>
+                  {automatico ? 'Anota solo y te avisa después' : 'Te muestra una tarjeta para revisar'}
+                </Text>
+              </View>
+              <Chevron />
+            </FilaGrupo>
+            <FilaGrupo testID="perfil-negocio-tono-fila" onPress={() => setVerTono(true)} accessibilityLabel="Tono y forma">
+              <View style={styles.dato}>
+                <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Cómo te habla</Text>
+                <Text testID="perfil-negocio-tono-resumen" style={{ color: tema.color.texto, fontSize: tema.tipo.base, lineHeight: 22 }}>
                   {resumenDeTono(campos)}
                 </Text>
-                <Chevron />
-              </FilaGrupo>
-            </GrupoFilas>
-          </Seccion>
-
-          {estadoGuardado === 'ok' && (
-            <Text testID="perfil-negocio-guardado" style={{ color: tema.color.exito, fontSize: tema.tipo.base }}>
-              Listo, lo guardamos.
-            </Text>
-          )}
-
-          {estadoGuardado === 'error' && (
-            <Text testID="perfil-negocio-error-guardado" style={{ color: tema.color.peligro, fontSize: tema.tipo.base }}>
-              {errorGuardado ?? 'No pudimos guardar los cambios. Probá de nuevo.'}
-            </Text>
-          )}
+              </View>
+              <Chevron />
+            </FilaGrupo>
+          </GrupoFilas>
 
           {/* «Lo que vendo» es una TERCERA sección de esta misma pantalla, con su propio ciclo de
               guardado: no comparte el botón de las otras dos porque no comparte el endpoint —cada
@@ -519,6 +694,8 @@ export function PantallaPerfilNegocio() {
           <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
             Tu CUIT, razón social y condición de IVA se cargan en Ajustes → Facturación ARCA.
           </Text>
+          </>
+          )}
         </ScrollFormulario>
       )}
     </MarcoGlass>
@@ -527,4 +704,8 @@ export function PantallaPerfilNegocio() {
 
 const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  cabecera: { flexDirection: 'row', alignItems: 'baseline', paddingHorizontal: 4 },
+  dato: { flex: 1, minWidth: 0, gap: 2 },
+  burbuja: { alignSelf: 'flex-end', maxWidth: '85%', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10 },
+  tarjetaEjemplo: { borderRadius: 22, padding: 16, gap: 4 },
 });

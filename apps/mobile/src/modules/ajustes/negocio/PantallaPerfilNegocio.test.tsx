@@ -47,6 +47,18 @@ async function montar() {
   );
 }
 
+/** Con perfil guardado la pantalla abre como ficha: el formulario está detrás de «Editar». */
+async function abrirEdicion() {
+  await fireEvent.press(await screen.findByTestId('perfil-negocio-editar'));
+  await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
+}
+
+/** El modo y su explicación viven en una vista aparte, detrás de la fila «Antes de guardar». */
+async function abrirModo() {
+  await fireEvent.press(await screen.findByTestId('perfil-negocio-modo-fila'));
+  await waitFor(() => expect(screen.getByTestId('pantalla-modo')).toBeTruthy());
+}
+
 describe('PantallaPerfilNegocio', () => {
   beforeEach(() => {
     mockLeer.mockReset();
@@ -55,9 +67,35 @@ describe('PantallaPerfilNegocio', () => {
     mockGuardar.mockResolvedValue({ status: 'ok', perfil: PERFIL });
   });
 
-  it('precarga los campos con el perfil guardado', async () => {
+  it('con perfil guardado abre como FICHA de lectura: los datos se leen y no hay ningún campo abierto', async () => {
     await montar();
-    await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('perfil-negocio-ficha')).toBeTruthy());
+    expect(screen.getByTestId('perfil-negocio-ficha-que-vende')).toHaveTextContent('Instalaciones eléctricas');
+    expect(screen.getByTestId('perfil-negocio-ficha-a-quien')).toHaveTextContent('Empresas y consumidor final');
+    expect(screen.getByTestId('perfil-negocio-ficha-nombre-comercial')).toHaveTextContent('Electricidad Pérez');
+    expect(screen.queryByTestId('perfil-negocio-que-vende-input')).toBeNull();
+    expect(screen.queryByTestId('perfil-negocio-guardar-negocio')).toBeNull();
+  });
+
+  it('un dato sin cargar lo dice en la ficha, en vez de dejar el renglón en blanco', async () => {
+    mockLeer.mockResolvedValue({ status: 'ok', perfil: { ...PERFIL, horarioAtencion: '' } });
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('perfil-negocio-ficha-horario')).toHaveTextContent('Sin cargar'));
+  });
+
+  it('«Cancelar» vuelve a la ficha con lo guardado, sin llamar al backend', async () => {
+    await montar();
+    await abrirEdicion();
+    await fireEvent.changeText(screen.getByTestId('perfil-negocio-nombre-comercial-input'), 'Otro nombre');
+    await fireEvent.press(screen.getByTestId('perfil-negocio-cancelar'));
+
+    await waitFor(() => expect(screen.getByTestId('perfil-negocio-ficha-nombre-comercial')).toHaveTextContent('Electricidad Pérez'));
+    expect(mockGuardar).not.toHaveBeenCalled();
+  });
+
+  it('«Editar» abre el formulario precargado con el perfil guardado', async () => {
+    await montar();
+    await abrirEdicion();
     expect(screen.getByTestId('perfil-negocio-que-vende-input').props.value).toBe('Instalaciones eléctricas');
   });
 
@@ -74,6 +112,10 @@ describe('PantallaPerfilNegocio', () => {
     await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
     expect(screen.queryByTestId('perfil-negocio-error')).toBeNull();
     expect(screen.queryByTestId('perfil-negocio-no-disponible')).toBeNull();
+    // Sin nada cargado no hay ficha que leer ni a la que volver: se entra directo a completar.
+    expect(screen.getByTestId('perfil-negocio-que-vende-input')).toBeTruthy();
+    expect(screen.queryByTestId('perfil-negocio-ficha')).toBeNull();
+    expect(screen.queryByTestId('perfil-negocio-cancelar')).toBeNull();
   });
 
   it('cuando el endpoint no está desplegado lo dice, sin ofrecer reintentar', async () => {
@@ -87,7 +129,7 @@ describe('PantallaPerfilNegocio', () => {
 
   it('K-15: la fila-resumen refleja el valor guardado y abre «Cómo hablarle»; el editor ya no vive acá', async () => {
     await montar();
-    await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('perfil-negocio-tono-resumen')).toBeTruthy());
     expect(screen.getByTestId('perfil-negocio-tono-resumen')).toHaveTextContent(/Cercano · Breve · Copi/);
     expect(screen.queryByTestId('perfil-negocio-formalidad')).toBeNull();
     expect(screen.queryByTestId('perfil-negocio-largo')).toBeNull();
@@ -98,7 +140,7 @@ describe('PantallaPerfilNegocio', () => {
 
   it('el botón de Negocio manda sólo los campos del negocio', async () => {
     await montar();
-    await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
+    await abrirEdicion();
 
     fireEvent.press(screen.getByTestId('perfil-negocio-guardar-negocio'));
     await waitFor(() => expect(mockGuardar).toHaveBeenCalled());
@@ -116,7 +158,7 @@ describe('PantallaPerfilNegocio', () => {
 
   it('BL-J10: precarga teléfono y email y los manda al guardar', async () => {
     await montar();
-    await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
+    await abrirEdicion();
     expect(screen.getByTestId('perfil-negocio-telefono-input').props.value).toBe('341 590 6309');
     expect(screen.getByTestId('perfil-negocio-email-input').props.value).toBe('contacto@elgalpon.com.ar');
 
@@ -129,7 +171,7 @@ describe('PantallaPerfilNegocio', () => {
 
   it('🔴 BL-J10: formato inválido avisa en el campo y NO llama al backend', async () => {
     await montar();
-    await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
+    await abrirEdicion();
     await fireEvent.changeText(screen.getByTestId('perfil-negocio-telefono-input'), '590 630');
     await fireEvent.changeText(screen.getByTestId('perfil-negocio-email-input'), 'sin-arroba');
 
@@ -142,7 +184,7 @@ describe('PantallaPerfilNegocio', () => {
 
   it('«Qué vendés» corto: al salir del campo AVISA, y Guardar sigue funcionando (aviso, no bloqueo)', async () => {
     await montar();
-    await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
+    await abrirEdicion();
     expect(screen.queryByTestId('perfil-negocio-que-vende-error')).toBeNull();
 
     await fireEvent.changeText(screen.getByTestId('perfil-negocio-que-vende-input'), 'Pan');
@@ -161,7 +203,7 @@ describe('PantallaPerfilNegocio', () => {
 
   it('«Qué vendés»: volver a escribir limpia el aviso, y un perfil guardado con largo suficiente no avisa', async () => {
     await montar();
-    await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
+    await abrirEdicion();
     await fireEvent(screen.getByTestId('perfil-negocio-que-vende-input'), 'blur');
     expect(screen.queryByTestId('perfil-negocio-que-vende-error')).toBeNull(); // PERFIL.queVende ya tiene >= 10
 
@@ -178,7 +220,7 @@ describe('PantallaPerfilNegocio', () => {
     mockGuardar.mockRejectedValue(new ApiError(400, 'que_vende supera los 500 caracteres', 'que_vende supera los 500 caracteres'));
 
     await montar();
-    await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
+    await abrirEdicion();
     fireEvent.press(screen.getByTestId('perfil-negocio-guardar-negocio'));
 
     await waitFor(() =>
@@ -197,21 +239,20 @@ describe('PantallaPerfilNegocio', () => {
     });
 
     await montar();
-    await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
+    await abrirEdicion();
     fireEvent.press(screen.getByTestId('perfil-negocio-guardar-negocio'));
 
-    await waitFor(() =>
-      expect(screen.getByTestId('perfil-negocio-nombre-comercial-input').props.value).toContain('S.R.L.'),
-    );
+    // Al guardar se vuelve a la ficha, que muestra lo que devolvió el backend.
+    await waitFor(() => expect(screen.getByTestId('perfil-negocio-ficha-nombre-comercial')).toHaveTextContent(/S\.R\.L\./));
   });
 
-  it('editar un campo borra el "Listo, lo guardamos" anterior', async () => {
+  it('volver a editar borra el "Listo, lo guardamos" anterior', async () => {
     await montar();
-    await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
+    await abrirEdicion();
     fireEvent.press(screen.getByTestId('perfil-negocio-guardar-negocio'));
     await waitFor(() => expect(screen.getByTestId('perfil-negocio-guardado')).toBeTruthy());
 
-    fireEvent.changeText(screen.getByTestId('perfil-negocio-nombre-comercial-input'), 'Otro nombre');
+    await fireEvent.press(screen.getByTestId('perfil-negocio-editar'));
 
     // Dejarlo en pantalla mientras se edita diría que lo que se está viendo ya está a salvo.
     await waitFor(() => expect(screen.queryByTestId('perfil-negocio-guardado')).toBeNull());
@@ -223,16 +264,22 @@ describe('PantallaPerfilNegocio', () => {
       // al emprendedor que la app tiene cosas apagadas.
       await montar();
 
-      await waitFor(() => expect(screen.getByTestId('perfil-negocio-modo')).toBeTruthy());
+      // En Mi negocio el modo es una fila con su estado; la explicación vive al entrar.
+      await waitFor(() => expect(screen.getByTestId('perfil-negocio-estado-modo')).toBeTruthy());
+      expect(screen.getByTestId('perfil-negocio-estado-modo').props.children).toBe('Te muestra una tarjeta para revisar');
+      await abrirModo();
       expect(screen.getByTestId('perfil-negocio-modo').props.children).toBe('Pedir confirmación');
       expect(screen.queryByText(/Automático/)).toBeNull();
-      // Mapeo `negocio`: el estado del modo también va arriba, como el estado-pag del prototipo.
-      expect(screen.getByTestId('perfil-negocio-estado-modo').props.children).toBe('Te pide confirmación antes de ejecutar');
+      // La pantalla habla de «una tarjeta»: la muestra, con lo dicho y los botones de confirmar.
+      expect(screen.getByTestId('perfil-negocio-modo-ejemplo')).toBeTruthy();
+      expect(screen.getByText('Cargué nafta, 42.000')).toBeTruthy();
+      expect(screen.getByTestId('perfil-negocio-modo-ejemplo-guardar')).toBeTruthy();
     });
 
     it('🔴 en confirmación NO hay forma de ENCENDER el automático — eso lo ofrece el copiloto', async () => {
       await montar();
-      await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-modo')).toBeTruthy());
+      await abrirModo();
+      expect(screen.getByTestId('perfil-negocio-seccion-modo')).toBeTruthy();
 
       // El va-B: el automático se OFRECE, no se elige de una lista. Ni un select, ni un botón de
       // encender. Si mañana alguien agrega un toggle libre acá, este test lo frena: ofrecer «encender»
@@ -246,8 +293,9 @@ describe('PantallaPerfilNegocio', () => {
 
       await montar();
 
-      await waitFor(() => expect(screen.getByTestId('perfil-negocio-modo').props.children).toBe('Automático'));
-      expect(screen.getByTestId('perfil-negocio-estado-modo').props.children).toBe('Anota lo que le dictás y te avisa después');
+      await waitFor(() => expect(screen.getByTestId('perfil-negocio-estado-modo').props.children).toBe('Anota solo y te avisa después'));
+      await abrirModo();
+      expect(screen.getByTestId('perfil-negocio-modo').props.children).toBe('Automático');
       // Y la explicación NO promete que deja de preguntar todo: el piso sigue confirmando siempre.
       expect(screen.getByText(/te lo sigue preguntando siempre/)).toBeTruthy();
     });
@@ -258,7 +306,7 @@ describe('PantallaPerfilNegocio', () => {
       mockGuardar.mockResolvedValue({ status: 'ok', perfil: { ...PERFIL, modoCeremonia: 'confirmacion' } });
 
       await montar();
-      await waitFor(() => expect(screen.getByTestId('perfil-negocio-volver-confirmacion')).toBeTruthy());
+      await abrirModo();
 
       await fireEvent.press(screen.getByTestId('perfil-negocio-volver-confirmacion'));
 
@@ -273,7 +321,7 @@ describe('PantallaPerfilNegocio', () => {
       mockGuardar.mockResolvedValue({ status: 'ok', perfil: { ...PERFIL, modoCeremonia: 'confirmacion' } });
 
       await montar();
-      await waitFor(() => expect(screen.getByTestId('perfil-negocio-volver-confirmacion')).toBeTruthy());
+      await abrirModo();
       await fireEvent.press(screen.getByTestId('perfil-negocio-volver-confirmacion'));
 
       await waitFor(() => expect(mockGuardar).toHaveBeenCalled());

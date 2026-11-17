@@ -132,7 +132,7 @@ export function PantallaTono({ onVolver, onGuardado }: PantallaTonoProps) {
       )}
 
       {estadoCarga === 'ok' && (
-        <ScrollFormulario contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.md }}>
+        <ScrollFormulario contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.lg }}>
           <Text testID="tono-intro" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
             Cómo te contesta Odobi. Se guarda aparte del perfil de tu negocio.
           </Text>
@@ -162,7 +162,9 @@ export function PantallaTono({ onVolver, onGuardado }: PantallaTonoProps) {
           {ejemplo != null && (
             <View
               testID="tono-ejemplo-caja"
-              style={{ backgroundColor: tema.color.superficieAlta, borderRadius: tema.radio.md, padding: tema.espacio.sm, gap: 2 }}
+              // Mismo aire que cualquier tarjeta de la app (16) y la misma separación entre bloques que el resto de
+              // la pantalla: antes tenía 8 de relleno y quedaba pegada al campo de arriba y al rótulo de abajo.
+              style={{ backgroundColor: tema.color.superficie, borderRadius: tema.radio.md, padding: tema.espacio.md, gap: tema.espacio.xs }}
             >
               <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Así te respondería</Text>
               <Text testID="tono-ejemplo" style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
